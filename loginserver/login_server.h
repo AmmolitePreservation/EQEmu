@@ -1,3 +1,5 @@
+#include <utility>
+
 /**
  * EQEmulator: Everquest Server Emulator
  * Copyright (C) 2001-2019 EQEmulator Development Team (https://github.com/EQEmu/Server)
@@ -28,6 +30,7 @@
 #include "options.h"
 #include "server_manager.h"
 #include "client_manager.h"
+#include "loginserver_webserver.h"
 
 /**
  * Login server struct, contains every variable for the server that needs to exist outside the scope of main()
@@ -35,13 +38,16 @@
 struct LoginServer
 {
 public:
-	LoginServer() : db(nullptr), server_manager(nullptr) { }
+	LoginServer() : db(nullptr), server_manager(nullptr) {
 
-	EQ::JsonConfigFile config;
-	Database *db;
-	Options options;
-	ServerManager *server_manager;
-	ClientManager *client_manager{};
+	}
+
+	EQ::JsonConfigFile                 config;
+	Database                           *db;
+	LoginserverWebserver::TokenManager *token_manager{};
+	Options                            options;
+	ServerManager                      *server_manager;
+	ClientManager                      *client_manager{};
 };
 
 #endif
