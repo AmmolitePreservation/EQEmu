@@ -21,6 +21,7 @@
 #define EQEMU_ACCOUNT_MANAGEMENT_H
 
 #include "iostream"
+#include "../common/types.h"
 
 class AccountManagement {
 public:
@@ -28,9 +29,10 @@ public:
 	/**
 	 * @param username
 	 * @param password
+	 * @param email
 	 * @return
 	 */
-	static bool CreateLocalLoginServerAccount(std::string username, std::string password);
+	static uint32 CreateLocalLoginServerAccount(std::string username, std::string password, std::string email = "");
 
 	/**
 	 * @param username
