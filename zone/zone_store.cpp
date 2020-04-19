@@ -23,7 +23,7 @@
 ZoneStore::ZoneStore() = default;
 ZoneStore::~ZoneStore() = default;
 
-void ZoneStore::LoadZonesStore()
+void ZoneStore::LoadZones()
 {
 	zones = ZoneRepository::All();
 }
@@ -50,6 +50,11 @@ uint32 ZoneStore::GetZoneID(std::string zone_name)
 	return 0;
 }
 
+/**
+ * @param zone_id
+ * @param error_unknown
+ * @return
+ */
 const char *ZoneStore::GetZoneName(uint32 zone_id, bool error_unknown)
 {
 	for (auto &z: zones) {
@@ -65,6 +70,10 @@ const char *ZoneStore::GetZoneName(uint32 zone_id, bool error_unknown)
 	return nullptr;
 }
 
+/**
+ * @param zone_id
+ * @return
+ */
 std::string ZoneStore::GetZoneName(uint32 zone_id)
 {
 	for (auto &z: zones) {
@@ -74,4 +83,50 @@ std::string ZoneStore::GetZoneName(uint32 zone_id)
 	}
 
 	return std::string();
+}
+
+/**
+ * @param zone_id
+ * @return
+ */
+std::string ZoneStore::GetZoneLongName(uint32 zone_id)
+{
+	for (auto &z: zones) {
+		if (z.zoneidnumber == zone_id) {
+			return z.long_name;
+		}
+	}
+
+	return std::string();
+}
+
+/**
+ * @param zone_id
+ * @param version
+ * @return
+ */
+ZoneRepository::Zone ZoneStore::GetZone(uint32 zone_id, int version)
+{
+	for (auto &z: zones) {
+		if (z.zoneidnumber == zone_id && z.version == version) {
+			return z;
+		}
+	}
+
+	return ZoneRepository::Zone();
+}
+
+/**
+ * @param in_zone_name
+ * @return
+ */
+ZoneRepository::Zone ZoneStore::GetZone(const char *in_zone_name)
+{
+	for (auto &z: zones) {
+		if (z.short_name == in_zone_name) {
+			return z;
+		}
+	}
+
+	return ZoneRepository::Zone();
 }

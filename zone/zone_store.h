@@ -31,12 +31,15 @@ public:
 
 	std::vector<ZoneRepository::Zone> zones;
 
-	void LoadZonesStore();
+	void LoadZones();
 
+	ZoneRepository::Zone GetZone(uint32 zone_id, int version = 0);
+	ZoneRepository::Zone GetZone(const char *in_zone_name);
 	uint32 GetZoneID(const char *in_zone_name);
 	uint32 GetZoneID(std::string zone_name);
 	std::string GetZoneName(uint32 zone_id);
-	const char *GetZoneName(uint32 zone_id, bool error_unknown);
+	std::string GetZoneLongName(uint32 zone_id);
+	const char *GetZoneName(uint32 zone_id, bool error_unknown = false);
 };
 
 extern ZoneStore zone_store;
@@ -46,14 +49,15 @@ extern ZoneStore zone_store;
  */
 inline uint32 ZoneID(const char *in_zone_name) { return zone_store.GetZoneID(in_zone_name); }
 inline uint32 ZoneID(std::string zone_name) { return zone_store.GetZoneID(zone_name); }
-inline std::string ZoneName(uint32 zone_id) { return zone_store.GetZoneName(zone_id); }
-inline const char *ZoneName(uint32 zone_id, bool error_unknown)
+inline const char *ZoneName(uint32 zone_id, bool error_unknown = false)
 {
 	return zone_store.GetZoneName(
 		zone_id,
 		error_unknown
 	);
 }
-
+inline const char *ZoneLongName(uint32 zone_id) { return zone_store.GetZoneLongName(zone_id).c_str(); }
+inline ZoneRepository::Zone GetZone(uint32 zone_id, int version = 0) { return zone_store.GetZone(zone_id, version); };
+inline ZoneRepository::Zone GetZone(const char *in_zone_name) { return zone_store.GetZone(in_zone_name); };
 
 #endif //EQEMU_ZONE_STORE_H
