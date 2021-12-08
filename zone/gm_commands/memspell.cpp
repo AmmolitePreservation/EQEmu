@@ -5,43 +5,75 @@ void command_memspell(Client *c, const Seperator *sep)
 	int arguments = sep->argnum;
 	if (
 		!arguments ||
-		!sep->IsNumber(1) ||
-		!sep->IsNumber(2)
+		!sep->IsNumber(1)
 	) {
-		c->Message(Chat::White, "Usage: #memspell [Slot] [Spell ID]");
+		c->Message(Chat::White, "Usage: #memspell [Spell ID] [Spell Gem]");
 		return;
 	}
 
-	Client* target = c;
+	auto target = c;
 	if (c->GetTarget() && c->GetTarget()->IsClient() && c->GetGM()) {
 		target = c->GetTarget()->CastToClient();
 	}
 
-	uint32 spell_gem = std::stoul(sep->arg[1]);
-	uint32 slot = (spell_gem - 1);
-	uint16 spell_id = static_cast<uint16>(std::stoul(sep->arg[2]));
-	if (
-		IsValidSpell(spell_id) &&
-		slot < EQ::spells::SPELL_GEM_COUNT
-	)  {			
-		target->MemSpell(spell_id, slot);
+	auto spell_id = static_cast<uint16>(std::stoul(sep->arg[1]));
+	if (!IsValidSpell(spell_id)) {
 		c->Message(
 			Chat::White,
 			fmt::format(
-				"{} ({}) has been memorized to Spell Gem {} ({}) for {}.",
-				GetSpellName(spell_id),
-				spell_id,
-				spell_gem,
-				slot,
+				"Spell ID {} could not be found.",
+				spell_id
+			).c_str()
+		);
+		return;
+	}
+
+	auto empty_slot = target->FindEmptyMemSlot();
+	if (empty_slot == -1) {
+		c->Message(
+			Chat::White,
+			fmt::format(
+				"{} not have a place to memorize {} ({}).",
 				(
 					c == target ?
-					"yourself" :
+					"You do" :
 					fmt::format(
-						"{} ({})",
+						"{} ({}) does",
 						target->GetCleanName(),
 						target->GetID()
 					)
-				)
+				),
+				GetSpellName(spell_id),
+				spell_id
+			).c_str()
+		);
+		return;
+	}
+
+	auto spell_gem = sep->IsNumber(2) ? std::stoul(sep->arg[2]) : empty_slot;
+	if (spell_gem > EQ::spells::SPELL_GEM_COUNT) {
+		c->Message(
+			Chat::White,
+			fmt::format(
+				"Spell Gems range from 0 to {}.",
+				EQ::spells::SPELL_GEM_COUNT
+			).c_str()
+		);
+		return;
+	}
+
+	target->MemSpell(spell_id, spell_gem);
+
+	if (c != target) {
+		c->Message(
+			Chat::White,
+			fmt::format(
+				"{} ({}) memorized to spell gem {} for {} ({}).",
+				GetSpellName(spell_id),
+				spell_id,
+				spell_gem,
+				target->GetCleanName(),
+				target->GetID()
 			).c_str()
 		);
 	}
