@@ -1,5 +1,6 @@
 #include "../../common/json/json.h"
 #include "../../common/version.h"
+#include "peridotBuildIdentity.h"
 
 void WorldserverCLI::Version(int argc, char **argv, argh::parser &cmd, std::string &description)
 {
@@ -16,6 +17,8 @@ void WorldserverCLI::Version(int argc, char **argv, argh::parser &cmd, std::stri
 	j["compile_time"]            = COMPILE_TIME;
 	j["custom_database_version"] = CUSTOM_BINARY_DATABASE_VERSION;
 	j["database_version"]        = CURRENT_BINARY_DATABASE_VERSION;
+	j["peridot_git_commit"]      = peridotGitCommit;
+	j["peridot_git_dirty"]       = peridotGitDirty;
 	j["server_version"]          = CURRENT_VERSION;
 
 	std::stringstream payload;
