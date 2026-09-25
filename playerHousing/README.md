@@ -14,6 +14,7 @@ Approach: derive the wire protocol **statically from the client**. The client's 
 |---|---|
 | `COVERAGE.md` | the register: every question (Q1–Q26) with its answer, receive / send tables, gates, the GUI and command reviews |
 | `serverWork.md` | the server work inventory: foundations and subsystems, their messages, rules, dependencies and readiness; the build order |
+| `serverPlan.md` | the implementation plan against Peridot's EQEmu source: architecture, touch points in existing code, persistence, decisions |
 | `flows/` | end-to-end flows: purchase, place item, edit placed item, moving crate, layouts, escrow and upkeep, access and permissions, neighborhoods, plot search, polls, trophies |
 | `placedItemsAndProperties.md` | property records, placed-item lists, spawn binding, the `0x21ec` menu, character property lists |
 | `placementMode.md` | placement: `0x626e`, regions `0x49df`, modes, commit `0x711a`, options |

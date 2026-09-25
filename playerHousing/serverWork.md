@@ -1,6 +1,6 @@
 # Server Work Inventory
 
-Every piece of server-side work the client research specifies, grouped into subsystems in dependency order. This is **phase 1** of the server plan; **phase 2** turns each item into concrete changes in Peridot's EQEmu source (`serverPlan.md`, to follow). The research documents each item cites are the specification; this page doesn't repeat their formats.
+Every piece of server-side work the client research specifies, grouped into subsystems in dependency order. This is **phase 1** of the server plan; **phase 2** turns each item into concrete changes in Peridot's EQEmu source (`serverPlan.md`). The research documents each item cites are the specification; this page doesn't repeat their formats.
 
 **Readiness** of each item:
 - **Specified**: the client research fixes what the server must send and accept.
