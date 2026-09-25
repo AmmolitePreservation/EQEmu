@@ -27,6 +27,6 @@ One file per player-facing feature (Purchase, Sell, Transfer, Upkeep and escrow,
 4. **Decision trees** — for every gate and control involved, expanded to data leaves (see `../windows/`).
 5. **Expected result per step** — what the UI shows and which controls are enabled.
 6. **Failure branches** — for each check: what the client shows or does when it fails (silent no-op, a refusal string id, a request), so a symptom seen in testing maps back to the missing precondition.
-7. **Server obligations** — what the server must store and send for this flow (feeds `../serverDataModel.md`).
+7. **Server obligations** — what the server must store and send for this flow (feeds `../serverWork.md`).
 8. **Test cases** — the happy path plus one case per failure branch.
 9. **Status and open questions.**
