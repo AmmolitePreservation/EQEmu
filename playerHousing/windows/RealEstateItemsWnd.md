@@ -143,6 +143,26 @@ Ownership comparisons (`0x4d6b10`, owner names); **House of Thule `0x2f`, Veil o
 
 **`0x7b0b10(item)` = `dword [definition + 0x5ac] != 0`**. **`+0x5ac` is a "placeable in" bitmask:** **`0x01` certain open zones, `0x02` guild halls, `0x04` houses, `0x08` yards, `0x80` guild yards** (item display `0x69e740`; bit tests via `0x7b0af0(mask)`). Trophy tests combine it with the trophy benefit id `+0x5ec` (≠ -1): any bit = a trophy for the available list (`0x7b0ba0`); houses or yards = **personal trophy** (`0x7b0bd0`); guild halls or guild yards = **guild trophy** (`0x7b0c10`, the trophy rule below). (definition = `item->vtable[+8]()`). The item definition deserializer (`0x7f6bf0`) reads that dword from the serialized item right after the Heirloom byte (`+0x10f`). Aligned with EQEmu's `rof2_structs.h` **`ItemQuaternaryBodyStruct`** (scriptfileid, quest_item, Power, Purity, unknown16, BackstabDmg, DSMitigation, 13 Heroic stats, HealAmt, SpellDmg, Clairvoyance, SubType, evolve_string, unknown19–21, **Heirloom**, then **`Placeable`, `unknown22b`, `unknown22c`, `unknown22d`**), the client reads **`Placeable` plus the three bytes after it as one u32**. Any non-zero value makes the item placeable.
 
+**The complete housing tail of the item definition** (the field names are MacroQuest's RoF2 `ItemDefinition`, which matches every offset derived here; the wire order after the Heirloom byte is the client reader's, `0x7f6bf0`):
+
+| Offset | Type | MacroQuest name | Meaning |
+|---|---|---|---|
+| `+0x5ac` | u32 | `Placeable` | "placeable in" bitmask (above) |
+| `+0x5b0` | u8 | `bPlaceableIgnoreCollisions` | |
+| `+0x5b4` | u32 | `PlacementType` | |
+| `+0x5b8` | u32 | `RealEstateDefID` | the property definition this item creates (houses, crates) |
+| `+0x5bc`, `+0x5c0` | f32 | `PlaceableScaleRangeMin` / `Max` | scale limits |
+| `+0x5c4` | u32 | `RealEstateUpkeepID` | upkeep cost id (critical finding 12) |
+| `+0x5c8` | u32 | `MaxPerRealEstate` | |
+| `+0x5cc` | char[32] | `HousepetFileName` | the wire string (at most 32 bytes) |
+| `+0x5ec` | u32 | `TrophyBenefitID` | trophy benefit id, -1 = none (critical finding 19) |
+| `+0x5f0`, `+0x5f1` | u8 | `bDisablePlacementRotation`, `bDisableFreePlacement` | |
+| `+0x5f4` | u32 | `NpcRespawnInterval` | |
+| `+0x5f8`-`+0x604` | f32 x4 | `PlaceableDefScale` / `Heading` / `Pitch` / `Roll` | defaults |
+| `+0x608` | u8 | `bInteractiveObject` | |
+
+**The server's item-tail fix must write all of these in the client's order**, not only the three fields the findings name.
+
 **EQEmu hardcodes it to zero:** `common/patches/rof2.cpp` (`SerializeItem`) sets **`iqbs.Placeable = 0;`** (and `iqbs.Heirloom = 0;`). **So no item sent by the current encoder is placeable**: every placement and storage rule fails at the placeable check (`0x24`), the Place button stays dark, and the list shows every item as "V". The server must set `Placeable` for real-estate items.
 
 ### Click paths (notification handler `0x73cc50`)
