@@ -26,6 +26,7 @@
 #include "../common/eq_packet_structs.h"
 #include "../common/mutex.h"
 #include "../common/opcodemgr.h"
+#include "peridotBuildIdentity.h"
 #include "../common/guilds.h"
 #include "../common/eq_stream_ident.h"
 #include "../common/patches/patches.h"
@@ -326,6 +327,7 @@ int main(int argc, char **argv)
 #endif
 
 	LogInfo("CURRENT_VERSION [{}]", CURRENT_VERSION);
+	LogInfo("PERIDOT_GIT_COMMIT [{}]{}", peridotGitCommit, peridotGitDirty ? " (uncommitted changes)" : "");
 
 	/*
 	* Setup nice signal handlers

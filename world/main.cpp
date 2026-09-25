@@ -33,6 +33,7 @@
 #include "../common/eq_packet.h"
 #include "../common/seperator.h"
 #include "../common/version.h"
+#include "peridotBuildIdentity.h"
 #include "../common/eqtime.h"
 #include "../common/event/event_loop.h"
 #include "../common/net/eqstream.h"
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
 	Config = WorldConfig::get();
 
 	LogInfo("CURRENT_VERSION [{}]", CURRENT_VERSION);
+	LogInfo("PERIDOT_GIT_COMMIT [{}]{}", peridotGitCommit, peridotGitDirty ? " (uncommitted changes)" : "");
 
 	if (signal(SIGINT, CatchSignal) == SIG_ERR) {
 		LogError("Could not set signal handler");

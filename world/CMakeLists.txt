@@ -73,6 +73,7 @@ SET(world_headers
     )
 
 ADD_EXECUTABLE(world ${world_sources} ${world_headers})
+ADD_DEPENDENCIES(world peridotBuildIdentity)
 
 INSTALL(TARGETS world RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 

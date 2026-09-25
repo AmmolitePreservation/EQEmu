@@ -446,6 +446,13 @@ IF(EQEMU_BUILD_HC AND NOT TLS_LIBRARY_ENABLED)
 	MESSAGE(FATAL_ERROR "Headless client requires a TLS Library to build.")
 ENDIF()
 
+ADD_CUSTOM_TARGET(peridotBuildIdentity ALL
+  COMMAND ${CMAKE_COMMAND} -DsourceDirectory=${CMAKE_CURRENT_SOURCE_DIR} -DoutputFile=${CMAKE_CURRENT_BINARY_DIR}/generated/peridotBuildIdentity.h -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/peridotBuildIdentity.cmake
+  BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/generated/peridotBuildIdentity.h
+  COMMENT "Stamping Peridot build identity"
+)
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/generated")
+
 IF(EQEMU_BUILD_SERVER OR EQEMU_BUILD_LOGIN OR EQEMU_BUILD_TESTS OR EQEMU_BUILD_HC)
 	ADD_SUBDIRECTORY(common)
 	ADD_SUBDIRECTORY(libs)
