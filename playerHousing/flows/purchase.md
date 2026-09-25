@@ -17,7 +17,7 @@ A player standing in a neighborhood views a vacant plot, chooses a price option 
 | S5 | The plot is **vacant**: player Plot with empty owner name, or Guild Plot with guild id -1 | property record | `0x5b41d0` occupied → Purchase disabled |
 | S6 | No real-estate request pending (manager `+0xa4` clear) | client; clears on a reply or after 5 s | the purchase gate checks the latch |
 | S7 | Local character present (`[0xdd261c]`, `[0xdd2630]`) | login | gates return false without it |
-| S8 | Guild plots: the character is in a guild (`+0x204c` ≠ -1); **guild rank permission 27** "buy guild plots" (`0x4241f0(0x1b)`); **membership feature 10** | rank permissions: **`OP_GuildUpdate` action 5** (every rank starts with none); membership: `OP_SendMembership` / `OP_SendMembershipDetails` (**stock EQEmu passes**) | purchase gate steps 7 and 10 |
+| S8 | Guild plots: the character is in a guild (`+0x204c` ≠ -1); **guild rank permission 27** "buy guild plots" (`0x4241f0(0x1b)`); **membership feature 10** | rank permissions: **`OP_GuildUpdate` action 5** (every rank starts with none; **EQEmu 23.8.1 sends them on zone-in from `guild_permissions`**); membership: `OP_SendMembership` / `OP_SendMembershipDetails` (**stock EQEmu passes**) | purchase gate steps 7 and 10 |
 | S9 | Guild neighborhoods: the character's guild == the neighborhood's guild | property records (Neighborhood `+0x24`) | purchase gate step 9 |
 | S10 | **The character is standing on the plot the window shows** (manager `+0x98`/`+0x9c` == window `+0x228`), and its position resolves through property records (or `0x6fd0`'s current property) | tick `0x5b0a10` (position lookup `0x4b3040`, falling back to `0x6fd0`) | Manage, Vote and Opt-out enabled states are recomputed **every frame** from this |
 
@@ -69,7 +69,7 @@ Click (Purchase button, notification 1): purchase gate `0x5b1890` → price comb
 | "You may not purchase a plot that is already owned" | the record shows an owner (S5) |
 | "…guild neighborhood and you are not a member…" | S9 |
 | "…not in a guild!" | S8, guild membership |
-| "…has not granted you the ability to buy guild plots", **even for the guild leader** | S8: the server never granted rank permission 27 (`OP_GuildUpdate` action 5) |
+| "…has not granted you the ability to buy guild plots", **even for the guild leader** | S8: the leader's rank lacks permission 27 in `guild_permissions` (EQEmu sends it with `OP_GuildUpdate` action 5) |
 | Purchase succeeds on the server but the Manage window doesn't open | the `0x45be` reply is missing or its byte is 0 |
 | Manage / Vote / Opt-out dark even though the window filled correctly | S10: the character isn't standing on that plot (or the plot isn't occupied, or it has opted out); recomputed every frame |
 | Sell or Transfer act on a different plot than the window shows, or do nothing | S10: they use the plot the character is **standing in** (manager `+0x94`) |
@@ -82,7 +82,7 @@ Click (Purchase button, notification 1): purchase gate `0x5b1890` → price comb
 - Send the House of Thule (and Veil of Alaris) expansion bits in `OP_PlayerProfile`, whatever the server's era.
 - Send `0x2698` early, with every definition referenced by properties and each definition's purchase and upkeep cost elements.
 - Send property records (with parent chains) before or with the `0x2691` single-property reply.
-- For guild plots, grant rank permissions with `OP_GuildUpdate` action 5 (**ranks 0–8, permission ids 0–31 only**: the client doesn't bounds-check; `robustness.md`).
+- For guild plots, grant permissions 27 and 28 in `guild_permissions` for the right ranks; EQEmu sends them with `OP_GuildUpdate` action 5 (ranks 1–8, permissions 1–30, inside the bounds the client doesn't check; `robustness.md`).
 - Handle `0x45be`: validate the option keys against the definition's cost elements, the vacancy, funds, and the same rules as the gate; reply with `0x45be {u8 success}`, then `0x63fd` (new owner) and the character's property lists; on refusal, `0x45be` 0 and a result code.
 - Handle `0x2aa6` type 2 (upkeep option) and confirm with type 2, flag 0 (`opcode2aa6PropertyAccount.md`).
 - Answer guild-name requests for any guild id sent.
@@ -97,7 +97,7 @@ Click (Purchase button, notification 1): purchase gate `0x5b1890` → price comb
 6. Guild Plot with the character's guild id → owner view; without it → Purchase (if vacant).
 7. Clear `0x10000` in `OP_PlayerProfile`'s expansions → the purchase gate refuses with the House of Thule message.
 8. Request pending (click twice within 5 s without a reply) → the second click is blocked.
-9. Guild plot, leader without an action 5 grant → "…has not granted you…"; after granting permission 27 to the leader's rank → Purchase proceeds.
+9. Guild plot, leader's rank without permission 27 in `guild_permissions` → "…has not granted you…"; after granting it (and zoning, so EQEmu re-sends the ranks) → Purchase proceeds.
 
 ## 9. Open questions
 

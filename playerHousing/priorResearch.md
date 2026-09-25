@@ -65,5 +65,5 @@ The page stopped at the Place button. With the client decoded, these are the nex
 - **Item data:** the placeable bitmask, the upkeep cost id and the trophy benefit id all sit in the item tail that EQEmu's RoF2 struct misaligns and zeroes (findings 11, 12, 19).
 - **The Neighborhood window looks empty with the stock XML**: all six filter checkboxes start unchecked (finding 13).
 - **Placed items vanish on zoning** unless the server re-sends `0x1045` after every zone-in (finding 14), and the two placement float orders differ (finding 15).
-- **Nobody can buy a guild plot** until the server grants rank permissions 27 / 28 with `OP_GuildUpdate` action 5, which EQEmu can't express (finding 17).
+- **Guild plots need rank permissions 27 / 28**, from `OP_GuildUpdate` action 5, which EQEmu 23.8.1 already sends from its `guild_permissions` table (finding 17).
 - **NPC items** need the server to fill the spawn id at `0x21ec` `+0x2fc`; housing tradeskill containers need property and record ids in `OP_ClickObjectAction` (finding 16).
