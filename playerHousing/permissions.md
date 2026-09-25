@@ -67,19 +67,33 @@ Returns the character's **group index** (0–6) for the property:
 
 ### Access check `0x4ff210(list, group, permission)`
 
-Tests one bit: `list.masks[group]` is a 64-bit mask stored as two u32s, and the bit tested is `permission`. So each property has **one 64-bit permission mask per group**, and groups are assigned by name, club key, or guild/rank key.
+Tests bit `permission` of the u32 at **list `+0x04 + 8 × group`**. The list holds **seven pairs `{u32 group number, u32 permission mask}`** at `+0x00`-`+0x37` (pair `g` at `+8g`); the test reads the **second** u32 of pair `g`. So each property has **one 32-bit permission mask per group** (permission ids 0-12 use the low 13 bits), and groups are assigned by name, club key, or guild/rank key. (Verified: constructor `0x5b5250` numbers the first u32 of each pair 0-6; reader `0x5b7a90` stores the wire pairs at `+8g` / `+8g+4`; test `0x4ff210`.)
 
 Also in `0x4ff4e0`: for guild-plot permissions 2–10 the character-side virtual slot 0 is called with **feature id 10**. If it returns 0, the client shows a "requires purchase" style message (`0x7dbc50(10, 1, 1, 1)` → `0x7db9c0`, the same mechanism as `0x66bf` code 13) and **denies**. **Feature 10 is an account membership feature**: the client's feature table (`0xa0aa28`) names it "access to a number of guild hall functions". It's evaluated by the membership manager (`0x7dbc50` → `0x7db9c0`), and the message comes from `0x7dbd10`: "Your %s %s been %s because you do not have at least a %s membership."
 
 ## Access-list messages (server → client)
 
-Both use the list reader **`0x5b7a90`** (list object 0x48 bytes, constructor `0x5b5250`, then `0x5b5830`):
+Both use the list reader **`0x5b7a90`** (list object 0x48 bytes: the seven pairs at `+0x00`-`+0x37`, then the name -> group table at `+0x38`; constructor `0x5b5250`, then `0x5b5830`):
 
 ```
-7 × { u32 maskLow, u32 maskHigh }        permission mask for groups 0..6 (group 6 = owner)
+7 × { u32 groupNumber, u32 permissionMask }   groups 0..6 in order; the client tests the SECOND u32 (the mask)
 u32   count
-count × { string name, u32 group }       name -> group; names include individual names and synthetic club / guild-rank keys
+count × { string name, u32 group }            name -> group; names include individual names and synthetic club / guild-rank keys
 ```
+
+**Send the group number (0-6) in the first u32 of each pair and the mask in the second.** A server that treats the pair as one 64-bit mask with the permission bits in the first u32 makes every permission read as denied.
+
+**Client defaults** (`0x5b5830` applies them to every new list before the server's list is read over it; `0x5b3d50(group, permission)`), a sane starting point for the server:
+
+| Group | Mask | Permissions |
+|---|---|---|
+| 0 Everyone | `0x0003` | Receive Buffs, Enter |
+| 1 Visitor | `0x0003` | Receive Buffs, Enter |
+| 2 Acquaintance | `0x0803` | Receive Buffs, Enter, Interact Item |
+| 3 Friend | `0x0e03` | Receive Buffs, Enter, Add Item, Move Item, Interact Item |
+| 4 Trustee | `0x1f87` | Receive Buffs, Enter, Withdraw Upkeep, Mail Item, Remove Item, Add Item, Move Item, Interact Item, Manage |
+| 5 Co-Owner | `0x1fff` | all thirteen |
+| 6 Owner | `0x0000` | none (the owner is recognized before the list is consulted) |
 
 | Opcode | Payload | Effect | Evidence |
 |---|---|---|---|
