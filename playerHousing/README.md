@@ -8,12 +8,12 @@ Approach: derive the wire protocol **statically from the client**. The client's 
 
 **Status:** the RoF2 client side of player housing is fully analyzed (every real-estate, vote and trophy window, every housing message in both directions, the world layer, commands and key bindings, a robustness review, and the prior-research cross-check). **Nothing client-side is open** (`COVERAGE.md`). What remains is server implementation and testing: test items are in `COVERAGE.md` (Q11, Q25) and `testingNotes.md` (including *Live comparisons*).
 
-**Reading order for a new session:** this README's *Critical findings* → `serverDataModel.md` (what the server must hold) → the `flows/` for the feature at hand → the message specs and window pages they link → `testingNotes.md` before any live test.
+**Reading order for a new session:** this README's *Critical findings* → `serverWork.md` (every piece of server work, its readiness and the build order) → the `flows/` for the feature at hand → the message specs and window pages they link → `testingNotes.md` before any live test.
 
 | Document | What it covers |
 |---|---|
 | `COVERAGE.md` | the register: every question (Q1–Q26) with its answer, receive / send tables, gates, the GUI and command reviews |
-| `serverDataModel.md` | the state a server needs, and where each piece reaches the client |
+| `serverWork.md` | the server work inventory: foundations and subsystems, their messages, rules, dependencies and readiness; the build order |
 | `flows/` | end-to-end flows: purchase, place item, edit placed item, moving crate, layouts, escrow and upkeep, access and permissions, neighborhoods, plot search, polls, trophies |
 | `placedItemsAndProperties.md` | property records, placed-item lists, spawn binding, the `0x21ec` menu, character property lists |
 | `placementMode.md` | placement: `0x626e`, regions `0x49df`, modes, commit `0x711a`, options |

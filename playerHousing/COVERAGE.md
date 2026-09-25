@@ -4,7 +4,7 @@
 1. Research specs (per message, in this folder).
 2. **GUI baseline**: every control in every XML file, in [`guiControlInventory.md`](guiControlInventory.md) (generated) with per-control analysis in [`windows/`](windows/).
 3. **Flow specs** in [`flows/`](flows/), which double as the test plans.
-4. The server data model draft in [`serverDataModel.md`](serverDataModel.md). The implementation plan comes after the flows are stable.
+4. The server work inventory in [`serverWork.md`](serverWork.md); the implementation plan from Peridot's source follows it.
 
 **Rule for conditions:** a condition is only recorded as done when every predicate it calls has been expanded, level by level, down to **data leaves**: a field whose origin is known (which server message and field, which client action, or which initialization step, and when). Sequential checks are recorded in order, with what the client does when each one fails.
 
