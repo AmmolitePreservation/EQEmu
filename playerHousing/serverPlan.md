@@ -200,7 +200,7 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 
 ## Chunk 2: the item tail (F1)
 
-**Wire layout** (client reader `0x7f6bf0`; `windows/RealEstateItemsWnd.md`): after `Heirloom`, the 18 housing fields in wire order with a **NUL-terminated housepet string** and **`bInteractiveObject` right after it**, a u8 at `+0x609`, then the reader's last 9 bytes (`+0x110`-`+0x118`); what follows belongs to the caller.
+**Wire layout** (client reader `0x7f6bf0`; `windows/RealEstateItemsWnd.md`): after `Heirloom`, the 18 housing fields in wire order with a **NUL-terminated housepet string** and **`bInteractiveObject` right after it**, a u8 count at `+0x609` (that many u32s follow into `+0x60c`; 0 here), then the reader's last 9 bytes (`+0x110`-`+0x118`); what follows belongs to the caller.
 
 **Today** `SerializeItem` (`common/patches/rof2.cpp:6850-6892`) fills `ItemQuaternaryBodyStruct` and writes it as one block; the client reads its `unknown28` / `unknown29` as a 3-character housepet name `"\xff\xff\xff"`, which absorbs the struct's 6 extra bytes, and `unknown30` (-1) as the trophy id.
 
