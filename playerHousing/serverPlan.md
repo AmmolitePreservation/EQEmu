@@ -8,7 +8,7 @@
 
 **Development model:** everything is designed first, then written in full, and the owner builds once. **Database work is tested for real** before delivery: migrations and queries run in a sandbox MariaDB created from the server's real schema (`pok-schema-all.json`), including the `items` rename and decode against the exported rows. **Code is verified by careful reading** against Peridot's source and the research specifications; EQEmu isn't built in the sandbox. After the owner's build, validation happens in game with the diagnostics plugin and the Lua harness.
 
-**Status:** chunks 1-5 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
+**Status:** chunks 1-6 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
 
 | Chunk | Covers |
 |---|---|
@@ -353,3 +353,49 @@ Its status level is an account status like EQEmu's other content commands; `Hous
 **Content this needs:** the NPC type of each NPC item; NPC items' model names (the capture left every `housepet_file_name` empty); the menu label ids.
 
 **To verify in game:** the inferred world-object fields; the respawn interval's unit; that the server's position check agrees with the client's box check at plot edges.
+
+## Chunk 6: neighborhoods and search, purchase / sell / transfer, escrow and upkeep, access (S6-S9)
+
+### Permissions: one evaluator for every check
+
+**The server's check is the client's evaluator (`0x4ff570`)**, so the client's disabled buttons and the server's refusals always agree: House of Thule for every real-estate permission (Veil of Alaris and membership feature 10 under a guild plot); **the owner of a player plot passes, and so does the guild's rank 1 (Leader) on its guild plot**; anyone else gets a group from the property's access list (a house or crate uses its plot's): their name's entry, then `_Fellowship` if their fellowship is the owner's, then `_Guild<rank>` if they're in the owning guild; **the group's mask decides** (the second u32 of each pair). EQEmu has no fellowships, so the owner's fellowship is sent as 0 and `_Fellowship` entries never match.
+
+| Permission | Enforced at |
+|---|---|
+| 1 Enter | entering a house or hall interior (a menu entry, a door); an expired house refuses with `0x1920` |
+| 2 Withdraw Upkeep | `0x2aa6` types 1 and 7 (the client checks nothing) |
+| 3-6, 8-11 remove / add crate and house, remove, add, move, interact with items | chunk 5's handlers, with the client's codes |
+| 12 Manage | `0x3146` and the Manage window's actions |
+| 0 Receive Buffs, 7 Mail Item | no housing buff source or item mail exists on this server; the bits are stored and sent, not enforced |
+
+**Guild rank permissions are EQEmu's own:** `CheckPermission` reads bit `8 - rank` of the permission's value (rank 1, Leader, is 128), and EQEmu names the housing actions (`GUILD_ACTION_REAL_ESTATE_GUILD_PLOT_BUY` 27, `_SELL` 28, `_MODIFY_TROPHIES` 29). Peridot's current values: guild plot buy and sell 128 (Leader only); trophy permissions 24, 25 and 29 at 224 (ranks 1-3).
+
+### S6, neighborhoods and search (`0x2691`)
+
+Requests (224 bytes): **type 0** name search (neighborhood, player or guild name; "My Plots" is your own name); **1** My Items (plots holding items you own, from `real_estate_items.owner_character_id` up to their plot); **2** a neighborhood's details; **4** plot search by owner, **5** by your items (both scoped to the current neighborhood). Replies by kind and mode: **a plot or guild plot as one property** (with "open the Purchase window" when it's vacant), **the neighborhood list** (id, name, guild, player plots and used, guild plots and used: counted, chunk 3), **a neighborhood's plot lists**, **plot search rows** (property id, kind, the `/find` target, two columns). **Go** (`0x218c` with the neighborhood's id and record -1) moves the player into the neighborhood's instance at its zone version's safe point. **A new guild neighborhood** is announced to the guild (`0x1d3c`, a cross-zone guild event). Guild names come from the client's cache, which EQEmu fills at login; **which message answers a cache miss is to verify**.
+
+### S7, purchase, sell and transfer
+
+- **Purchase (`0x45be`)**: a vacant Plot or Guild Plot; the price and upkeep option keys within their cost elements (**option keys are indexes**, below); funds in every currency of the price; the client's gate (House of Thule; for a guild plot Veil of Alaris, membership feature 10, `GUILD_ACTION_REAL_ESTATE_GUILD_PLOT_BUY`, `Housing:GuildPlotMinimumMembers`); `Housing:MaxPlotsPerCharacter`. In a transaction: the currencies taken, owner or guild set, the upkeep option, the first charge scheduled; then `0x45be` success (the client opens Manage), the record, list A, and the events.
+- **Sell (`0x792c`)**: the owner, or `_SELL` for a guild plot, and the client's sell gate (`0x66bf` codes). **Everything on the plot goes into a new moving crate** (definition 31, the Crate of Eviction, item 52147) **carried as an item by the seller** (list B, through its guid; refused if the seller has no room for it); the escrow balance returns to the seller; the plot is vacated.
+- **Transfer (`0x507f`, the target's name)**: a pending offer (D2) sent to the target wherever they are (`0x5a63`, the 188-byte struct with the property id and the owner's name); the answer completes it in the target's zone, checked against the offer and the property's revision; the owner gets `0x68ba`. **An offer nobody answers expires** (`Housing:TransferOfferExpirySeconds`), cleared by the world tick, which then tells the owner.
+
+### S8, escrow and upkeep (`0x2aa6`)
+
+- **Types:** 0 deposit from the cursor (a failed deposit is refunded: type 0, flag 0); 1 withdraw an amount and 7 withdraw all (permission 2; coin pays out as type 1, flag 1); 2 set the upkeep option (reply type 2); **3 / 4 add a day / week for all items, 5 / 6 for one item** (argument: its upkeep cost id). The client keeps no per-item paid time and computes time left from the balances, so **types 3-6 deposit the equivalent amount into escrow**: the same state, no per-item timers.
+- **Option keys are indexes** (`0x7fb970` indexes the options by the key it's given): each cost's keys are 0, 1, 2, ... in order. **A placed item's upkeep is option 0 of its upkeep cost element; the plot's is the option its record selects** (`+0x3c`).
+- **The world tick (D4)**, per property due: the daily cost per currency, net of reductions; **the plot's own upkeep first, then its houses, then the other items**; what escrow covers is charged; **an item escrow can't cover is warned about first** (`0x191f` to the owner, a cross-zone event) **and stored at the next charge** (entry update, `0x2a9e`; a player editing it gets `0x1baf`, which ends the edit cleanly); **a house or plot whose own upkeep isn't covered becomes expired** (`upkeep_current` 0: no placing, `0x18` / `0x19`; no entering, `0x1920`).
+
+### S9, access (`0x3146`, `0x485d`, `0x3968`)
+
+The client sends a property's whole list (every 3 s while it's being edited). The server checks **may edit** (GM, owner, or Manage) and **the client's grid rule** (a viewer only edits groups below their own), validates the names (existing characters, or the club keys), replaces the list in a transaction, sends `0x485d` to everyone who knows the property, and raises the access event; **a player inside an interior who loses Enter is moved out to the plot**.
+
+### Decisions (recommended)
+
+- **D6. Selling** returns the escrow balance, not the purchase price (`Housing:SellRefundPercent`, default 0).
+- **D7. Upkeep failure** follows the client's strings (items warned, then stored; an expired house can't be entered); **a plot whose own upkeep stays expired for `Housing:AbandonDays`** is reclaimed like a sale: everything into a Crate of Eviction carried by the owner, the plot vacated.
+- **D8. An empty name search** lists every neighborhood.
+- **D9. The first upkeep charge** comes one day after purchase.
+- **D10. Transfers need no presence check:** an unanswered offer expires and the owner is told.
+
+**Rules added:** `Housing:MaxPlotsPerCharacter`, `Housing:SellRefundPercent`, `Housing:AbandonDays`.
