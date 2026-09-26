@@ -54,6 +54,7 @@ SET(common_sources
     ip_util.cpp
     item_data.cpp
     item_instance.cpp
+    itemHousingTail.cpp
     json_config.cpp
     light_source.cpp
     md5.cpp
@@ -605,6 +606,7 @@ SET(common_headers
     item_data.h
     item_fieldlist.h
     item_instance.h
+    itemHousingTail.h
     json_config.h
     light_source.h
     linked_list.h

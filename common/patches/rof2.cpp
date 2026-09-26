@@ -30,6 +30,7 @@
 #include "../misc_functions.h"
 #include "../strings.h"
 #include "../inventory_profile.h"
+#include "../itemHousingTail.h"
 #include "rof2_structs.h"
 #include "../rulesys.h"
 #include "../path_manager.h"
@@ -37,6 +38,7 @@
 #include "../races.h"
 #include "../raid.h"
 
+#include <cstddef>
 #include <iostream>
 #include <sstream>
 #include <numeric>
@@ -6889,7 +6891,45 @@ namespace RoF2
 		iqbs.unknown38 = 0;
 		iqbs.unknown39 = packet_type == ItemPacketInvalid ? 0 : 1;;
 
-		ob.write((const char*)&iqbs, sizeof(RoF2::structs::ItemQuaternaryBodyStruct));
+		if (packet_type == ItemPacketInvalid) {
+			ob.write((const char*)&iqbs, sizeof(RoF2::structs::ItemQuaternaryBodyStruct));
+		}
+		else {
+			// the client reads the housing tail in its own order, with a variable-length housepet name (playerHousing/serverPlan.md, chunk 2)
+			static_assert(
+				sizeof(RoF2::structs::ItemQuaternaryBodyStruct) - offsetof(RoF2::structs::ItemQuaternaryBodyStruct, Placeable) == 75,
+				"the housing tail rewrite assumes the RoF2 item tail layout"
+			);
+			const size_t head_size    = offsetof(RoF2::structs::ItemQuaternaryBodyStruct, Placeable);
+			const size_t trailer_size = 14;
+			const EQ::ItemHousingTail& housing = EQ::itemHousingTail(item->ID);
+
+			ob.write((const char*)&iqbs, head_size);
+			ob.write((const char*)&housing.placeable, sizeof(uint32));
+			ob.write((const char*)&housing.placeableIgnoreCollisions, sizeof(uint8));
+			ob.write((const char*)&housing.placementType, sizeof(uint32));
+			ob.write((const char*)&housing.realEstateDefinitionId, sizeof(int32));
+			ob.write((const char*)&housing.placeableScaleMin, sizeof(float));
+			ob.write((const char*)&housing.placeableScaleMax, sizeof(float));
+			ob.write((const char*)&housing.realEstateUpkeepId, sizeof(int32));
+			ob.write((const char*)&housing.maxPerRealEstate, sizeof(int32));
+			const size_t housepet_length = strnlen(housing.housepetFileName, 31);
+			if (housepet_length > 0) {
+				ob.write(housing.housepetFileName, housepet_length);
+			}
+			ob.write("\0", 1);
+			ob.write((const char*)&housing.interactiveObject, sizeof(uint8));
+			ob.write((const char*)&housing.trophyBenefitId, sizeof(int32));
+			ob.write((const char*)&housing.disablePlacementRotation, sizeof(uint8));
+			ob.write((const char*)&housing.disableFreePlacement, sizeof(uint8));
+			ob.write((const char*)&housing.npcRespawnInterval, sizeof(uint32));
+			ob.write((const char*)&housing.placeableDefaultScale, sizeof(float));
+			ob.write((const char*)&housing.placeableDefaultHeading, sizeof(float));
+			ob.write((const char*)&housing.placeableDefaultPitch, sizeof(float));
+			ob.write((const char*)&housing.placeableDefaultRoll, sizeof(float));
+			ob.write("\0", 1);
+			ob.write((const char*)&iqbs + sizeof(RoF2::structs::ItemQuaternaryBodyStruct) - trailer_size, trailer_size);
+		}
 
 		EQ::OutBuffer::pos_type count_pos = ob.tellp();
 		uint32 subitem_count = 0;
