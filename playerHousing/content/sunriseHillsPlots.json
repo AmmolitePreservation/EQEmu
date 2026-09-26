@@ -1,0 +1,1351 @@
+[
+ {
+  "address": "101 Market Street",
+  "mapCenter": [
+   -1936.251,
+   2582.327,
+   -0.719
+  ],
+  "sizeAlong": 170.05,
+  "sizeAcross": 169.3,
+  "mapSideAngle": 47.074,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 42,
+  "upkeepCopperPerDay": 4200,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "104 Market Street",
+  "mapCenter": [
+   -2222.331,
+   2647.899,
+   -0.719
+  ],
+  "sizeAlong": 171.14,
+  "sizeAcross": 170.4,
+  "mapSideAngle": 4.3,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "103 Market Street",
+  "mapCenter": [
+   -2273.551,
+   2403.9,
+   -0.719
+  ],
+  "sizeAlong": 169.31,
+  "sizeAcross": 169.3,
+  "mapSideAngle": 44.424,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "102 Market Street",
+  "mapCenter": [
+   -2068.372,
+   2449.486,
+   -0.719
+  ],
+  "sizeAlong": 170.2,
+  "sizeAcross": 169.87,
+  "mapSideAngle": 42.848,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 42,
+  "upkeepCopperPerDay": 4200,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "101 Market Heights",
+  "mapCenter": [
+   -2510.469,
+   2597.908,
+   79.29
+  ],
+  "sizeAlong": 168.6,
+  "sizeAcross": 167.59,
+  "mapSideAngle": 0.433,
+  "mapZRange": [
+   79.281,
+   79.316
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "102 Market Heights",
+  "mapCenter": [
+   -2328.093,
+   1954.727,
+   89.772
+  ],
+  "sizeAlong": 168.92,
+  "sizeAcross": 169.16,
+  "mapSideAngle": 30.126,
+  "mapZRange": [
+   89.281,
+   91.245
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "103 Market Heights",
+  "mapCenter": [
+   -1858.83,
+   1690.404,
+   59.281
+  ],
+  "sizeAlong": 171.09,
+  "sizeAcross": 169.08,
+  "mapSideAngle": 174.577,
+  "mapZRange": [
+   59.281,
+   59.281
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "101 Brimming Way",
+  "mapCenter": [
+   -1249.213,
+   2017.471,
+   -30.659
+  ],
+  "sizeAlong": 170.07,
+  "sizeAcross": 167.66,
+  "mapSideAngle": 90.323,
+  "mapZRange": [
+   -30.719,
+   -30.48
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "102 Brimming Way",
+  "mapCenter": [
+   -1052.109,
+   1057.569,
+   37.281
+  ],
+  "sizeAlong": 170.74,
+  "sizeAcross": 168.93,
+  "mapSideAngle": 90.481,
+  "mapZRange": [
+   37.281,
+   37.281
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "113 Brimming Way",
+  "mapCenter": [
+   -668.748,
+   1609.565,
+   -0.574
+  ],
+  "sizeAlong": 170.3,
+  "sizeAcross": 167.66,
+  "mapSideAngle": 179.994,
+  "mapZRange": [
+   -0.719,
+   -0.4
+  ],
+  "pricePlatinum": 42,
+  "upkeepCopperPerDay": 4200,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "112 Brimming Way",
+  "mapCenter": [
+   -686.293,
+   1386.777,
+   -0.718
+  ],
+  "sizeAlong": 169.75,
+  "sizeAcross": 167.97,
+  "mapSideAngle": 177.287,
+  "mapZRange": [
+   -0.719,
+   -0.715
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "103 Brimming Way",
+  "mapCenter": [
+   -728.067,
+   992.269,
+   -0.719
+  ],
+  "sizeAlong": 169.8,
+  "sizeAcross": 169.86,
+  "mapSideAngle": 179.622,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "104 Brimming Way",
+  "mapCenter": [
+   -695.495,
+   739.711,
+   -0.719
+  ],
+  "sizeAlong": 169.24,
+  "sizeAcross": 168.11,
+  "mapSideAngle": 38.102,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "105 Brimming Way",
+  "mapCenter": [
+   -611.951,
+   547.112,
+   -0.719
+  ],
+  "sizeAlong": 171.67,
+  "sizeAcross": 170.96,
+  "mapSideAngle": 19.914,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "106 Brimming Way",
+  "mapCenter": [
+   -552.655,
+   346.417,
+   -0.714
+  ],
+  "sizeAlong": 169.73,
+  "sizeAcross": 167.93,
+  "mapSideAngle": 14.661,
+  "mapZRange": [
+   -0.719,
+   -0.697
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "108 Brimming Way",
+  "mapCenter": [
+   -332.472,
+   218.558,
+   -0.716
+  ],
+  "sizeAlong": 169.75,
+  "sizeAcross": 168.56,
+  "mapSideAngle": 89.838,
+  "mapZRange": [
+   -0.719,
+   -0.708
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "107 Brimming Way",
+  "mapCenter": [
+   -458.139,
+   -105.906,
+   149.087
+  ],
+  "sizeAlong": 169.15,
+  "sizeAcross": 168.63,
+  "mapSideAngle": 90.1,
+  "mapZRange": [
+   148.505,
+   149.281
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "105 Brimming Heights",
+  "mapCenter": [
+   103.445,
+   289.921,
+   109.281
+  ],
+  "sizeAlong": 169.32,
+  "sizeAcross": 168.57,
+  "mapSideAngle": 179.663,
+  "mapZRange": [
+   109.281,
+   109.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "106 Brimming Heights",
+  "mapCenter": [
+   315.091,
+   372.136,
+   109.281
+  ],
+  "sizeAlong": 171.32,
+  "sizeAcross": 169.47,
+  "mapSideAngle": 179.907,
+  "mapZRange": [
+   109.281,
+   109.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "107 Brimming Heights",
+  "mapCenter": [
+   293.624,
+   641.698,
+   109.281
+  ],
+  "sizeAlong": 168.49,
+  "sizeAcross": 168.3,
+  "mapSideAngle": 97.733,
+  "mapZRange": [
+   109.281,
+   109.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "108 Brimming Heights",
+  "mapCenter": [
+   250.351,
+   897.027,
+   109.281
+  ],
+  "sizeAlong": 169.87,
+  "sizeAcross": 169.14,
+  "mapSideAngle": 14.667,
+  "mapZRange": [
+   109.281,
+   109.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "104 Brimming Heights",
+  "mapCenter": [
+   -51.406,
+   603.681,
+   59.193
+  ],
+  "sizeAlong": 170.96,
+  "sizeAcross": 169.08,
+  "mapSideAngle": 87.965,
+  "mapZRange": [
+   58.928,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "103 Brimming Heights",
+  "mapCenter": [
+   -66.395,
+   861.696,
+   59.352
+  ],
+  "sizeAlong": 171.56,
+  "sizeAcross": 170.4,
+  "mapSideAngle": 107.625,
+  "mapZRange": [
+   59.281,
+   59.567
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "102 Brimming Heights",
+  "mapCenter": [
+   -201.451,
+   1084.579,
+   59.29
+  ],
+  "sizeAlong": 173.62,
+  "sizeAcross": 168.85,
+  "mapSideAngle": 129.142,
+  "mapZRange": [
+   59.281,
+   59.316
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "111 Brimming Way",
+  "mapCenter": [
+   -495.969,
+   867.517,
+   -0.719
+  ],
+  "sizeAlong": 168.28,
+  "sizeAcross": 167.19,
+  "mapSideAngle": 35.775,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "110 Brimming Way",
+  "mapCenter": [
+   -413.741,
+   627.301,
+   -0.719
+  ],
+  "sizeAlong": 170.48,
+  "sizeAcross": 169.12,
+  "mapSideAngle": 99.225,
+  "mapZRange": [
+   -0.719,
+   -0.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "109 Brimming Way",
+  "mapCenter": [
+   -380.68,
+   426.797,
+   -0.714
+  ],
+  "sizeAlong": 172.54,
+  "sizeAcross": 170.07,
+  "mapSideAngle": 102.45,
+  "mapZRange": [
+   -0.719,
+   -0.699
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "101 Brimming Heights",
+  "mapCenter": [
+   -230.127,
+   1428.728,
+   109.281
+  ],
+  "sizeAlong": 169.32,
+  "sizeAcross": 168.4,
+  "mapSideAngle": 143.125,
+  "mapZRange": [
+   109.281,
+   109.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "101 Vanward Street",
+  "mapCenter": [
+   -1599.641,
+   1016.615,
+   -40.719
+  ],
+  "sizeAlong": 169.54,
+  "sizeAcross": 168.74,
+  "mapSideAngle": 156.694,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "103 Vanward Street",
+  "mapCenter": [
+   -1825.155,
+   1074.394,
+   -40.719
+  ],
+  "sizeAlong": 168.79,
+  "sizeAcross": 168.04,
+  "mapSideAngle": 175.082,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "104 Vanward Street",
+  "mapCenter": [
+   -2053.185,
+   1054.963,
+   -40.719
+  ],
+  "sizeAlong": 169.36,
+  "sizeAcross": 168.02,
+  "mapSideAngle": 17.535,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "105 Vanward Street",
+  "mapCenter": [
+   -2311.053,
+   1176.324,
+   -40.719
+  ],
+  "sizeAlong": 170.0,
+  "sizeAcross": 168.16,
+  "mapSideAngle": 139.792,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "102 Vanward Street",
+  "mapCenter": [
+   -1804.932,
+   796.827,
+   -40.719
+  ],
+  "sizeAlong": 170.25,
+  "sizeAcross": 169.76,
+  "mapSideAngle": 146.953,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "108 Vanward Street",
+  "mapCenter": [
+   -1867.99,
+   544.189,
+   -40.534
+  ],
+  "sizeAlong": 170.05,
+  "sizeAcross": 169.05,
+  "mapSideAngle": 75.153,
+  "mapZRange": [
+   -40.719,
+   -39.98
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "106 Vanward Street",
+  "mapCenter": [
+   -2024.39,
+   708.553,
+   -40.719
+  ],
+  "sizeAlong": 169.89,
+  "sizeAcross": 168.59,
+  "mapSideAngle": 87.854,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "107 Vanward Street",
+  "mapCenter": [
+   -2250.454,
+   632.96,
+   -40.719
+  ],
+  "sizeAlong": 170.26,
+  "sizeAcross": 167.82,
+  "mapSideAngle": 179.837,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "109 Vanward Street",
+  "mapCenter": [
+   -2253.948,
+   422.733,
+   -40.719
+  ],
+  "sizeAlong": 170.63,
+  "sizeAcross": 169.22,
+  "mapSideAngle": 90.0,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "111 Vanward Street",
+  "mapCenter": [
+   -2254.188,
+   204.005,
+   -40.719
+  ],
+  "sizeAlong": 168.74,
+  "sizeAcross": 169.18,
+  "mapSideAngle": 90.422,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "113 Vanward Street",
+  "mapCenter": [
+   -2172.892,
+   -84.834,
+   -40.718
+  ],
+  "sizeAlong": 170.79,
+  "sizeAcross": 169.43,
+  "mapSideAngle": 149.647,
+  "mapZRange": [
+   -40.719,
+   -40.713
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "112 Vanward Street",
+  "mapCenter": [
+   -2028.895,
+   167.809,
+   -40.719
+  ],
+  "sizeAlong": 169.69,
+  "sizeAcross": 168.69,
+  "mapSideAngle": 89.086,
+  "mapZRange": [
+   -40.719,
+   -40.719
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "110 Vanward Street",
+  "mapCenter": [
+   -2021.653,
+   376.962,
+   -40.638
+  ],
+  "sizeAlong": 171.81,
+  "sizeAcross": 169.86,
+  "mapSideAngle": 89.451,
+  "mapZRange": [
+   -40.719,
+   -40.488
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "114 Vanward Street",
+  "mapCenter": [
+   -1779.521,
+   126.619,
+   -40.67
+  ],
+  "sizeAlong": 171.03,
+  "sizeAcross": 170.35,
+  "mapSideAngle": 70.261,
+  "mapZRange": [
+   -40.719,
+   -40.521
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "116 Vanward Street",
+  "mapCenter": [
+   -1563.783,
+   111.212,
+   -40.563
+  ],
+  "sizeAlong": 170.15,
+  "sizeAcross": 169.91,
+  "mapSideAngle": 89.731,
+  "mapZRange": [
+   -40.719,
+   -40.122
+  ],
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 90,
+  "pets": 4
+ },
+ {
+  "address": "101 Vanward Heights",
+  "mapCenter": [
+   -1292.953,
+   125.926,
+   59.279
+  ],
+  "sizeAlong": 171.35,
+  "sizeAcross": 169.77,
+  "mapSideAngle": 176.209,
+  "mapZRange": [
+   59.274,
+   59.281
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "101 Park Circle",
+  "mapCenter": [
+   -1729.619,
+   -1190.904,
+   59.306
+  ],
+  "sizeAlong": 170.04,
+  "sizeAcross": 168.65,
+  "mapSideAngle": 159.803,
+  "mapZRange": [
+   59.281,
+   59.369
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "102 Park Circle",
+  "mapCenter": [
+   -1912.751,
+   -1121.981,
+   59.283
+  ],
+  "sizeAlong": 170.12,
+  "sizeAcross": 169.58,
+  "mapSideAngle": 165.242,
+  "mapZRange": [
+   59.281,
+   59.291
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "103 Park Circle",
+  "mapCenter": [
+   -2150.548,
+   -1063.461,
+   59.281
+  ],
+  "sizeAlong": 172.17,
+  "sizeAcross": 170.26,
+  "mapSideAngle": 29.966,
+  "mapZRange": [
+   59.281,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "104 Park Circle",
+  "mapCenter": [
+   -2221.426,
+   -1269.744,
+   59.281
+  ],
+  "sizeAlong": 171.7,
+  "sizeAcross": 168.31,
+  "mapSideAngle": 167.386,
+  "mapZRange": [
+   59.281,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "105 Park Circle",
+  "mapCenter": [
+   -2157.646,
+   -1497.691,
+   59.281
+  ],
+  "sizeAlong": 169.9,
+  "sizeAcross": 167.85,
+  "mapSideAngle": 37.6,
+  "mapZRange": [
+   59.281,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "106 Park Circle",
+  "mapCenter": [
+   -1959.8,
+   -1607.638,
+   59.274
+  ],
+  "sizeAlong": 168.48,
+  "sizeAcross": 168.59,
+  "mapSideAngle": 166.24,
+  "mapZRange": [
+   59.255,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "107 Park Circle",
+  "mapCenter": [
+   -1744.909,
+   -1619.67,
+   59.279
+  ],
+  "sizeAlong": 170.64,
+  "sizeAcross": 169.52,
+  "mapSideAngle": 0.108,
+  "mapZRange": [
+   59.275,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "108 Park Circle",
+  "mapCenter": [
+   -1551.185,
+   -1617.057,
+   59.281
+  ],
+  "sizeAlong": 171.57,
+  "sizeAcross": 170.09,
+  "mapSideAngle": 89.907,
+  "mapZRange": [
+   59.281,
+   59.281
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 105,
+  "pets": 6
+ },
+ {
+  "address": "105 Guild Way",
+  "mapCenter": [
+   -2044.897,
+   -2446.275,
+   31.281
+  ],
+  "sizeAlong": 168.84,
+  "sizeAcross": 167.91,
+  "mapSideAngle": 89.845,
+  "mapZRange": [
+   31.281,
+   31.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "104 Guild Way",
+  "mapCenter": [
+   -1929.052,
+   -2689.988,
+   31.282
+  ],
+  "sizeAlong": 171.45,
+  "sizeAcross": 171.11,
+  "mapSideAngle": 34.879,
+  "mapZRange": [
+   31.281,
+   31.284
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "101 Guild Way",
+  "mapCenter": [
+   -2180.62,
+   -2989.469,
+   31.446
+  ],
+  "sizeAlong": 172.58,
+  "sizeAcross": 169.14,
+  "mapSideAngle": 179.83,
+  "mapZRange": [
+   31.281,
+   31.943
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "102 Guild Way",
+  "mapCenter": [
+   -1919.85,
+   -2974.763,
+   31.281
+  ],
+  "sizeAlong": 168.79,
+  "sizeAcross": 169.61,
+  "mapSideAngle": 176.524,
+  "mapZRange": [
+   31.281,
+   31.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "103 Guild Way",
+  "mapCenter": [
+   -1653.037,
+   -2952.604,
+   31.281
+  ],
+  "sizeAlong": 169.22,
+  "sizeAcross": 169.68,
+  "mapSideAngle": 111.966,
+  "mapZRange": [
+   31.281,
+   31.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "101 Terminus Street",
+  "mapCenter": [
+   -422.882,
+   -2961.292,
+   -70.6
+  ],
+  "sizeAlong": 170.7,
+  "sizeAcross": 169.16,
+  "mapSideAngle": 90.278,
+  "mapZRange": [
+   -70.728,
+   -70.235
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "102 Terminus Street",
+  "mapCenter": [
+   -201.132,
+   -2962.392,
+   -70.695
+  ],
+  "sizeAlong": 169.34,
+  "sizeAcross": 168.97,
+  "mapSideAngle": 90.815,
+  "mapZRange": [
+   -70.719,
+   -70.622
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "103 Terminus Street",
+  "mapCenter": [
+   31.366,
+   -2962.005,
+   -70.739
+  ],
+  "sizeAlong": 170.06,
+  "sizeAcross": 169.8,
+  "mapSideAngle": 90.072,
+  "mapZRange": [
+   -70.87,
+   -70.649
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "104 Terminus Street",
+  "mapCenter": [
+   318.908,
+   -2970.276,
+   -100.584
+  ],
+  "sizeAlong": 170.3,
+  "sizeAcross": 168.22,
+  "mapSideAngle": 90.367,
+  "mapZRange": [
+   -100.719,
+   -100.178
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "106 Terminus Heights",
+  "mapCenter": [
+   681.241,
+   -3172.215,
+   -1.719
+  ],
+  "sizeAlong": 169.75,
+  "sizeAcross": 167.95,
+  "mapSideAngle": 90.303,
+  "mapZRange": [
+   -1.719,
+   -1.719
+  ],
+  "pricePlatinum": 168,
+  "upkeepCopperPerDay": 16800,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "105 Terminus Street",
+  "mapCenter": [
+   489.553,
+   -2761.6,
+   -100.37
+  ],
+  "sizeAlong": 168.81,
+  "sizeAcross": 168.6,
+  "mapSideAngle": 154.646,
+  "mapZRange": [
+   -100.719,
+   -99.627
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "107 Terminus Street",
+  "mapCenter": [
+   273.863,
+   -2555.264,
+   -101.118
+  ],
+  "sizeAlong": 171.35,
+  "sizeAcross": 168.44,
+  "mapSideAngle": 0.404,
+  "mapZRange": [
+   -101.565,
+   -100.719
+  ],
+  "pricePlatinum": 126,
+  "upkeepCopperPerDay": 12600,
+  "capacity": 120,
+  "pets": 6
+ },
+ {
+  "address": "Betwixt Avenue",
+  "mapCenter": [
+   204.074,
+   -1419.415,
+   64.281
+  ],
+  "sizeAlong": 171.42,
+  "sizeAcross": 168.71,
+  "mapSideAngle": 89.617,
+  "mapZRange": [
+   64.281,
+   64.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "104 Betwixt Avenue",
+  "mapCenter": [
+   90.654,
+   -1236.953,
+   64.221
+  ],
+  "sizeAlong": 168.89,
+  "sizeAcross": 168.57,
+  "mapSideAngle": 90.054,
+  "mapZRange": [
+   64.041,
+   64.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "102 Betwixt Avenue",
+  "mapCenter": [
+   224.674,
+   -1036.265,
+   64.281
+  ],
+  "sizeAlong": 169.49,
+  "sizeAcross": 170.26,
+  "mapSideAngle": 0.307,
+  "mapZRange": [
+   64.281,
+   64.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "107 Betwixt Avenue",
+  "mapCenter": [
+   569.934,
+   -857.377,
+   91.281
+  ],
+  "sizeAlong": 170.18,
+  "sizeAcross": 168.29,
+  "mapSideAngle": 0.018,
+  "mapZRange": [
+   91.281,
+   91.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "106 Betwixt Avenue",
+  "mapCenter": [
+   575.071,
+   -1116.307,
+   91.281
+  ],
+  "sizeAlong": 170.63,
+  "sizeAcross": 169.73,
+  "mapSideAngle": 179.888,
+  "mapZRange": [
+   91.281,
+   91.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "105 Betwixt Avenue",
+  "mapCenter": [
+   571.592,
+   -1376.209,
+   91.281
+  ],
+  "sizeAlong": 170.45,
+  "sizeAcross": 169.3,
+  "mapSideAngle": 179.835,
+  "mapZRange": [
+   91.281,
+   91.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ },
+ {
+  "address": "101 Betwixt Avenue",
+  "mapCenter": [
+   -159.718,
+   -750.847,
+   44.281
+  ],
+  "sizeAlong": 171.33,
+  "sizeAcross": 169.52,
+  "mapSideAngle": 66.142,
+  "mapZRange": [
+   44.281,
+   44.281
+  ],
+  "pricePlatinum": 84,
+  "upkeepCopperPerDay": 8400,
+  "capacity": 105,
+  "pets": 5
+ }
+]
