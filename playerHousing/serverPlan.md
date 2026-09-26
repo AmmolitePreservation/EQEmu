@@ -433,3 +433,14 @@ Against the official House of Thule housing guide (everquest.com, 2010-10-13, "H
 - **D10. Transfers need no presence check:** an unanswered offer expires (`Housing:TransferOfferExpirySeconds`) and the owner is told.
 
 **Rules:** all in the configuration table (chunk 1).
+
+## Content: the Sunrise Hills template
+
+The neighborhood's plots, derived and checked against Live's own data (`tools/sunriseHillsPlots.py` → `content/sunriseHillsPlots.json`):
+- **71 player plots** from the era map's plot layer (`content/neighborhood_2.txt`): each drawn as four sides and labeled with its street address; boxes about 169 units square.
+- **Live's economics per street group** (Allakhazam's plot table: price, daily upkeep, item capacity, pet cap); every group's plot count matches the map.
+- **Verified against Live's border stones** (PEQ's 73 `OBP_LOTSQUARE` doors, `content/sunriseHillsLotSquares.tsv`): **the map stores (-x, -y)**, every plot center lands within 1.2 units of a stone; **every plot's heading matches its stone within 0.7 degrees** (the doors' own rounding), which also confirms chunk 4's heading convention. Each plot takes its stone's door id and ground height.
+- **Guild plots:** no layer, zone file or object draws them; every Live plot used the same size-100 stone border. **Two stones no player plot claims** (doors 30 at (-795, 3682) and 70 at (2975, -3031), remote and outside the map's drawn area) are the guild plot candidates. Live's wiki says four per neighborhood.
+- **Not on the map:** the ten public tradeskill stations, teleport pads, the plot-search spring (`OBJ_PH_TELEFLINGER`), the portal to other neighborhoods (`OBJ_VOIDPORTAL`) and the Guild Lobby gate (`OBJ_GUILDGATE`) are PEQ doors and objects already in the database.
+
+**Testing item: find all the guild plots.** Once plots work in the zone, explore it: confirm the two candidate stones are guild plots, look for the other two Live had, and author any found with `#realestate`.
