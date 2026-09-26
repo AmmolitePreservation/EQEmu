@@ -937,4 +937,14 @@ inline auto logsys = EQEmuLogSys::Instance();
 } while (0)
 
 
+#define LogHousing(message, ...) do {\
+    if (logsys->IsLogEnabled(Logs::General, Logs::Housing))\
+        OutF(logsys, Logs::General, Logs::Housing, __FILE__, __func__, __LINE__, message, ##__VA_ARGS__);\
+} while (0)
+
+#define LogHousingDetail(message, ...) do {\
+    if (logsys->IsLogEnabled(Logs::Detail, Logs::Housing))\
+        OutF(logsys, Logs::Detail, Logs::Housing, __FILE__, __func__, __LINE__, message, ##__VA_ARGS__);\
+} while (0)
+
 #endif //EQEMU_EQEMU_LOGSYS_LOG_ALIASES_H
