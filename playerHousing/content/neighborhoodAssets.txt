@@ -1,0 +1,12 @@
+stonesquare.eqg
+Tradeskill_objects.eqg
+phteleporting.eqg
+voidportal.eqg
+furniture01.eqg
+furniture06.eqg
+furniture10.eqg
+it12043.eqg
+furniture12.eqg
+furniture03.eqg
+furniture07.eqg
+IT23651.eqg
