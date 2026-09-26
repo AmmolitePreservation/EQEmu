@@ -1,6 +1,6 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, poll states, region matrices, the character's property lists, trophy flags).
--- Content tables: definitions, costs, regions, NPC items, poll labels. The rest is player state.
+-- Content tables: definitions, costs, regions, NPC items, neighborhood names, poll labels. The rest is player state.
 
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   `heading` FLOAT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_region_size` CHECK (`size_x` > 0 AND `size_y` > 0 AND `size_z` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Names for the neighborhoods the server creates as others fill; a name is in use while a neighborhood property has it.
+CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_names` (
+  `name` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
