@@ -565,7 +565,7 @@ Polls are run through `#realestate poll` (create, options and labels, publish, c
 
 **Content:** zone rows for the interiors and guild halls, with their safe points; the interior exit doors; the trophy benefits (`tributes`, `tribute_levels`).
 
-**To verify in game:** that each interior zone's files exist and zoning in works with no housing messages first (Q11, `robustness.md`); which finish a1 / a2 / a3 is; which guild hall item goes to which hall zone (picked, below, to validate); each interior's safe point and front door; `/leaverealestate` on Live.
+**To verify in game:** that each interior zone's files exist and zoning in works with no housing messages first (Q11, `robustness.md`); which finish a1 / a2 / a3 is; which guild hall item goes to which hall zone (picked in the catalog section, to validate); each interior's safe point and front door; `/leaverealestate` on Live.
 
 ## Chunk 8: validation
 
