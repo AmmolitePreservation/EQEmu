@@ -18,9 +18,11 @@ The client evaluates real-estate permissions itself to decide control states (fo
 | 7 | Mail Item | — |
 | 8 | Remove Item | — |
 | 9 | Add Item | placement rules (`0x47`); layout Use Inventory |
-| 10 | Move Item | — |
-| 11 | Interact Item | the placed-item interaction check (`0x4a`) |
+| 10 | Move Item | **the Items window's may-manage gate** (`0x5b71a0`, manager vtable `+0x14`): the window's enable rules and **Stow Placed**; codes House of Thule `0x2f`, Veil of Alaris `0x52`, membership `0x53` |
+| 11 | Interact Item | **using a placed item, not placing it**: the placed-item interaction check (`0x5b75f0`, through the manager's vtable), codes too far `0x14`, not placed in the zone `0x15`, house or crate upkeep expired `0x19`, no interact access `0x4a` |
 | 12 | **Manage** | the Access tab; may-manage gate; editing the access list |
+
+**Every client call of the permission check** (`0x4ff6c0`, 32 sites, the permission pushed as a constant): 3, 5, 8 in the stored-item rules (`0x5b72c0`); 4, 6, 9 in the placement rules (`0x5b6b90`) and the Items window (`0x73ab10`, `0x73bc50`, `0x73bec0`); 5 and 6 together (`0x5b6eb0`); 2 and 3 (`0x5b7fa0`); 10 alone (`0x5b71a0`); 11 alone (`0x5b75f0`); 12 in the Manage and Purchase windows; and 3-10, any of them (`0x4ff730`). Permissions 0, 1 and 7 are never checked by the client.
 
 **Groups** (`REMW_Groups_Combobox` choices; the 7 masks): **0 Everyone, 1 Visitor, 2 Acquaintance, 3 Friend, 4 Trustee, 5 Co-Owner, 6 Owner**. A person or club can be assigned groups 1–5 (`REMW_Access_Combobox`: Visitor … Co-Owner); Everyone is implicit and Owner is the owner.
 
