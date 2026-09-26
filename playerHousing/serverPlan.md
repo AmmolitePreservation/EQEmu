@@ -492,7 +492,17 @@ Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of th
 
 **Live's house names follow the room count, not the item:** a Monel Style Brick Manor's interior is named **"Three Room House"**, both in its item display (string 5289) and in the zone-in banner (**string 9508, "Entering %1..."**, `%1` the neighborhood, plot address and house names joined, as the item display's), not the zone's long name ("Three Bedroom House Interior"). So the five three-room definitions share that name, and the four one-room definitions share **"One Room House"** (seen on Live).
 
-**Upkeep ids items name** (Peridot's whole items table: 161 of its 5,577 placeable items, exactly these): 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35. **Upkeep id 22 (the one-room Hut) costs 7 gold a day on Live** (a Behroe Style Stone Hut's item display), the first of sheet A's amounts. The manor items are No Trade in their own data.
+**Upkeep ids items name** (Peridot's whole items table: 161 of its 5,577 placeable items, exactly these): 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35. The manor items are No Trade in their own data.
+
+**Item upkeep is a fixed amount per upkeep id, not a function of price** (Live's item displays): the four three-room houses cost the same (10,499p 9g 9s 9c) yet pay four different amounts, and a Fly Making Bench (9,449p 9g 9s 9c) and a Fletching Table (10,499p 9g 9s 9c) share id 6 and pay the same. **One-room houses pay exactly half the three-room amounts.** Daily upkeep in copper:
+
+| Upkeep id | Kind | Daily upkeep |
+|---|---|---|
+| 6 | tradeskill station | 100 (1g) |
+| 17 / 18 / 19 / 20 | three-room House / Hut / Residence / Domicile | 4,200 / 1,400 / 5,250 / 7,350 |
+| 21 / 22 / 23 / 24 | one-room House / Hut / Residence / Domicile | 2,100 / 700 / 2,625 / 3,675 |
+
+Live's merchant prices are PEQ's `price` plus 5%, less a copper (10,000p shows 10,499p 9g 9s 9c; 5,000p, 5,249p 9g 9s 9c), so PEQ's prices are Live's.
 
 **Currencies (Allakhazam):** plot upkeep may be paid in platinum or Doubloons, Orux, Phosphenes, Faycitum or Chronobines (**Live's windows name them Doubloon, Orum, Phosphene, Faycetum and Chronobine**: all five in a guild plot's price and upkeep lists); houses and items only in platinum; purchase may offer alternate currencies. The plot table's upkeep is daily ("8p 4g" = 8,400 copper, a tenth of the price).
 
@@ -500,7 +510,7 @@ Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of th
 
 **Guild plots, as Live's purchase windows show them:** each is **200 on a street of its section** ("200 Guild Way", "200 Terminus Heights", "200 Brimming Way", "200 Vanward Heights"), and **all four have the same terms**: 21 platinum, upkeep 2 platinum 1 gold a day, capacity 210, vault 0, pets 12 (in the template). They were **seen in a guild village**; a public neighborhood's window is to compare, and it should have no Guild row.
 
-**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message): house, crate, station, trophy and table upkeep amounts, except the one-room Hut's 7 gold; guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
+**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message): crate, trophy and table upkeep amounts (houses and stations are above); guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
 
 ## Moving players: only EQEmu's own mechanisms
 
