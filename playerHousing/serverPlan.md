@@ -8,7 +8,7 @@
 
 **Development model:** everything is designed first, then written in full, and the owner builds once. **Database work is tested for real** before delivery: migrations and queries run in a sandbox MariaDB created from the server's real schema (`pok-schema-all.json`), including the `items` rename and decode against the exported rows. **Code is verified by careful reading** against Peridot's source and the research specifications; EQEmu isn't built in the sandbox. After the owner's build, validation happens in game with the diagnostics plugin and the Lua harness.
 
-**Status:** chunk 1 complete. Remaining chunks, each covering the standard system and X1-X3 together:
+**Status:** chunks 1 and 2 complete (the item tail's migration is tested). Remaining chunks, each covering the standard system and X1-X3 together:
 
 | Chunk | Covers |
 |---|---|
