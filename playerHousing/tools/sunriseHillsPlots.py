@@ -17,7 +17,7 @@ orientations; the entrance picks one. A border's entrance faces opposite its hea
 opens east), and a model point (a, b) lands at (-b cos t - a sin t, b sin t - a cos t) from the door, t the angle of the
 heading plus a half turn. The guild plots have no border stone in PEQ's doors, so each gives the position for a new one.
 Every guild plot has the same terms, as Live's purchase windows show them (upkeep is daily, a tenth of the price, as for
-player plots); each is 200 on its section's street, where the window has been read.
+player plots); each is 200 on a street of its section.
 
 Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 """
@@ -44,12 +44,12 @@ liveGroups = [
   ('Vanward Heights', None, 168, 16800, 120, 6, 1),
 ]
 
-# (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the address or None)
+# (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the address)
 liveGuildPlots = [
-  ('Guild', [(2439.51, 2356.74, 114.46), (2830.33, 3032.31, 114.54), (2482.55, 3053.34, 114.46), (2787.87, 2336.02, 113.99)], 'east', 110, None),
+  ('Guild', [(2439.51, 2356.74, 114.46), (2830.33, 3032.31, 114.54), (2482.55, 3053.34, 114.46), (2787.87, 2336.02, 113.99)], 'east', 110, '200 Guild Way'),
   ('Terminus', [(2248.72, -745.32, 114.35), (2605.96, -1438.99, 114.45)], 'west', 110, '200 Terminus Heights'),
   ('Brimming', [(-1872.99, 732.14, 4.86), (-2583.03, 409.50, 48.46)], 'north', 0, '200 Brimming Way'),
-  ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0, None),
+  ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0, '200 Vanward Heights'),
 ]
 liveGuildPlotTerms = dict(pricePlatinum=21, upkeepCopperPerDay=2100, capacity=210, vault=0, pets=12)
 guildBorderLength, guildBorderWidth = 699.8, 351.2
@@ -91,7 +91,7 @@ def guildPlotRow(section, readings, entrance, ground, address):
   offsetX, offsetY = place(*guildBorderCenter)
   return dict(kind='guild plot', section=section, door=None, doorPosition=[round(centerX - offsetX, 1), round(centerY - offsetY, 1), ground],
               center=[round(centerX, 1), round(centerY, 1), ground], heading=round(heading, 1),
-              sizeAcross=guildBorderWidth, sizeAlong=guildBorderLength, **({'address': address} if address else {}), **liveGuildPlotTerms)
+              sizeAcross=guildBorderWidth, sizeAlong=guildBorderLength, address=address, **liveGuildPlotTerms)
 
 
 def parse(path):
