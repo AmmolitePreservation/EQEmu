@@ -41,10 +41,11 @@ CREATE TABLE IF NOT EXISTS `real_estate_costs` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The client uses an option key as the index into its cost element's options (0x7fb970), so each cost's keys are 0, 1, 2, ...
+-- in order; the housing module refuses to load a cost whose keys have gaps.
 CREATE TABLE IF NOT EXISTS `real_estate_cost_options` (
   `cost_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
-  `position` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`cost_id`, `option_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
