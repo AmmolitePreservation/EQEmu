@@ -74,6 +74,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "dialogue_window.h"
 #include "../common/rulesys.h"
 #include "../common/repositories/adventure_members_repository.h"
+#include "housing/housing.h"
 
 extern QueryServ* QServ;
 extern Zone* zone;
@@ -6463,6 +6464,17 @@ void Client::Handle_OP_FeignDeath(const EQApplicationPacket *app)
 
 void Client::Handle_OP_FindPersonRequest(const EQApplicationPacket *app)
 {
+	if (app->size == sizeof(FindPersonRequestHousing_Struct)) {
+		auto* h = (FindPersonRequestHousing_Struct*)app->pBuffer;
+		if (h->type == 3 || h->type == 4) {
+			housing::handleFindRequest(this, h->type, h->property_id, h->record_id);
+		}
+		else {
+			SendPath(entity_list.GetMob(h->request.npc_id));
+		}
+		return;
+	}
+
 	if (app->size != sizeof(FindPersonRequest_Struct))
 		printf("Error in FindPersonRequest_Struct. Expected size of: %zu, but got: %i\n", sizeof(FindPersonRequest_Struct), app->size);
 	else {

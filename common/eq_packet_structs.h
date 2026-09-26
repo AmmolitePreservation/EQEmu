@@ -2878,6 +2878,13 @@ struct ClickObjectAction_Struct {
 /*92*/
 };
 
+// a player housing container: the RoF2 client identifies it by property and record id (only housing sends it, only to RoF2)
+struct ClickObjectActionHousing_Struct {
+	ClickObjectAction_Struct action;
+	int32 property_id;
+	int32 record_id;
+};
+
 /*
 ** This is different now, mostly unknown
 **
@@ -4410,6 +4417,14 @@ struct FindPerson_Point {
 struct FindPersonRequest_Struct {
 	uint32	npc_id;
 	FindPerson_Point client_pos;
+};
+
+// RoF2's request also carries its type and, for player housing (types 3 and 4), a property and record id
+struct FindPersonRequestHousing_Struct {
+	FindPersonRequest_Struct request;
+	uint32 type;
+	int32 property_id;
+	int32 record_id;
 };
 
 //variable length packet of points

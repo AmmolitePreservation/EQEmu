@@ -1098,12 +1098,21 @@ namespace RoF2
 
 	ENCODE(OP_ClickObjectAction)
 	{
-		ENCODE_LENGTH_EXACT(ClickObjectAction_Struct);
+		int32 property_id = -1;
+		int32 record_id   = -1;
+		if ((*p)->size == sizeof(ClickObjectActionHousing_Struct)) {
+			auto housing = (ClickObjectActionHousing_Struct*)(*p)->pBuffer;
+			property_id = housing->property_id;
+			record_id   = housing->record_id;
+		}
+		else {
+			ENCODE_LENGTH_EXACT(ClickObjectAction_Struct);
+		}
 		SETUP_DIRECT_ENCODE(ClickObjectAction_Struct, structs::ClickObjectAction_Struct);
 
 		OUT(drop_id);
-		eq->unknown04 = -1;
-		eq->unknown08 = -1;
+		eq->unknown04 = property_id;
+		eq->unknown08 = record_id;
 		OUT(type);
 		OUT(icon);
 		eq->unknown16 = 0;
@@ -5602,12 +5611,15 @@ namespace RoF2
 	DECODE(OP_FindPersonRequest)
 	{
 		DECODE_LENGTH_EXACT(structs::FindPersonRequest_Struct);
-		SETUP_DIRECT_DECODE(FindPersonRequest_Struct, structs::FindPersonRequest_Struct);
+		SETUP_DIRECT_DECODE(FindPersonRequestHousing_Struct, structs::FindPersonRequest_Struct);
 
-		IN(npc_id);
-		IN(client_pos.x);
-		IN(client_pos.y);
-		IN(client_pos.z);
+		emu->request.npc_id       = eq->npc_id;
+		emu->request.client_pos.x = eq->client_pos.x;
+		emu->request.client_pos.y = eq->client_pos.y;
+		emu->request.client_pos.z = eq->client_pos.z;
+		emu->type                 = eq->unknown00;
+		emu->property_id          = eq->unknown08;
+		emu->record_id            = eq->unknown12;
 
 		FINISH_DIRECT_DECODE();
 	}
@@ -6439,6 +6451,13 @@ namespace RoF2
 			NextItemInstSerialNumber++;
 
 		return NextItemInstSerialNumber;
+	}
+
+	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, int16 slot_id, ItemPacketType packet_type)
+	{
+		EQ::OutBuffer ob;
+		SerializeItem(ob, inst, slot_id, 0, packet_type);
+		return ob.str();
 	}
 
 	void SerializeItem(EQ::OutBuffer& ob, const EQ::ItemInstance *inst, int16 slot_id_in, uint8 depth, ItemPacketType packet_type)
