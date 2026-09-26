@@ -181,3 +181,84 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 **`ItemPacketInvalid` keeps today's bytes** (it sets `unknown29` to `0xff`, which changes how the client reads the name); nothing housing sends uses it.
 
 **The housing tail's values** come from a provider the serializer calls with the item id: a function registered by the zone's housing module (the only item-side hook), returning the renamed `items` columns for items with a non-zero `placeable`, and for every other item the values the client reads today apart from the name: all zero, an empty name, trophy id -1. `common/` holds only the provider's declaration (a struct of the 18 fields and a setter), so world, which never registers one, keeps sending defaults.
+
+## Chunk 2: the opcode map (F2)
+
+Every housing message, **74 opcode values** (the register's sections 2 and 3 and `serverWork.md`, reconciled). Checked against Peridot's `patch_RoF2.conf`: **only two are mapped today, both reused as they are**, `OP_ClickObjectAction` (`0x0c1e`, a housing container closed) and `OP_FindPersonRequest` (`0x5cea`, Locate and plot finding); `OP_TradeSkillCombine` and `OP_GuildUpdate` (rank permissions, action 5) are reused by name. **The other 72 are new**: one `N(OP_...)` each in `common/emu_oplist.h` (T1) and one line each in `utils/patches/patch_RoF2.conf` (T2), none clashing with an existing name. Each maps to the forwarding handler `Client::Handle_OP_Housing` (T3) for its client direction; server-direction opcodes are only sent.
+
+**Not housing, excluded:** `0x0ecb` (the respawn window), `0x65c7` and `0xcadf` (movement reports), `0x4936` (an item sync), `0x2c4e`, and `0x796c` (Plot Search's alternate branch, unreachable in this build). **`0x89` is not an opcode:** it's the game dialog the transfer offer is shown in; the offer and its answer travel in `0x5a63`.
+
+| Value | Direction | EQEmu name | Role | Subsystem |
+|---|---|---|---|---|
+| `0x2698` | S→C | `OP_RealEstateDefinitions` | definitions, then cost elements with options and items | S1 |
+| `0x6fd0` | S→C | `OP_RealEstateCurrentProperty` | a property record that also sets the current property | S2 |
+| `0x4f09` | S→C | `OP_RealEstateProperty` | a property record: add or refresh | S2 |
+| `0x63fd` | S→C | `OP_RealEstatePropertyUpdate` | a property record merged into a known property | S2 |
+| `0x2aa7` | S→C | `OP_RealEstateOwnedProperties` | the character's owned properties (list A) | S2 |
+| `0x3e00` | S→C | `OP_RealEstateItemOwnedProperties` | properties owned through items (list B) | S2 |
+| `0x66df` | S→C | `OP_RealEstateArchivedProperties` | archived properties (list C) | S2 |
+| `0x76c6` | S→C | `OP_RealEstateOwnedPropertyChange` | add or remove one id in list A | S2 |
+| `0x0c13` | S→C | `OP_RealEstateItemOwnedPropertyChange` | add or remove one id in list B | S2 |
+| `0x1228` | S→C | `OP_RealEstateItemResult` | item request result code | S2, S5 |
+| `0x66bf` | S→C | `OP_RealEstateSellResult` | sell plot result code | S7 |
+| `0x68ba` | S→C | `OP_RealEstateTransferResult` | transfer plot result code | S7 |
+| `0x49df` | S→C | `OP_RealEstateRegions` | region volumes (id and matrix); clears the permission map | S3 |
+| `0x1cef` | S→C | `OP_RealEstateItemList` | a property's whole item list | S4 |
+| `0x087f` | S→C | `OP_RealEstateItemsUpdate` | add or update several entries | S4 |
+| `0x2cf7` | S→C | `OP_RealEstateItemUpdate` | add or update one entry | S4 |
+| `0x1097` | S→C | `OP_RealEstateItemReplace` | replace one entry | S4 |
+| `0x1baf` | S→C | `OP_RealEstateItemRemove` | remove one entry (cancels its placement) | S4 |
+| `0x1967` | S→C | `OP_RealEstateItemsRemoveByOwner` | remove every entry of an owner | S4 |
+| `0x7d28` | S→C | `OP_RealEstateItemListDrop` | drop a property's whole list | S4 |
+| `0x626e` | both | `OP_RealEstatePlace` | client: place request; server: begin placement | S5 |
+| `0x711a` | C→S | `OP_RealEstatePlaceCommit` | commit a placement | S5 |
+| `0x2036` | C→S | `OP_RealEstateMoveToInventory` | move an entry to inventory | S5 |
+| `0x3424` | C→S | `OP_RealEstateMoveToStorage` | move an entry to a closet, shed or crate | S5 |
+| `0x1045` | S→C | `OP_RealEstateWorldObject` | a placed item's world object | S5 |
+| `0x21ea` | S→C | `OP_RealEstateNpcItemBinding` | binds an NPC item's entry to its spawn | S5 |
+| `0x21ec` | both | `OP_RealEstateInteractionMenu` | client: menu request; server: the menu | S5 |
+| `0x218c` | C→S | `OP_RealEstateInteract` | interact (menu type 1); record id -1 enters a neighborhood | S5, S6 |
+| `0x050c` | C→S | `OP_RealEstateEnter` | enter (menu type 8) | S5, S10 |
+| `0x51e3` | C→S | `OP_RealEstateMenuType9` | menu entry type 9 | S5 |
+| `0x64a3` | C→S | `OP_RealEstateMenuType19` | menu entry type 0x13 | S5 |
+| `0x7ad1` | C→S | `OP_RealEstateMenuType5` | menu entry type 5 | S5 |
+| `0x3c8b` | C→S | `OP_RealEstateMenuText` | a menu entry's text answer | S5 |
+| `0x58c7` | both | `OP_RealEstateInspect` | inspect a placed item, and the reply | S5 |
+| `0x06c8` | C→S | `OP_RealEstateContainerOpen` | a housing tradeskill container was opened | S5 |
+| `0x2691` | both | `OP_RealEstateSearch` | neighborhood and plot searches; replies by mode | S6 |
+| `0x1d3c` | S→C | `OP_RealEstateGuildNeighborhoodCreated` | a new neighborhood for your guild | S6 |
+| `0x45be` | both | `OP_RealEstatePurchase` | purchase, and its success byte | S7 |
+| `0x792c` | C→S | `OP_RealEstateSell` | sell | S7 |
+| `0x507f` | C→S | `OP_RealEstateTransfer` | transfer | S7 |
+| `0x5a63` | both | `OP_RealEstateTransferOffer` | server: the offer; client: the answer | S7 |
+| `0x2aa6` | both | `OP_RealEstateAccount` | deposit, withdraw, set the upkeep option, and the replies | S8 |
+| `0x3146` | C→S | `OP_RealEstateSetAccessList` | set a property's access list | S9 |
+| `0x485d` | S→C | `OP_RealEstateAccessList` | a property's access list | S9 |
+| `0x3968` | S→C | `OP_RealEstateAccessListRemove` | remove a property's access list | S9 |
+| `0x21ba` | C→S | `OP_RealEstateHouseSwap` | swap houses | S10 |
+| `0x6917` | C→S | `OP_RealEstateStoreAll` | store everything | S10 |
+| `0x613d` | C→S | `OP_RealEstatePack` | pack or unpack | S10 |
+| `0x5b41` | C→S | `OP_RealEstateLoadLayout` | load a layout | S10 |
+| `0x1da9` | C→S | `OP_RealEstateLeave` | leave real estate (/leaverealestate) | S10 |
+| `0x7bb1` | both | `OP_RealEstateAnchorTeleport` | server: the offer; client: accept | S10 |
+| `0x15a8` | C→S | `OP_PollVote` | vote | S11 |
+| `0x499a` | C→S | `OP_PollTeleport` | teleport to a ranked property | S11 |
+| `0x6573` | C→S | `OP_PollPropertyVote` | the Purchase window's Vote button | S11 |
+| `0x15e2` | S→C | `OP_PollList` | replace the poll list | S11 |
+| `0x39bb` | S→C | `OP_PollUpdate` | update polls by id | S11 |
+| `0x3311` | S→C | `OP_PollResults` | results | S11 |
+| `0x6860` | S→C | `OP_PollLabels` | option labels | S11 |
+| `0x7497` | S→C | `OP_PollAccess` | may vote, may see | S11 |
+| `0x52b5` | S→C | `OP_PollVotes` | your votes | S11 |
+| `0x593a` | S→C | `OP_PollAvailable` | polls available | S11 |
+| `0x7a4d` | S→C | `OP_PollOpen` | open the vote window on a poll | S11 |
+| `0x51a9` | C→S | `OP_TrophyWindowOpened` | the trophy window opened | S12 |
+| `0x4b65` | both | `OP_TrophyPersonalSlot` | client: upgrade or downgrade; server: set one slot | S12 |
+| `0x7697` | S→C | `OP_TrophyPersonalSlots` | set all 10 personal slots and the active flag | S12 |
+| `0x08bf` | S→C | `OP_TrophyPersonalClear` | clear all 10 personal slots | S12 |
+| `0x51ae` | S→C | `OP_TrophyPersonalTimer` | the personal trophy timer | S12 |
+| `0x7dd2` | S→C | `OP_TrophyGuildSlots` | the guild's 4 active slots, favor and active flag | S12 |
+| `0x7db5` | S→C | `OP_TrophyGuildAvailable` | the guild's available benefits | S12 |
+| `0x7a41` | both | `OP_TrophyGuildEditLock` | the guild edit lock | S12 |
+| `0x7c1d` | C→S | `OP_TrophyGuildSave` | save the guild set | S12 |
+| `0x02bc` | C→S | `OP_TrophyGuildOptIn` | the guild opt-in checkbox | S12 |
