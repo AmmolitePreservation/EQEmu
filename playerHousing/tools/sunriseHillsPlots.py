@@ -16,6 +16,8 @@ fits the border (obp_guildsquare.mod: 699.8 x 351.2, its center 4.89, -1.30 from
 orientations; the entrance picks one. A border's entrance faces opposite its heading (107 Vanward Street's, heading 128,
 opens east), and a model point (a, b) lands at (-b cos t - a sin t, b sin t - a cos t) from the door, t the angle of the
 heading plus a half turn. The guild plots have no border stone in PEQ's doors, so each gives the position for a new one.
+Each guild plot's address and terms are as Live's purchase window shows them, where seen (upkeep is daily, a tenth of the
+price, as for player plots).
 
 Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 """
@@ -42,19 +44,20 @@ liveGroups = [
   ('Vanward Heights', None, 168, 16800, 120, 6, 1),
 ]
 
-# (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height)
+# (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the purchase window's terms)
 liveGuildPlots = [
-  ('Guild', [(2439.51, 2356.74, 114.46), (2830.33, 3032.31, 114.54), (2482.55, 3053.34, 114.46), (2787.87, 2336.02, 113.99)], 'east', 110),
-  ('Terminus', [(2248.72, -745.32, 114.35), (2605.96, -1438.99, 114.45)], 'west', 110),
-  ('Brimming', [(-1872.99, 732.14, 4.86), (-2583.03, 409.50, 48.46)], 'north', 0),
-  ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0),
+  ('Guild', [(2439.51, 2356.74, 114.46), (2830.33, 3032.31, 114.54), (2482.55, 3053.34, 114.46), (2787.87, 2336.02, 113.99)], 'east', 110, {}),
+  ('Terminus', [(2248.72, -745.32, 114.35), (2605.96, -1438.99, 114.45)], 'west', 110, {}),
+  ('Brimming', [(-1872.99, 732.14, 4.86), (-2583.03, 409.50, 48.46)], 'north', 0,
+   dict(address='200 Brimming Way', pricePlatinum=21, upkeepCopperPerDay=2100, capacity=210, vault=0, pets=12)),
+  ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0, {}),
 ]
 guildBorderLength, guildBorderWidth = 699.8, 351.2
 guildBorderCenter = (4.89, -1.30)
 compassSides = dict(north=(0, 1), south=(0, -1), west=(1, 0), east=(-1, 0))
 
 
-def guildPlotRow(section, readings, entrance, ground):
+def guildPlotRow(section, readings, entrance, ground, terms):
   corners = [(x, y) for y, x, _ in readings]
   if len(corners) % 2:
     raise ValueError(f'{section}: corners come in opposite pairs')
@@ -88,7 +91,7 @@ def guildPlotRow(section, readings, entrance, ground):
   offsetX, offsetY = place(*guildBorderCenter)
   return dict(kind='guild plot', section=section, door=None, doorPosition=[round(centerX - offsetX, 1), round(centerY - offsetY, 1), ground],
               center=[round(centerX, 1), round(centerY, 1), ground], heading=round(heading, 1),
-              sizeAcross=guildBorderWidth, sizeAlong=guildBorderLength)
+              sizeAcross=guildBorderWidth, sizeAlong=guildBorderLength, **terms)
 
 
 def parse(path):
