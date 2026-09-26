@@ -1258,7 +1258,13 @@
   ],
   "heading": 252.9,
   "sizeAcross": 351.2,
-  "sizeAlong": 699.8
+  "sizeAlong": 699.8,
+  "address": "200 Brimming Way",
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 210,
+  "vault": 0,
+  "pets": 12
  },
  {
   "kind": "guild plot",
