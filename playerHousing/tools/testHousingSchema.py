@@ -31,7 +31,7 @@ INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901,
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep');
 INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0), (2, 1);
 INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (1, 0, 9, 1, 25), (2, 0, 0, 0, 1000), (2, 1, 0, 0, -200);
-INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (1, 0, 900, 712, 1001, 'Sunrise Hills 1');
+INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (1, 0, 900, 712, 1001, 'Bridge Hills');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, next_upkeep_at, name)
   VALUES (2, 1, 901, 7, 712, 1001, NOW() - INTERVAL 1 HOUR, 'Plot 1'), (3, 1, 902, 0, 712, 1001, NULL, 'Guild plot 1');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, interior_instance_id)
@@ -43,7 +43,7 @@ INSERT INTO real_estate_access_groups VALUES (2, 0, 255), (2, 1, 3);
 INSERT INTO real_estate_access_names VALUES (2, 'Friendly', 1);
 INSERT INTO real_estate_npc_items VALUES (66639, 1001);
 INSERT INTO character_real_estate_anchors VALUES (7, 4);
-INSERT INTO real_estate_neighborhood_names (name) VALUES ('Sunrise Hills 1'), ('Aurora Court'), ('Willow Vale');
+INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple'), (0, 'Walnut'), (1, 'Bridge'), (1, 'Circle'), (2, 'Point'), (2, 'Lake'), (2, 'Hills');
 """)
 
 def check(label, query, expected):
@@ -71,7 +71,14 @@ check('upkeep tick: due properties', "SELECT GROUP_CONCAT(id) FROM real_estate_p
 plan = sql("EXPLAIN SELECT id FROM real_estate_properties FORCE INDEX (next_upkeep_at) WHERE next_upkeep_at <= NOW()")
 assert 'next_upkeep_at' in plan and 'range' in plan, plan
 print('upkeep tick: the due query is an index range scan')
-check('the next free neighborhood name', "SELECT n.name FROM real_estate_neighborhood_names n LEFT JOIN real_estate_properties p ON p.name = n.name AND p.definition_id IN (SELECT id FROM real_estate_definitions WHERE type = 5) WHERE p.id IS NULL ORDER BY n.name LIMIT 1", 'Aurora Court')
+check('the next free generated neighborhood name skips one in use', """
+  SELECT n.name FROM (
+    SELECT CONCAT(t.word, ' ', m.word, ' ', p.word) AS name FROM real_estate_neighborhood_words t JOIN real_estate_neighborhood_words m JOIN real_estate_neighborhood_words p
+      WHERE t.position = 0 AND m.position = 1 AND p.position = 2
+    UNION SELECT CONCAT(t.word, ' ', p.word) FROM real_estate_neighborhood_words t JOIN real_estate_neighborhood_words p WHERE t.position = 0 AND p.position = 2
+    UNION SELECT CONCAT(m.word, ' ', p.word) FROM real_estate_neighborhood_words m JOIN real_estate_neighborhood_words p WHERE m.position = 1 AND p.position = 2
+  ) n LEFT JOIN real_estate_properties pr ON pr.name = n.name AND pr.definition_id IN (SELECT id FROM real_estate_definitions WHERE type = 5)
+  WHERE pr.id IS NULL ORDER BY n.name LIMIT 1""", 'Bridge Lake')
 check('a primary anchor leads to an owned house', "SELECT p.id FROM character_real_estate_anchors a JOIN real_estate_properties p ON p.id = a.primary_property_id AND p.owner_character_id = a.character_id WHERE a.character_id = 7", '4')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
 check('price with two currencies', "SELECT GROUP_CONCAT(CONCAT(currency, ':', amount) ORDER BY currency) FROM real_estate_cost_items WHERE cost_id = 1 AND option_key = 0", '0:5000000,9:25')
@@ -85,6 +92,7 @@ for label, bad in [('definition type out of range', "INSERT INTO real_estate_def
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)"),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)"),
                    ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())"),
-                   ('duplicate neighborhood name', "INSERT INTO real_estate_neighborhood_names (name) VALUES ('Aurora Court')")]:
+                   ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')"),
+                   ('neighborhood word position above 2', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (3, 'Vale')")]:
   sql(bad, expectError=True)
   print(f'rejected: {label}')

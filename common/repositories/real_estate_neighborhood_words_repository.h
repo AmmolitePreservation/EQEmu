@@ -1,11 +1,11 @@
-#ifndef EQEMU_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
-#define EQEMU_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
+#ifndef EQEMU_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H
+#define EQEMU_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H
 
 #include "../database.h"
 #include "../strings.h"
-#include "base/base_real_estate_neighborhood_names_repository.h"
+#include "base/base_real_estate_neighborhood_words_repository.h"
 
-class RealEstateNeighborhoodNamesRepository: public BaseRealEstateNeighborhoodNamesRepository {
+class RealEstateNeighborhoodWordsRepository: public BaseRealEstateNeighborhoodWordsRepository {
 public:
 
     /**
@@ -32,10 +32,10 @@ public:
      *
      * Example custom methods in a repository
      *
-     * RealEstateNeighborhoodNamesRepository::GetByZoneAndVersion(int zone_id, int zone_version)
-     * RealEstateNeighborhoodNamesRepository::GetWhereNeverExpires()
-     * RealEstateNeighborhoodNamesRepository::GetWhereXAndY()
-     * RealEstateNeighborhoodNamesRepository::DeleteWhereXAndY()
+     * RealEstateNeighborhoodWordsRepository::GetByZoneAndVersion(int zone_id, int zone_version)
+     * RealEstateNeighborhoodWordsRepository::GetWhereNeverExpires()
+     * RealEstateNeighborhoodWordsRepository::GetWhereXAndY()
+     * RealEstateNeighborhoodWordsRepository::DeleteWhereXAndY()
      *
      * Most of the above could be covered by base methods, but if you as a developer
      * find yourself re-using logic for other parts of the code, its best to just make a
@@ -47,4 +47,4 @@ public:
 
 };
 
-#endif //EQEMU_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
+#endif //EQEMU_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H

@@ -313,7 +313,7 @@ SET(repositories
     repositories/base/base_real_estate_definition_children_repository.h
     repositories/base/base_real_estate_definitions_repository.h
     repositories/base/base_real_estate_items_repository.h
-    repositories/base/base_real_estate_neighborhood_names_repository.h
+    repositories/base/base_real_estate_neighborhood_words_repository.h
     repositories/base/base_real_estate_npc_items_repository.h
     repositories/base/base_real_estate_poll_labels_repository.h
     repositories/base/base_real_estate_poll_options_repository.h
@@ -531,7 +531,7 @@ SET(repositories
     repositories/real_estate_definition_children_repository.h
     repositories/real_estate_definitions_repository.h
     repositories/real_estate_items_repository.h
-    repositories/real_estate_neighborhood_names_repository.h
+    repositories/real_estate_neighborhood_words_repository.h
     repositories/real_estate_npc_items_repository.h
     repositories/real_estate_poll_labels_repository.h
     repositories/real_estate_poll_options_repository.h

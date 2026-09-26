@@ -262,7 +262,7 @@ namespace DatabaseSchema {
 			"real_estate_costs",
 			"real_estate_definition_children",
 			"real_estate_definitions",
-			"real_estate_neighborhood_names",
+			"real_estate_neighborhood_words",
 			"real_estate_npc_items",
 			"real_estate_regions",
 			"skill_caps",

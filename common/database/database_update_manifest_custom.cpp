@@ -113,11 +113,13 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   CONSTRAINT `real_estate_region_size` CHECK (`size_x` > 0 AND `size_y` > 0 AND `size_z` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
-			R"(CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_names` (
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_words` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(64) NOT NULL,
+  `position` TINYINT(3) UNSIGNED NOT NULL,
+  `word` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `name` (`name`)
+  UNIQUE KEY `position_word` (`position`, `word`),
+  CONSTRAINT `neighborhood_word_position` CHECK (`position` <= 2)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (

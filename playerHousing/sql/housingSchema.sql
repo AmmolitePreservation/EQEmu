@@ -72,12 +72,16 @@ CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   CONSTRAINT `real_estate_region_size` CHECK (`size_x` > 0 AND `size_y` > 0 AND `size_z` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Names for the neighborhoods the server creates as others fill; a name is in use while a neighborhood property has it.
-CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_names` (
+-- Words the server combines into names for the neighborhoods it creates as others fill, as Live does ("Maple Bridge Point",
+-- "Walnut Lake", "Circle Hills"): position 0 an optional tree, 1 an optional middle word, 2 the place word, and at least one of
+-- the first two. A name is in use while a neighborhood property has it.
+CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_words` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(64) NOT NULL,
+  `position` TINYINT(3) UNSIGNED NOT NULL,
+  `word` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `name` (`name`)
+  UNIQUE KEY `position_word` (`position`, `word`),
+  CONSTRAINT `neighborhood_word_position` CHECK (`position` <= 2)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (

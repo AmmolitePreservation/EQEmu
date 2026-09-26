@@ -154,7 +154,7 @@ namespace housing {
       auto recordOf = [&](const Property &property) {
         auto name = names.find(property.owner_character_id);
         auto propertyMoney = money.find(property.id);
-        return propertyRecord(property, children[property.id], name == names.end() ? "" : name->second, propertyMoney == money.end() ? std::vector<Balance>{} : propertyMoney->second);
+        return propertyRecord(property, activeGuildId(property), children[property.id], name == names.end() ? "" : name->second, propertyMoney == money.end() ? std::vector<Balance>{} : propertyMoney->second);
       };
       for (const Property *property : ordered) {
         sendMessage(client, OP_RealEstateProperty, recordOf(*property));

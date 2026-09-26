@@ -3,13 +3,13 @@
 #include "housingGeometry.h"
 
 namespace housing {
-  WireWriter propertyRecord(const Property &property, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances) {
+  WireWriter propertyRecord(const Property &property, uint32 guildId, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances) {
     WireWriter message;
     message.u32(property.id)
       .u32(0)
       .u32(property.parent_id)
       .u32(property.definition_id)
-      .u32(property.guild_id ? property.guild_id : 0xFFFFFFFF)
+      .u32(guildId ? guildId : 0xFFFFFFFF)
       .u32(0)
       .lengthString("")
       .lengthString(ownerName)
