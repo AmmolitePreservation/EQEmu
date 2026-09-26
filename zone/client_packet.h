@@ -342,3 +342,5 @@
 
 	void Handle_OP_ShopSendParcel(const EQApplicationPacket *app);
 	void Handle_OP_ShopRetrieveParcel(const EQApplicationPacket *app);
+
+	void Handle_OP_Housing(const EQApplicationPacket *app);

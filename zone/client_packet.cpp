@@ -440,6 +440,42 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_SharedTaskQuit]           = &Client::Handle_OP_SharedTaskQuit;
 	ConnectedOpcodes[OP_SharedTaskPlayerList]     = &Client::Handle_OP_SharedTaskPlayerList;
 
+	// player housing
+	ConnectedOpcodes[OP_PollPropertyVote]            = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_PollTeleport]                = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_PollVote]                    = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateAccount]           = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateAnchorTeleport]    = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateContainerOpen]     = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateEnter]             = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateHouseSwap]         = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateInspect]           = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateInteract]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateInteractionMenu]   = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateLeave]             = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateLoadLayout]        = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMenuText]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMenuType19]        = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMenuType5]         = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMenuType9]         = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMoveToInventory]   = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateMoveToStorage]     = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstatePack]              = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstatePlace]             = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstatePlaceCommit]       = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstatePurchase]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateSearch]            = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateSell]              = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateSetAccessList]     = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateStoreAll]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateTransfer]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateTransferOffer]     = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_TrophyGuildEditLock]         = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_TrophyGuildOptIn]            = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_TrophyGuildSave]             = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_TrophyPersonalSlot]          = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_TrophyWindowOpened]          = &Client::Handle_OP_Housing;
+
 	LogInfo("Mapped [{}] client opcode handlers", _maxEmuOpcode);
 }
 
@@ -1021,6 +1057,8 @@ void Client::CompleteConnect()
 		GoToBind();
 		return;
 	}
+
+	housing::onZoneIn(this);
 }
 
 // connecting opcode handlers
@@ -17364,4 +17402,9 @@ void Client::SyncWorldPositionsToClient(bool ignore_idle)
 	if (ignore_idle && reset_idle) {
 		m_is_idle = false;
 	}
+}
+
+void Client::Handle_OP_Housing(const EQApplicationPacket *app)
+{
+	housing::handlePacket(this, app);
 }

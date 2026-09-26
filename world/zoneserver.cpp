@@ -1673,6 +1673,10 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			ZSList::Instance()->SendPacketToBootedZones(pack);
 			break;
 		}
+		case ServerOP_Housing: {
+			ZSList::Instance()->SendPacketToBootedZones(pack);
+			break;
+		}
 		case ServerOP_BazaarPurchase: {
 			auto in = (BazaarPurchaseMessaging_Struct *)pack->pBuffer;
 			if (in->trader_buy_struct.trader_id <= 0) {

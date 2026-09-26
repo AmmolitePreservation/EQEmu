@@ -62,6 +62,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "../common/skill_caps.h"
 #include "../common/server_reload_types.h"
 #include "queryserv.h"
+#include "housing/housing.h"
 
 extern EntityList             entity_list;
 extern Zone                  *zone;
@@ -3684,6 +3685,10 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 				}
 			}
 
+			break;
+		}
+		case ServerOP_Housing: {
+			housing::handleServerPacket(pack);
 			break;
 		}
 		case ServerOP_ParcelPrune: {
