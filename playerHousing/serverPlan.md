@@ -127,3 +127,28 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:EnablePolls`, `Housing:EnableTrophyTribute` | the poll and trophy subsystems |
 
 **Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (the upkeep `Timer`, its startup run and one call, mirroring the parcel block); the upkeep routine itself is new code in world, and `world/CMakeLists.txt` lists it (T16).
+
+## Non-standard housing
+
+Three extensions the owner wants, all in scope: **private zones as house and guild-hall interiors** (a house door leading to your own Plane of Hate or Qeynos; the owner's priority), **custom neighborhood maps** (East Commons as a neighborhood), and **plots in the live world** (plots in the public East Commons).
+
+**What the client allows** (verified):
+- **Nothing in the client is tied to the housing zones.** No real-estate code reads `OP_NewZone`, and nothing checks for the housing zone ids (`robustness.md`): plots exist wherever the server sends regions (volumes placed anywhere by a matrix) and property records.
+- **What an item may be placed in is decided by the property's type, not the zone.** The placement rule "allowed in this real estate" (`0x5b4d10`) requires the item's placeable bit **`1 << (definition type - 1)`**: Regular Zone `0x01`, Guild Hall `0x02`, Player House `0x04`, Plot `0x08` (yards), Neighborhood `0x10`, Town `0x20`, Guild Plot `0x80` (guild yards); only a Moving Crate (`0x7f61b0`: category 6) accepts any placeable item.
+- **So non-standard housing reuses the standard property types.** The captured item data carries the Regular Zone bit on one item only (the Candy Dish), so a "Regular Zone" property would accept almost nothing; a private zone is a **Player House** or **Guild Hall** property (most furniture carries both bits: 14 and 142), and a plot anywhere is a **Plot** or **Guild Plot**.
+
+**What EQEmu provides** (the schema): spawns, doors, objects, ground spawns, traps and zone points are keyed by **zone version** (`spawn2`, `doors`, `object`, `ground_spawns`, `traps`, `zone_points` all have `version`), `zone` has a row per version with its own `ruleset`, and instances carry a version and `never_expires` (`instance_list`). A private copy of a zone is **an instance of a housing version of that zone**, which has no spawns, doors or zone lines unless content adds them.
+
+| Extension | Design | Additive or binary | Rules and tuning |
+|---|---|---|---|
+| **X1. Private zones as interiors** | Each house or guild-hall definition names its **interior zone and version**, generalizing D3 (standard houses name their `phinterior*` zones; a "Plane of Hate Estate" names `hateplane` at the housing version). The property covering the interior is a Player House or Guild Hall with **one region enclosing the zone**. Entering the house (`0x218c` / `0x050c` on the house) creates or reuses the never-expiring instance and zones the player in; `/leaverealestate` (`0x1da9`) returns them | **Additive**: pure content beside the standard interiors | item caps per definition (content); the housing zone version number (a rule) |
+| **X2. Custom neighborhood maps** | Each neighborhood names its **template zone and version** (standard: 712; custom: East Commons at the housing version); plots are authored region boxes and plot definitions on that map | **Additive** | per neighborhood (content) |
+| **X3. Plots in the live world** | The same plots and regions, hosted in the **public zone** (instance 0) | **Additive, with tuning**: nothing else must be switched off, but public plots raise the stakes on upkeep and abandonment, griefing (yards are open ground; only house interiors enforce Enter), NPC pathing (mobs walk through placed objects; the server's path maps don't include them), and zone-in traffic (every visitor receives the zone's placed objects) | `Housing:EnableWorldPlots`; **per-zone tuning through the zone's `ruleset`** (stricter upkeep or smaller plots in public zones) |
+
+**Architecture consequences, adopted now** (cheap now, expensive later):
+1. **A property's host is data**: `(zone id, instance id)`, never an assumed neighborhood zone; cross-zone "property" targets (D2) route by it.
+2. **Definitions carry zones**: a house or guild hall's interior zone and version (X1); a neighborhood's template zone and version (X2).
+3. **Plot authoring is a first-class tool**: an in-game GM command that defines a plot's region box (position, size, heading) and its definition on any map, used by all three extensions and by standard neighborhoods alike.
+4. **Housing rules are read in the zone's context**, so a zone's `ruleset` can tune housing per zone (X3).
+
+**To verify:** that placed objects render outside the housing zones (house exteriors and furniture use global models, but it needs a test; the diagnostics plugin shows it directly: a world object whose actor stays 0 has no body); plot authoring accuracy against the client's own containment (the plugin recomputes it); zone-in traffic in a busy public zone (X3).
