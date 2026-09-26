@@ -485,7 +485,7 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 
 Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of the Bixie and The Wayward Lady 600 / 300; some special houses waive the plot's upkeep. The crates Ardak sells hold placeable items only (the Estate crate 500).
 
-**Live's house names follow the room count, not the item:** a Monel Style Brick Manor's interior is named **"Three Room House"**, both in its item display (string 5289) and in the zone-in banner (**string 9508, "Entering %1..."**, `%1` the neighborhood, plot address and house names joined, as the item display's), not the zone's long name ("Three Bedroom House Interior"). So the five three-room definitions share that name; the one-room name, by analogy "One Room House", to confirm on Live.
+**Live's house names follow the room count, not the item:** a Monel Style Brick Manor's interior is named **"Three Room House"**, both in its item display (string 5289) and in the zone-in banner (**string 9508, "Entering %1..."**, `%1` the neighborhood, plot address and house names joined, as the item display's), not the zone's long name ("Three Bedroom House Interior"). So the five three-room definitions share that name, and the four one-room definitions share **"One Room House"** (seen on Live).
 
 **Upkeep ids items name:** 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35.
 
