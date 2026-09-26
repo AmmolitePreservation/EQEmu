@@ -145,7 +145,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `host_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `interior_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `contained_in_item_guid` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+  `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_option_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_current` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
   `next_upkeep_at` DATETIME NULL DEFAULT NULL,
@@ -158,7 +158,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   KEY `owner_character_id` (`owner_character_id`),
   KEY `guild_id` (`guild_id`),
   KEY `host` (`host_zone_id`, `host_instance_id`),
-  KEY `contained_in_item_guid` (`contained_in_item_guid`),
   KEY `next_upkeep_at` (`next_upkeep_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
@@ -195,7 +194,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `ornament_icon` INT(11) UNSIGNED NOT NULL DEFAULT 0,
   `ornament_idfile` INT(11) UNSIGNED NOT NULL DEFAULT 0,
   `ornament_hero_model` INT(11) NOT NULL DEFAULT 0,
-  `guid` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `property_id` (`property_id`),
   KEY `owner_character_id` (`owner_character_id`)

@@ -44,7 +44,6 @@ public:
 		uint32_t    ornament_icon;
 		uint32_t    ornament_idfile;
 		int32_t     ornament_hero_model;
-		uint64_t    guid;
 	};
 
 	static std::string PrimaryKey()
@@ -80,7 +79,6 @@ public:
 			"ornament_icon",
 			"ornament_idfile",
 			"ornament_hero_model",
-			"guid",
 		};
 	}
 
@@ -112,7 +110,6 @@ public:
 			"ornament_icon",
 			"ornament_idfile",
 			"ornament_hero_model",
-			"guid",
 		};
 	}
 
@@ -178,7 +175,6 @@ public:
 		e.ornament_icon       = 0;
 		e.ornament_idfile     = 0;
 		e.ornament_hero_model = 0;
-		e.guid                = 0;
 
 		return e;
 	}
@@ -240,7 +236,6 @@ public:
 			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
 			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
 			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
-			e.guid                = row[25] ? strtoull(row[25], nullptr, 10) : 0;
 
 			return e;
 		}
@@ -298,7 +293,6 @@ public:
 		v.push_back(columns[22] + " = " + std::to_string(e.ornament_icon));
 		v.push_back(columns[23] + " = " + std::to_string(e.ornament_idfile));
 		v.push_back(columns[24] + " = " + std::to_string(e.ornament_hero_model));
-		v.push_back(columns[25] + " = " + std::to_string(e.guid));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -345,7 +339,6 @@ public:
 		v.push_back(std::to_string(e.ornament_icon));
 		v.push_back(std::to_string(e.ornament_idfile));
 		v.push_back(std::to_string(e.ornament_hero_model));
-		v.push_back(std::to_string(e.guid));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -400,7 +393,6 @@ public:
 			v.push_back(std::to_string(e.ornament_icon));
 			v.push_back(std::to_string(e.ornament_idfile));
 			v.push_back(std::to_string(e.ornament_hero_model));
-			v.push_back(std::to_string(e.guid));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -459,7 +451,6 @@ public:
 			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
 			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
 			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
-			e.guid                = row[25] ? strtoull(row[25], nullptr, 10) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -509,7 +500,6 @@ public:
 			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
 			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
 			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
-			e.guid                = row[25] ? strtoull(row[25], nullptr, 10) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -609,7 +599,6 @@ public:
 		v.push_back(std::to_string(e.ornament_icon));
 		v.push_back(std::to_string(e.ornament_idfile));
 		v.push_back(std::to_string(e.ornament_hero_model));
-		v.push_back(std::to_string(e.guid));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -657,7 +646,6 @@ public:
 			v.push_back(std::to_string(e.ornament_icon));
 			v.push_back(std::to_string(e.ornament_idfile));
 			v.push_back(std::to_string(e.ornament_hero_model));
-			v.push_back(std::to_string(e.guid));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

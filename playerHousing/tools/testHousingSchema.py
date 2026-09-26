@@ -1,9 +1,9 @@
 """Tests sql/housingSchema.sql against a local MariaDB: creation (twice), a realistic hierarchy, and the queries the housing
-module depends on. The inventory table comes from the server's real schema.
+module depends on.
 
-Usage: python3 testHousingSchema.py pok-schema-all.json   (a local MariaDB with a `peq` database, root without a password)
+Usage: python3 testHousingSchema.py   (a local MariaDB with a `peq` database, root without a password)
 """
-import json, os, subprocess, sys
+import os, subprocess, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 schema = open(os.path.join(here, '..', 'sql', 'housingSchema.sql')).read()
@@ -16,14 +16,8 @@ def sql(text, expectError=False):
   return r.stderr if expectError else r.stdout.strip()
 
 
-real = json.load(open(sys.argv[1]))
-def definition(c):
-  d = f"`{c['Field']}` {c['Type']} {'NOT NULL' if c['Null'] == 'NO' else 'NULL'}"
-  return d + (f" DEFAULT '{c['Default']}'" if c['Default'] is not None else '')
-inventory = ("DROP TABLE IF EXISTS inventory; CREATE TABLE inventory (" + ", ".join(definition(c) for c in real['inventory'])
-             + ", PRIMARY KEY (`character_id`, `slot_id`)) ENGINE=InnoDB;")
 tables = [l.split('`')[1] for l in schema.splitlines() if l.startswith('CREATE TABLE')]
-sql("".join(f"DROP TABLE IF EXISTS `{t}`;" for t in tables) + inventory)
+sql("".join(f"DROP TABLE IF EXISTS `{t}`;" for t in tables))
 sql(schema); sql(schema)
 print(f'created {len(tables)} tables; re-running the schema is safe')
 
@@ -42,12 +36,11 @@ INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_characte
   VALUES (2, 1, 901, 7, 712, 1001, NOW() - INTERVAL 1 HOUR, 'Plot 1'), (3, 1, 902, 0, 712, 1001, NULL, 'Guild plot 1');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, interior_instance_id)
   VALUES (4, 2, 5, 7, 712, 1001, 2001);
-INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, contained_in_item_guid, archived) VALUES (5, 0, 31, 7, 55501, 1);
+INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, contained_in_item, archived) VALUES (5, 0, 31, 7, 1, 1);
 INSERT INTO real_estate_property_balances VALUES (2, 0, 123456), (2, 9, 3);
 INSERT INTO real_estate_items (property_id, owner_character_id, placed, x, y, z, item_id) VALUES (2, 7, 1, 101, 201, 0, 61410), (4, 7, 0, 0, 0, 0, 61441);
 INSERT INTO real_estate_access_groups VALUES (2, 0, 255), (2, 1, 3);
 INSERT INTO real_estate_access_names VALUES (2, 'Friendly', 1);
-INSERT INTO inventory (character_id, slot_id, item_id, guid) VALUES (7, 23, 52147, 55501);
 INSERT INTO real_estate_npc_items VALUES (66639, 1001);
 INSERT INTO character_real_estate_anchors VALUES (7, 4);
 INSERT INTO real_estate_neighborhood_names (name) VALUES ('Sunrise Hills 1'), ('Aurora Court'), ('Willow Vale');
@@ -66,9 +59,8 @@ check('inside a house: the house and its parents', """
 check('children, derived from parent_id', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE parent_id = 1", '2,3')
 check('list A (owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7", '2,4,5')
 check('list C (archived, a subset of owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7 AND archived = 1", '5')
-check('list B (contained in items the character carries)', """
-  SELECT GROUP_CONCAT(p.id ORDER BY p.id) FROM real_estate_properties p JOIN inventory i ON i.guid = p.contained_in_item_guid
-  WHERE p.contained_in_item_guid <> 0 AND i.character_id = 7""", '5')
+check('a property inside an item is flagged and hosted nowhere', """
+  SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE contained_in_item = 1 AND host_zone_id = 0 AND host_instance_id = 0""", '5')
 check('neighborhood row: player plots, used, guild plots, used', """
   SELECT CONCAT_WS(',', SUM(d.type = 4), SUM(d.type = 4 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)),
                         SUM(d.type = 8), SUM(d.type = 8 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)))

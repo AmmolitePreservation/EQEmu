@@ -29,13 +29,6 @@ namespace housing {
     return RealEstatePropertiesRepository::GetWhere(database, fmt::format("owner_character_id = {}", characterId));
   }
 
-  std::vector<Property> propertiesCarriedBy(uint32 characterId) {
-    return RealEstatePropertiesRepository::GetWhere(
-      database,
-      fmt::format("contained_in_item_guid <> 0 AND contained_in_item_guid IN (SELECT guid FROM inventory WHERE character_id = {} AND guid <> 0)", characterId)
-    );
-  }
-
   std::vector<Property> propertiesById(const std::set<uint32> &ids) {
     if (ids.empty()) {
       return {};

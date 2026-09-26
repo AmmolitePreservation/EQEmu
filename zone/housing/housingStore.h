@@ -9,6 +9,9 @@
 #include <vector>
 
 namespace housing {
+  // an item carrying a property (a packed crate, a picked-up house) names it in its custom data; inventory guids change at every load
+  constexpr const char *propertyItemKey = "real_estate_property_id";
+
   using Property = RealEstatePropertiesRepository::RealEstateProperties;
 
   struct Balance {
@@ -19,7 +22,6 @@ namespace housing {
   std::vector<Property> propertiesHostedAt(uint32 zoneId, uint32 instanceId);
   std::vector<Property> propertiesWithInterior(uint32 instanceId);
   std::vector<Property> propertiesOwnedBy(uint32 characterId);
-  std::vector<Property> propertiesCarriedBy(uint32 characterId);
   std::vector<Property> propertiesById(const std::set<uint32> &ids);
   std::vector<Property> propertiesChildOf(const std::set<uint32> &parentIds);
   std::map<uint32, std::vector<Balance>> balances(const std::set<uint32> &propertyIds);
