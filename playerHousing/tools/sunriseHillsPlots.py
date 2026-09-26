@@ -1,8 +1,9 @@
 """Derives the Sunrise Hills plot template from the neighborhood map's plot layer (content/neighborhood_2.txt).
 
 The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
-(center, size, orientation) is fitted to its four sides, and its purchase price, daily upkeep, item capacity and pet cap
-come from Live's plot table (Allakhazam, "EQ:Player Housing in EverQuest").
+(center, size, orientation) is fitted to its four sides, and its purchase price, daily upkeep and pet cap come from Live's
+plot table (Allakhazam, "EQ:Player Housing in EverQuest"). Its item capacity is House of Thule's launch value for its tier
+(40, 50, 60 where Live's table later has 90, 105, 120): Peridot's defaults are each feature's values at its own launch.
 
 World coordinates: the map stores (-x, -y) (verified: every plot center lands within 1.2 units of one of Live's plot border
 stones, the OBP_LOTSQUARE doors in content/sunriseHillsLotSquares.tsv, exported from PEQ's doors table). EQ headings (512 per
@@ -17,7 +18,7 @@ orientations; the entrance picks one. A border's entrance faces opposite its hea
 opens east), and a model point (a, b) lands at (-b cos t - a sin t, b sin t - a cos t) from the door, t the angle of the
 heading plus a half turn. The guild plots have no border stone in PEQ's doors, so each gives the position for a new one.
 Every guild plot has the same terms, as Live's purchase windows show them (upkeep is daily, a tenth of the price, as for
-player plots); each is 200 on a street of its section.
+player plots; no launch values are known); each is 200 on a street of its section.
 
 Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 """
@@ -43,6 +44,8 @@ liveGroups = [
   ('Vanward Street', None, 84, 8400, 105, 5, 13),
   ('Vanward Heights', None, 168, 16800, 120, 6, 1),
 ]
+
+launchPlotCapacity = {90: 40, 105: 50, 120: 60}
 
 # (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the address)
 liveGuildPlots = [
@@ -197,7 +200,7 @@ if __name__ == '__main__':
       raise ValueError(f"{plot['address']}: box heading {heading:.1f} disagrees with its stone's {stone['heading']:.0f}")
     rows.append(dict(kind='plot', address=plot['address'], door=stone['door'], center=[round(worldX, 3), round(worldY, 3), stone['position'][2]],
                      heading=stone['heading'], sizeAcross=round(box['sizeAcross'], 2), sizeAlong=round(box['sizeAlong'], 2),
-                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=group[4], pets=group[5]))
+                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=launchPlotCapacity[group[4]], pets=group[5]))
   for group in liveGroups:
     key = group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))
     if counts[key] != group[6]:
