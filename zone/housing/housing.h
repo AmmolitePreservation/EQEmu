@@ -3,13 +3,14 @@
 
 #include "../../common/types.h"
 
+#include <vector>
+
 class Client;
 class Doors;
 class EQApplicationPacket;
 class Mob;
 class Seperator;
 class ServerPacket;
-struct StatBonuses;
 
 namespace housing {
   void onZoneBoot();
@@ -21,7 +22,7 @@ namespace housing {
   void handleFindRequest(Client *client, uint32 type, int32 propertyId, int32 recordId);
   bool handleDoorClick(Client *client, Doors *door);
   void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect);
-  void addTrophyBonuses(Client *client, StatBonuses *bonuses);
+  std::vector<uint32> trophyBenefitItems(Client *client);
   void handleCommand(Client *client, const Seperator *sep);
 }
 

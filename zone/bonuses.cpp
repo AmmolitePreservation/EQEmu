@@ -29,6 +29,7 @@
 #include "bot.h"
 
 #include "quest_parser_collection.h"
+#include "housing/housing.h"
 
 
 #ifndef WIN32
@@ -196,6 +197,16 @@ void Mob::CalcItemBonuses(StatBonuses* b) {
 					safe_delete(inst);
 				}
 			}
+		}
+
+		for (auto item_id : housing::trophyBenefitItems(CastToClient())) {
+			const EQ::ItemInstance *inst = database.CreateItem(item_id);
+			if (!inst) {
+				continue;
+			}
+
+			AddItemBonuses(inst, b, false, true);
+			safe_delete(inst);
 		}
 	}
 
