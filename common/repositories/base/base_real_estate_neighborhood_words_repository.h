@@ -9,18 +9,19 @@
  * @docs https://docs.eqemu.io/developer/repositories
  */
 
-#ifndef EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
-#define EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
+#ifndef EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H
+#define EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H
 
 #include "../../database.h"
 #include "../../strings.h"
 #include <ctime>
 
-class BaseRealEstateNeighborhoodNamesRepository {
+class BaseRealEstateNeighborhoodWordsRepository {
 public:
-	struct RealEstateNeighborhoodNames {
+	struct RealEstateNeighborhoodWords {
 		uint32_t    id;
-		std::string name;
+		uint8_t     position;
+		std::string word;
 	};
 
 	static std::string PrimaryKey()
@@ -32,7 +33,8 @@ public:
 	{
 		return {
 			"id",
-			"name",
+			"position",
+			"word",
 		};
 	}
 
@@ -40,7 +42,8 @@ public:
 	{
 		return {
 			"id",
-			"name",
+			"position",
+			"word",
 		};
 	}
 
@@ -56,7 +59,7 @@ public:
 
 	static std::string TableName()
 	{
-		return std::string("real_estate_neighborhood_names");
+		return std::string("real_estate_neighborhood_words");
 	}
 
 	static std::string BaseSelect()
@@ -77,33 +80,34 @@ public:
 		);
 	}
 
-	static RealEstateNeighborhoodNames NewEntity()
+	static RealEstateNeighborhoodWords NewEntity()
 	{
-		RealEstateNeighborhoodNames e{};
+		RealEstateNeighborhoodWords e{};
 
-		e.id   = 0;
-		e.name = "";
+		e.id       = 0;
+		e.position = 0;
+		e.word     = "";
 
 		return e;
 	}
 
-	static RealEstateNeighborhoodNames GetRealEstateNeighborhoodNames(
-		const std::vector<RealEstateNeighborhoodNames> &real_estate_neighborhood_namess,
-		int real_estate_neighborhood_names_id
+	static RealEstateNeighborhoodWords GetRealEstateNeighborhoodWords(
+		const std::vector<RealEstateNeighborhoodWords> &real_estate_neighborhood_wordss,
+		int real_estate_neighborhood_words_id
 	)
 	{
-		for (auto &real_estate_neighborhood_names : real_estate_neighborhood_namess) {
-			if (real_estate_neighborhood_names.id == real_estate_neighborhood_names_id) {
-				return real_estate_neighborhood_names;
+		for (auto &real_estate_neighborhood_words : real_estate_neighborhood_wordss) {
+			if (real_estate_neighborhood_words.id == real_estate_neighborhood_words_id) {
+				return real_estate_neighborhood_words;
 			}
 		}
 
 		return NewEntity();
 	}
 
-	static RealEstateNeighborhoodNames FindOne(
+	static RealEstateNeighborhoodWords FindOne(
 		Database& db,
-		int real_estate_neighborhood_names_id
+		int real_estate_neighborhood_words_id
 	)
 	{
 		auto results = db.QueryDatabase(
@@ -111,16 +115,17 @@ public:
 				"{} WHERE {} = {} LIMIT 1",
 				BaseSelect(),
 				PrimaryKey(),
-				real_estate_neighborhood_names_id
+				real_estate_neighborhood_words_id
 			)
 		);
 
 		auto row = results.begin();
 		if (results.RowCount() == 1) {
-			RealEstateNeighborhoodNames e{};
+			RealEstateNeighborhoodWords e{};
 
-			e.id   = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.name = row[1] ? row[1] : "";
+			e.id       = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.position = row[1] ? static_cast<uint8_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.word     = row[2] ? row[2] : "";
 
 			return e;
 		}
@@ -130,7 +135,7 @@ public:
 
 	static int DeleteOne(
 		Database& db,
-		int real_estate_neighborhood_names_id
+		int real_estate_neighborhood_words_id
 	)
 	{
 		auto results = db.QueryDatabase(
@@ -138,7 +143,7 @@ public:
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
 				PrimaryKey(),
-				real_estate_neighborhood_names_id
+				real_estate_neighborhood_words_id
 			)
 		);
 
@@ -147,14 +152,15 @@ public:
 
 	static int UpdateOne(
 		Database& db,
-		const RealEstateNeighborhoodNames &e
+		const RealEstateNeighborhoodWords &e
 	)
 	{
 		std::vector<std::string> v;
 
 		auto columns = Columns();
 
-		v.push_back(columns[1] + " = '" + Strings::Escape(e.name) + "'");
+		v.push_back(columns[1] + " = " + std::to_string(e.position));
+		v.push_back(columns[2] + " = '" + Strings::Escape(e.word) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -169,15 +175,16 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static RealEstateNeighborhoodNames InsertOne(
+	static RealEstateNeighborhoodWords InsertOne(
 		Database& db,
-		RealEstateNeighborhoodNames e
+		RealEstateNeighborhoodWords e
 	)
 	{
 		std::vector<std::string> v;
 
 		v.push_back(std::to_string(e.id));
-		v.push_back("'" + Strings::Escape(e.name) + "'");
+		v.push_back(std::to_string(e.position));
+		v.push_back("'" + Strings::Escape(e.word) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -199,7 +206,7 @@ public:
 
 	static int InsertMany(
 		Database& db,
-		const std::vector<RealEstateNeighborhoodNames> &entries
+		const std::vector<RealEstateNeighborhoodWords> &entries
 	)
 	{
 		std::vector<std::string> insert_chunks;
@@ -208,7 +215,8 @@ public:
 			std::vector<std::string> v;
 
 			v.push_back(std::to_string(e.id));
-			v.push_back("'" + Strings::Escape(e.name) + "'");
+			v.push_back(std::to_string(e.position));
+			v.push_back("'" + Strings::Escape(e.word) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -226,9 +234,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<RealEstateNeighborhoodNames> All(Database& db)
+	static std::vector<RealEstateNeighborhoodWords> All(Database& db)
 	{
-		std::vector<RealEstateNeighborhoodNames> all_entries;
+		std::vector<RealEstateNeighborhoodWords> all_entries;
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -240,10 +248,11 @@ public:
 		all_entries.reserve(results.RowCount());
 
 		for (auto row = results.begin(); row != results.end(); ++row) {
-			RealEstateNeighborhoodNames e{};
+			RealEstateNeighborhoodWords e{};
 
-			e.id   = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.name = row[1] ? row[1] : "";
+			e.id       = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.position = row[1] ? static_cast<uint8_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.word     = row[2] ? row[2] : "";
 
 			all_entries.push_back(e);
 		}
@@ -251,9 +260,9 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<RealEstateNeighborhoodNames> GetWhere(Database& db, const std::string &where_filter)
+	static std::vector<RealEstateNeighborhoodWords> GetWhere(Database& db, const std::string &where_filter)
 	{
-		std::vector<RealEstateNeighborhoodNames> all_entries;
+		std::vector<RealEstateNeighborhoodWords> all_entries;
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -266,10 +275,11 @@ public:
 		all_entries.reserve(results.RowCount());
 
 		for (auto row = results.begin(); row != results.end(); ++row) {
-			RealEstateNeighborhoodNames e{};
+			RealEstateNeighborhoodWords e{};
 
-			e.id   = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.name = row[1] ? row[1] : "";
+			e.id       = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.position = row[1] ? static_cast<uint8_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.word     = row[2] ? row[2] : "";
 
 			all_entries.push_back(e);
 		}
@@ -339,13 +349,14 @@ public:
 
 	static int ReplaceOne(
 		Database& db,
-		const RealEstateNeighborhoodNames &e
+		const RealEstateNeighborhoodWords &e
 	)
 	{
 		std::vector<std::string> v;
 
 		v.push_back(std::to_string(e.id));
-		v.push_back("'" + Strings::Escape(e.name) + "'");
+		v.push_back(std::to_string(e.position));
+		v.push_back("'" + Strings::Escape(e.word) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -360,7 +371,7 @@ public:
 
 	static int ReplaceMany(
 		Database& db,
-		const std::vector<RealEstateNeighborhoodNames> &entries
+		const std::vector<RealEstateNeighborhoodWords> &entries
 	)
 	{
 		std::vector<std::string> insert_chunks;
@@ -369,7 +380,8 @@ public:
 			std::vector<std::string> v;
 
 			v.push_back(std::to_string(e.id));
-			v.push_back("'" + Strings::Escape(e.name) + "'");
+			v.push_back(std::to_string(e.position));
+			v.push_back("'" + Strings::Escape(e.word) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -388,4 +400,4 @@ public:
 	}
 };
 
-#endif //EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_NAMES_REPOSITORY_H
+#endif //EQEMU_BASE_REAL_ESTATE_NEIGHBORHOOD_WORDS_REPOSITORY_H

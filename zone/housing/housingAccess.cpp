@@ -5,6 +5,7 @@
 #include "../../common/repositories/real_estate_access_groups_repository.h"
 #include "../../common/repositories/real_estate_access_names_repository.h"
 #include "../client.h"
+#include "../guild_mgr.h"
 #include "../zonedb.h"
 
 namespace housing {
@@ -23,7 +24,8 @@ namespace housing {
     }
 
     bool leadsGuildPlot(Client *client, const Property &property) {
-      return typeOf(property) == DefinitionType::guildPlot && property.guild_id && property.guild_id == client->GuildID() && client->GuildRank() == GUILD_LEADER;
+      const uint32 guild = activeGuildId(property);
+      return typeOf(property) == DefinitionType::guildPlot && guild && guild == client->GuildID() && client->GuildRank() == GUILD_LEADER;
     }
 
     uint32 requiredExpansions(Permission permission, const Property &property, const PropertyLookup &lookup) {
@@ -33,6 +35,10 @@ namespace housing {
       }
       return permission == Permission::enter ? 0 : houseOfThule;
     }
+  }
+
+  uint32 activeGuildId(const Property &property) {
+    return property.guild_id && guild_mgr.GuildExists(property.guild_id) ? property.guild_id : 0;
   }
 
   DefinitionType typeOf(const Property &property) {
@@ -114,7 +120,8 @@ namespace housing {
         return group;
       }
     }
-    if (subject->guild_id && client->GuildID() == subject->guild_id) {
+    const uint32 subjectGuild = activeGuildId(*subject);
+    if (subjectGuild && client->GuildID() == subjectGuild) {
       const std::string rankKey = fmt::format("_Guild{}", client->GuildRank());
       for (const auto &[name, group] : list->names) {
         if (name == rankKey) {
