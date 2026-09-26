@@ -114,8 +114,10 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_names` (
+  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(64) NOT NULL,
-  PRIMARY KEY (`name`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (

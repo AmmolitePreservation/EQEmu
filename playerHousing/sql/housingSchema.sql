@@ -74,8 +74,10 @@ CREATE TABLE IF NOT EXISTS `real_estate_regions` (
 
 -- Names for the neighborhoods the server creates as others fill; a name is in use while a neighborhood property has it.
 CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_names` (
+  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(64) NOT NULL,
-  PRIMARY KEY (`name`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
