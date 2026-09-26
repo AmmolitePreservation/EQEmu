@@ -184,7 +184,7 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 
 ## Chunk 2: the opcode map (F2)
 
-Every housing message, **74 opcode values** (the register's sections 2 and 3 and `serverWork.md`, reconciled). Checked against Peridot's `patch_RoF2.conf`: **only two are mapped today, both reused as they are**, `OP_ClickObjectAction` (`0x0c1e`, a housing container closed) and `OP_FindPersonRequest` (`0x5cea`, Locate and plot finding); `OP_TradeSkillCombine` and `OP_GuildUpdate` (rank permissions, action 5) are reused by name. **The other 72 are new**: one `N(OP_...)` each in `common/emu_oplist.h` (T1) and one line each in `utils/patches/patch_RoF2.conf` (T2), none clashing with an existing name. Each maps to the forwarding handler `Client::Handle_OP_Housing` (T3) for its client direction; server-direction opcodes are only sent.
+Every housing message, **76 opcode values** (the register's sections 2 and 3, `serverWork.md` and the robustness review's handler list, reconciled). Checked against Peridot's `patch_RoF2.conf`: **only two are mapped today, both reused as they are**, `OP_ClickObjectAction` (`0x0c1e`, a housing container closed) and `OP_FindPersonRequest` (`0x5cea`, Locate and plot finding); `OP_TradeSkillCombine` and `OP_GuildUpdate` (rank permissions, action 5) are reused by name. **The other 74 are new**: one `N(OP_...)` each in `common/emu_oplist.h` (T1) and one line each in `utils/patches/patch_RoF2.conf` (T2), none clashing with an existing name. Each maps to the forwarding handler `Client::Handle_OP_Housing` (T3) for its client direction; server-direction opcodes are only sent.
 
 **Not housing, excluded:** `0x0ecb` (the respawn window), `0x65c7` and `0xcadf` (movement reports), `0x4936` (an item sync), `0x2c4e`, and `0x796c` (Plot Search's alternate branch, unreachable in this build). **`0x89` is not an opcode:** it's the game dialog the transfer offer is shown in; the offer and its answer travel in `0x5a63`.
 
@@ -215,6 +215,8 @@ Every housing message, **74 opcode values** (the register's sections 2 and 3 and
 | `0x2036` | C→S | `OP_RealEstateMoveToInventory` | move an entry to inventory | S5 |
 | `0x3424` | C→S | `OP_RealEstateMoveToStorage` | move an entry to a closet, shed or crate | S5 |
 | `0x1045` | S→C | `OP_RealEstateWorldObject` | a placed item's world object | S5 |
+| `0x2a9e` | S→C | `OP_RealEstateWorldObjectRemove` | remove a placed item's world object (by property and record id) | S5 |
+| `0x2523` | S→C | `OP_RealEstateWorldObjectMoved` | the item being placed moved (its storage location and ids) | S5 |
 | `0x21ea` | S→C | `OP_RealEstateNpcItemBinding` | binds an NPC item's entry to its spawn | S5 |
 | `0x21ec` | both | `OP_RealEstateInteractionMenu` | client: menu request; server: the menu | S5 |
 | `0x218c` | C→S | `OP_RealEstateInteract` | interact (menu type 1); record id -1 enters a neighborhood | S5, S6 |
