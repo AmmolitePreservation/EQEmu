@@ -456,18 +456,24 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 
 ## Content: the definitions items name
 
-**43 definitions** are named by placeable items (the migrated `real_estate_definition_id`), and the catalog must hold each: houses **5, 7-29** (style, size and interior finish in the item names), manors **32-34**, the Crate of Eviction **31**, guild halls **38-41**, storage crates **174-184**.
+**43 definitions** are named by placeable items (the migrated `real_estate_definition_id`), and the catalog must hold each: houses **5, 7-29** (style, size and interior finish in the item names), manors **32-34**, the Crate of Eviction **31**, guild halls **38-41**, storage crates **174-184**. **The client ships none of its definition files** (`RealEstateDefs.txt` and its siblings) and its string tables hold no definition names (category 27 has one empty entry), so every other definition id is ours to choose and **plot addresses are property names**, not definitions. **The client never reads definition children in play** (only its loaders copy them); the server uses them as the plots a neighborhood template creates.
 
-| Definitions | Kind | Max items | Vault (non-placeable) | Source |
-|---|---|---|---|---|
-| 5, 7, 8 / 9-11 / 12-14 / 15-17 | three-room (Monel, Zimel): House / Hut / Residence / Domicile | 300 | 40 / 0 / 80 / 120 | Allakhazam's housing guide (Christine), and a developer's quote (Ngreth) on Fanra's wiki |
-| 18-20 / 21-23 / 24-26 / 27-29 | one-room (Behroe, Cobbler): House / Hut / Residence / Domicile | 100 | 20 / 0 / 40 / 60 | the same |
-| every plot | player plot | from Live's plot table (the template) | **0: plots have no vault** | the developer's quote |
-| 184 (Estate Storage Crate) | storage crate | 500 | 0: the crates hold placeable items only | Fanra's wiki |
+**Capacities changed over Live's history** (Allakhazam's housing page holds both):
 
-**The interior finish is in the names:** Stucco 5, 9, 12, 15, 18, 21, 24, 27, 32; Wood 7, 10, 13, 16, 19, 22, 25, 28, 33; Stone 8, 11, 14, 17, 20, 23, 26, 29, 34. Three-room houses use `phinterior3a*`, one-room `phinterior1a*`; which of a1 / a2 / a3 is which finish stays a verification item.
+| House | Launch (2010: Christine's dialog; a developer's quote) | Later (the page's storage table) |
+|---|---|---|
+| one-room (Behroe, Cobbler) Hut / House / Residence / Domicile | 100 total; vault 0 / 20 / 40 / 60 | 300 total; vault 0 / 60 / 150 / 250 |
+| three-room (Monel, Zimel) Hut / House / Residence / Domicile | 300 total; vault 0 / 40 / 80 / 120 | 500 total; vault 0 / 75 / 150 / 300 |
+| Manor (three-room) | | 500 / 300 |
+| plots | 40 / 50 / 60, no vault | 90 / 105 / 120 (the template), no vault |
 
-**Not documented anywhere found:** manor capacity (32-34), guild hall capacities and their zones (38-41: four items, three hall zones), the other storage crates' capacities (174-183), the Crate of Eviction's capacity (it receives a whole plot), guild plot capacity, and a plot region's height.
+Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of the Bixie and The Wayward Lady 600 / 300; some special houses waive the plot's upkeep. The crates Ardak sells hold placeable items only (the Estate crate 500).
+
+**Upkeep ids items name:** 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35.
+
+**Currencies (Allakhazam):** plot upkeep may be paid in platinum or Doubloons, Orux, Phosphenes, Faycitum or Chronobines; houses and items only in platinum; purchase may offer alternate currencies. The plot table's upkeep is daily ("8p 4g" = 8,400 copper, a tenth of the price).
+
+**Not documented anywhere found:** house, crate, station, trophy and table upkeep amounts; guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); guild plot capacity; a plot region's height.
 
 ## Chunk 7: houses and interiors, the crate and layouts, polls, trophies (S10-S12)
 
