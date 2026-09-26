@@ -8,7 +8,7 @@
 
 **Development model:** everything is designed first, then written in full, and the owner builds once. **Database work is tested for real** before delivery: migrations and queries run in a sandbox MariaDB created from the server's real schema (`pok-schema-all.json`), including the `items` rename and decode against the exported rows. **Code is verified by careful reading** against Peridot's source and the research specifications; EQEmu isn't built in the sandbox. After the owner's build, validation happens in game with the diagnostics plugin and the Lua harness.
 
-**Status:** chunks 1-3 complete (the item tail's migration and the schema are tested). Remaining chunks, each covering the standard system and X1-X3 together:
+**Status:** chunks 1-4 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
 
 | Chunk | Covers |
 |---|---|
@@ -52,6 +52,7 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T14 | `common/ruletypes.h` | the `Housing` rule category | configuration through EQEmu rules |
 | T15 | `world/main.cpp` | the upkeep `Timer`, a startup run, one call | the upkeep tick (D4) |
 | T16 | `world/CMakeLists.txt` | the world-side housing sources | build |
+| T17 | `zone/command.cpp`, `zone/command.h` | one `#realestate` GM command registration | plot and catalog authoring |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -292,3 +293,36 @@ Every housing message, **76 opcode values** (the register's sections 2 and 3, `s
 - **House definitions are keyed by size and interior, six exterior styles each** (House 5, 7, 8; Hut 9-11; Residence 12-14; Domicile 15-17; the Cobbler and Behroe sets 18-29; Manor 32-34), so **the definition decides the interior zone**, as X1 needs; guild halls 38-41; the Crate of Eviction 31; **eleven storage crates 174-184**.
 - **`guild_permissions`** holds a value per permission (24, 25 and 29: 224; 27 and 28: 128, one guild): its rank encoding is settled with purchase in chunk 6.
 - **The character's property lists are named by MacroQuest** (`OwnedRealEstates`, `OwnedItemRealEstates`, `ArchivedRealEstates`): archived properties are a subset of the owned ones, and list B is properties contained in items the character carries (here, by item guid).
+
+## Chunk 4: catalog, properties, regions, item lists, zone-in, plot authoring
+
+**Wire primitives** (every housing stream): little-endian integers; **`string` = `u32` length + raw bytes** (records, entries, the catalog); the exceptions are `0x1967` (a raw NUL-terminated name) and the item tail's housepet name (chunk 2).
+
+**S1, the catalog (`OP_RealEstateDefinitions`, `0x2698`):** every definition in wire order (id, region id, purchase and upkeep cost ids, the three caps' first two, `unknown_30`/`_34`/`_38`, type, category, `unknown_string`, `unknown_44`, max pet items, layout origin, layout heading, child count and ids from `real_estate_definition_children`), then every cost element (options in `position` order, each with its items). The catalog is small, so **the whole catalog is sent** at zone-in and again after a GM change.
+
+**S2, properties:** a record per property (`0x4f09` to add or refresh, `0x63fd` for updates the client compares, `0x6fd0` to set the current property): id, 0 (`+0x18`), parent, definition, guild (-1 for none), 0 (fellowship), an empty string (`+0x30`, never read), **the owner's name** (from `character_data`), 0 (`+0x34`), the children's count, **the property name**, the children's ids (from `parent_id`), the balances (`u8` count, then currency and amount as f64), **the upkeep option**, the upkeep-current flag, the voting opt-out. The character's lists: A = owned, C = owned and archived, B = contained in an item the character carries (`contained_in_item_guid` = an inventory row's `guid`).
+
+**S3, regions (`OP_RealEstateRegions`, `0x49df`):** `u32` count, then per region its id, the 16 floats (row 0 first) and five zero `u32`s. **The matrix comes from the region's box** (`tools/regionMatrix.py`, tested on 40,000 points): the client tests the player's `LastCollision` **in the order Y, X, Z**, through the inverted matrix, against [-1, 1]; in that order the rows are the across axis `half_x * (-sin, cos, 0)`, the along axis `half_y * (cos, sin, 0)`, `(0, 0, half_z)` and the center `(y, x, z)`, with the heading in EQ units (512 per turn; heading 0 faces +y, EQEmu's own convention). **A region belongs to a property through its definition, in the context of the current property**, so every neighborhood instance shares its plot definitions and regions, the neighborhood property being each instance's context. **Interiors need no regions:** with none, "standing in" falls back to the current property, so a house (or an X1 private zone) sent as the current property takes every placement inside it.
+
+**S4, item lists (`0x1cef`, updates `0x087f` / `0x2cf7` / `0x1097`, removals `0x1baf` / `0x1967`, drop `0x7d28`):** each entry: property id, record id (the row id), placed flag, 0, the transform (heading, pitch, roll, scale, x, y, z), the owner's name, an empty string, then **the item serialized exactly as `OP_ItemPacket` carries it after its packet type**, through the exported RoF2 serializer (T6) from the row's item instance.
+
+**The zone-in sequence (F5, from `Client::CompleteConnect`, T4)**, in dependency order:
+1. the catalog;
+2. property records for **the properties hosted here** (this zone and instance), **the character's properties** (lists A and B) and, for each, **its ancestors and descendants** (the context lookup and the personal trophy walk need the trees);
+3. the current property: the host's top property (a neighborhood or town) where properties are hosted; **the house or hall inside its interior instance**;
+4. the character's lists A, B and C;
+5. **the regions** of the hosted plots (an empty `0x49df` elsewhere, which also clears any left over);
+6. item lists for the hosted properties and the character's properties (personal trophies are computed from the owned plots' items wherever the character is);
+7. access lists for the same properties;
+8. **world objects** (`0x1045`) for the placed items of the properties hosted here, **NPC items** as spawns with their bindings (`0x21ea`);
+9. trophy slots and timers, polls (chunk 7).
+
+**To verify in game:** whether the client keeps its real-estate state across zoning (the probe shows it: the manager's current property and records after zoning out of a neighborhood); if it does, leaving a housing zone must clear it (an empty item list and region set, and records for the properties no longer relevant).
+
+**Plot authoring (T17: one registration in `zone/command.cpp` / `command.h`; the implementation is in the housing module):** a `#realestate` GM command for the spatial content the other tables need:
+- `region create | move | show`: a box at the GM's position and heading (sizes as arguments, its bottom at the GM's feet); `show` sends the zone's regions and reports which contain the GM, by the same math as the client;
+- `definition` and `cost` editing for content without SQL;
+- `neighborhood create`: a neighborhood property and its instance of the definition's template zone (X2), with **its plots created from the definition's children**; `town create` for plots hosted in a public zone (X3);
+- `property info`: the properties and regions at the GM's position; `reload`: re-send the catalog and state to the zone.
+
+Its status level is an account status like EQEmu's other content commands; `Housing:Enabled` gates it with the rest.
