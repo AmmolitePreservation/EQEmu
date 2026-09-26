@@ -501,6 +501,10 @@ Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of th
 | 6 | tradeskill station | 100 (1g) |
 | 17 / 18 / 19 / 20 | three-room House / Hut / Residence / Domicile | 4,200 / 1,400 / 5,250 / 7,350 |
 | 21 / 22 / 23 / 24 | one-room House / Hut / Residence / Domicile | 2,100 / 700 / 2,625 / 3,675 |
+| 26 / 27 / 28 / 29 / 30 | Small / Hut and All Hallows Eve / Medium / Domicile / Large storage crate | 20 / 40 / 80 / 100 / 120 |
+| 31 / 32 / 33 / 34 / 35 | House / Giant / Mansion / Enormous / Estate storage crate | 140 / 160 / 180 / 200 / 220 |
+
+**The carved tables (id 2) show no upkeep line on Live** (both, at their merchants), though the client has only the one upkeep line (string 7519, no wording for a reduction): no cost element, a reduction, or a bug; **placing one on a plot settles it** (the Manage window's Upkeep page lists it under Cost or Reduction, or not at all). **Trophies (id 4) are untested** (no merchant or loot source; quests, tasks or the Marketplace).
 
 Live's merchant prices are PEQ's `price` plus 5%, less a copper (10,000p shows 10,499p 9g 9s 9c; 5,000p, 5,249p 9g 9s 9c), so PEQ's prices are Live's.
 
@@ -510,7 +514,7 @@ Live's merchant prices are PEQ's `price` plus 5%, less a copper (10,000p shows 1
 
 **Guild plots, as Live's purchase windows show them:** each is **200 on a street of its section** ("200 Guild Way", "200 Terminus Heights", "200 Brimming Way", "200 Vanward Heights"), and **all four have the same terms**: 21 platinum, upkeep 2 platinum 1 gold a day, capacity 210, vault 0, pets 12 (in the template). They were **seen in a guild village**; a public neighborhood's window is to compare, and it should have no Guild row.
 
-**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message): crate, trophy and table upkeep amounts (houses and stations are above); guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
+**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message): trophy upkeep and whether carved tables carry any (houses, stations and crates are above); guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
 
 ## Moving players: only EQEmu's own mechanisms
 
