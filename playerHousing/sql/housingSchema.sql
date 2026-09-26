@@ -223,6 +223,14 @@ CREATE TABLE IF NOT EXISTS `real_estate_poll_votes` (
   KEY `character_id` (`character_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The property "Translocate Primary Anchor" (spell effect 438) sends a character to; the guild hall anchor is derived (the
+-- guild's hall).
+CREATE TABLE IF NOT EXISTS `character_real_estate_anchors` (
+  `character_id` INT(10) UNSIGNED NOT NULL,
+  `primary_property_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`character_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `character_trophy_tribute` (
   `character_id` INT(10) UNSIGNED NOT NULL,
   `slot` TINYINT(3) UNSIGNED NOT NULL,
