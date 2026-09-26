@@ -469,7 +469,7 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 
 **How a heading turns a border: its entrance faces opposite the heading.** 107 Vanward Street's border (heading 128, west, Live's through PEQ) opens east, its plaque on the left facing out; **across all 71 plots the side opposite the heading is the one nearest a path on the map for 43** (the other sides 6, 11 and 11; `neighborhood.txt`), so the rule holds across the neighborhood. A model point (a, b) lands at (-b cos t - a sin t, b sin t - a cos t) from the door, t the angle of the heading plus a half turn (the 71 stones fixed the turning direction, each within 0.6 degrees). **Nothing is mirrored on the ground:** facing out through the entrance, the plaque is on the left on 107 Vanward Street's border, on another west-entrance player border, and on the Vanward guild border, as in both models; only EQEmu's x, increasing westward, makes it look mirrored on paper.
 
-**Testing item: the four guild borders.** Each `guild plot` row becomes a `doors` row for `OBP_GUILDSQUARE` (size 100) with its definition and region. **On Peridot, the Terminus border (the one in use on Live) should open west with its plaque at the south end of the gap**, as on Live.
+**Testing item: the four guild borders.** `sql/guildBorderDoors.sql` adds their `doors` rows (`OBP_GUILDSQUARE`, size 100); their definitions and regions come with the catalog content. **On Peridot, the Terminus border (the one in use on Live) should open west with its plaque at the south end of the gap**, as on Live.
 
 ## Content: the definitions items name
 
@@ -560,6 +560,7 @@ Polls are run through `#realestate poll` (create, options and labels, publish, c
 | `tools/testHousingSchema.py` | the 23 housing tables (created twice), the module's queries (zone-in by host, the character's lists, plot counts, revision-guarded updates, the upkeep index, fractional charges, anchors, names), every constraint |
 | `tools/regionMatrix.py` | the region matrix against the client's containment rule (40,000 points) and the authoring semantics |
 | `tools/sunriseHillsPlots.py` | the template: 71 plots on Live's border stones (1.2 units), headings within 0.7 degrees, every street group against Live's table |
+| `tools/makeGuildBorderDoorsSql.py` | `sql/guildBorderDoors.sql`: the four guild borders as `doors` rows, from the template, every other column copied from a player border (open type 160); refuses a second run, a door id past 255, or no player border to copy (tested on all four cases) |
 
 The code itself is verified by reading it against Peridot's source and the research (no EQEmu build in the sandbox).
 
