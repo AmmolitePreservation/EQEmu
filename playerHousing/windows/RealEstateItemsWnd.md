@@ -161,7 +161,11 @@ Ownership comparisons (`0x4d6b10`, owner names); **House of Thule `0x2f`, Veil o
 | `+0x5f8`-`+0x604` | f32 x4 | `PlaceableDefScale` / `Heading` / `Pitch` / `Roll` | defaults |
 | `+0x608` | u8 | `bInteractiveObject` | |
 
-**The server's item-tail fix must write all of these in the client's order**, not only the three fields the findings name.
+**The wire order differs from the memory order** (client reader `0x7f6bf0`): `Placeable` u32, `bPlaceableIgnoreCollisions` u8, `PlacementType` u32, `RealEstateDefID` u32, scale min / max f32, `RealEstateUpkeepID` u32, `MaxPerRealEstate` u32, **`HousepetFileName` as a NUL-terminated string** (`0x4048d0`: scans to the NUL, keeps at most 31 characters, skips the whole string), **then `bInteractiveObject` u8**, `TrophyBenefitID` u32, the rotation and free-placement flags (u8 each), `NpcRespawnInterval` u32, default scale / heading / pitch / roll (f32 x4), a u8 at `+0x609`; then `+0x110`-`+0x113` (u8 each), `+0x114` u32 and `+0x118` u8, where this reader returns.
+
+**How EQEmu's current bytes read:** `SerializeItem` writes `ItemQuaternaryBodyStruct` as one block, so its fields land on the client's differently: `unknown28` (`0xffffffff`) and `unknown29`'s low byte (0) become **a 3-character housepet file name `"\xff\xff\xff"` on every item**, which absorbs the 6 bytes the struct has beyond the true layout; **`unknown30` (-1) lands on `TrophyBenefitID`** (critical finding 19); everything else in the tail reads as 0.
+
+**The server's item-tail fix must write all of these in the wire order**, not only the three fields the findings name.
 
 **EQEmu hardcodes it to zero:** `common/patches/rof2.cpp` (`SerializeItem`) sets **`iqbs.Placeable = 0;`** (and `iqbs.Heirloom = 0;`). **So no item sent by the current encoder is placeable**: every placement and storage rule fails at the placeable check (`0x24`), the Place button stays dark, and the list shows every item as "V". The server must set `Placeable` for real-estate items.
 

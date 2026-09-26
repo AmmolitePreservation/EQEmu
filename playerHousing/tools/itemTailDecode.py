@@ -2,7 +2,8 @@
 
 Input: a tab-separated export of `SELECT id, Name, UNK223 ... UNK234, placeable, UNK236 ... UNK241 FROM items WHERE UNK224<>0`
 (the second result set of itemTailFull.sql; the first lists the column types, all int(11)). Every row is decoded twice,
-as captured aligned and as captured shifted by one byte (from the housepet string's terminator on); exactly one decoding
+as captured aligned and as captured shifted by one byte (the capture missed bInteractiveObject, which follows the
+housepet string on the wire); exactly one decoding
 must be plausible. serverPlan.md, D1, records the results; the migration does the same byte math in SQL.
 
 Usage: python3 itemTailDecode.py itemTailFull.txt
@@ -31,10 +32,11 @@ def byte(v,k): return (u32(v)>>(8*k))&0xff
 def join(lo, hi): return (u32(lo)>>8) | (byte(hi,0)<<24)   # the 3 high bytes of lo, then the low byte of hi
 
 def shifted(r):
-  # the capture read one byte early from the housepet string's terminator on
+  # On the wire, bInteractiveObject follows the housepet string (client reader 0x7f6bf0); this capture didn't know it,
+  # so from there on each column holds the next field's bytes one position early, and UNK233's low byte is the flag.
   return dict(trophy=i32(join(r['UNK233'], r['UNK234'])), rotation=r['placeable'], free=byte(r['UNK236'],0),
     respawn=join(r['UNK236'], r['UNK237']), scale=f32(join(r['UNK237'], r['UNK238'])), heading=f32(join(r['UNK238'], r['UNK239'])),
-    pitch=f32(join(r['UNK239'], r['UNK240'])), roll=f32(join(r['UNK240'], r['UNK241'])), interactive=byte(r['UNK241'],1))
+    pitch=f32(join(r['UNK239'], r['UNK240'])), roll=f32(join(r['UNK240'], r['UNK241'])), interactive=byte(r['UNK233'],0))
 
 def problems(d, r, layout):
   bad=[]

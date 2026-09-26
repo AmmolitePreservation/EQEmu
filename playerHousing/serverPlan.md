@@ -65,11 +65,10 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 
 **D1. Where the housing tail's item values live. Decided: rename `items` columns in place and fix their data.**
 
-The PEQ-derived `items` table already holds the housing tail, captured from Live in unlabeled columns: **`UNK223`-`UNK241` are exactly `SubClass` plus the 18 housing-tail fields, in the client's order** (proved field by field on rows captured aligned; the values match the client's semantics: bitmask 8 on houses, 128 on guild halls; house definition ids 5-34, guild halls 38-41, the crate 31; upkeep ids 17-24). Most rows were captured **shifted by one byte** after the housepet string (an empty string's terminator), so from `UNK232` on their values must be re-sliced from the bytes; a few rows were captured aligned.
+The PEQ-derived `items` table already holds the housing tail, captured from Live in unlabeled columns: **`UNK224`-`UNK241` (with `placeable` at 235) are the 18 captured housing-tail fields, in the client's memory order** (proved field by field on rows captured aligned; the values match the client's semantics: bitmask 8 on houses, 128 on guild halls; house definition ids 5-34, guild halls 38-41, the crate 31; upkeep ids 17-24). Most rows were captured **shifted by one byte**: on the wire `bInteractiveObject` follows the housepet string, and that capture didn't know it, so from the trophy id on each column holds the next field's bytes one position early (and `UNK233`'s low byte is the interactive flag); a few rows were captured aligned. **`UNK223` is not part of this:** it duplicates EQEmu's `subtype` (equal in all 100 sampled rows), which EQEmu already serializes into the client's `SubClass` slot, so it's left alone.
 
 | Column | Becomes | Client field |
 |---|---|---|
-| `UNK223` | `subclass` | `SubClass` (`+0x5a4`) |
 | `UNK224` | `placeable` | the "placeable in" bitmask (`+0x5ac`) |
 | `UNK225` | `placeable_ignore_collisions` | `+0x5b0` |
 | `UNK226` | `placement_type` | `+0x5b4` |
@@ -85,10 +84,11 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `UNK237`-`UNK240` | `placeable_default_scale`, `_heading`, `_pitch`, `_roll` (float) | `+0x5f8`-`+0x604` |
 | `UNK241` | `interactive_object` | `+0x608` |
 
-- **Why rename rather than add:** EQEmu's server never reads these columns (the shared-memory loader's `item_fieldlist.h` skips the block) and EQEmu itself renamed unknowns in place before (migration 9093); renaming keeps one source of truth, no second "placeable", and the column count (dumps keyed by position still load).
+- **Verify before the migration:** `SELECT COUNT(*) FROM items WHERE UNK223 <> subtype` must be 0 on the full table.
+- **Why rename rather than add:** EQEmu's server never reads these columns (`UNK223` aside, which stays) (the shared-memory loader's `item_fieldlist.h` skips the block) and EQEmu itself renamed unknowns in place before (migration 9093); renaming keeps one source of truth, no second "placeable", and the column count (dumps keyed by position still load).
 - **Cost, accepted by the owner:** Spire's item model maps these columns by name, so **Spire's item editor, item endpoints and eqtraders item import break** for them. Spire's server control doesn't use the item model (its dashboard only counts items), so it keeps working.
-- **The migration** renames the 19 columns, converts the float and string ones to their types, and **re-slices the shifted rows** (detected per row) into the right columns; items without a placeable bitmask get the defaults (trophy id -1).
-- **The decoder is validated** (`tools/itemTailDecode.py`) against all **5,577** items with a placeable bitmask: **every row has exactly one plausible layout** (5,205 shifted, 372 aligned; none ambiguous, none implausible both ways), and every decoded field is sane: trophy ids decode to exactly the trophy items (100 "Idol of Severilous", 111-120 the "Empowered Trophy of ..." series, 121 "Trophy of Expanding Life"; 88 in all, the rest -1); default headings and pitches fall on EverQuest's 512-unit scale (0, 128, 256, 384); respawn intervals 4500 (familiar NPC items), 750 (NPC merchants) or 0; default scales 0.25-5.0; scale ranges 0.05-25; disable free placement on 170 items (houses, halls), disable rotation on 455. **Shifted rule** (per 32-bit value, little-endian): each field from the trophy id on is the high three bytes of its column plus the low byte of the next (`UNK233`/`UNK234` form the trophy id; `placeable` is the rotation flag; `UNK236`'s low byte is the free-placement flag). **One oddity kept as captured:** the Candy Dish (55446) has bitmask -1 (placeable anywhere).
+- **The migration** renames the 18 columns, converts the float and string ones to their types, and **re-slices the shifted rows** (detected per row) into the right columns; items without a placeable bitmask get the defaults (trophy id -1).
+- **The decoder is validated** (`tools/itemTailDecode.py`) against all **5,577** items with a placeable bitmask: **every row has exactly one plausible layout** (5,205 shifted, 372 aligned; none ambiguous, none implausible both ways), and every decoded field is sane: trophy ids decode to exactly the trophy items (100 "Idol of Severilous", 111-120 the "Empowered Trophy of ..." series, 121 "Trophy of Expanding Life"; 88 in all, the rest -1); default headings and pitches fall on EverQuest's 512-unit scale (0, 128, 256, 384); respawn intervals 4500 (familiar NPC items), 750 (NPC merchants) or 0; default scales 0.25-5.0; scale ranges 0.05-25; disable free placement on 170 items (houses, halls), disable rotation on 455; **exactly one interactive object, the Guild Regeneration Pool**. **Shifted rule** (per 32-bit value, little-endian): `UNK233`'s low byte is the interactive flag; each field from the trophy id on is the high three bytes of its column plus the low byte of the next (`UNK233`/`UNK234` form the trophy id; `placeable` is the rotation flag; `UNK236`'s low byte is the free-placement flag). **One oddity kept as captured:** the Candy Dish (55446) has bitmask -1 (placeable anywhere).
 - **Content found along the way:** Live's real-estate catalog ids: house definitions 5-34 (by style, size and interior), guild halls 38-41, the moving crate 31; upkeep cost ids 17-24 for houses by size.
 - **Reaching the serializer:** the in-memory item (`ItemData`) still doesn't carry these fields, so the housing module loads them for items with a non-zero `placeable` and the RoF2 serializer asks it through the provider hook (T6); items without them serialize as today.
 
@@ -166,3 +166,18 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 4. **Housing rules are read in the zone's context**, so a zone's `ruleset` can tune housing per zone (X3).
 
 **To verify:** that placed objects render outside the housing zones (house exteriors and furniture use global models, but it needs a test; the diagnostics plugin shows it directly: a world object whose actor stays 0 has no body); plot authoring accuracy against the client's own containment (the plugin recomputes it); zone-in traffic in a busy public zone (X3).
+
+## Chunk 2: the item tail (F1)
+
+**Wire layout** (client reader `0x7f6bf0`; `windows/RealEstateItemsWnd.md`): after `Heirloom`, the 18 housing fields in wire order with a **NUL-terminated housepet string** and **`bInteractiveObject` right after it**, a u8 at `+0x609`, then the reader's last 9 bytes (`+0x110`-`+0x118`); what follows belongs to the caller.
+
+**Today** `SerializeItem` (`common/patches/rof2.cpp:6850-6892`) fills `ItemQuaternaryBodyStruct` and writes it as one block; the client reads its `unknown28` / `unknown29` as a 3-character housepet name `"\xff\xff\xff"`, which absorbs the struct's 6 extra bytes, and `unknown30` (-1) as the trophy id.
+
+**The change** (T6), for every packet type except `ItemPacketInvalid`:
+1. write the struct's bytes up to and including `Heirloom` (`offsetof(ItemQuaternaryBodyStruct, Placeable)` bytes), unchanged;
+2. write the 18 tail fields in wire order from the item's housing tail (the housepet name as a C string, at most 31 characters), then the `+0x609` byte (0);
+3. write the struct's **last 14 bytes unchanged** (from `unknown37`'s second byte to the end: `+0x110`-`+0x118` for this reader, then 5 bytes the caller reads), so everything after the tail stays byte-identical.
+
+**`ItemPacketInvalid` keeps today's bytes** (it sets `unknown29` to `0xff`, which changes how the client reads the name); nothing housing sends uses it.
+
+**The housing tail's values** come from a provider the serializer calls with the item id: a function registered by the zone's housing module (the only item-side hook), returning the renamed `items` columns for items with a non-zero `placeable`, and for every other item the values the client reads today apart from the name: all zero, an empty name, trophy id -1. `common/` holds only the provider's declaration (a struct of the 18 fields and a setter), so world, which never registers one, keeps sending defaults.
