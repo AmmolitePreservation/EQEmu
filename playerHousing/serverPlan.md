@@ -488,6 +488,8 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 
 **Live today holds the later column:** a three-room Monel Style Country House's Lore reads "can hold up to 500 items. 75 of which can be any type of items" (the vault is that any-type allowance: the client's "Vault" is each definition's maximum of non-placeable items, the yard's, the house's and each crate's their own), and a guild plot shows Vault 0. **Park Circle's plots are 120 on Live** (101 Park Circle's purchase window; the table says 105), as the other 126-platinum plots, so their launch value is 60.
 
+**Storage crates on Live** (their Lore text; no launch values are known, so these are the defaults): Small 50, Hut and All Hallows Eve 100, Medium 150, Domicile 200, Large 250, House 300, Giant 350, Mansion 400, Enormous 450, Estate 500, in steps of 50; placeable items only, so no vault.
+
 Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of the Bixie and The Wayward Lady 600 / 300; some special houses waive the plot's upkeep. The crates Ardak sells hold placeable items only (the Estate crate 500).
 
 **Live's house names follow the room count, not the item:** a Monel Style Brick Manor's interior is named **"Three Room House"**, both in its item display (string 5289) and in the zone-in banner (**string 9508, "Entering %1..."**, `%1` the neighborhood, plot address and house names joined, as the item display's), not the zone's long name ("Three Bedroom House Interior"). So the five three-room definitions share that name, and the four one-room definitions share **"One Room House"** (seen on Live).
@@ -514,7 +516,7 @@ Live's merchant prices are PEQ's `price` plus 5%, less a copper (10,000p shows 1
 
 **Guild plots, as Live's purchase windows show them:** each is **200 on a street of its section** ("200 Guild Way", "200 Terminus Heights", "200 Brimming Way", "200 Vanward Heights"), and **all four have the same terms**: 21 platinum, upkeep 2 platinum 1 gold a day, capacity 210, vault 0, pets 12 (in the template). They were **seen in a guild village**; a public neighborhood's window is to compare, and it should have no Guild row.
 
-**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message; every upkeep amount is above): guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
+**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message; every upkeep amount is above): guild hall capacities and their zones (38-41: four items, three hall zones); the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
 
 ## Moving players: only EQEmu's own mechanisms
 
