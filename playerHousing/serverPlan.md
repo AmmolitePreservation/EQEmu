@@ -4,7 +4,7 @@
 
 **Principle: surgical.** Housing lives in its own module; existing EQEmu code is touched only at the points listed below, each for a stated reason. New tables, a few altered fields and data rows are expected.
 
-**Status:** chunk 1 (architecture, touch points, persistence) written; chunks 2-7 to do.
+**Status:** chunk 1 (architecture, touch points, persistence) written; D1 decided; D2-D4 open; chunks 2-7 to do.
 
 ## Chunk 1: architecture
 
@@ -30,7 +30,8 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T6 | `common/patches/rof2.cpp` (+ `rof2.h`) | **the item tail fix (F1)**, and **one exported wrapper around the internal RoF2 item serializer** | F1 is a bug fix in the existing encoder; item-list entries embed a fully serialized item |
 | T7 | `common/database/database_update_manifest_custom.cpp`, `common/version.h` | housing migrations on the custom schema track; `CUSTOM_BINARY_DATABASE_VERSION` | the custom track can't collide with upstream's versions |
 | T8 | `zone/CMakeLists.txt` | the module's sources | build |
-| T9 | item data (decision D1) | the housing tail's values | F1 needs per-item values |
+| T9 | the `items` table (migration, decision D1) | rename `UNK223`-`UNK241` and `placeable` to their true names; re-slice the shifted rows | the housing tail's values already exist there, unlabeled |
+| T10 | `common/repositories/base/base_items_repository.h` | regenerated for the renamed columns | the only EQEmu code that names them (used by `#find item`) |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -42,10 +43,32 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 
 ## Chunk 1: decisions
 
-**D1. Where the housing tail's item values live.** The `items` table already has a `placeable` column, but the in-memory item (`ItemData`, loaded into shared memory) doesn't carry it, and none of the other tail fields (upkeep id, trophy id, real-estate definition id, scale range, housepet file, flags, defaults) exist anywhere.
-- **(a)** Add columns to `items` and fields to `ItemData`: EQEmu's conventional path, but it changes the shared memory layout and the item loader (`item_data.h`, the shared-memory item loading, the items repository).
-- **(b)** A separate **`item_housing`** table keyed by item id, loaded by the housing module, and **a small provider hook** that the RoF2 serializer calls for an item's tail (default: zeros, as now, with the trophy id -1). Items without a row serialize exactly as today.
-- **Recommended: (b).** Only items that matter to housing get rows; shared memory and the item loader stay untouched; the hook is the only item-side change.
+**D1. Where the housing tail's item values live. Decided: rename `items` columns in place and fix their data.**
+
+The PEQ-derived `items` table already holds the housing tail, captured from Live in unlabeled columns: **`UNK223`-`UNK241` are exactly `SubClass` plus the 18 housing-tail fields, in the client's order** (proved field by field on rows captured aligned; the values match the client's semantics: bitmask 8 on houses, 128 on guild halls; house definition ids 5-34, guild halls 38-41, the crate 31; upkeep ids 17-24). Most rows were captured **shifted by one byte** after the housepet string (an empty string's terminator), so from `UNK232` on their values must be re-sliced from the bytes; a few rows were captured aligned.
+
+| Column | Becomes | Client field |
+|---|---|---|
+| `UNK223` | `subclass` | `SubClass` (`+0x5a4`) |
+| `UNK224` | `placeable` | the "placeable in" bitmask (`+0x5ac`) |
+| `UNK225` | `placeable_ignore_collisions` | `+0x5b0` |
+| `UNK226` | `placement_type` | `+0x5b4` |
+| `UNK227` | `real_estate_definition_id` | `+0x5b8` |
+| `UNK228`, `UNK229` | `placeable_scale_min`, `placeable_scale_max` (float) | `+0x5bc`, `+0x5c0` |
+| `UNK230` | `real_estate_upkeep_id` | `+0x5c4` |
+| `UNK231` | `max_per_real_estate` | `+0x5c8` |
+| `UNK232` | `housepet_file_name` (string) | `+0x5cc` |
+| `UNK233` | `trophy_benefit_id` (-1 = none) | `+0x5ec` |
+| `UNK234` | `disable_placement_rotation` | `+0x5f0` |
+| `placeable` | `disable_free_placement` | `+0x5f1` (EQEmu's 2015 migration named `UNK235` `placeable`; it isn't) |
+| `UNK236` | `npc_respawn_interval` | `+0x5f4` |
+| `UNK237`-`UNK240` | `placeable_default_scale`, `_heading`, `_pitch`, `_roll` (float) | `+0x5f8`-`+0x604` |
+| `UNK241` | `interactive_object` | `+0x608` |
+
+- **Why rename rather than add:** EQEmu's server never reads these columns (the shared-memory loader's `item_fieldlist.h` skips the block) and EQEmu itself renamed unknowns in place before (migration 9093); renaming keeps one source of truth, no second "placeable", and the column count (dumps keyed by position still load).
+- **Cost, accepted by the owner:** Spire's item model maps these columns by name, so **Spire's item editor, item endpoints and eqtraders item import break** for them. Spire's server control doesn't use the item model (its dashboard only counts items), so it keeps working.
+- **The migration** renames the 19 columns, converts the float and string ones to their types, and **re-slices the shifted rows** (detected per row) into the right columns; items without a placeable bitmask get the defaults (trophy id -1). The decoder is validated offline against every placeable row before it's written.
+- **Reaching the serializer:** the in-memory item (`ItemData`) still doesn't carry these fields, so the housing module loads them for items with a non-zero `placeable` and the RoF2 serializer asks it through the provider hook (T6); items without them serialize as today.
 
 **D2. Cross-zone updates.** Zones are separate processes; ownership and the character's property lists are global.
 - **(a)** Start with **no cross-zone messaging**: the database is the truth and every zone-in re-sends housing state (F5 requires that anyway), so a change made in another zone appears at the next zone-in.
