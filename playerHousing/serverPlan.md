@@ -4,7 +4,7 @@
 
 **Principle: surgical.** Housing lives in its own module; existing EQEmu code is touched only at the points listed below, each for a stated reason. New tables, a few altered fields and data rows are expected.
 
-**Status:** chunk 1 (architecture, touch points, persistence) written; D1 decided; D2-D4 open; chunks 2-7 to do.
+**Status:** chunk 1 (architecture, touch points, persistence) written; D1 and D2 decided; D3 and D4 open; chunks 2-7 to do.
 
 ## Chunk 1: architecture
 
@@ -32,6 +32,9 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T8 | `zone/CMakeLists.txt` | the module's sources | build |
 | T9 | the `items` table (migration, decision D1) | rename `UNK223`-`UNK241` and `placeable` to their true names; re-slice the shifted rows | the housing tail's values already exist there, unlabeled |
 | T10 | `common/repositories/base/base_items_repository.h` | regenerated for the renamed columns | the only EQEmu code that names them (used by `#find item`) |
+| T11 | `common/servertalk.h` | `ServerOP_Housing` and its envelope | cross-zone housing events (D2) |
+| T12 | `world/zoneserver.cpp` | one `case` in the list world forwards to every zone | delivery |
+| T13 | `zone/worldserver.cpp` | one `case` handing the envelope to the housing module | receiving |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -72,10 +75,35 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 - **Content found along the way:** Live's real-estate catalog ids: house definitions 5-34 (by style, size and interior), guild halls 38-41, the moving crate 31; upkeep cost ids 17-24 for houses by size.
 - **Reaching the serializer:** the in-memory item (`ItemData`) still doesn't carry these fields, so the housing module loads them for items with a non-zero `placeable` and the RoF2 serializer asks it through the provider hook (T6); items without them serialize as today.
 
-**D2. Cross-zone updates.** Zones are separate processes; ownership and the character's property lists are global.
-- **(a)** Start with **no cross-zone messaging**: the database is the truth and every zone-in re-sends housing state (F5 requires that anyway), so a change made in another zone appears at the next zone-in.
-- **(b)** Add one server op now (definition, world forwarding, zone handling: three more touch points) for real-time refreshes.
-- **Recommended: (a) first**, adding (b) only where a real case needs it (a transfer to a player in another zone is the likely first one).
+**D2. Cross-zone updates. Decided: first-class, fully implemented** (owner's decision). Zones and instances are separate processes; the client hears only from the zone it's in, so anything that changes in one process and matters to a player in another needs a server-to-server message.
+
+**Delivery** follows EQEmu's existing cross-zone pattern (the quest system's `ServerOP_CZ*`): world forwards the op to every zone (`ZSList::Instance()->SendPacket`, `world/zoneserver.cpp`), and each zone filters locally for its targets. Housing adds **one server op, `ServerOP_Housing`**, carrying an envelope:
+
+| Field | Meaning |
+|---|---|
+| event | which housing event (catalog below) |
+| target kind, target id | character (character id), guild (guild id), property (the zones hosting it: its neighborhood's instance and its house interior's instance), zone instance, or all zones |
+| origin zone, instance | the sender, for replies |
+| property id, revision | the property the event is about, and its revision after the change |
+| payload | event-specific data, when needed |
+
+**Events say what changed, not the new data.** A receiving zone re-reads the database and sends its own clients the updates (records, lists, access lists, item lists, world objects). The database stays the single source of truth, and events can arrive in any order.
+
+| Event | Target | Receiving zone does |
+|---|---|---|
+| Transfer offer | the recipient character | shows the offer (game dialog `0x89`); the answer (`0x5a63`) completes the transfer there |
+| Transfer resolved | the offering character | tells the owner the result |
+| Property changed (owner, balances, upkeep, name, children) | the property; the owner and previous owner | re-sends the records (`0x6fd0` / `0x4f09` / `0x63fd`) and the owners' property lists |
+| Item list changed | the property | re-sends the changed entries and world objects |
+| Access list changed | the property | re-sends `0x485d`; applies the new permissions to players present |
+| Character property lists changed | the character | re-sends `0x2aa7` / `0x3e00` / `0x66df` |
+| Personal trophy benefits changed | the owner | recomputes the available benefits (they come from trophies placed in the owner's plots) |
+| Guild neighborhood created | the guild | `0x1d3c` |
+| Polls changed | all zones | re-sends the affected poll messages to players with the vote windows' data |
+
+**Consistency:** every change runs inside a database **transaction** (`TransactionBegin` / `Commit` / `Rollback`, `common/dbcore.h`), and each property carries a **revision** checked and incremented by every change (`UPDATE ... WHERE id = ? AND revision = ?`). When two zones change the same property at once, the second change fails cleanly, and that player gets a result code and the fresh state. Transfers use a **pending-offer** record with an expiry, so an offer survives the hop between zones and can't be accepted twice.
+
+**Touch points added:** T11 `common/servertalk.h` (the op and the envelope), T12 `world/zoneserver.cpp` (one `case` in the forward-to-all-zones list), T13 `zone/worldserver.cpp` (one `case` handing the envelope to the housing module).
 
 **D3. House interiors.** An interior is an ordinary zone to the client (it needs the S1-S4 data there too).
 - **Recommended:** each house's interior is an **EQEmu instance** of its interior zone (`database_instances.cpp`), with the instance id kept on the property; entering routes the player into it. To be confirmed against the zone-in path in chunk 6, and against Q11 (the interior-zone crash) in testing.
