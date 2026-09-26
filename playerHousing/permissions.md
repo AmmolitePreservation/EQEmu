@@ -49,8 +49,8 @@ Checks in order:
    - `0x4ff440`: if the record has a **Guild Plot** ancestor (`0x4d6790(record, 0x80, 0)`): permissions 2-10 → requires **`0x20000`**; **any other permission (0, 1, 11, 12) → no requirement** (`0x4ff486` jumps to `0x4ff4d5`, which returns 0).
    - With no Guild Plot ancestor: every permission but 1 (Enter) → requires **`0x10000`** (House of Thule); Enter → no requirement.
    - Reading: every real-estate permission needs the House of Thule bit, and guild-plot permissions need `0x20000`, which fits the client strings requiring **Veil of Alaris** for guild plots. That bit is inferred, not verified.
-4. `0x4ff4e0(permission, record, arg, ownerFlag)` ≠ 0 → **deny** (partly read: an owner with permission 2, 3, 5, or 8 passes; otherwise it checks against a Guild Plot ancestor).
-5. If the record is a house (category 2) or crate (category 6), move to its containing plot (`0x4d6790(record, 0x88, 1)`); none → **deny**.
+4. `0x4ff4e0(permission, record, character, ownerFlag)` ≠ 0 → **deny** (read in full): an owner with permission 2, 3, 5 or 8 passes; otherwise, under a Guild Plot ancestor, permissions 2-10 need **membership feature 10** (without it the client shows the membership message and denies); anything else passes. **The server doesn't check feature 10**: EQEmu has no membership tiers, and Peridot grants Gold (feature 10 = 1).
+5. If the record is a house (category 2) or crate (category 6), move to its containing plot (`0x4d6790(record, 0x88, 1)`); none → **deny**. **Category 2 is both Guild Hall (type 2) and Player House (type 3)**, so a guild hall uses its guild plot's list (`0x7f60f0` / `0x7f61b0`, types to categories verified entry by entry: 1 Regular Zone 1, 2 Guild Hall 2, 3 Player House 2, 4 Plot 3, 5 Neighborhood 4, 6 Town 5, 7 Moving Crate 6, 8 Guild Plot 3).
 6. Plot (type 4) and `0x4d6b10` owner → **allow**.
 7. Guild Plot (type 8), record guild id == character guild id, and the evaluator's guild-rank argument == 1 → **allow**.
 8. Otherwise, the access list: `list = 0x4ff100(record +0x14 property id)`; none → **deny**; otherwise `0x4ff210(list, 0x4ff250(record, name, guildID, …))`.
