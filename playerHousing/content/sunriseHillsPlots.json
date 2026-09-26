@@ -1222,7 +1222,12 @@
   ],
   "heading": 123.0,
   "sizeAcross": 351.2,
-  "sizeAlong": 699.8
+  "sizeAlong": 699.8,
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 210,
+  "vault": 0,
+  "pets": 12
  },
  {
   "kind": "guild plot",
@@ -1240,7 +1245,13 @@
   ],
   "heading": 384.9,
   "sizeAcross": 351.2,
-  "sizeAlong": 699.8
+  "sizeAlong": 699.8,
+  "address": "200 Terminus Heights",
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 210,
+  "vault": 0,
+  "pets": 12
  },
  {
   "kind": "guild plot",
@@ -1282,6 +1293,11 @@
   ],
   "heading": 122.9,
   "sizeAcross": 351.2,
-  "sizeAlong": 699.8
+  "sizeAlong": 699.8,
+  "pricePlatinum": 21,
+  "upkeepCopperPerDay": 2100,
+  "capacity": 210,
+  "vault": 0,
+  "pets": 12
  }
 ]
