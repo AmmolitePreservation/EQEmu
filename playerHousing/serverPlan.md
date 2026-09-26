@@ -134,15 +134,36 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 
 **Every housing behavior an operator might tune is an EQEmu rule**, in a new **`Housing`** rule category, the way parcels and merchants are configured (`common/ruletypes.h`: `RULE_CATEGORY(Parcel)` with `RULE_BOOL`, `RULE_INT` and `RULE_REAL`, each with a default and a description). **No SQL is needed for rules**: world injects every declared rule missing from `rule_values` at boot (`RuleManager::UpdateInjectedRules`, `world/world_boot.cpp:318`) and removes orphaned ones. Rule names follow EQEmu's PascalCase.
 
-**Each chunk declares its subsystem's rules** with defaults and descriptions. Known now:
+**The rules**, with their defaults (Live's behavior where known, otherwise the recommended policy; the decisions they carry are D4 and D6-D10). Permission masks use bit *n* for permission *n* (chunk 6).
 
-| Rule | Purpose |
-|---|---|
-| `Housing:Enabled` | master switch: when off, no housing data is sent and housing requests are refused with a result code |
-| `Housing:EnableUpkeep`, `Housing:UpkeepTickSeconds` | the upkeep tick (D4) and its interval |
-| `Housing:TransferOfferExpirySeconds` | how long a pending transfer offer lives (D2) |
-| `Housing:GuildPlotMinimumMembers` | the server-only minimum guild size for guild plots (the client shows string 5426 but never checks it) |
-| `Housing:EnablePolls`, `Housing:EnableTrophyTribute` | the poll and trophy subsystems |
+| Rule | Type | Default | Meaning |
+|---|---|---|---|
+| `Housing:Enabled` | bool | true | master switch: when off, no housing data is sent and housing requests are refused with a result code |
+| `Housing:EnableUpkeep` | bool | true | the upkeep tick (D4) |
+| `Housing:UpkeepTickSeconds` | int | 3600 | the tick's interval; each tick charges the elapsed share of the daily cost (Live: hourly, 1/24 of a day) |
+| `Housing:UpkeepGraceHours` | int | 0 | hours after a purchase before the first charge (D9: the next tick) |
+| `Housing:InactivityDays` | int | 90 | days without a login before an owner loses a plot (everything into a crate, escrow refunded; Live: 90); 0 = never |
+| `Housing:UnpaidUpkeepEvictionDays` | int | 0 | days a plot may stay unpaid before it's reclaimed; 0 = never (D7; Live never evicted for unpaid upkeep) |
+| `Housing:SellRefundPercent` | int | 0 | percent of the purchase price refunded on a sale (D6) |
+| `Housing:SellRefundsEscrow` | bool | true | a sale returns the escrow balance (D6) |
+| `Housing:MaxPlotsPerCharacter` | int | 3 | Live: two at launch, three later |
+| `Housing:MaxGuildPlotsPerGuild` | int | 1 | across all neighborhoods (Live) |
+| `Housing:GuildPlotMinimumMembers` | int | 0 | a guild's minimum size to buy a guild plot (the client's string 5426 takes it as a parameter; Live's value is unknown); 0 = no minimum |
+| `Housing:TransferOfferExpirySeconds` | int | 300 | how long a transfer offer waits for an answer (D10) |
+| `Housing:NeighborhoodSearchLimit` | int | 0 | the most rows a neighborhood search returns; 0 = every match (D8: an empty search lists every neighborhood) |
+| `Housing:AutoNeighborhoodDefinition` | int | 0 | the neighborhood definition new neighborhoods are made from as others fill (Live); 0 = off until the template is authored |
+| `Housing:EnableWorldPlots` | bool | false | plots hosted in public zones (X3) |
+| `Housing:EnablePolls` | bool | true | the poll subsystem (S11) |
+| `Housing:EnableTrophyTribute` | bool | true | the trophy subsystem (S12) |
+| `Housing:DefaultAccessEveryone` | int | 2 | a new plot's group 0 mask: Enter (Live) |
+| `Housing:DefaultAccessVisitor` | int | 2 | group 1: Enter (Live) |
+| `Housing:DefaultAccessAcquaintance` | int | 2 | group 2: Enter |
+| `Housing:DefaultAccessFriend` | int | 2050 | group 3: Enter and Interact Item (Live) |
+| `Housing:DefaultAccessTrustee` | int | 8191 | group 4: every permission (Live: all an owner can assign) |
+| `Housing:DefaultAccessCoOwner` | int | 8191 | group 5: every permission |
+| `Housing:DefaultAccessOwner` | int | 8191 | group 6: every permission |
+
+Chunk 7 adds the trophy and poll rules (Live: four active personal trophy effects, extendable by AAs).
 
 **Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (the upkeep `Timer`, its startup run and one call, mirroring the parcel block); the upkeep routine itself is new code in world, and `world/CMakeLists.txt` lists it (T16).
 
@@ -159,7 +180,7 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 
 | Extension | Design | Additive or binary | Rules and tuning |
 |---|---|---|---|
-| **X1. Private zones as interiors** | Each house or guild-hall definition names its **interior zone and version**, generalizing D3 (standard houses name their `phinterior*` zones; a "Plane of Hate Estate" names `hateplane` at the housing version). The property covering the interior is a Player House or Guild Hall with **one region enclosing the zone**. Entering the house (`0x218c` / `0x050c` on the house) creates or reuses the never-expiring instance and zones the player in; `/leaverealestate` (`0x1da9`) returns them | **Additive**: pure content beside the standard interiors | item caps per definition (content); the housing zone version number (a rule) |
+| **X1. Private zones as interiors** | Each house or guild-hall definition names its **interior zone and version**, generalizing D3 (standard houses name their `phinterior*` zones; a "Plane of Hate Estate" names `hateplane` at the housing version). The property covering the interior is a Player House or Guild Hall with **one region enclosing the zone**. Entering the house (`0x218c` / `0x050c` on the house) creates or reuses the never-expiring instance and zones the player in; `/leaverealestate` (`0x1da9`) returns them | **Additive**: pure content beside the standard interiors | item caps and the zone version per definition (content) |
 | **X2. Custom neighborhood maps** | Each neighborhood names its **template zone and version** (standard: 712; custom: East Commons at the housing version); plots are authored region boxes and plot definitions on that map | **Additive** | per neighborhood (content) |
 | **X3. Plots in the live world** | The same plots and regions, hosted in the **public zone** (instance 0) | **Additive, with tuning**: nothing else must be switched off, but public plots raise the stakes on upkeep and abandonment, griefing (yards are open ground; only house interiors enforce Enter), NPC pathing (mobs walk through placed objects; the server's path maps don't include them), and zone-in traffic (every visitor receives the zone's placed objects) | `Housing:EnableWorldPlots`; **per-zone tuning through the zone's `ruleset`** (stricter upkeep or smaller plots in public zones) |
 
@@ -403,12 +424,12 @@ Against the official House of Thule housing guide (everquest.com, 2010-10-13, "H
 - **Default access** for a new plot: Everyone and Visitor may enter; Friend may also interact; Trustee holds every permission an owner can assign; Co-Owner also Manage.
 - **Trophies:** four active personal trophy effects, extendable by AAs (chunk 7).
 
-### Decisions (recommended)
+### Decisions (decided: rules, with these defaults)
 
-- **D6. Selling** returns the escrow balance, not the purchase price (as Live's inactivity reclaim did; `Housing:SellRefundPercent`, default 0); the seller gets the crate in inventory, or, without room, as an archived crate delivered at a later zone-in.
-- **D7. No eviction for unpaid upkeep**; eviction for inactivity only (above).
-- **D8. An empty name search** lists every neighborhood.
-- **D9. Upkeep charges start at the next hourly tick** after purchase; a plot bought with an empty escrow is expired until funded.
-- **D10. Transfers need no presence check:** an unanswered offer expires and the owner is told.
+- **D6. Selling** returns the escrow balance, not the purchase price (as Live's inactivity reclaim did; `Housing:SellRefundsEscrow`, `Housing:SellRefundPercent`); the seller gets the crate in inventory, or, without room, as an archived crate delivered at a later zone-in.
+- **D7. No eviction for unpaid upkeep** (`Housing:UnpaidUpkeepEvictionDays` 0); eviction for inactivity (`Housing:InactivityDays` 90).
+- **D8. An empty name search** lists every neighborhood (`Housing:NeighborhoodSearchLimit` 0).
+- **D9. Upkeep charges start at the next tick** after purchase (`Housing:UpkeepGraceHours` 0); a plot bought with an empty escrow is expired until funded.
+- **D10. Transfers need no presence check:** an unanswered offer expires (`Housing:TransferOfferExpirySeconds`) and the owner is told.
 
-**Rules added:** `Housing:MaxPlotsPerCharacter` (3), `Housing:MaxGuildPlotsPerGuild` (1), `Housing:SellRefundPercent` (0), `Housing:InactivityDays` (90), `Housing:AutoNeighborhoodDefinition`.
+**Rules:** all in the configuration table (chunk 1).
