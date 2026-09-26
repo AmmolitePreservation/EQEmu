@@ -61,6 +61,7 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T23 | `zone/zone.cpp` (`Zone::Init`, `Zone::Process`) | the module's boot after the guild cache loads, and one call per `Process` that keeps its own timer (`zone.h` untouched) | periodic zone-side housing work |
 | T24 | `zone/bonuses.cpp` | the items of the client's active trophy benefits (`housing::trophyBenefitItems`) added to the bonus calculation exactly like tribute's | trophy tribute (EQEmu has no trophy slots) |
 | T25 | `common/eqemu_logsys.h`, `common/eqemu_logsys_log_aliases.h` | a `Housing` log category and its aliases | triage |
+| T26 | `common/database_schema.h` | the housing tables in EQEmu's content and player lists, and the per-character ones in its character map | EQEmu's dumps, character deletion and copy include them |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -297,7 +298,7 @@ Every housing message, **76 opcode values** (the register's sections 2 and 3, `s
 
 ## Chunk 3: the schema
 
-**`sql/housingSchema.sql`**: 20 tables, EQEmu's conventions (`snake_case`, `id int(10) unsigned`, `character_id` / `guild_id` / `zone_id` + `instance_id`, `datetime` for times). **Every column exists for a message or rule; anything derivable is derived when sent:** owner names (from `character_data`), children (from `parent_id`), the owner's fellowship, the character's three property lists, neighborhood plot counts, poll states (from dates and flags), poll results (from votes), region matrices (from the box), trophy flags (below). **Tested** (`tools/testHousingSchema.py`, MariaDB, the real `inventory` definition): created twice, a neighborhood → plot → house hierarchy with a crate carried as an item, and the module's queries.
+**`sql/housingSchema.sql`**: 23 tables, EQEmu's conventions (`snake_case`, `id int(10) unsigned`, `character_id` / `guild_id` / `zone_id` + `instance_id`, `datetime` for times). **Every column exists for a message or rule; anything derivable is derived when sent:** owner names (from `character_data`), children (from `parent_id`), the owner's fellowship, the character's three property lists, neighborhood plot counts, poll states (from dates and flags), poll results (from votes), region matrices (from the box), trophy flags (below). **Tested** (`tools/testHousingSchema.py`, MariaDB, the real `inventory` definition): created twice, a neighborhood → plot → house hierarchy with a crate carried as an item, and the module's queries.
 
 | Table | Kind | Holds | Wire |
 |---|---|---|---|
@@ -305,16 +306,19 @@ Every housing message, **76 opcode values** (the register's sections 2 and 3, `s
 | `real_estate_costs`, `_cost_options`, `_cost_items` | content | cost elements, their options in order, and the items per option: currency, sub-key, **signed** amount (negative = reduction) | `0x2698` |
 | `real_estate_regions` | content | a box: center, size, heading; the client's matrix is computed from it (chunk 4) | `0x49df` |
 | `real_estate_properties` | state | the hierarchy, definition, guild, owner, name, **host** (zone + instance; D2 routing, X2, X3), **interior instance** (D3, X1), **the item guid that contains it** (list B), upkeep option and state, **next upkeep** (indexed, D4), voting opt-out, archived (list C), **revision** (D2) | `0x6fd0` / `0x4f09` / `0x63fd`, lists |
-| `real_estate_property_balances` | state | per currency, exact integers (sent as f64) | the record's balance map |
+| `real_estate_property_balances` | state | per currency, `DECIMAL(24,6)`: exact fractions for the hourly share of a daily cost (sent as f64); **only ever read and written in SQL** (EQEmu's generator maps `DECIMAL` to `float`, so it has no repository) | the record's balance map |
 | `real_estate_items` | state | placed and stored items: property, owner, placed flag, transform, and **the item instance exactly as `inventory` keeps it** (charges, color, augments, custom data, ornaments, guid); the record id is the row id | `0x1cef` and updates |
 | `real_estate_access_groups`, `_access_names` | state | 7 group masks per property; names with their group | `0x485d`, `0x3146` |
 | `real_estate_transfer_offers` | state | one pending offer per property, with its expiry (D2) | `0x5a63` |
-| `real_estate_polls`, `_poll_options`, `_poll_labels`, `_poll_votes` | state (labels: content) | polls (published and archived flags; the state is derived), options in order, the global label table, votes | `0x15e2` ... `0x7a4d` |
+| `real_estate_polls`, `_poll_options`, `_poll_labels`, `_poll_votes` | state | polls (published and archived flags; the state is derived), options in order, the global label table, votes | `0x15e2` ... `0x7a4d` |
+| `real_estate_npc_items` | content | item id to the NPC type an NPC item spawns (chunk 5) | `0x21ea` |
+| `real_estate_neighborhood_names` | content | the names new neighborhoods take (`id`, unique `name`) | the property name |
+| `character_real_estate_anchors` | state | the primary property "Translocate Primary Anchor" leads to (chunk 7) | `0x7bb1` |
 | `character_trophy_tribute` (+ `_state`), `guild_trophy_tribute` (+ `_state`) | state | 10 personal / 4 guild slots; active flag and timer; the guild opt-in; **the guild edit lock** (who, when; global under D2) | `0x7697` ... `0x02bc` |
 
 **Constraints for what the client can't check:** definition type 1-8, item caps (non-real-estate and pet items within max items), access groups 0-6, personal slots 0-9, guild slots 0-3, poll kinds, selection types and dates, region volume, one pending offer per property.
 
-**Migrations** (custom track, T7): version 1, the item tail (chunk 2); version 2, this schema. **Repositories:** generated base repositories for every table, like EQEmu's own.
+**Migrations** (custom track, T7, generated from the tested SQL by `tools/makeHousingManifest.py`): version 1, the item tail (chunk 2); version 2, the 8 catalog tables (content database); version 3, the 15 state tables. **Repositories:** 22, generated by EQEmu's own generator (`utils/scripts/generators/repository-generator.pl`), none for balances. **EQEmu's schema lists** (T26) name every table: catalog as content, state as player, and the three per-character tables in the character map, so EQEmu's dumps, character deletion and copy include them.
 
 **Findings from the full-table queries** (they shape later chunks):
 - **The trophy benefits aren't in `tributes`**: it holds personal tribute 0-59 and guild tribute 60-82, none of the ids trophy items name (100, 111-121, 201-206, ...). They're content to add (`tributes`, `tribute_levels`). EQEmu's `tributes.unknown` is the tier count, not the client's trophy flag; the flag is **derived**: a tribute is a trophy benefit if a placeable item names it, personal or guild by the item's placeable bits.
