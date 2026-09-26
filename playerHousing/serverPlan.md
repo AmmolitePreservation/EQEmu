@@ -483,11 +483,13 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 | Manor (three-room) | | 500 / 300 |
 | plots | 40 / 50 / 60, no vault | 90 / 105 / 120 (the template), no vault |
 
+**Live today holds the later column:** a three-room Monel Style Country House's Lore reads "can hold up to 500 items. 75 of which can be any type of items" (the vault is that any-type allowance: the client's "Vault" is each definition's maximum of non-placeable items, the yard's, the house's and each crate's their own), and a guild plot shows Vault 0.
+
 Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of the Bixie and The Wayward Lady 600 / 300; some special houses waive the plot's upkeep. The crates Ardak sells hold placeable items only (the Estate crate 500).
 
 **Live's house names follow the room count, not the item:** a Monel Style Brick Manor's interior is named **"Three Room House"**, both in its item display (string 5289) and in the zone-in banner (**string 9508, "Entering %1..."**, `%1` the neighborhood, plot address and house names joined, as the item display's), not the zone's long name ("Three Bedroom House Interior"). So the five three-room definitions share that name, and the four one-room definitions share **"One Room House"** (seen on Live).
 
-**Upkeep ids items name:** 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35.
+**Upkeep ids items name** (Peridot's whole items table: 161 of its 5,577 placeable items, exactly these): 17-20 three-room House, Hut, Residence, Domicile; 21-24 the same one-room; 26-35 the ten storage crates; 6 tradeskill stations; 4 trophies; 2 two carved tables. **Manors and guild halls name none** (no upkeep on Live; store and Loyalty houses were rent-free). Cost ids share one namespace with plot costs, so plot cost ids must avoid 2, 4, 6 and 17-35. **Upkeep id 22 (the one-room Hut) costs 7 gold a day on Live** (a Behroe Style Stone Hut's item display), the first of sheet A's amounts. The manor items are No Trade in their own data.
 
 **Currencies (Allakhazam):** plot upkeep may be paid in platinum or Doubloons, Orux, Phosphenes, Faycitum or Chronobines (**Live's windows name them Doubloon, Orum, Phosphene, Faycetum and Chronobine**: all five in a guild plot's price and upkeep lists); houses and items only in platinum; purchase may offer alternate currencies. The plot table's upkeep is daily ("8p 4g" = 8,400 copper, a tenth of the price).
 
