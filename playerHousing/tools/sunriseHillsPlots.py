@@ -2,9 +2,15 @@
 
 The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
 (center, size, orientation) is fitted to its four sides, and its purchase price, daily upkeep, item capacity and pet cap
-come from Live's plot table (Allakhazam, "EQ:Player Housing in EverQuest"). Coordinates are the map file's.
+come from Live's plot table (Allakhazam, "EQ:Player Housing in EverQuest").
 
-Usage: python3 sunriseHillsPlots.py [neighborhood_2.txt] > sunriseHillsPlots.json
+World coordinates: the map stores (-x, -y) (verified: every plot center lands within 1.2 units of one of Live's plot border
+stones, the OBP_LOTSQUARE doors in content/sunriseHillsLotSquares.tsv, exported from PEQ's doors table). EQ headings (512 per
+turn, 0 facing +y) are 90 degrees minus the box edge's angle from +x (verified: every plot within 0.7 degrees of its stone's
+heading, the doors' own rounding). Each plot takes its stone's door id and ground height. The two stones no player plot claims
+are listed as guild plot candidates.
+
+Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 """
 import collections, json, math, os, re, sys
 
@@ -104,9 +110,18 @@ def liveGroup(address):
   raise ValueError(f'{address}: not in Live\'s plot table')
 
 
+def loadStones(path):
+  stones = []
+  for line in open(path):
+    f = line.rstrip('\n').split('\t')
+    stones.append(dict(door=int(f[1]), position=(float(f[2]), float(f[3]), float(f[4])), heading=float(f[5])))
+  return stones
+
+
 if __name__ == '__main__':
   here = os.path.dirname(os.path.abspath(__file__))
-  segments, labels = parse(sys.argv[1] if len(sys.argv) > 1 else os.path.join(here, '..', 'content', 'neighborhood_2.txt'))
+  segments, labels = parse(os.path.join(here, '..', 'content', 'neighborhood_2.txt'))
+  stones = loadStones(os.path.join(here, '..', 'content', 'sunriseHillsLotSquares.tsv'))
   plots = matchLabels(fitBoxes(segments), labels)
   counts = collections.Counter()
   rows = []
@@ -114,13 +129,27 @@ if __name__ == '__main__':
     group = liveGroup(plot['address'])
     counts[group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))] += 1
     box = plot['box']
-    rows.append(dict(address=plot['address'], mapCenter=[round(c, 3) for c in box['center']], sizeAlong=round(box['sizeAlong'], 2),
-                     sizeAcross=round(box['sizeAcross'], 2), mapSideAngle=round(box['sideAngle'], 3),
-                     mapZRange=[round(z, 3) for z in box['zRange']], pricePlatinum=group[2], upkeepCopperPerDay=group[3],
-                     capacity=group[4], pets=group[5]))
+    worldX, worldY = -box['center'][0], -box['center'][1]
+    stone = min(stones, key=lambda st: math.hypot(st['position'][0] - worldX, st['position'][1] - worldY))
+    if math.hypot(stone['position'][0] - worldX, stone['position'][1] - worldY) > 5:
+      raise ValueError(f"{plot['address']}: no border stone at its center")
+    heading = (90 - box['sideAngle']) % 90 * 512 / 360
+    turn = (stone['heading'] - heading) % 128
+    if min(turn, 128 - turn) > 1:
+      raise ValueError(f"{plot['address']}: box heading {heading:.1f} disagrees with its stone's {stone['heading']:.0f}")
+    rows.append(dict(kind='plot', address=plot['address'], door=stone['door'], center=[round(worldX, 3), round(worldY, 3), stone['position'][2]],
+                     heading=stone['heading'], sizeAcross=round(box['sizeAcross'], 2), sizeAlong=round(box['sizeAlong'], 2),
+                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=group[4], pets=group[5]))
   for group in liveGroups:
     key = group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))
     if counts[key] != group[6]:
       raise ValueError(f'{group[0]} {group[1] or ""}: {counts[key]} plots on the map, {group[6]} in Live\'s table')
+  claimed = {row['door'] for row in rows}
+  if len(claimed) != len(rows):
+    raise ValueError('two plots claimed one border stone')
+  for stone in stones:
+    if stone['door'] not in claimed:
+      rows.append(dict(kind='guild plot candidate', address='', door=stone['door'], center=list(stone['position']), heading=stone['heading']))
   print(json.dumps(rows, indent=1))
-  print(f'{len(rows)} plots; every group matches Live\'s table', file=sys.stderr)
+  print(f"{len(claimed)} plots, each on its own border stone with a matching heading; every group matches Live's table; "
+        f"{len(rows) - len(claimed)} unclaimed stones", file=sys.stderr)
