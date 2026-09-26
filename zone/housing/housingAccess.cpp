@@ -13,6 +13,10 @@ namespace housing {
     constexpr uint32 houseOfThule = 0x10000;
     constexpr uint32 veilOfAlaris = 0x20000;
 
+    bool usesPlotAccess(DefinitionType type) {
+      return type == DefinitionType::guildHall || type == DefinitionType::playerHouse || type == DefinitionType::movingCrate;
+    }
+
     bool ownsPlayerPlot(Client *client, const Property &property, const PropertyLookup &lookup) {
       const Property *plot = ancestorOfType(property, typeBit(DefinitionType::plot), false, lookup);
       return plot && plot->owner_character_id == client->CharacterID();
@@ -89,8 +93,7 @@ namespace housing {
 
   uint8 accessGroup(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf) {
     const Property *subject = &property;
-    const DefinitionType type = typeOf(property);
-    if (type == DefinitionType::playerHouse || type == DefinitionType::movingCrate) {
+    if (usesPlotAccess(typeOf(property))) {
       subject = ancestorOfType(property, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookup);
       if (!subject) {
         return 0;
@@ -130,8 +133,7 @@ namespace housing {
       return false;
     }
     const Property *subject = &property;
-    const DefinitionType type = typeOf(property);
-    if (type == DefinitionType::playerHouse || type == DefinitionType::movingCrate) {
+    if (usesPlotAccess(typeOf(property))) {
       subject = ancestorOfType(property, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookup);
       if (!subject) {
         return false;
