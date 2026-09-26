@@ -115,6 +115,7 @@
 
 #define ServerOP_ParcelDelivery                   0x0090
 #define ServerOP_ParcelPrune                      0x0091
+#define ServerOP_Housing                          0x0092
 
 #define ServerOP_RaidAdd			0x0100 //in use
 #define ServerOP_RaidRemove			0x0101 //in use
@@ -1779,6 +1780,19 @@ struct BazaarPurchaseMessaging_Struct {
 	uint32           id;
 };
 
+
+// player housing: an event says what changed, receivers re-read the database (playerHousing/serverPlan.md, D2)
+struct ServerHousingEvent_Struct {
+	uint32 event_type;
+	uint32 target_kind;
+	uint32 target_id;
+	uint32 origin_zone_id;
+	uint32 origin_instance_id;
+	uint32 property_id;
+	uint32 revision;
+	uint32 payload_size;
+	uint8  payload[0];
+};
 
 #pragma pack()
 

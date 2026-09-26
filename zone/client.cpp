@@ -78,6 +78,7 @@ extern volatile bool RunLoops;
 #include "dialogue_window.h"
 #include "../common/zone_store.h"
 #include "../common/skill_caps.h"
+#include "housing/housing.h"
 
 
 extern QueryServ* QServ;
@@ -714,6 +715,8 @@ Client::~Client() {
 	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB (Parcel, EnableParcelMerchants)) {
 		DoParcelCancel();
 	}
+
+	housing::onDisconnect(this);
 
 	mMovementManager->RemoveClient(this);
 
