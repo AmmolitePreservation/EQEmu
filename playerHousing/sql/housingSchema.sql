@@ -105,10 +105,12 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   KEY `next_upkeep_at` (`next_upkeep_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Upkeep is charged hourly, 1/24 of the daily cost at a time, so balances are fractional (the client keeps them as f64);
+-- coin is in copper.
 CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   `property_id` INT(10) UNSIGNED NOT NULL,
   `currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `amount` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+  `amount` DECIMAL(24,6) NOT NULL DEFAULT 0,
   PRIMARY KEY (`property_id`, `currency`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

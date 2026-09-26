@@ -79,6 +79,7 @@ assert 'next_upkeep_at' in plan and 'range' in plan, plan
 print('upkeep tick: the due query is an index range scan')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
 check('price with two currencies', "SELECT GROUP_CONCAT(CONCAT(currency, ':', amount) ORDER BY currency) FROM real_estate_cost_items WHERE cost_id = 1 AND option_key = 0", '0:5000000,9:25')
+check('an hourly charge leaves a fractional balance', "UPDATE real_estate_property_balances SET amount = amount - 2 / 24 WHERE property_id = 2 AND currency = 9; SELECT amount FROM real_estate_property_balances WHERE property_id = 2 AND currency = 9", '2.916667')
 check('a reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 2 AND option_key = 1", '-200')
 for label, bad in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)"),
                    ('pet items above max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_pet_items) VALUES (998, 4, 10, 11)"),
