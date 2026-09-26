@@ -1179,7 +1179,7 @@ RULE_BOOL(EvolvingItems, DestroyAugmentsOnEvolve, false, "If this is enabled, an
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Housing)
-RULE_BOOL(Housing, Enabled, true, "Master switch for player housing: when off, no housing data is sent and housing requests are refused.")
+RULE_BOOL(Housing, EnableHousing, true, "Master switch for player housing: when off, no housing data is sent and housing requests are refused.")
 RULE_BOOL(Housing, EnableUpkeep, true, "Charge property and item upkeep on the world upkeep tick.")
 RULE_INT(Housing, UpkeepTickSeconds, 3600, "Seconds between upkeep ticks; each tick charges the elapsed share of the daily cost (Live: hourly).")
 RULE_INT(Housing, UpkeepGraceHours, 0, "Hours after a purchase before the first upkeep charge.")
