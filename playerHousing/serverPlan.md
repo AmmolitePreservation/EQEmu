@@ -166,7 +166,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:DefaultAccessVisitor` | int | 2 | group 1: Enter (Live) |
 | `Housing:DefaultAccessAcquaintance` | int | 2 | group 2: Enter |
 | `Housing:DefaultAccessFriend` | int | 2050 | group 3: Enter and Interact Item (Live) |
-| `Housing:DefaultAccessTrustee` | int | 8191 | group 4: every permission (Live: all an owner can assign) |
+| `Housing:DefaultAccessTrustee` | int | 4095 | group 4: every permission but Manage (Live: "Co-Owner also Manage") |
 | `Housing:DefaultAccessCoOwner` | int | 8191 | group 5: every permission |
 | `Housing:DefaultAccessOwner` | int | 8191 | group 6: every permission |
 

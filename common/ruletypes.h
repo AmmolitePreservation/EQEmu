@@ -1201,7 +1201,7 @@ RULE_INT(Housing, DefaultAccessEveryone, 2, "A new plot's access group 0 (Everyo
 RULE_INT(Housing, DefaultAccessVisitor, 2, "A new plot's access group 1 (Visitor) permission mask.")
 RULE_INT(Housing, DefaultAccessAcquaintance, 2, "A new plot's access group 2 (Acquaintance) permission mask.")
 RULE_INT(Housing, DefaultAccessFriend, 2050, "A new plot's access group 3 (Friend) permission mask (2050 = Enter and Interact Item).")
-RULE_INT(Housing, DefaultAccessTrustee, 8191, "A new plot's access group 4 (Trustee) permission mask (8191 = every permission).")
+RULE_INT(Housing, DefaultAccessTrustee, 4095, "A new plot's access group 4 (Trustee) permission mask (4095 = every permission but Manage, as on Live).")
 RULE_INT(Housing, DefaultAccessCoOwner, 8191, "A new plot's access group 5 (Co-Owner) permission mask.")
 RULE_INT(Housing, DefaultAccessOwner, 8191, "A new plot's access group 6 (Owner) permission mask.")
 RULE_CATEGORY_END()
