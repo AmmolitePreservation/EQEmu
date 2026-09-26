@@ -4,7 +4,7 @@
 
 **Principle: surgical.** Housing lives in its own module; existing EQEmu code is touched only at the points listed below, each for a stated reason. New tables, a few altered fields and data rows are expected.
 
-**Status:** chunk 1 (architecture, touch points, persistence) written; D1 and D2 decided; D3 and D4 open; chunks 2-7 to do.
+**Status:** chunk 1 (architecture, touch points, persistence, decisions D1-D4, configuration through rules) complete; chunks 2-7 to do.
 
 ## Chunk 1: architecture
 
@@ -35,6 +35,9 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T11 | `common/servertalk.h` | `ServerOP_Housing` and its envelope | cross-zone housing events (D2) |
 | T12 | `world/zoneserver.cpp` | one `case` in the list world forwards to every zone | delivery |
 | T13 | `zone/worldserver.cpp` | one `case` handing the envelope to the housing module | receiving |
+| T14 | `common/ruletypes.h` | the `Housing` rule category | configuration through EQEmu rules |
+| T15 | `world/main.cpp` | the upkeep `Timer`, a startup run, one call | the upkeep tick (D4) |
+| T16 | `world/CMakeLists.txt` | the world-side housing sources | build |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -105,10 +108,22 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 
 **Touch points added:** T11 `common/servertalk.h` (the op and the envelope), T12 `world/zoneserver.cpp` (one `case` in the forward-to-all-zones list), T13 `zone/worldserver.cpp` (one `case` handing the envelope to the housing module).
 
-**D3. House interiors.** An interior is an ordinary zone to the client (it needs the S1-S4 data there too).
-- **Recommended:** each house's interior is an **EQEmu instance** of its interior zone (`database_instances.cpp`), with the instance id kept on the property; entering routes the player into it. To be confirmed against the zone-in path in chunk 6, and against Q11 (the interior-zone crash) in testing.
+**D3. House interiors. Decided: one EQEmu instance per house.** An interior is an ordinary zone to the client (it needs the S1-S4 data there too). Each house's interior is an **instance** of its interior zone (`common/database_instances.cpp`), with the instance id kept on the property; entering routes the player into it. **World purges expired instances every 7.5 minutes** (`PurgeInstanceTimer`, `database.PurgeExpiredInstances()`), so house instances are created **without expiry** and removed only when the house is. Details in chunk 6, and Q11 (the interior-zone crash) in testing.
 
-**D4. When upkeep is charged.** No client rule decides this.
-- **(a)** **Lazily**: due charges are computed from the last-charged time whenever a property is loaded or touched (zone-in, the Manage window, a purchase), so no scheduler or new process is needed.
-- **(b)** A daily job in the world server.
-- **Recommended: (a)**; it's deterministic, needs no timer, and fits D2 (a).
+**D4. Upkeep. Decided: a scheduled tick in the world server, on the model of parcel pruning.** World's main loop runs every 32 ms, and its periodic jobs are `Timer` objects whose `Check()` is only a clock comparison (`world/main.cpp`): the instance purge every 450 s, and **`parcel_prune_timer` once a day**, which is gated by rules (`Parcel:EnablePruning`, `Parcel:ParcelPruneDelay`), tells the zones (`ServerOP_ParcelPrune` to every booted zone) and does its database work. The upkeep tick follows it exactly: a `Timer` in the loop calling a small world-side housing routine that charges only the properties that are due (an indexed next-charge time), inside transactions, and sends the housing "property changed" event for each change. Two refinements: **it also runs once at startup** (upkeep that came due while the server was down is caught up), and **its interval is a rule** (hourly by default, so charges land near their due time; a pass with nothing due is one indexed query). The charging rules themselves are chunk 5.
+
+## Configuration: EQEmu rules
+
+**Every housing behavior an operator might tune is an EQEmu rule**, in a new **`Housing`** rule category, the way parcels and merchants are configured (`common/ruletypes.h`: `RULE_CATEGORY(Parcel)` with `RULE_BOOL`, `RULE_INT` and `RULE_REAL`, each with a default and a description). **No SQL is needed for rules**: world injects every declared rule missing from `rule_values` at boot (`RuleManager::UpdateInjectedRules`, `world/world_boot.cpp:318`) and removes orphaned ones. Rule names follow EQEmu's PascalCase.
+
+**Each chunk declares its subsystem's rules** with defaults and descriptions. Known now:
+
+| Rule | Purpose |
+|---|---|
+| `Housing:Enabled` | master switch: when off, no housing data is sent and housing requests are refused with a result code |
+| `Housing:EnableUpkeep`, `Housing:UpkeepTickSeconds` | the upkeep tick (D4) and its interval |
+| `Housing:TransferOfferExpirySeconds` | how long a pending transfer offer lives (D2) |
+| `Housing:GuildPlotMinimumMembers` | the server-only minimum guild size for guild plots (the client shows string 5426 but never checks it) |
+| `Housing:EnablePolls`, `Housing:EnableTrophyTribute` | the poll and trophy subsystems |
+
+**Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (the upkeep `Timer`, its startup run and one call, mirroring the parcel block); the upkeep routine itself is new code in world, and `world/CMakeLists.txt` lists it (T16).
