@@ -9,7 +9,7 @@
 
 namespace housing {
   namespace {
-    constexpr int maximumDepth = 16;
+    constexpr int maximumDepth = 10;
     constexpr uint32 houseOfThule = 0x10000;
     constexpr uint32 veilOfAlaris = 0x20000;
 
@@ -24,8 +24,8 @@ namespace housing {
 
     uint32 requiredExpansions(Permission permission, const Property &property, const PropertyLookup &lookup) {
       const uint8 id = static_cast<uint8>(permission);
-      if (ancestorOfType(property, typeBit(DefinitionType::guildPlot), false, lookup) && id >= 2 && id <= 10) {
-        return veilOfAlaris;
+      if (ancestorOfType(property, typeBit(DefinitionType::guildPlot), false, lookup)) {
+        return id >= 2 && id <= 10 ? veilOfAlaris : 0;
       }
       return permission == Permission::enter ? 0 : houseOfThule;
     }

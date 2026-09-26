@@ -46,9 +46,8 @@ Checks in order:
 1. Null record → **deny**.
 2. `ownerFlag` = `0x4d6b10(name, record)` (the character is the owner of the containing player Plot; see `windows/RealEstatePurchaseWnd.md`).
 3. **Expansion requirement** (skipped if `ownerFlag` and the permission is 2, 3, 5, or 8): `required = 0x4ff440(permission, record)`. If `required & ~expansionFlags` ≠ 0 → **deny**.
-   - `0x4ff440`: if the record has a **Guild Plot** ancestor (`0x4d6790(record, 0x80, 0)`) and the permission is one of 2, 3, 4, 5, 6, 7, 8, 9, 10 → requires **`0x20000`**.
-   - Otherwise, for permissions 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 → requires **`0x10000`** (House of Thule).
-   - Otherwise → no requirement.
+   - `0x4ff440`: if the record has a **Guild Plot** ancestor (`0x4d6790(record, 0x80, 0)`): permissions 2-10 → requires **`0x20000`**; **any other permission (0, 1, 11, 12) → no requirement** (`0x4ff486` jumps to `0x4ff4d5`, which returns 0).
+   - With no Guild Plot ancestor: every permission but 1 (Enter) → requires **`0x10000`** (House of Thule); Enter → no requirement.
    - Reading: every real-estate permission needs the House of Thule bit, and guild-plot permissions need `0x20000`, which fits the client strings requiring **Veil of Alaris** for guild plots. That bit is inferred, not verified.
 4. `0x4ff4e0(permission, record, arg, ownerFlag)` ≠ 0 → **deny** (partly read: an owner with permission 2, 3, 5, or 8 passes; otherwise it checks against a Guild Plot ancestor).
 5. If the record is a house (category 2) or crate (category 6), move to its containing plot (`0x4d6790(record, 0x88, 1)`); none → **deny**.
@@ -141,3 +140,5 @@ The client's guild name table gives the rank names and the permission names; **p
 | 15 | Bank: View Items | | |
 
 **A server-only rule:** string 5426 ("…your guild only has %1 members. In order to purchase a guild plot, your guild must have at least %2 members.") is never shown by client code, so Live enforced a **minimum guild size for guild plots** on the server.
+
+**The ancestor walk** (`0x4d6790(record, mask, skip)`) tests each property's definition type against `mask` through **`0x7f5e30`, verified entry by entry: type `n` → bit `1 << (n - 1)`** (1 Regular Zone 0x1 ... 4 Plot 0x8, 5 Neighborhood 0x10, 7 Moving Crate 0x40, 8 Guild Plot 0x80); `skip` levels are passed before testing (1 = start at the parent), and it gives up after 10 levels.
