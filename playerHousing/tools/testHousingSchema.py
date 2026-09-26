@@ -48,6 +48,7 @@ INSERT INTO real_estate_items (property_id, owner_character_id, placed, x, y, z,
 INSERT INTO real_estate_access_groups VALUES (2, 0, 255), (2, 1, 3);
 INSERT INTO real_estate_access_names VALUES (2, 'Friendly', 1);
 INSERT INTO inventory (character_id, slot_id, item_id, guid) VALUES (7, 23, 52147, 55501);
+INSERT INTO real_estate_npc_items VALUES (66639, 1001);
 """)
 
 def check(label, query, expected):
@@ -76,6 +77,7 @@ check('upkeep tick: due properties', "SELECT GROUP_CONCAT(id) FROM real_estate_p
 plan = sql("EXPLAIN SELECT id FROM real_estate_properties FORCE INDEX (next_upkeep_at) WHERE next_upkeep_at <= NOW()")
 assert 'next_upkeep_at' in plan and 'range' in plan, plan
 print('upkeep tick: the due query is an index range scan')
+check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
 check('price with two currencies', "SELECT GROUP_CONCAT(CONCAT(currency, ':', amount) ORDER BY currency) FROM real_estate_cost_items WHERE cost_id = 1 AND option_key = 1", '0:5000000,9:25')
 check('a reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 2 AND option_key = 2", '-200')
 for label, bad in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)"),
