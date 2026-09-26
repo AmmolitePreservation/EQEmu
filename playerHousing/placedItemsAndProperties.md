@@ -117,7 +117,7 @@ Each of these first requires the local character (`[0xdd2630]` → `0x58c9a0`).
 | `0x0c13` | `u32 id` at +0x00, byte flag at +0x68 | flag set: add to list B (`0x7c9b10`); clear: `0x7bfb90` |
 | `0x76c6` | `u32 id` at +0x00, byte flag at +0x68 | flag set: add to list A (`0x7c9aa0`); clear: `0x7bfb10`; then raise the UI-dirty flag |
 
-*Inferred:* these are the character's property memberships (the `OwnedRealEstatesCount` / `OwnedItemRealEstatesCount` strings). `0x0c13` and `0x76c6` are single-id updates to the same lists. The payload is at least 0x69 bytes; the bytes between +0x04 and +0x68 aren't read here.
+**Named by MacroQuest** (`PcClient`): list A is **`OwnedRealEstates`** (`+0x29ac`), list B **`OwnedItemRealEstates`** (`+0x29bc`: properties contained in items the character carries; the client's `GetItemContainedRealEstateIds`), list C **`ArchivedRealEstates`** (`+0x29cc`: a subset of the owned properties; the client's `GetNonArchivedOwnedRealEstates` excludes them). `0x0c13` and `0x76c6` are single-id updates to the same lists. The payload is at least 0x69 bytes; the bytes between +0x04 and +0x68 aren't read here.
 
 ## Result codes, container drop, and prompt (server → client)
 
