@@ -62,8 +62,8 @@ Returns the character's **group index** (0–6) for the property:
 3. Guild Plot whose guild == the character's guild with rank argument == 1 → **6**.
 4. Otherwise, look up the property's access list (manager map `+0x54`; none → 0) and, in order:
    - the entry for the **character's name** (`0x4ff130(list, name)`)
-   - if a character value (`+0x2054` or `+0x205c`) equals record **`+0x28`**: the entry for the key built by `0x4fef40` (a club or fellowship style key; not read)
-   - if the character's guild == record `+0x24`: the entry for the key built by `0x4feff0(guild, rank)` (a guild/rank key; not read)
+   - if a character value (`+0x2054` or `+0x205c`) equals record **`+0x28`**: the entry for the key **`_Fellowship`** (`0x4fef40`: `sprintf("%c%s", '_', "Fellowship")`)
+   - if the character's guild == record `+0x24`: the entry for the key **`_Guild<rank>`** (`0x4feff0`: `sprintf("%c%s%d", '_', "Guild", rank)`, called with the evaluator's **rank** argument, `[esp+0x2c]` at `0x4ff3d4`, after the guild id check at `0x4ff3c6`-`0x4ff3d2`)
 
 ### Access check `0x4ff210(list, group, permission)`
 
