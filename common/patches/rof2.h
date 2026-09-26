@@ -21,8 +21,14 @@
 #define COMMON_ROF2_H
 
 #include "../struct_strategy.h"
+#include "../eq_packet_structs.h"
 
 class EQStreamIdentifier;
+
+namespace EQ
+{
+	class ItemInstance;
+}
 
 namespace RoF2
 {
@@ -30,6 +36,9 @@ namespace RoF2
 	//these are the only public member of this namespace.
 	extern void Register(EQStreamIdentifier &into);
 	extern void Reload();
+
+	// player housing: an item in RoF2's serialized form, the bytes OP_ItemPacket carries after its packet type
+	extern std::string SerializeItemForHousing(const EQ::ItemInstance* inst, int16 slot_id, ItemPacketType packet_type);
 
 
 
