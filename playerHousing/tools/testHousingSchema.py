@@ -50,7 +50,7 @@ INSERT INTO real_estate_access_names VALUES (2, 'Friendly', 1);
 INSERT INTO inventory (character_id, slot_id, item_id, guid) VALUES (7, 23, 52147, 55501);
 INSERT INTO real_estate_npc_items VALUES (66639, 1001);
 INSERT INTO character_real_estate_anchors VALUES (7, 4);
-INSERT INTO real_estate_neighborhood_names VALUES ('Sunrise Hills 1'), ('Aurora Court'), ('Willow Vale');
+INSERT INTO real_estate_neighborhood_names (name) VALUES ('Sunrise Hills 1'), ('Aurora Court'), ('Willow Vale');
 """)
 
 def check(label, query, expected):
@@ -92,6 +92,7 @@ for label, bad in [('definition type out of range', "INSERT INTO real_estate_def
                    ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)"),
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)"),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)"),
-                   ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())")]:
+                   ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())"),
+                   ('duplicate neighborhood name', "INSERT INTO real_estate_neighborhood_names (name) VALUES ('Aurora Court')")]:
   sql(bad, expectError=True)
   print(f'rejected: {label}')

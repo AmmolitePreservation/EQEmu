@@ -194,9 +194,12 @@ SET(repositories
     repositories/base/base_character_pet_info_repository.h
     repositories/base/base_character_pet_inventory_repository.h
     repositories/base/base_character_potionbelt_repository.h
+    repositories/base/base_character_real_estate_anchors_repository.h
     repositories/base/base_character_skills_repository.h
     repositories/base/base_character_spells_repository.h
     repositories/base/base_character_tasks_repository.h
+    repositories/base/base_character_trophy_tribute_repository.h
+    repositories/base/base_character_trophy_tribute_state_repository.h
     repositories/base/base_character_task_timers_repository.h
     repositories/base/base_char_create_combinations_repository.h
     repositories/base/base_char_create_point_allocations_repository.h
@@ -238,6 +241,8 @@ SET(repositories
     repositories/base/base_guild_members_repository.h
     repositories/base/base_guild_bank_repository.h
     repositories/base/base_guild_relations_repository.h
+    repositories/base/base_guild_trophy_tribute_repository.h
+    repositories/base/base_guild_trophy_tribute_state_repository.h
     repositories/base/base_horses_repository.h
     repositories/base/base_instance_list_repository.h
     repositories/base/base_instance_list_player_repository.h
@@ -300,6 +305,23 @@ SET(repositories
     repositories/base/base_quest_globals_repository.h
     repositories/base/base_raid_details_repository.h
     repositories/base/base_raid_members_repository.h
+    repositories/base/base_real_estate_access_groups_repository.h
+    repositories/base/base_real_estate_access_names_repository.h
+    repositories/base/base_real_estate_cost_items_repository.h
+    repositories/base/base_real_estate_cost_options_repository.h
+    repositories/base/base_real_estate_costs_repository.h
+    repositories/base/base_real_estate_definition_children_repository.h
+    repositories/base/base_real_estate_definitions_repository.h
+    repositories/base/base_real_estate_items_repository.h
+    repositories/base/base_real_estate_neighborhood_names_repository.h
+    repositories/base/base_real_estate_npc_items_repository.h
+    repositories/base/base_real_estate_poll_labels_repository.h
+    repositories/base/base_real_estate_poll_options_repository.h
+    repositories/base/base_real_estate_poll_votes_repository.h
+    repositories/base/base_real_estate_polls_repository.h
+    repositories/base/base_real_estate_properties_repository.h
+    repositories/base/base_real_estate_regions_repository.h
+    repositories/base/base_real_estate_transfer_offers_repository.h
     repositories/base/base_reports_repository.h
     repositories/base/base_respawn_times_repository.h
     repositories/base/base_rule_sets_repository.h
@@ -390,9 +412,12 @@ SET(repositories
     repositories/character_pet_info_repository.h
     repositories/character_pet_inventory_repository.h
     repositories/character_potionbelt_repository.h
+    repositories/character_real_estate_anchors_repository.h
     repositories/character_skills_repository.h
     repositories/character_spells_repository.h
     repositories/character_tasks_repository.h
+    repositories/character_trophy_tribute_repository.h
+    repositories/character_trophy_tribute_state_repository.h
     repositories/character_task_timers_repository.h
     repositories/char_create_combinations_repository.h
     repositories/char_create_point_allocations_repository.h
@@ -434,6 +459,8 @@ SET(repositories
     repositories/guild_members_repository.h
     repositories/guild_bank_repository.h
     repositories/guild_relations_repository.h
+    repositories/guild_trophy_tribute_repository.h
+    repositories/guild_trophy_tribute_state_repository.h
     repositories/horses_repository.h
     repositories/instance_list_repository.h
     repositories/instance_list_player_repository.h
@@ -496,6 +523,23 @@ SET(repositories
     repositories/quest_globals_repository.h
     repositories/raid_details_repository.h
     repositories/raid_members_repository.h
+    repositories/real_estate_access_groups_repository.h
+    repositories/real_estate_access_names_repository.h
+    repositories/real_estate_cost_items_repository.h
+    repositories/real_estate_cost_options_repository.h
+    repositories/real_estate_costs_repository.h
+    repositories/real_estate_definition_children_repository.h
+    repositories/real_estate_definitions_repository.h
+    repositories/real_estate_items_repository.h
+    repositories/real_estate_neighborhood_names_repository.h
+    repositories/real_estate_npc_items_repository.h
+    repositories/real_estate_poll_labels_repository.h
+    repositories/real_estate_poll_options_repository.h
+    repositories/real_estate_poll_votes_repository.h
+    repositories/real_estate_polls_repository.h
+    repositories/real_estate_properties_repository.h
+    repositories/real_estate_regions_repository.h
+    repositories/real_estate_transfer_offers_repository.h
     repositories/reports_repository.h
     repositories/respawn_times_repository.h
     repositories/rule_sets_repository.h
