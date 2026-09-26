@@ -108,7 +108,7 @@ A price with several currencies (for example coin plus an alt currency) is one `
 
 ## Client data files: not needed
 
-On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstateDefs.txt`, `RealEstateDefRel.txt`, `RealEstateCosts.txt`, and `RealEstateItemGroups.txt`. If one is missing it logs to `RealEstateErrors.txt` and carries on.
+On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstateDefs.txt`, `RealEstateDefRel.txt`, `RealEstateCosts.txt`, and `RealEstateItemGroups.txt`. **Neither the RoF2 client nor Live ships them**, and **`RealEstateErrors.txt` is written only for invalid rows in a file that was loaded** (every reference to its name, from `0x7f569c` on, is in the loaders' row validation, such as the item caps check before `0x7f569c`), so a missing file is silently skipped: neither install has the log.
 
 - **Definitions and costs:** fully replaced by `0x2698`.
 - **Item groups** (`(int key, int group, bool flag)` rows): **the client never reads them.** The item-groups class has only a constructor, file loader, insert, clear, and destructor, with no lookup. The only read of its pointer (manager `+0x7c`) is the destructor, and none of the 194 singleton call sites touch it. It's server-side data that happens to be linked into the client.
