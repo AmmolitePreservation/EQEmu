@@ -8,7 +8,7 @@
 
 **Development model:** everything is designed first, then written in full, and the owner builds once. **Database work is tested for real** before delivery: migrations and queries run in a sandbox MariaDB created from the server's real schema (`pok-schema-all.json`), including the `items` rename and decode against the exported rows. **Code is verified by careful reading** against Peridot's source and the research specifications; EQEmu isn't built in the sandbox. After the owner's build, validation happens in game with the diagnostics plugin and the Lua harness.
 
-**Status:** chunks 1-7 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
+**Status:** all 8 chunks complete: the design is ready to implement (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
 
 | Chunk | Covers |
 |---|---|
@@ -60,6 +60,7 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T22 | `common/spdat.h`, `zone/spell_effects.cpp` | spell effects 437 and 438 (defined, not implemented today) handed to the housing module | anchor teleports |
 | T23 | `zone/zone.h`, `zone/zone.cpp` (`Zone::Process`) | a housing `Timer` and one call | periodic zone-side housing work |
 | T24 | `zone/bonuses.cpp` | active trophy benefits' items added to the bonus calculation | trophy tribute (EQEmu has no trophy slots) |
+| T25 | `common/eqemu_logsys.h`, `common/eqemu_logsys_log_aliases.h` | a `Housing` log category and its aliases | triage |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -481,3 +482,53 @@ Polls are run through `#realestate poll` (create, options and labels, publish, c
 **Content:** zone rows for the interiors and guild halls, with their safe points; the interior exit doors; the trophy benefits (`tributes`, `tribute_levels`).
 
 **To verify in game:** that each interior zone's files exist and zoning in works with no housing messages first (Q11, `robustness.md`); which finish a1 / a2 / a3 is; which guild hall item goes to which hall zone (four items: Standard, Grand, Palatial, Modest; three zones: Grand, Greater, Modest); each interior's safe point and front door; `/leaverealestate` on Live.
+
+## Chunk 8: validation
+
+### Proven before the build
+
+| Tool | Proves |
+|---|---|
+| `tools/testItemHousingTail.py` | the `items` migration on the real `items` definition and the exported rows: every value equal to the decoder's (5,580 rows, floats bit for bit), the column order unchanged, a re-run after a mid-way stop, each guard |
+| `tools/itemTailDecode.py` | the decoding of all 5,577 placeable items (one plausible layout each; trophy ids on the trophy items; one interactive object) |
+| `tools/testHousingSchema.py` | the 23 housing tables (created twice), the module's queries (zone-in by host, the character's lists, plot counts, revision-guarded updates, the upkeep index, fractional charges, anchors, names), every constraint |
+| `tools/regionMatrix.py` | the region matrix against the client's containment rule (40,000 points) and the authoring semantics |
+| `tools/sunriseHillsPlots.py` | the template: 71 plots on Live's border stones (1.2 units), headings within 0.7 degrees, every street group against Live's table |
+
+The code itself is verified by reading it against Peridot's source and the research (no EQEmu build in the sandbox).
+
+### Deploying the one build
+
+1. **Back up the database** (`mysqldump` of `peq`) before the new build first starts: the `items` migration renames 18 columns (its own `items_housing_capture` keeps the raw capture, but a full backup covers everything).
+2. Pull, build and restart (the Peridot build loop).
+3. **World runs the custom migrations at boot** (1: the item tail; 2: the housing schema). Check: `world:version` reports custom database version 2; `SHOW COLUMNS FROM items LIKE 'real_estate_upkeep_id'` finds it; `items_housing_capture` holds every item; the 23 tables exist; **`rule_values` has the `Housing:` rules** (injected at boot).
+4. Load the content: the Sunrise Hills template (definitions, costs and regions generated from `content/sunriseHillsPlots.json`), the interior and guild hall zone rows, the NPC item types, the trophy benefits.
+
+### Validating in game, in dependency order
+
+Each stage needs the ones before it; the diagnostics plugin's sections and findings show what the client holds, and a Lua suite (the harness in `mqperidotprobe`) asserts it and records the evidence on a failure. **Stop at the first stage that fails**: everything after it depends on it.
+
+| Stage | Checks | Probe | Lua suite |
+|---|---|---|---|
+| 0. Baseline | the plugin and harness; the client gates | every section; 0 findings | `probeSelfTest`, `clientInvariants`, `baseline` (existing) |
+| 1. The item tail (F1) | a held item's tail equals its `items` row: a wood chair (placeable 142), a house (definition 5, upkeep 17), the Idol of Severilous (trophy 100), the Guild Regeneration Pool (interactive); an ordinary item's housepet name is empty, not `"\xff\xff\xff"` | **a new `cursorItem` section** (the held item's definition and its housing tail) | `itemTail` |
+| 2. Zone-in (S1-S4, F5) | in a Sunrise Hills instance: the catalog, 73 plot records under the neighborhood, the current property, the regions; **standing on each sampled plot makes it the standing-in property** | `definitions`, `costs` (keys 0..n-1), `records`, `manager`, `regions` (containment recomputed); findings `recordDefinitionMissing`, `standingIdUnknownRecord` | `neighborhoodZoneIn` |
+| 3. Purchase, escrow, upkeep (S7, S8) | buy a cheap plot; list A; deposit and withdraw; with `Housing:UpkeepTickSeconds` lowered, hourly charges, then expiry (`0x18`) | `records` (owner, balances, upkeep flag), `character` lists | `purchaseAndEscrow` |
+| 4. Placement (S5) | place from inventory (the preview's green / red), commit, edit, store, pick up; an NPC item; a forge (open, combine); menus | `placement`, `containers`, `worldObjects` (model, transform, **a body**), `spawns` (bindings) | `placement` |
+| 5. Access (S9) | a second character's permissions (enter, add, remove, interact, withdraw) | `accessLists` | manual, two clients |
+| 6. Houses and interiors (S10) | **first zone into an interior with no housing messages** (Q11); then place a house, enter, the front door, `/leaverealestate`, move a house, swap, crate pack / unpack, a layout saved and loaded on another plot | `records` (the house, its parent), `manager` (current property inside) | `houses` |
+| 7. Search, transfer, sell (S6, S7) | the search windows; a transfer to a character in another zone; a sale into a crate item (list B) | `records`, `character` lists | `searchTransferSell` |
+| 8. Polls and trophies (S11, S12) | a GM poll: vote, results, prompt; a trophy placed: available, activated, **its bonus in the character's stats**; the guild set and lock | `polls`, `tribute`, `guild` | `pollsAndTrophies` |
+| 9. Cross-zone and concurrency (D2) | two characters in different zones: a transfer offer; an access change while one is inside the house; the upkeep tick on properties in other zones; two edits of one property at once | `records` revisions via updates | manual, two clients |
+| 10. Extensions (X1-X3) | a private zone as an interior; a custom neighborhood map; world plots with `Housing:EnableWorldPlots` | as stages 2-6 | reuse stages 2-6 |
+
+**The probe addition (`cursorItem`)** is the only plugin change, built with the Lua suites alongside the server code.
+
+### Verification items, all in one list
+
+From chunks 3-7: whether the client keeps its real-estate state across zoning; placed objects render outside the housing zones; the inferred world-object fields (heading offset, wall tilts); the NPC respawn interval's unit; the server's position check against the client's box check at plot edges; which message answers a guild-name cache miss; the two guild plot candidates and the other two (the testing item); each interior zone's files and zoning in with no housing messages (Q11); which finish a1 / a2 / a3 is; which guild hall item goes to which hall zone; each interior's safe point and front door; `/leaverealestate` on Live (`testingNotes.md`).
+
+### Triage
+
+- **A failed Lua case** carries the failing values, a dump taken at that moment, and the likely causes among the probe's findings; a structural finding means the probe saw corrupt client state, not a server bug.
+- **The server side logs to a `Housing` log category** (T25: `common/eqemu_logsys.h` and its name list, `common/eqemu_logsys_log_aliases.h`), informational by default and raised while testing; every refusal is logged with its result code and the rule that failed.
