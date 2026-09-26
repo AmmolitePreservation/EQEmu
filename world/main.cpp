@@ -91,6 +91,7 @@
 #include "../common/skill_caps.h"
 #include "../common/repositories/character_parcels_repository.h"
 #include "../common/ip_util.h"
+#include "housingUpkeep.h"
 
 GroupLFPList        LFPGroupList;
 LauncherList        launcher_list;
@@ -418,6 +419,7 @@ int main(int argc, char **argv)
 
 		ClientList::Instance()->Process();
 		guild_mgr.Process();
+		housing::processUpkeep();
 
 		if (parcel_prune_timer.Check()) {
 			if (RuleB(Parcel, EnableParcelMerchants) && RuleB(Parcel, EnablePruning)) {

@@ -147,6 +147,7 @@ void command_profanity(Client *c, const Seperator *sep);
 void command_push(Client *c, const Seperator *sep);
 void command_raidloot(Client* c, const Seperator* sep);
 void command_randomfeatures(Client *c, const Seperator *sep);
+void command_realestate(Client *c, const Seperator *sep);
 void command_refreshgroup(Client *c, const Seperator *sep);
 void command_reload(Client *c, const Seperator *sep);
 void command_removeitem(Client *c, const Seperator *sep);
