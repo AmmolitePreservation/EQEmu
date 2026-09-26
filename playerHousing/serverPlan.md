@@ -482,6 +482,20 @@ Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of th
 
 **Not documented anywhere found:** house, crate, station, trophy and table upkeep amounts; guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); guild plot capacity; a plot region's height.
 
+## Moving players: only EQEmu's own mechanisms
+
+Housing adds no way of moving a player; it only computes destinations and hands them to what EQEmu already has:
+
+| Move | EQEmu's mechanism |
+|---|---|
+| between the neighborhood's sections | **PEQ's teleport pads**: doors of open type 57 with destinations, already in `doors` (no code) |
+| into a neighborhood (the search window's Go, `0x218c`) | `Client::MovePC(zone, instance, x, y, z, heading)` into the neighborhood's instance; **neighborhoods are global instances** (`is_global`), so anyone may enter, as EQEmu's `VerifyInstanceAlive` allows |
+| into a house or guild hall | `Database::AddClientToInstance`, then `MovePC` into its instance: **a house is a private instance**, and `VerifyInstanceAlive` turns away a character not added to it (`CheckInstanceByCharID`); the Enter permission decides who's added |
+| out by the front door | EQEmu's door click (T21 hands only the destination to housing: the house's plot, in its neighborhood's instance), then `MovePC` |
+| `/leaverealestate`, out on a revoked Enter, a poll's teleport to a ranked plot | `MovePC` |
+| anchors | the spells in `spells_new` (27750 Translocate Primary Anchor, 33099 Teleport Guild Hall Anchor) through the effect ids EQEmu already defines (437, 438, T22), the client's own anchor dialog (`0x7bb1`) for acceptance, then `MovePC` |
+| finding a plot (the search's plot finder) | EQEmu's `/find` path (`SendPath`), not a teleport |
+
 ## Chunk 7: houses and interiors, the crate and layouts, polls, trophies (S10-S12)
 
 ### S10, houses and interiors (and X1)
