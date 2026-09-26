@@ -500,7 +500,7 @@ Special houses (later): Hermit's Hideaway 400 / 300, Evantil's Abode, Hive of th
 
 **Guild plots, as Live's purchase windows show them:** each is **200 on a street of its section** ("200 Guild Way", "200 Terminus Heights", "200 Brimming Way", "200 Vanward Heights"), and **all four have the same terms**: 21 platinum, upkeep 2 platinum 1 gold a day, capacity 210, vault 0, pets 12 (in the template). They were **seen in a guild village**; a public neighborhood's window is to compare, and it should have no Guild row.
 
-**Not documented anywhere found:** house, crate, station, trophy and table upkeep amounts; guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
+**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message): house, crate, station, trophy and table upkeep amounts, except the one-room Hut's 7 gold; guild hall capacities and their zones (38-41: four items, three hall zones); the storage crates other than Estate; the Crate of Eviction (it receives a whole plot, vault items included); a plot region's height.
 
 ## Moving players: only EQEmu's own mechanisms
 
