@@ -285,24 +285,24 @@ public:
 		int32_t     UNK221;
 		int32_t     heirloom;
 		int32_t     UNK223;
-		int32_t     UNK224;
-		int32_t     UNK225;
-		int32_t     UNK226;
-		int32_t     UNK227;
-		int32_t     UNK228;
-		int32_t     UNK229;
-		int32_t     UNK230;
-		int32_t     UNK231;
-		int32_t     UNK232;
-		int32_t     UNK233;
-		int32_t     UNK234;
 		int32_t     placeable;
-		int32_t     UNK236;
-		int32_t     UNK237;
-		int32_t     UNK238;
-		int32_t     UNK239;
-		int32_t     UNK240;
-		int32_t     UNK241;
+		uint8_t     placeable_ignore_collisions;
+		int32_t     placement_type;
+		int32_t     real_estate_definition_id;
+		float       placeable_scale_min;
+		float       placeable_scale_max;
+		int32_t     real_estate_upkeep_id;
+		int32_t     max_per_real_estate;
+		std::string housepet_file_name;
+		int32_t     trophy_benefit_id;
+		uint8_t     disable_placement_rotation;
+		uint8_t     disable_free_placement;
+		uint32_t    npc_respawn_interval;
+		float       placeable_default_scale;
+		float       placeable_default_heading;
+		float       placeable_default_pitch;
+		float       placeable_default_roll;
+		uint8_t     interactive_object;
 		int32_t     epicitem;
 	};
 
@@ -580,24 +580,24 @@ public:
 			"UNK221",
 			"heirloom",
 			"UNK223",
-			"UNK224",
-			"UNK225",
-			"UNK226",
-			"UNK227",
-			"UNK228",
-			"UNK229",
-			"UNK230",
-			"UNK231",
-			"UNK232",
-			"UNK233",
-			"UNK234",
 			"placeable",
-			"UNK236",
-			"UNK237",
-			"UNK238",
-			"UNK239",
-			"UNK240",
-			"UNK241",
+			"placeable_ignore_collisions",
+			"placement_type",
+			"real_estate_definition_id",
+			"placeable_scale_min",
+			"placeable_scale_max",
+			"real_estate_upkeep_id",
+			"max_per_real_estate",
+			"housepet_file_name",
+			"trophy_benefit_id",
+			"disable_placement_rotation",
+			"disable_free_placement",
+			"npc_respawn_interval",
+			"placeable_default_scale",
+			"placeable_default_heading",
+			"placeable_default_pitch",
+			"placeable_default_roll",
+			"interactive_object",
 			"epicitem",
 		};
 	}
@@ -871,24 +871,24 @@ public:
 			"UNK221",
 			"heirloom",
 			"UNK223",
-			"UNK224",
-			"UNK225",
-			"UNK226",
-			"UNK227",
-			"UNK228",
-			"UNK229",
-			"UNK230",
-			"UNK231",
-			"UNK232",
-			"UNK233",
-			"UNK234",
 			"placeable",
-			"UNK236",
-			"UNK237",
-			"UNK238",
-			"UNK239",
-			"UNK240",
-			"UNK241",
+			"placeable_ignore_collisions",
+			"placement_type",
+			"real_estate_definition_id",
+			"placeable_scale_min",
+			"placeable_scale_max",
+			"real_estate_upkeep_id",
+			"max_per_real_estate",
+			"housepet_file_name",
+			"trophy_benefit_id",
+			"disable_placement_rotation",
+			"disable_free_placement",
+			"npc_respawn_interval",
+			"placeable_default_scale",
+			"placeable_default_heading",
+			"placeable_default_pitch",
+			"placeable_default_roll",
+			"interactive_object",
 			"epicitem",
 		};
 	}
@@ -1196,24 +1196,24 @@ public:
 		e.UNK221              = 0;
 		e.heirloom            = 0;
 		e.UNK223              = 0;
-		e.UNK224              = 0;
-		e.UNK225              = 0;
-		e.UNK226              = 0;
-		e.UNK227              = 0;
-		e.UNK228              = 0;
-		e.UNK229              = 0;
-		e.UNK230              = 0;
-		e.UNK231              = 0;
-		e.UNK232              = 0;
-		e.UNK233              = 0;
-		e.UNK234              = 0;
 		e.placeable           = 0;
-		e.UNK236              = 0;
-		e.UNK237              = 0;
-		e.UNK238              = 0;
-		e.UNK239              = 0;
-		e.UNK240              = 0;
-		e.UNK241              = 0;
+		e.placeable_ignore_collisions = 0;
+		e.placement_type      = 0;
+		e.real_estate_definition_id = 0;
+		e.placeable_scale_min = 0;
+		e.placeable_scale_max = 0;
+		e.real_estate_upkeep_id = 0;
+		e.max_per_real_estate = 0;
+		e.housepet_file_name  = "";
+		e.trophy_benefit_id   = 0;
+		e.disable_placement_rotation = 0;
+		e.disable_free_placement = 0;
+		e.npc_respawn_interval = 0;
+		e.placeable_default_scale = 0;
+		e.placeable_default_heading = 0;
+		e.placeable_default_pitch = 0;
+		e.placeable_default_roll = 0;
+		e.interactive_object  = 0;
 		e.epicitem            = 0;
 
 		return e;
@@ -1517,24 +1517,24 @@ public:
 			e.UNK221              = row[263] ? static_cast<int32_t>(atoi(row[263])) : 0;
 			e.heirloom            = row[264] ? static_cast<int32_t>(atoi(row[264])) : 0;
 			e.UNK223              = row[265] ? static_cast<int32_t>(atoi(row[265])) : 0;
-			e.UNK224              = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
-			e.UNK225              = row[267] ? static_cast<int32_t>(atoi(row[267])) : 0;
-			e.UNK226              = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
-			e.UNK227              = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
-			e.UNK228              = row[270] ? static_cast<int32_t>(atoi(row[270])) : 0;
-			e.UNK229              = row[271] ? static_cast<int32_t>(atoi(row[271])) : 0;
-			e.UNK230              = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
-			e.UNK231              = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
-			e.UNK232              = row[274] ? static_cast<int32_t>(atoi(row[274])) : 0;
-			e.UNK233              = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
-			e.UNK234              = row[276] ? static_cast<int32_t>(atoi(row[276])) : 0;
-			e.placeable           = row[277] ? static_cast<int32_t>(atoi(row[277])) : 0;
-			e.UNK236              = row[278] ? static_cast<int32_t>(atoi(row[278])) : 0;
-			e.UNK237              = row[279] ? static_cast<int32_t>(atoi(row[279])) : 0;
-			e.UNK238              = row[280] ? static_cast<int32_t>(atoi(row[280])) : 0;
-			e.UNK239              = row[281] ? static_cast<int32_t>(atoi(row[281])) : 0;
-			e.UNK240              = row[282] ? static_cast<int32_t>(atoi(row[282])) : 0;
-			e.UNK241              = row[283] ? static_cast<int32_t>(atoi(row[283])) : 0;
+			e.placeable           = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
+			e.placeable_ignore_collisions = row[267] ? static_cast<uint8_t>(strtoul(row[267], nullptr, 10)) : 0;
+			e.placement_type      = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
+			e.real_estate_definition_id = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
+			e.placeable_scale_min = row[270] ? strtof(row[270], nullptr) : 0;
+			e.placeable_scale_max = row[271] ? strtof(row[271], nullptr) : 0;
+			e.real_estate_upkeep_id = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
+			e.max_per_real_estate = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
+			e.housepet_file_name  = row[274] ? row[274] : "";
+			e.trophy_benefit_id   = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
+			e.disable_placement_rotation = row[276] ? static_cast<uint8_t>(strtoul(row[276], nullptr, 10)) : 0;
+			e.disable_free_placement = row[277] ? static_cast<uint8_t>(strtoul(row[277], nullptr, 10)) : 0;
+			e.npc_respawn_interval = row[278] ? static_cast<uint32_t>(strtoul(row[278], nullptr, 10)) : 0;
+			e.placeable_default_scale = row[279] ? strtof(row[279], nullptr) : 0;
+			e.placeable_default_heading = row[280] ? strtof(row[280], nullptr) : 0;
+			e.placeable_default_pitch = row[281] ? strtof(row[281], nullptr) : 0;
+			e.placeable_default_roll = row[282] ? strtof(row[282], nullptr) : 0;
+			e.interactive_object  = row[283] ? static_cast<uint8_t>(strtoul(row[283], nullptr, 10)) : 0;
 			e.epicitem            = row[284] ? static_cast<int32_t>(atoi(row[284])) : 0;
 
 			return e;
@@ -1835,24 +1835,24 @@ public:
 		v.push_back(columns[263] + " = " + std::to_string(e.UNK221));
 		v.push_back(columns[264] + " = " + std::to_string(e.heirloom));
 		v.push_back(columns[265] + " = " + std::to_string(e.UNK223));
-		v.push_back(columns[266] + " = " + std::to_string(e.UNK224));
-		v.push_back(columns[267] + " = " + std::to_string(e.UNK225));
-		v.push_back(columns[268] + " = " + std::to_string(e.UNK226));
-		v.push_back(columns[269] + " = " + std::to_string(e.UNK227));
-		v.push_back(columns[270] + " = " + std::to_string(e.UNK228));
-		v.push_back(columns[271] + " = " + std::to_string(e.UNK229));
-		v.push_back(columns[272] + " = " + std::to_string(e.UNK230));
-		v.push_back(columns[273] + " = " + std::to_string(e.UNK231));
-		v.push_back(columns[274] + " = " + std::to_string(e.UNK232));
-		v.push_back(columns[275] + " = " + std::to_string(e.UNK233));
-		v.push_back(columns[276] + " = " + std::to_string(e.UNK234));
-		v.push_back(columns[277] + " = " + std::to_string(e.placeable));
-		v.push_back(columns[278] + " = " + std::to_string(e.UNK236));
-		v.push_back(columns[279] + " = " + std::to_string(e.UNK237));
-		v.push_back(columns[280] + " = " + std::to_string(e.UNK238));
-		v.push_back(columns[281] + " = " + std::to_string(e.UNK239));
-		v.push_back(columns[282] + " = " + std::to_string(e.UNK240));
-		v.push_back(columns[283] + " = " + std::to_string(e.UNK241));
+		v.push_back(columns[266] + " = " + std::to_string(e.placeable));
+		v.push_back(columns[267] + " = " + std::to_string(e.placeable_ignore_collisions));
+		v.push_back(columns[268] + " = " + std::to_string(e.placement_type));
+		v.push_back(columns[269] + " = " + std::to_string(e.real_estate_definition_id));
+		v.push_back(columns[270] + " = " + std::to_string(e.placeable_scale_min));
+		v.push_back(columns[271] + " = " + std::to_string(e.placeable_scale_max));
+		v.push_back(columns[272] + " = " + std::to_string(e.real_estate_upkeep_id));
+		v.push_back(columns[273] + " = " + std::to_string(e.max_per_real_estate));
+		v.push_back(columns[274] + " = '" + Strings::Escape(e.housepet_file_name) + "'");
+		v.push_back(columns[275] + " = " + std::to_string(e.trophy_benefit_id));
+		v.push_back(columns[276] + " = " + std::to_string(e.disable_placement_rotation));
+		v.push_back(columns[277] + " = " + std::to_string(e.disable_free_placement));
+		v.push_back(columns[278] + " = " + std::to_string(e.npc_respawn_interval));
+		v.push_back(columns[279] + " = " + std::to_string(e.placeable_default_scale));
+		v.push_back(columns[280] + " = " + std::to_string(e.placeable_default_heading));
+		v.push_back(columns[281] + " = " + std::to_string(e.placeable_default_pitch));
+		v.push_back(columns[282] + " = " + std::to_string(e.placeable_default_roll));
+		v.push_back(columns[283] + " = " + std::to_string(e.interactive_object));
 		v.push_back(columns[284] + " = " + std::to_string(e.epicitem));
 
 		auto results = db.QueryDatabase(
@@ -2141,24 +2141,24 @@ public:
 		v.push_back(std::to_string(e.UNK221));
 		v.push_back(std::to_string(e.heirloom));
 		v.push_back(std::to_string(e.UNK223));
-		v.push_back(std::to_string(e.UNK224));
-		v.push_back(std::to_string(e.UNK225));
-		v.push_back(std::to_string(e.UNK226));
-		v.push_back(std::to_string(e.UNK227));
-		v.push_back(std::to_string(e.UNK228));
-		v.push_back(std::to_string(e.UNK229));
-		v.push_back(std::to_string(e.UNK230));
-		v.push_back(std::to_string(e.UNK231));
-		v.push_back(std::to_string(e.UNK232));
-		v.push_back(std::to_string(e.UNK233));
-		v.push_back(std::to_string(e.UNK234));
 		v.push_back(std::to_string(e.placeable));
-		v.push_back(std::to_string(e.UNK236));
-		v.push_back(std::to_string(e.UNK237));
-		v.push_back(std::to_string(e.UNK238));
-		v.push_back(std::to_string(e.UNK239));
-		v.push_back(std::to_string(e.UNK240));
-		v.push_back(std::to_string(e.UNK241));
+		v.push_back(std::to_string(e.placeable_ignore_collisions));
+		v.push_back(std::to_string(e.placement_type));
+		v.push_back(std::to_string(e.real_estate_definition_id));
+		v.push_back(std::to_string(e.placeable_scale_min));
+		v.push_back(std::to_string(e.placeable_scale_max));
+		v.push_back(std::to_string(e.real_estate_upkeep_id));
+		v.push_back(std::to_string(e.max_per_real_estate));
+		v.push_back("'" + Strings::Escape(e.housepet_file_name) + "'");
+		v.push_back(std::to_string(e.trophy_benefit_id));
+		v.push_back(std::to_string(e.disable_placement_rotation));
+		v.push_back(std::to_string(e.disable_free_placement));
+		v.push_back(std::to_string(e.npc_respawn_interval));
+		v.push_back(std::to_string(e.placeable_default_scale));
+		v.push_back(std::to_string(e.placeable_default_heading));
+		v.push_back(std::to_string(e.placeable_default_pitch));
+		v.push_back(std::to_string(e.placeable_default_roll));
+		v.push_back(std::to_string(e.interactive_object));
 		v.push_back(std::to_string(e.epicitem));
 
 		auto results = db.QueryDatabase(
@@ -2455,24 +2455,24 @@ public:
 			v.push_back(std::to_string(e.UNK221));
 			v.push_back(std::to_string(e.heirloom));
 			v.push_back(std::to_string(e.UNK223));
-			v.push_back(std::to_string(e.UNK224));
-			v.push_back(std::to_string(e.UNK225));
-			v.push_back(std::to_string(e.UNK226));
-			v.push_back(std::to_string(e.UNK227));
-			v.push_back(std::to_string(e.UNK228));
-			v.push_back(std::to_string(e.UNK229));
-			v.push_back(std::to_string(e.UNK230));
-			v.push_back(std::to_string(e.UNK231));
-			v.push_back(std::to_string(e.UNK232));
-			v.push_back(std::to_string(e.UNK233));
-			v.push_back(std::to_string(e.UNK234));
 			v.push_back(std::to_string(e.placeable));
-			v.push_back(std::to_string(e.UNK236));
-			v.push_back(std::to_string(e.UNK237));
-			v.push_back(std::to_string(e.UNK238));
-			v.push_back(std::to_string(e.UNK239));
-			v.push_back(std::to_string(e.UNK240));
-			v.push_back(std::to_string(e.UNK241));
+			v.push_back(std::to_string(e.placeable_ignore_collisions));
+			v.push_back(std::to_string(e.placement_type));
+			v.push_back(std::to_string(e.real_estate_definition_id));
+			v.push_back(std::to_string(e.placeable_scale_min));
+			v.push_back(std::to_string(e.placeable_scale_max));
+			v.push_back(std::to_string(e.real_estate_upkeep_id));
+			v.push_back(std::to_string(e.max_per_real_estate));
+			v.push_back("'" + Strings::Escape(e.housepet_file_name) + "'");
+			v.push_back(std::to_string(e.trophy_benefit_id));
+			v.push_back(std::to_string(e.disable_placement_rotation));
+			v.push_back(std::to_string(e.disable_free_placement));
+			v.push_back(std::to_string(e.npc_respawn_interval));
+			v.push_back(std::to_string(e.placeable_default_scale));
+			v.push_back(std::to_string(e.placeable_default_heading));
+			v.push_back(std::to_string(e.placeable_default_pitch));
+			v.push_back(std::to_string(e.placeable_default_roll));
+			v.push_back(std::to_string(e.interactive_object));
 			v.push_back(std::to_string(e.epicitem));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
@@ -2773,24 +2773,24 @@ public:
 			e.UNK221              = row[263] ? static_cast<int32_t>(atoi(row[263])) : 0;
 			e.heirloom            = row[264] ? static_cast<int32_t>(atoi(row[264])) : 0;
 			e.UNK223              = row[265] ? static_cast<int32_t>(atoi(row[265])) : 0;
-			e.UNK224              = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
-			e.UNK225              = row[267] ? static_cast<int32_t>(atoi(row[267])) : 0;
-			e.UNK226              = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
-			e.UNK227              = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
-			e.UNK228              = row[270] ? static_cast<int32_t>(atoi(row[270])) : 0;
-			e.UNK229              = row[271] ? static_cast<int32_t>(atoi(row[271])) : 0;
-			e.UNK230              = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
-			e.UNK231              = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
-			e.UNK232              = row[274] ? static_cast<int32_t>(atoi(row[274])) : 0;
-			e.UNK233              = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
-			e.UNK234              = row[276] ? static_cast<int32_t>(atoi(row[276])) : 0;
-			e.placeable           = row[277] ? static_cast<int32_t>(atoi(row[277])) : 0;
-			e.UNK236              = row[278] ? static_cast<int32_t>(atoi(row[278])) : 0;
-			e.UNK237              = row[279] ? static_cast<int32_t>(atoi(row[279])) : 0;
-			e.UNK238              = row[280] ? static_cast<int32_t>(atoi(row[280])) : 0;
-			e.UNK239              = row[281] ? static_cast<int32_t>(atoi(row[281])) : 0;
-			e.UNK240              = row[282] ? static_cast<int32_t>(atoi(row[282])) : 0;
-			e.UNK241              = row[283] ? static_cast<int32_t>(atoi(row[283])) : 0;
+			e.placeable           = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
+			e.placeable_ignore_collisions = row[267] ? static_cast<uint8_t>(strtoul(row[267], nullptr, 10)) : 0;
+			e.placement_type      = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
+			e.real_estate_definition_id = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
+			e.placeable_scale_min = row[270] ? strtof(row[270], nullptr) : 0;
+			e.placeable_scale_max = row[271] ? strtof(row[271], nullptr) : 0;
+			e.real_estate_upkeep_id = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
+			e.max_per_real_estate = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
+			e.housepet_file_name  = row[274] ? row[274] : "";
+			e.trophy_benefit_id   = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
+			e.disable_placement_rotation = row[276] ? static_cast<uint8_t>(strtoul(row[276], nullptr, 10)) : 0;
+			e.disable_free_placement = row[277] ? static_cast<uint8_t>(strtoul(row[277], nullptr, 10)) : 0;
+			e.npc_respawn_interval = row[278] ? static_cast<uint32_t>(strtoul(row[278], nullptr, 10)) : 0;
+			e.placeable_default_scale = row[279] ? strtof(row[279], nullptr) : 0;
+			e.placeable_default_heading = row[280] ? strtof(row[280], nullptr) : 0;
+			e.placeable_default_pitch = row[281] ? strtof(row[281], nullptr) : 0;
+			e.placeable_default_roll = row[282] ? strtof(row[282], nullptr) : 0;
+			e.interactive_object  = row[283] ? static_cast<uint8_t>(strtoul(row[283], nullptr, 10)) : 0;
 			e.epicitem            = row[284] ? static_cast<int32_t>(atoi(row[284])) : 0;
 
 			all_entries.push_back(e);
@@ -3082,24 +3082,24 @@ public:
 			e.UNK221              = row[263] ? static_cast<int32_t>(atoi(row[263])) : 0;
 			e.heirloom            = row[264] ? static_cast<int32_t>(atoi(row[264])) : 0;
 			e.UNK223              = row[265] ? static_cast<int32_t>(atoi(row[265])) : 0;
-			e.UNK224              = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
-			e.UNK225              = row[267] ? static_cast<int32_t>(atoi(row[267])) : 0;
-			e.UNK226              = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
-			e.UNK227              = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
-			e.UNK228              = row[270] ? static_cast<int32_t>(atoi(row[270])) : 0;
-			e.UNK229              = row[271] ? static_cast<int32_t>(atoi(row[271])) : 0;
-			e.UNK230              = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
-			e.UNK231              = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
-			e.UNK232              = row[274] ? static_cast<int32_t>(atoi(row[274])) : 0;
-			e.UNK233              = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
-			e.UNK234              = row[276] ? static_cast<int32_t>(atoi(row[276])) : 0;
-			e.placeable           = row[277] ? static_cast<int32_t>(atoi(row[277])) : 0;
-			e.UNK236              = row[278] ? static_cast<int32_t>(atoi(row[278])) : 0;
-			e.UNK237              = row[279] ? static_cast<int32_t>(atoi(row[279])) : 0;
-			e.UNK238              = row[280] ? static_cast<int32_t>(atoi(row[280])) : 0;
-			e.UNK239              = row[281] ? static_cast<int32_t>(atoi(row[281])) : 0;
-			e.UNK240              = row[282] ? static_cast<int32_t>(atoi(row[282])) : 0;
-			e.UNK241              = row[283] ? static_cast<int32_t>(atoi(row[283])) : 0;
+			e.placeable           = row[266] ? static_cast<int32_t>(atoi(row[266])) : 0;
+			e.placeable_ignore_collisions = row[267] ? static_cast<uint8_t>(strtoul(row[267], nullptr, 10)) : 0;
+			e.placement_type      = row[268] ? static_cast<int32_t>(atoi(row[268])) : 0;
+			e.real_estate_definition_id = row[269] ? static_cast<int32_t>(atoi(row[269])) : 0;
+			e.placeable_scale_min = row[270] ? strtof(row[270], nullptr) : 0;
+			e.placeable_scale_max = row[271] ? strtof(row[271], nullptr) : 0;
+			e.real_estate_upkeep_id = row[272] ? static_cast<int32_t>(atoi(row[272])) : 0;
+			e.max_per_real_estate = row[273] ? static_cast<int32_t>(atoi(row[273])) : 0;
+			e.housepet_file_name  = row[274] ? row[274] : "";
+			e.trophy_benefit_id   = row[275] ? static_cast<int32_t>(atoi(row[275])) : 0;
+			e.disable_placement_rotation = row[276] ? static_cast<uint8_t>(strtoul(row[276], nullptr, 10)) : 0;
+			e.disable_free_placement = row[277] ? static_cast<uint8_t>(strtoul(row[277], nullptr, 10)) : 0;
+			e.npc_respawn_interval = row[278] ? static_cast<uint32_t>(strtoul(row[278], nullptr, 10)) : 0;
+			e.placeable_default_scale = row[279] ? strtof(row[279], nullptr) : 0;
+			e.placeable_default_heading = row[280] ? strtof(row[280], nullptr) : 0;
+			e.placeable_default_pitch = row[281] ? strtof(row[281], nullptr) : 0;
+			e.placeable_default_roll = row[282] ? strtof(row[282], nullptr) : 0;
+			e.interactive_object  = row[283] ? static_cast<uint8_t>(strtoul(row[283], nullptr, 10)) : 0;
 			e.epicitem            = row[284] ? static_cast<int32_t>(atoi(row[284])) : 0;
 
 			all_entries.push_back(e);
@@ -3441,24 +3441,24 @@ public:
 		v.push_back(std::to_string(e.UNK221));
 		v.push_back(std::to_string(e.heirloom));
 		v.push_back(std::to_string(e.UNK223));
-		v.push_back(std::to_string(e.UNK224));
-		v.push_back(std::to_string(e.UNK225));
-		v.push_back(std::to_string(e.UNK226));
-		v.push_back(std::to_string(e.UNK227));
-		v.push_back(std::to_string(e.UNK228));
-		v.push_back(std::to_string(e.UNK229));
-		v.push_back(std::to_string(e.UNK230));
-		v.push_back(std::to_string(e.UNK231));
-		v.push_back(std::to_string(e.UNK232));
-		v.push_back(std::to_string(e.UNK233));
-		v.push_back(std::to_string(e.UNK234));
 		v.push_back(std::to_string(e.placeable));
-		v.push_back(std::to_string(e.UNK236));
-		v.push_back(std::to_string(e.UNK237));
-		v.push_back(std::to_string(e.UNK238));
-		v.push_back(std::to_string(e.UNK239));
-		v.push_back(std::to_string(e.UNK240));
-		v.push_back(std::to_string(e.UNK241));
+		v.push_back(std::to_string(e.placeable_ignore_collisions));
+		v.push_back(std::to_string(e.placement_type));
+		v.push_back(std::to_string(e.real_estate_definition_id));
+		v.push_back(std::to_string(e.placeable_scale_min));
+		v.push_back(std::to_string(e.placeable_scale_max));
+		v.push_back(std::to_string(e.real_estate_upkeep_id));
+		v.push_back(std::to_string(e.max_per_real_estate));
+		v.push_back("'" + Strings::Escape(e.housepet_file_name) + "'");
+		v.push_back(std::to_string(e.trophy_benefit_id));
+		v.push_back(std::to_string(e.disable_placement_rotation));
+		v.push_back(std::to_string(e.disable_free_placement));
+		v.push_back(std::to_string(e.npc_respawn_interval));
+		v.push_back(std::to_string(e.placeable_default_scale));
+		v.push_back(std::to_string(e.placeable_default_heading));
+		v.push_back(std::to_string(e.placeable_default_pitch));
+		v.push_back(std::to_string(e.placeable_default_roll));
+		v.push_back(std::to_string(e.interactive_object));
 		v.push_back(std::to_string(e.epicitem));
 
 		auto results = db.QueryDatabase(
@@ -3748,24 +3748,24 @@ public:
 			v.push_back(std::to_string(e.UNK221));
 			v.push_back(std::to_string(e.heirloom));
 			v.push_back(std::to_string(e.UNK223));
-			v.push_back(std::to_string(e.UNK224));
-			v.push_back(std::to_string(e.UNK225));
-			v.push_back(std::to_string(e.UNK226));
-			v.push_back(std::to_string(e.UNK227));
-			v.push_back(std::to_string(e.UNK228));
-			v.push_back(std::to_string(e.UNK229));
-			v.push_back(std::to_string(e.UNK230));
-			v.push_back(std::to_string(e.UNK231));
-			v.push_back(std::to_string(e.UNK232));
-			v.push_back(std::to_string(e.UNK233));
-			v.push_back(std::to_string(e.UNK234));
 			v.push_back(std::to_string(e.placeable));
-			v.push_back(std::to_string(e.UNK236));
-			v.push_back(std::to_string(e.UNK237));
-			v.push_back(std::to_string(e.UNK238));
-			v.push_back(std::to_string(e.UNK239));
-			v.push_back(std::to_string(e.UNK240));
-			v.push_back(std::to_string(e.UNK241));
+			v.push_back(std::to_string(e.placeable_ignore_collisions));
+			v.push_back(std::to_string(e.placement_type));
+			v.push_back(std::to_string(e.real_estate_definition_id));
+			v.push_back(std::to_string(e.placeable_scale_min));
+			v.push_back(std::to_string(e.placeable_scale_max));
+			v.push_back(std::to_string(e.real_estate_upkeep_id));
+			v.push_back(std::to_string(e.max_per_real_estate));
+			v.push_back("'" + Strings::Escape(e.housepet_file_name) + "'");
+			v.push_back(std::to_string(e.trophy_benefit_id));
+			v.push_back(std::to_string(e.disable_placement_rotation));
+			v.push_back(std::to_string(e.disable_free_placement));
+			v.push_back(std::to_string(e.npc_respawn_interval));
+			v.push_back(std::to_string(e.placeable_default_scale));
+			v.push_back(std::to_string(e.placeable_default_heading));
+			v.push_back(std::to_string(e.placeable_default_pitch));
+			v.push_back(std::to_string(e.placeable_default_roll));
+			v.push_back(std::to_string(e.interactive_object));
 			v.push_back(std::to_string(e.epicitem));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
