@@ -4,7 +4,21 @@
 
 **Principle: surgical.** Housing lives in its own module; existing EQEmu code is touched only at the points listed below, each for a stated reason. New tables, a few altered fields and data rows are expected.
 
-**Status:** chunk 1 (architecture, touch points, persistence, decisions D1-D4, configuration through rules) complete; chunks 2-7 to do.
+**Scope:** the standard housing system (`serverWork.md`) **and all three non-standard extensions** (X1 private zones as interiors, X2 custom neighborhood maps, X3 plots in the live world; section below), designed together.
+
+**Development model:** everything is designed first, then **built and tested in a sandbox** before the owner builds once. The sandbox compiles Peridot's EQEmu (the pinned source, with the housing module) and runs a MariaDB created from the server's real schema; tests there cover the migrations (including the `items` rename and decode against the exported rows), the wire builders byte for byte against the research specs, the handlers driven by crafted client packets, cross-zone events between two zone processes, the upkeep tick and concurrent edits. The environment is a script in this repository (`tools/`), since a sandbox doesn't outlive its session. The owner's part is one server build, then validation in game with the diagnostics plugin and the Lua harness.
+
+**Status:** chunk 1 complete. Remaining chunks, each covering the standard system and X1-X3 together:
+
+| Chunk | Covers |
+|---|---|
+| 2 | F1 (the item tail: byte-exact wire order, the rename migration's SQL, the serializer hook) and F2 (every housing opcode with its RoF2 value) |
+| 3 | the schema: every housing table (definitions with their zones, costs, properties with hosts and revisions, balances, placed items, access lists, neighborhoods with template zones, regions, polls, trophies, transfer offers), migrations, repositories; and the housing zone versions and instances |
+| 4 | S1-S4 and the zone-in sequence (F5) for any host zone; region authoring (the GM plot tool) |
+| 5 | S5 placement and editing; the world layer (world objects, NPC items, containers) |
+| 6 | S6-S9 (neighborhoods and search, purchase / sell / transfer across zones, escrow and the upkeep tick, access and its enforcement) |
+| 7 | S10-S12 (houses and private-zone interiors, the crate, layouts, leaving; polls; trophies) |
+| 8 | the sandbox environment and test suites, the probe checks and Lua suites for the owner's validation, and the order to validate in |
 
 ## Chunk 1: architecture
 
