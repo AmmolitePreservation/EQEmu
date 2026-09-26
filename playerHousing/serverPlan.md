@@ -144,7 +144,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 
 | Rule | Type | Default | Meaning |
 |---|---|---|---|
-| `Housing:Enabled` | bool | true | master switch: when off, no housing data is sent and housing requests are refused with a result code |
+| `Housing:EnableHousing` | bool | true | master switch: when off, no housing data is sent and housing requests are refused with a result code |
 | `Housing:EnableUpkeep` | bool | true | the upkeep tick (D4) |
 | `Housing:UpkeepTickSeconds` | int | 3600 | the tick's interval; each tick charges the elapsed share of the daily cost (Live: hourly, 1/24 of a day) |
 | `Housing:UpkeepGraceHours` | int | 0 | hours after a purchase before the first charge (D9: the next tick) |
@@ -359,7 +359,7 @@ Every housing message, **76 opcode values** (the register's sections 2 and 3, `s
 - `neighborhood create`: a neighborhood property and its instance of the definition's template zone (X2), with **its plots created from the definition's children**; `town create` for plots hosted in a public zone (X3);
 - `property info`: the properties and regions at the GM's position; `reload`: re-send the catalog and state to the zone.
 
-Its status level is an account status like EQEmu's other content commands; `Housing:Enabled` gates it with the rest.
+Its status level is an account status like EQEmu's other content commands; `Housing:EnableHousing` gates it with the rest.
 
 ## Chunk 5: placement, editing and the world layer (S5)
 
