@@ -376,6 +376,10 @@ void Object::ResetState()
 
 bool Object::Save()
 {
+	if (m_transient) {
+		return true;
+	}
+
 	if (m_id) { // Update existing
 		content_db.UpdateObject(m_id, m_type, m_icon, m_data, m_inst);
 	} else { // Doesn't yet exist, add now
@@ -387,6 +391,10 @@ bool Object::Save()
 
 uint16 Object::VarSave()
 {
+	if (m_transient) {
+		return m_id;
+	}
+
 	if (m_id) { // Update existing
 		content_db.UpdateObject(m_id, m_type, m_icon, m_data, m_inst);
 	} else { // Doesn't yet exist, add now
@@ -431,7 +439,9 @@ void Object::PutItem(uint8 index, const EQ::ItemInstance* inst)
 			m_inst->DeleteItem(index);
 		}
 
-		database.SaveWorldContainer(zone->GetZoneID(),m_id,m_inst);
+		if (!m_transient) {
+			database.SaveWorldContainer(zone->GetZoneID(),m_id,m_inst);
+		}
 		// This is _highly_ inefficient, but for now it will work: Save entire object to database
 		Save();
 	}

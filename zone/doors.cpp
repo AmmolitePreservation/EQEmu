@@ -32,6 +32,7 @@
 #include "zonedb.h"
 #include "../common/evolving_items.h"
 #include "../common/repositories/criteria/content_filter_criteria.h"
+#include "housing/housing.h"
 
 #include <string.h>
 
@@ -544,6 +545,10 @@ void Doors::HandleClick(Client *sender, uint8 trigger)
 
 	// teleport door
 	if (EQ::ValueWithin(m_open_type, 57, 58) && HasDestinationZone()) {
+		if (housing::handleDoorClick(sender, this)) {
+			return;
+		}
+
 		bool has_key_required = (required_key_item && required_key_item == player_key);
 
 		if (sender->GetGM() && !has_key_required) {

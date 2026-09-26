@@ -31,6 +31,7 @@
 #include "lua_parser.h"
 #include "string_ids.h"
 #include "worldserver.h"
+#include "housing/housing.h"
 
 #include <math.h>
 
@@ -496,6 +497,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				snprintf(effect_desc, _EDLEN, "Current Mana Once: %+i", effect_value);
 #endif
 				SetMana(GetMana() + effect_value);
+				break;
+			}
+
+			case SE_TeleporttoAnchor:
+			case SE_TranslocatetoAnchor:
+			{
+				housing::handleAnchorEffect(caster, this, effect);
 				break;
 			}
 

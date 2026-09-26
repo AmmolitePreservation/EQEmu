@@ -71,6 +71,7 @@
 #include "../common/repositories/graveyard_repository.h"
 #include "../common/repositories/trader_repository.h"
 #include "../common/repositories/buyer_repository.h"
+#include "housing/housing.h"
 
 #include <time.h>
 
@@ -1238,6 +1239,8 @@ bool Zone::Init(bool is_static) {
 
 	guild_mgr.LoadGuilds();
 
+	housing::onZoneBoot();
+
 	LogInfo("Zone booted successfully zone_id [{}] time_offset [{}]", zoneid, zone_time.getEQTimeZone());
 
 	// logging origination information
@@ -1537,6 +1540,7 @@ uint32 Zone::CountAuth() {
 
 bool Zone::Process() {
 	spawn_conditions.Process();
+	housing::process();
 
 	if (spawn2_timer.Check()) {
 		LinkedListIterator<Spawn2 *> iterator(spawn2_list);

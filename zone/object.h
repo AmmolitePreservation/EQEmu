@@ -181,6 +181,11 @@ public:
 	virtual void SetID(uint16 set_id);
 
 	void ClearUser() { user = nullptr; }
+	void SetUser(Client* in_user) { user = in_user; }
+
+	// a player housing container exists only while it's open and is never saved
+	void SetTransient(bool in_transient) { m_transient = in_transient; }
+	bool IsTransient() const { return m_transient; }
 
 	uint32 GetDBID();
 	uint32 GetType();
@@ -238,6 +243,7 @@ protected:
 	bool   m_ground_spawn;
 	char   m_display_name[64];
 	bool   m_fix_z;
+	bool   m_transient = false;
 protected:
 
 	std::map<std::string, std::string> o_EntityVariables;
