@@ -8,7 +8,7 @@
 
 **Development model:** everything is designed first, then written in full, and the owner builds once. **Database work is tested for real** before delivery: migrations and queries run in a sandbox MariaDB created from the server's real schema (`pok-schema-all.json`), including the `items` rename and decode against the exported rows. **Code is verified by careful reading** against Peridot's source and the research specifications; EQEmu isn't built in the sandbox. After the owner's build, validation happens in game with the diagnostics plugin and the Lua harness.
 
-**Status:** chunks 1-6 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
+**Status:** chunks 1-7 complete (the item tail's migration, the schema and the region conversion are tested). Remaining chunks, each covering the standard system and X1-X3 together:
 
 | Chunk | Covers |
 |---|---|
@@ -56,6 +56,10 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T18 | `zone/object.h`, `zone/object.cpp` | a transient flag (`Save` / `VarSave` skip the database); the click builder sets the new id fields to -1 | housing tradeskill containers reuse EQEmu's world containers |
 | T19 | `common/eq_packet_structs.h` | property and record ids appended to `ClickObjectAction_Struct`; target type, property and record ids appended to `FindPersonRequest_Struct` | the RoF2 encoder / decoder (T6) carry them |
 | T20 | `zone/client_packet.cpp` (`Handle_OP_FindPersonRequest`) | types 3 and 4 go to housing | Locate and plot finding |
+| T21 | `zone/doors.cpp` (`Doors::HandleClick`) | a housing interior's front door is handed to the housing module | the exit leads to the house's own plot and neighborhood instance |
+| T22 | `common/spdat.h`, `zone/spell_effects.cpp` | spell effects 437 and 438 (defined, not implemented today) handed to the housing module | anchor teleports |
+| T23 | `zone/zone.h`, `zone/zone.cpp` (`Zone::Process`) | a housing `Timer` and one call | periodic zone-side housing work |
+| T24 | `zone/bonuses.cpp` | active trophy benefits' items added to the bonus calculation | trophy tribute (EQEmu has no trophy slots) |
 
 **The custom migration track ships with an upstream test entry at version 1** (it creates a table named `new_table`). It has never run (the running server reports `custom_database_version` 0), but it would run as soon as the binary version reaches 1, so **housing's first migration replaces it** rather than numbering after it.
 
@@ -155,6 +159,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:EnableWorldPlots` | bool | false | plots hosted in public zones (X3) |
 | `Housing:EnablePolls` | bool | true | the poll subsystem (S11) |
 | `Housing:EnableTrophyTribute` | bool | true | the trophy subsystem (S12) |
+| `Housing:PersonalTrophySlots` | int | 4 | active personal trophy benefits (Live: four, extendable by AAs; the client has ten slots) |
 | `Housing:DefaultAccessEveryone` | int | 2 | a new plot's group 0 mask: Enter (Live) |
 | `Housing:DefaultAccessVisitor` | int | 2 | group 1: Enter (Live) |
 | `Housing:DefaultAccessAcquaintance` | int | 2 | group 2: Enter |
@@ -163,7 +168,6 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:DefaultAccessCoOwner` | int | 8191 | group 5: every permission |
 | `Housing:DefaultAccessOwner` | int | 8191 | group 6: every permission |
 
-Chunk 7 adds the trophy and poll rules (Live: four active personal trophy effects, extendable by AAs).
 
 **Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (the upkeep `Timer`, its startup run and one call, mirroring the parcel block); the upkeep routine itself is new code in world, and `world/CMakeLists.txt` lists it (T16).
 
@@ -444,3 +448,36 @@ The neighborhood's plots, derived and checked against Live's own data (`tools/su
 - **Not on the map:** the ten public tradeskill stations, teleport pads, the plot-search spring (`OBJ_PH_TELEFLINGER`), the portal to other neighborhoods (`OBJ_VOIDPORTAL`) and the Guild Lobby gate (`OBJ_GUILDGATE`) are PEQ doors and objects already in the database.
 
 **Testing item: find all the guild plots.** Once plots work in the zone, explore it: confirm the two candidate stones are guild plots, look for the other two Live had, and author any found with `#realestate`.
+
+## Chunk 7: houses and interiors, the crate and layouts, polls, trophies (S10-S12)
+
+### S10, houses and interiors (and X1)
+
+- **A placed house or guild hall is a child property** of its plot (its item's `real_estate_definition_id`; type 3 or 2). **Its interior is an instance** of its definition's `instance_zone_id` / `_version`, created without expiry on first entry and kept on the property (D3). An X1 private zone is the same thing with a different zone: its definition names, say, the Plane of Hate at a housing version that has no spawns, doors or zone lines.
+- **The interior zones** (the client's zone table, `robustness.md`): 714-719 `phinterior3a1`, `1a1`, `3a2`, `3a3`, `1a2`, `1a3`; 720 / 723 `phinterior1b1` / `1d1` (dragon houses); 739-744 `plhogrinteriors*` and 745-750 `plhdkeinteriors*` (later one- and three-bedroom houses); 766 `phinteriortree` (Evantil's Abode); guild halls 737 `guildhalllrg`, 738 `guildhallsml`, 751 `guildhall3` (21 and 22 aren't zones in this client). **Only 712 exists in Peridot's `zone` table**, so each needs a zone row (content). **Mapping:** the Monel / Zimel definitions (three rooms: 5-17, and the Manors 32-34) to `phinterior3a*`, the Cobbler / Behroe definitions (one room: 18-29) to `phinterior1a*`, the three interior finishes to a1 / a2 / a3.
+- **Entering** (the menu's enter, type 8, `0x050c`; a click on the house): Enter permission (1), the house's and plot's upkeep current (`0x1920`), then the player moves into the instance at the zone version's safe point. Inside, the house is the current property with no regions, so every placement counts for it (chunk 4).
+- **Leaving by the front door** returns the player outside the plot in its neighborhood's instance, as on Live. **T21** (`zone/doors.cpp`, `Doors::HandleClick`): a door in a housing interior instance whose `dest_zone` is the housing sentinel is handed to the housing module, which computes the destination (the house's position and heading, a step out its front); EQEmu's doors otherwise carry a fixed destination, and every interior of a zone version shares its door rows.
+- **`/leaverealestate` (`0x1da9`):** from an interior, the same as the front door; from a neighborhood, to its entrance; elsewhere, a message. (Live's exact behavior is a comparison in `testingNotes.md`.)
+- **Moving a house:** picked up, the house returns to inventory carrying its property (list B, by guid), its interior and closet intact; placed on another plot, the property is re-parented. **Swap (`0x21ba`):** the stored house takes the placed one's transform and the placed one is stored, with the client's failure codes (`0x14d3`-`0x14da`); players inside the house being stored are moved out first.
+- **The crate:** a placed crate is a child property of its plot (one per plot, the client's rule). **Store All (`0x6917`), Pack / Unpack (`0x613d`)** apply the individual move rules item by item and report per item.
+- **Layouts (`0x5b41`):** each record is validated with the individual placement or move rules (chunk 5) and applied; the client plans the layout and sends world transforms. **Each plot definition's layout origin and heading are its border stone's position and heading** (the template), so saved layouts carry between plots.
+- **Anchors:** EQEmu defines, but doesn't implement, **`SE_TeleporttoAnchor` (437, "Teleport Guild Hall Anchor")** and **`SE_TranslocatetoAnchor` (438, "Translocate Primary Anchor")**. **T22** (`common/spdat.h`, `zone/spell_effects.cpp`): the two effects, handed to the housing module. 437 moves the caster to their guild's hall; 438 sends the target the anchor offer (`0x7bb1`; the client answers the dialog with `0x7bb1`) and moves them on acceptance, to their **primary property** (`character_real_estate_anchors`, set from a house or plot menu entry). An expired house refuses (`0x14e4`, `0x14e7`, `0x154a`).
+
+### S11, polls
+
+Polls are run through `#realestate poll` (create, options and labels, publish, close, archive) or content SQL. **Votes (`0x15a8`)** are validated: the poll open (published, within its dates), the voter allowed, each key one of the poll's options, no more than its tick limit. **May vote / may see (`0x7497`)**: every character with House of Thule may vote and see, unless a poll is limited (property polls to the neighborhood's owners). **Results (`0x3311`)** are counted from the votes, ranked, and published after the close unless the poll says otherwise. **Prompt players**: a poll with the flag opens the vote window (`0x7a4d`) at zone-in for those who haven't voted. **Teleport to a ranked property (`0x499a`)** moves the player to that plot in its neighborhood's instance. Publishing, closing and new votes raise the polls event (D2).
+
+### S12, trophies
+
+- **Content:** Peridot's `tributes` holds no trophy benefits (chunk 3). Each trophy id the items name needs a `tributes` row (personal or guild by the item's placeable bits) and `tribute_levels` rows (cost and benefit item per tier); the trophy flag is derived (chunk 3).
+- **Personal:** the available benefits are computed as the client computes them (`0x5b1b50`): the character's owned plots and their houses, every placed item there that is a trophy (a placeable bit and a trophy id). **`0x4b65`** requests are validated against that set, the tier and the cost; **at most `Housing:PersonalTrophySlots` active** (4 on Live, of the client's 10 slots). While active, the tier costs are charged from the character's tribute points on the trophy timer (`0x51ae`), which runs in the zone's housing process (**T23**).
+- **Guild:** the guild's 4 slots (`0x7dd2`), its available benefits (`0x7db5`, from trophies placed in its guild plot and hall), **the edit lock** (`0x7a41`: one editor at a time, kept in `guild_trophy_tribute_state` so it holds across zones), saves (`0x7c1d`) needing rank permission 25 and the lock, costs from guild favor; **opt-in (`0x2bc`)** by the client's location rule (in a guild hall zone, or on a plot under the guild's guild plot); benefits apply to members who opted in.
+- **Applying benefits:** EQEmu declares RoF2's trophy inventory types but gives them no slots (`TROPHY_TRIBUTE_SIZE` 0, "unknown"). **T24** (`zone/bonuses.cpp`): the bonus calculation adds each active trophy benefit's item, the way it adds tribute's.
+
+**T23** (`zone/zone.h`, `zone/zone.cpp`): a housing `Timer` in `Zone::Process()`, like `spawn2_timer`, for the zone's periodic housing work: trophy timers and charges, NPC item respawns, poll prompts, transfer-offer notices.
+
+**Rules added:** `Housing:PersonalTrophySlots` (4).
+
+**Content:** zone rows for the interiors and guild halls, with their safe points; the interior exit doors; the trophy benefits (`tributes`, `tribute_levels`).
+
+**To verify in game:** that each interior zone's files exist and zoning in works with no housing messages first (Q11, `robustness.md`); which finish a1 / a2 / a3 is; which guild hall item goes to which hall zone (four items: Standard, Grand, Palatial, Modest; three zones: Grand, Greater, Modest); each interior's safe point and front door; `/leaverealestate` on Live.

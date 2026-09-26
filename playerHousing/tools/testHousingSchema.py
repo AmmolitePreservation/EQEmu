@@ -49,6 +49,7 @@ INSERT INTO real_estate_access_groups VALUES (2, 0, 255), (2, 1, 3);
 INSERT INTO real_estate_access_names VALUES (2, 'Friendly', 1);
 INSERT INTO inventory (character_id, slot_id, item_id, guid) VALUES (7, 23, 52147, 55501);
 INSERT INTO real_estate_npc_items VALUES (66639, 1001);
+INSERT INTO character_real_estate_anchors VALUES (7, 4);
 INSERT INTO real_estate_neighborhood_names VALUES ('Sunrise Hills 1'), ('Aurora Court'), ('Willow Vale');
 """)
 
@@ -79,6 +80,7 @@ plan = sql("EXPLAIN SELECT id FROM real_estate_properties FORCE INDEX (next_upke
 assert 'next_upkeep_at' in plan and 'range' in plan, plan
 print('upkeep tick: the due query is an index range scan')
 check('the next free neighborhood name', "SELECT n.name FROM real_estate_neighborhood_names n LEFT JOIN real_estate_properties p ON p.name = n.name AND p.definition_id IN (SELECT id FROM real_estate_definitions WHERE type = 5) WHERE p.id IS NULL ORDER BY n.name LIMIT 1", 'Aurora Court')
+check('a primary anchor leads to an owned house', "SELECT p.id FROM character_real_estate_anchors a JOIN real_estate_properties p ON p.id = a.primary_property_id AND p.owner_character_id = a.character_id WHERE a.character_id = 7", '4')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
 check('price with two currencies', "SELECT GROUP_CONCAT(CONCAT(currency, ':', amount) ORDER BY currency) FROM real_estate_cost_items WHERE cost_id = 1 AND option_key = 0", '0:5000000,9:25')
 check('an hourly charge leaves a fractional balance', "UPDATE real_estate_property_balances SET amount = amount - 2 / 24 WHERE property_id = 2 AND currency = 9; SELECT amount FROM real_estate_property_balances WHERE property_id = 2 AND currency = 9", '2.916667')
