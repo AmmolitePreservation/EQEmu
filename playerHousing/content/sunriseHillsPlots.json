@@ -1207,25 +1207,75 @@
   "pets": 5
  },
  {
-  "kind": "guild plot candidate",
-  "address": "",
-  "door": 30,
-  "center": [
-   -795.297,
-   3681.75,
-   -0.998222
+  "kind": "guild plot",
+  "section": "Guild",
+  "door": null,
+  "doorPosition": [
+   2689.8,
+   2633.5,
+   110
   ],
-  "heading": 384.0
+  "center": [
+   2694.6,
+   2635.1,
+   110
+  ],
+  "heading": 123.0,
+  "sizeAcross": 351.2,
+  "sizeAlong": 699.8
  },
  {
-  "kind": "guild plot candidate",
-  "address": "",
-  "door": 70,
-  "center": [
-   2974.72,
-   -3031.0,
-   80.002
+  "kind": "guild plot",
+  "section": "Terminus",
+  "door": null,
+  "doorPosition": [
+   -1087.3,
+   2428.6,
+   110
   ],
-  "heading": 0.0
+  "center": [
+   -1092.2,
+   2427.3,
+   110
+  ],
+  "heading": 384.9,
+  "sizeAcross": 351.2,
+  "sizeAlong": 699.8
+ },
+ {
+  "kind": "guild plot",
+  "section": "Brimming",
+  "door": null,
+  "doorPosition": [
+   569.3,
+   -2223.2,
+   0
+  ],
+  "center": [
+   570.8,
+   -2228.0,
+   0
+  ],
+  "heading": 252.9,
+  "sizeAcross": 351.2,
+  "sizeAlong": 699.8
+ },
+ {
+  "kind": "guild plot",
+  "section": "Vanward",
+  "door": null,
+  "doorPosition": [
+   3026.7,
+   -756.8,
+   0
+  ],
+  "center": [
+   3031.5,
+   -755.2,
+   0
+  ],
+  "heading": 122.9,
+  "sizeAcross": 351.2,
+  "sizeAlong": 699.8
  }
 ]
