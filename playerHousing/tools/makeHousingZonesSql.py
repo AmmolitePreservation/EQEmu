@@ -3,25 +3,41 @@
 Ids, short names and titles are the RoF2 client's zone table (robustness.md). Every other column is copied: the expansion
 gates from the neighborhood's row, so these zones are available wherever it is, and the rest from the classic guild hall's,
 an indoor zone. Empty file_name and map_file_name make EQEmu use each zone's own short name; underworld sits below any
-floor; the safe point is the origin until each zone's entry is calibrated.
+floor. Safe points: the Palatial Guild Hall's (guildhalllrg) from Live; every other one derived from the client's zone
+files by housingZoneGeometry.py (its entrance's entry point). Writes the rows (housingZones.sql) and, for rows already
+added, their safe points (housingZoneSafePoints.sql).
 
 Usage: python3 makeHousingZonesSql.py
 """
 import os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
+# (id, short name, title, safe point (x, y, z)): the Palatial's from Live, the rest from housingZoneGeometry.py
 housingZones = [
-  (714, 'phinterior3a1', 'House Interior'), (715, 'phinterior1a1', 'House Interior'), (716, 'phinterior3a2', 'House Interior'),
-  (717, 'phinterior3a3', 'House Interior'), (718, 'phinterior1a2', 'House Interior'), (719, 'phinterior1a3', 'House Interior'),
-  (720, 'phinterior1b1', 'Dragon House Interior'), (723, 'phinterior1d1', 'Dragon House Interior'),
-  (737, 'guildhalllrg', 'Grand Guild Hall'), (738, 'guildhallsml', 'Greater Guild Hall'),
-  (739, 'plhogrinteriors1a1', 'One Bedroom House Interior'), (740, 'plhogrinteriors1a2', 'One Bedroom House Interior'),
-  (741, 'plhogrinteriors3a1', 'Three Bedroom House Interior'), (742, 'plhogrinteriors3a2', 'Three Bedroom House Interior'),
-  (743, 'plhogrinteriors3b1', 'Three Bedroom House Interior'), (744, 'plhogrinteriors3b2', 'Three Bedroom House Interior'),
-  (745, 'plhdkeinteriors1a1', 'One Bedroom House Interior'), (746, 'plhdkeinteriors1a2', 'One Bedroom House Interior'),
-  (747, 'plhdkeinteriors1a3', 'One Bedroom House Interior'), (748, 'plhdkeinteriors3a1', 'Three Bedroom House Interior'),
-  (749, 'plhdkeinteriors3a2', 'Three Bedroom House Interior'), (750, 'plhdkeinteriors3a3', 'Three Bedroom House Interior'),
-  (751, 'guildhall3', 'Modest Guild Hall'), (766, 'phinteriortree', "Evantil's Abode"),
+  (714, 'phinterior3a1', 'House Interior', (-7.0, 6.2, 3.0)),
+  (715, 'phinterior1a1', 'House Interior', (-0.4, 5.4, 3.0)),
+  (716, 'phinterior3a2', 'House Interior', (-7.0, 6.2, 3.0)),
+  (717, 'phinterior3a3', 'House Interior', (-7.0, 6.2, 3.0)),
+  (718, 'phinterior1a2', 'House Interior', (-0.4, 5.4, 3.0)),
+  (719, 'phinterior1a3', 'House Interior', (-0.4, 5.4, 3.0)),
+  (720, 'phinterior1b1', 'Dragon House Interior', (-12.8, -23.4, 3.0)),
+  (723, 'phinterior1d1', 'Dragon House Interior', (-0.4, 5.4, 3.0)),
+  (737, 'guildhalllrg', 'Grand Guild Hall', (0.0, -12.0, 2.2)),
+  (738, 'guildhallsml', 'Greater Guild Hall', (133.0, -0.2, -13.9)),
+  (739, 'plhogrinteriors1a1', 'One Bedroom House Interior', (-1.6, 2.9, -1.4)),
+  (740, 'plhogrinteriors1a2', 'One Bedroom House Interior', (-1.7, 3.9, -2.4)),
+  (741, 'plhogrinteriors3a1', 'Three Bedroom House Interior', (-0.1, 2.1, -2.1)),
+  (742, 'plhogrinteriors3a2', 'Three Bedroom House Interior', (0.1, -0.4, -1.6)),
+  (743, 'plhogrinteriors3b1', 'Three Bedroom House Interior', (1.1, -0.9, -0.6)),
+  (744, 'plhogrinteriors3b2', 'Three Bedroom House Interior', (1.5, -0.5, -1.1)),
+  (745, 'plhdkeinteriors1a1', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (746, 'plhdkeinteriors1a2', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (747, 'plhdkeinteriors1a3', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (748, 'plhdkeinteriors3a1', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (749, 'plhdkeinteriors3a2', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (750, 'plhdkeinteriors3a3', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
+  (751, 'guildhall3', 'Modest Guild Hall', (134.6, -0.2, -13.9)),
+  (766, 'phinteriortree', "Evantil's Abode", (-115.0, 101.1, 192.7)),
 ]
 gateColumns = ['min_expansion', 'max_expansion', 'content_flags', 'content_flags_disabled', 'expansion', 'bypass_expansion_check']
 
@@ -38,11 +54,11 @@ def zoneColumns():
   return columns[1:]
 
 
-def insertStatement(columns, zoneId, shortName, longName):
+def insertStatement(columns, zoneId, shortName, longName, safePoint):
   quoted = lambda text: "'" + text.replace("'", "''") + "'"
   values = dict(zoneidnumber=str(zoneId), version='0', short_name=quoted(shortName), long_name=quoted(longName),
                 file_name="''", map_file_name="''", note=quoted('Player housing'), underworld='-2000',
-                safe_x='0', safe_y='0', safe_z='0', safe_heading='0')
+                safe_x=repr(safePoint[0]), safe_y=repr(safePoint[1]), safe_z=repr(safePoint[2]), safe_heading='0')
   values.update({column: f'gate.`{column}`' for column in gateColumns})
   selected = ', '.join(values.get(column, f'template.`{column}`') for column in columns)
   return (f"  INSERT INTO zone ({', '.join(f'`{column}`' for column in columns)})\n"
@@ -51,8 +67,8 @@ def insertStatement(columns, zoneId, shortName, longName):
 
 def main():
   columns = zoneColumns()
-  ids = ', '.join(str(zoneId) for zoneId, _, _ in housingZones)
-  names = ', '.join(f"'{shortName}'" for _, shortName, _ in housingZones)
+  ids = ', '.join(str(zoneId) for zoneId, _, _, _ in housingZones)
+  names = ', '.join(f"'{shortName}'" for _, shortName, _, _ in housingZones)
   inserts = ''.join(insertStatement(columns, *zone) for zone in housingZones)
   sql = f"""-- Generated by playerHousing/tools/makeHousingZonesSql.py.
 DELIMITER //
@@ -76,7 +92,21 @@ SELECT zoneidnumber, short_name, long_name, min_expansion, max_expansion, underw
 """
   path = os.path.join(here, '..', 'sql', 'housingZones.sql')
   open(path, 'w', encoding='ascii').write(sql)
-  print(f'wrote {os.path.relpath(path)}: {len(housingZones)} zones, {len(columns)} columns each')
+  updates = ''.join(f"  UPDATE zone SET safe_x = {x!r}, safe_y = {y!r}, safe_z = {z!r} WHERE zoneidnumber = {zoneId} AND version = 0 AND short_name = '{shortName}';\n"
+                    for zoneId, shortName, _, (x, y, z) in housingZones)
+  update = f"""-- Generated by playerHousing/tools/makeHousingZonesSql.py: the safe points of rows housingZones.sql added.
+DELIMITER //
+BEGIN NOT ATOMIC
+  IF (SELECT COUNT(*) FROM zone WHERE version = 0 AND zoneidnumber IN ({ids}) AND short_name IN ({names})) <> {len(housingZones)} THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'not every housing interior and hall zone row is present; run housingZones.sql';
+  END IF;
+{updates}END //
+DELIMITER ;
+SELECT zoneidnumber, short_name, safe_x, safe_y, safe_z FROM zone WHERE version = 0 AND zoneidnumber IN ({ids}) ORDER BY zoneidnumber;
+"""
+  updatePath = os.path.join(here, '..', 'sql', 'housingZoneSafePoints.sql')
+  open(updatePath, 'w', encoding='ascii').write(update)
+  print(f'wrote {os.path.relpath(path)}: {len(housingZones)} zones, {len(columns)} columns each; {os.path.relpath(updatePath)}: their safe points')
 
 
 if __name__ == '__main__':
