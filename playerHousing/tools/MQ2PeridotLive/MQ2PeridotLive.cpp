@@ -89,13 +89,13 @@ namespace {
     writeRaw(out, *pZoneInfo);
   }
 
-  const char *spawnColumns = "spawnId\tname\tdisplayedName\tlastname\ttype\trace\tclass\tgender\tlevel\tx\ty\tz\theading\tavatarHeight\theight\tguildId\trealEstateItemId";
+  const char *spawnColumns = "spawnId\tname\tdisplayedName\tlastname\ttype\trace\tclass\tgender\tlevel\tx\ty\tz\theading\tavatarHeight\theight\tguildId\trealEstateItemId\trealEstateId";
 
   void writeSpawn(std::ofstream &out, const char *label, PlayerClient *spawn) {
     out << label << '\t' << spawn->SpawnID << '\t' << boundedText(spawn->Name) << '\t' << boundedText(spawn->DisplayedName) << '\t' << boundedText(spawn->Lastname) << '\t'
       << static_cast<int>(spawn->Type) << '\t' << spawn->GetRace() << '\t' << spawn->GetClass() << '\t' << spawn->GetGender() << '\t'
       << static_cast<int>(spawn->GetLevel()) << '\t' << spawn->X << '\t' << spawn->Y << '\t' << spawn->Z << '\t' << spawn->Heading << '\t'
-      << spawn->AvatarHeight << '\t' << spawn->Height << '\t' << spawn->GuildID << '\t' << spawn->RealEstateItemId << '\n';
+      << spawn->AvatarHeight << '\t' << spawn->Height << '\t' << spawn->GuildID << '\t' << spawn->RealEstateItemId << '\t' << spawn->RealEstateID << '\n';
     writeRaw(out, *spawn);
   }
 
