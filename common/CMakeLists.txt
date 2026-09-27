@@ -644,6 +644,7 @@ SET(common_headers
     guild_base.h
     guilds.h
     housingPrices.h
+    housingPropertyItem.h
     http/httplib.h
     http/uri.h
     inventory_profile.h

@@ -4765,7 +4765,7 @@ struct ItemSerializationHeaderFinish
 	uint32 ornamentHeroModel;
 	int32 unknown063;	// 0
 	uint8 Copied;		// Copied Flag - Possibly for items copied during server transfer?
-	int32 unknowna4;	// 0xffffffff
+	int32 real_estate_id;	// the property the item carries, -1 for none (the client's ItemBase RealEstateID, +0x7c)
 	int32 unknowna5;	// 0
 	uint8 ItemClass; //0, 1, or 2
 };

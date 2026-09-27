@@ -34,11 +34,9 @@ namespace housing {
         "SELECT custom_data FROM inventory WHERE character_id = {} AND custom_data LIKE '%{}^%'", characterId, propertyItemKey
       ));
       for (auto row : rows) {
-        const auto parts = Strings::Split(row[0] ? row[0] : "", "^");
-        for (size_t i = 0; i + 1 < parts.size(); i += 2) {
-          if (parts[i] == propertyItemKey && Strings::IsNumber(parts[i + 1])) {
-            ids.insert(Strings::ToUnsignedInt(parts[i + 1]));
-          }
+        const uint32 propertyId = carriedPropertyId(row[0] ? row[0] : "");
+        if (propertyId) {
+          ids.insert(propertyId);
         }
       }
       return ids;
