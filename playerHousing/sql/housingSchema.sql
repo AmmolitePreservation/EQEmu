@@ -3,7 +3,8 @@
 -- Content tables: definitions, costs, currencies, regions, NPC items, neighborhood words, poll labels. The rest is player state.
 
 -- A price (copper) makes a plot or guild plot purchasable. Its purchase and upkeep costs are derived when the catalog loads
--- (upkeep: Housing:PlotUpkeepPercent of the price), so neither is stored; placed items pay their own upkeep ids.
+-- (upkeep: Housing:PlotUpkeepPercent of the price), so neither is stored; placed items pay their own upkeep ids. max_houses
+-- is the client's +0x30: the houses and guild halls a yard holds (placement counts its children that aren't crates).
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
@@ -20,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `layout_heading` FLOAT NOT NULL DEFAULT 0,
   `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `zone_version` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `unknown_30` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `max_houses` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_34` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_38` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_44` INT(10) UNSIGNED NOT NULL DEFAULT 336,

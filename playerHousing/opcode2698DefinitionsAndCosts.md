@@ -47,7 +47,7 @@ Wire order is **not** in-memory order. "Mem" is the client struct offset, for cr
 | 4 | u32 | +0x24 | **upkeep cost id**: `CostElement.costID` for the upkeep combobox. **Correction:** this is not the price; the price is `+0x20`. | Purchase window fill `0x74de4c`; Manage window upkeep (`0x741470`, `0x742d82`) |
 | 5 | u32 | +0x28 | **max items** | accessor `0x7f5040`; validation strings |
 | 6 | u32 | +0x2c | **max non-real-estate items** (must be ≤ max items) | accessor `0x7f5080`; validation clamps to +0x28 |
-| 7 | u32 | +0x30 | unknown | accessor `0x7f5100` |
+| 7 | u32 | +0x30 | **max houses**: the houses and guild halls a yard holds. Placement rule 9 (`0x5b48b0`) counts the yard's children that aren't moving crates (`0x7f61b0`) and refuses once the count reaches this (`0x7f5100` on the yard's definition), with `0x0f` for a house or `0x44` for a guild hall | accessor `0x7f5100` |
 | 8 | u32 | +0x34 | unknown | |
 | 9 | u32 | +0x38 | unknown | read at `0x5b46e0` |
 | 10 | u32 | +0x3c | **definition type** (enum below) | accessor `0x7f4fa0` (50 callers); name table `0xb616a0` |
@@ -115,5 +115,5 @@ On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstat
 
 ## Still open
 
-- Meanings of the unknown definition fields (+0x30, +0x34, +0x38, +0x44, the string at +0x0c). (+0x1c = region id, +0x20 = purchase cost id, +0x40 = category label are resolved.)
+- Meanings of the unknown definition fields (+0x34, +0x38, +0x44, the string at +0x0c); +0x30 is max houses. (+0x1c = region id, +0x20 = purchase cost id, +0x40 = category label are resolved.)
 - When the server should send `0x2698`: on zone-in, or on the first real-estate window open. Decide once the request flows are decoded.

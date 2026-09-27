@@ -209,7 +209,7 @@ namespace housing {
         .u32(entry.upkeepCostId)
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
-        .u32(row.unknown_30)
+        .u32(row.max_houses)
         .u32(row.unknown_34)
         .u32(row.unknown_38)
         .u32(row.type)

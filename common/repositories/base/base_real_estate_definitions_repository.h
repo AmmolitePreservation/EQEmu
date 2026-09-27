@@ -34,7 +34,7 @@ public:
 		float       layout_heading;
 		uint32_t    zone_id;
 		uint8_t     zone_version;
-		uint32_t    unknown_30;
+		uint32_t    max_houses;
 		uint32_t    unknown_34;
 		uint32_t    unknown_38;
 		uint32_t    unknown_44;
@@ -64,7 +64,7 @@ public:
 			"layout_heading",
 			"zone_id",
 			"zone_version",
-			"unknown_30",
+			"max_houses",
 			"unknown_34",
 			"unknown_38",
 			"unknown_44",
@@ -90,7 +90,7 @@ public:
 			"layout_heading",
 			"zone_id",
 			"zone_version",
-			"unknown_30",
+			"max_houses",
 			"unknown_34",
 			"unknown_38",
 			"unknown_44",
@@ -150,7 +150,7 @@ public:
 		e.layout_heading            = 0;
 		e.zone_id                   = 0;
 		e.zone_version              = 0;
-		e.unknown_30                = 0;
+		e.max_houses                = 0;
 		e.unknown_34                = 0;
 		e.unknown_38                = 0;
 		e.unknown_44                = 336;
@@ -206,7 +206,7 @@ public:
 			e.layout_heading            = row[12] ? strtof(row[12], nullptr) : 0;
 			e.zone_id                   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.zone_version              = row[14] ? static_cast<uint8_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.unknown_30                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.max_houses                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.unknown_34                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_38                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_44                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 336;
@@ -259,7 +259,7 @@ public:
 		v.push_back(columns[12] + " = " + std::to_string(e.layout_heading));
 		v.push_back(columns[13] + " = " + std::to_string(e.zone_id));
 		v.push_back(columns[14] + " = " + std::to_string(e.zone_version));
-		v.push_back(columns[15] + " = " + std::to_string(e.unknown_30));
+		v.push_back(columns[15] + " = " + std::to_string(e.max_houses));
 		v.push_back(columns[16] + " = " + std::to_string(e.unknown_34));
 		v.push_back(columns[17] + " = " + std::to_string(e.unknown_38));
 		v.push_back(columns[18] + " = " + std::to_string(e.unknown_44));
@@ -300,7 +300,7 @@ public:
 		v.push_back(std::to_string(e.layout_heading));
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.zone_version));
-		v.push_back(std::to_string(e.unknown_30));
+		v.push_back(std::to_string(e.max_houses));
 		v.push_back(std::to_string(e.unknown_34));
 		v.push_back(std::to_string(e.unknown_38));
 		v.push_back(std::to_string(e.unknown_44));
@@ -349,7 +349,7 @@ public:
 			v.push_back(std::to_string(e.layout_heading));
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.zone_version));
-			v.push_back(std::to_string(e.unknown_30));
+			v.push_back(std::to_string(e.max_houses));
 			v.push_back(std::to_string(e.unknown_34));
 			v.push_back(std::to_string(e.unknown_38));
 			v.push_back(std::to_string(e.unknown_44));
@@ -402,7 +402,7 @@ public:
 			e.layout_heading            = row[12] ? strtof(row[12], nullptr) : 0;
 			e.zone_id                   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.zone_version              = row[14] ? static_cast<uint8_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.unknown_30                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.max_houses                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.unknown_34                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_38                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_44                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 336;
@@ -446,7 +446,7 @@ public:
 			e.layout_heading            = row[12] ? strtof(row[12], nullptr) : 0;
 			e.zone_id                   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.zone_version              = row[14] ? static_cast<uint8_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.unknown_30                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.max_houses                = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.unknown_34                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_38                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_44                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 336;
@@ -540,7 +540,7 @@ public:
 		v.push_back(std::to_string(e.layout_heading));
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.zone_version));
-		v.push_back(std::to_string(e.unknown_30));
+		v.push_back(std::to_string(e.max_houses));
 		v.push_back(std::to_string(e.unknown_34));
 		v.push_back(std::to_string(e.unknown_38));
 		v.push_back(std::to_string(e.unknown_44));
@@ -582,7 +582,7 @@ public:
 			v.push_back(std::to_string(e.layout_heading));
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.zone_version));
-			v.push_back(std::to_string(e.unknown_30));
+			v.push_back(std::to_string(e.max_houses));
 			v.push_back(std::to_string(e.unknown_34));
 			v.push_back(std::to_string(e.unknown_38));
 			v.push_back(std::to_string(e.unknown_44));
