@@ -71,6 +71,13 @@ namespace {
     out << "raw\t" << sizeof(T) << '\t' << hexBytes(&object, sizeof(T)) << '\n';
   }
 
+  // eqlib's HashTable walk reads its bucket array without checking it, and Live allocates that array only with the first entry:
+  // walking the empty cost table crashed reading address 0.
+  template <typename Table>
+  bool hasEntries(const Table &table) {
+    return table.GetTotalEntries() > 0;
+  }
+
   std::string timeStamp() {
     const std::time_t now = std::time(nullptr);
     std::tm local = {};
@@ -257,8 +264,7 @@ namespace {
     out << "manager\t" << manager->zoneRealEstateId << '\t' << static_cast<int>(manager->zoneRealEstateType) << '\t' << manager->currentRealEstateId << '\t'
       << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\n';
     writeRaw(out, *manager);
-    // eqlib's cost manager layout does not match Live: its CXStr path crashed CXStr::Assure and walking its table crashed once it held costs.
-    // Only each manager's count and raw bytes are read.
+    // On Live the managers' first member is not the CXStr path eqlib declares: it points into eqgame's image, and c_str() crashed writing there.
     out << "  definitionsManager\tentries\n" << "  costsManager\tentries\n";
     if (manager->definitions) {
       out << "definitionsManager\t" << manager->definitions->definitions.GetTotalEntries() << '\n';
@@ -272,7 +278,7 @@ namespace {
     out << "[definitions] definition\tkey\tid\tname\tdescription\taddress\tzoneInX\tzoneInY\tzoneInZ\tareaId\tcostDefinition\tupkeepDefinition\tmaxItems\tmaxNonRealEstateItems\tmaxChildren\tzoneId\tdzId\ttype\tgroupId\ticon\tmaxNpcItems\tswitchX\tswitchY\tswitchZ\tswitchHeading\tchildDefinitions\n";
     if (manager->definitions) {
       auto &table = manager->definitions->definitions;
-      for (auto *entry = table.WalkFirstEntry(); entry; entry = table.WalkNextEntry(entry)) {
+      for (auto *entry = hasEntries(table) ? table.WalkFirstEntry() : nullptr; entry; entry = table.WalkNextEntry(entry)) {
         const RealEstateDefinition &definition = entry->value();
         std::string children;
         for (int index = 0; index < definition.childDefinitions.GetCount(); ++index) {
@@ -289,8 +295,26 @@ namespace {
       }
     }
 
+    out << "[costs] cost\tkey\tcostId\tcomponentId\tsubComponents (typeId:typeSubId:cost)\n";
+    if (manager->costs) {
+      auto &table = manager->costs->costs;
+      for (auto *entry = hasEntries(table) ? table.WalkFirstEntry() : nullptr; entry; entry = table.WalkNextEntry(entry)) {
+        const RealEstateCostSchemeData &cost = entry->value();
+        for (int index = 0; index < cost.costComponents.GetCount(); ++index) {
+          const RealEstateCostComponent &component = cost.costComponents[index];
+          std::string subComponents;
+          for (int sub = 0; sub < component.subComponents.GetCount(); ++sub) {
+            const RealEstateCostSubComponent &part = component.subComponents[sub];
+            subComponents += fmt::format("{}{}:{}:{}", sub ? "," : "", part.typeId, part.typeSubId, part.cost);
+          }
+          out << "cost\t" << entry->key() << '\t' << cost.costId << '\t' << component.id << '\t' << subComponents << '\n';
+        }
+        writeRaw(out, cost);
+      }
+    }
+
     out << "[properties] property\tkey\tid\tstaticId\tparentId\tdefinitionId\tguildId\tfellowshipId\tprimaryOwner\tprimaryHandle\tdefaultPermissionLevel\tdynamicName\tdefaultUpkeepId\tupkeepExpiredTime\tvotingOptedOut\tchildIds\tescrow (currency:amount)\n";
-    for (auto *entry = manager->realEstates.WalkFirstEntry(); entry; entry = manager->realEstates.WalkNextEntry(entry)) {
+    for (auto *entry = hasEntries(manager->realEstates) ? manager->realEstates.WalkFirstEntry() : nullptr; entry; entry = manager->realEstates.WalkNextEntry(entry)) {
       RealEstate *property = entry->value();
       if (!property) {
         continue;
@@ -320,7 +344,7 @@ namespace {
     }
 
     out << "[accessLists] accessList\tkey\n";
-    for (auto *entry = manager->accessLists.WalkFirstEntry(); entry; entry = manager->accessLists.WalkNextEntry(entry)) {
+    for (auto *entry = hasEntries(manager->accessLists) ? manager->accessLists.WalkFirstEntry() : nullptr; entry; entry = manager->accessLists.WalkNextEntry(entry)) {
       out << "accessList\t" << entry->key() << '\n';
       if (entry->value()) {
         writeRaw(out, *entry->value());
@@ -329,14 +353,14 @@ namespace {
 
     out << "[itemLists] itemList\tkey\trealEstateId\tnonRealEstateItemCount\tnpcItemCount\tupkeepItemCount\n";
     out << "  placedItem\tkey\trealEstateId\trealEstateItemId\tplaced\tupkeepExpiredTime\tx\ty\tz\theading\tpitch\troll\townerName\townerHandle\townerNameHashKey\n";
-    for (auto *entry = manager->itemLists.WalkFirstEntry(); entry; entry = manager->itemLists.WalkNextEntry(entry)) {
+    for (auto *entry = hasEntries(manager->itemLists) ? manager->itemLists.WalkFirstEntry() : nullptr; entry; entry = manager->itemLists.WalkNextEntry(entry)) {
       RealEstateItems *list = entry->value();
       if (!list) {
         continue;
       }
       out << "itemList\t" << entry->key() << '\t' << list->realEstateId << '\t' << list->nonRealEstateItemCount << '\t' << list->npcItemCount << '\t' << list->upkeepItemCount << '\n';
       writeRaw(out, *list);
-      for (auto *itemEntry = list->realEstateItems.WalkFirstEntry(); itemEntry; itemEntry = list->realEstateItems.WalkNextEntry(itemEntry)) {
+      for (auto *itemEntry = hasEntries(list->realEstateItems) ? list->realEstateItems.WalkFirstEntry() : nullptr; itemEntry; itemEntry = list->realEstateItems.WalkNextEntry(itemEntry)) {
         const RealEstateItem *placed = itemEntry->value();
         if (!placed) {
           continue;
