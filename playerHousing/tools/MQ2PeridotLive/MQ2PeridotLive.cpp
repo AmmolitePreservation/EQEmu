@@ -1,8 +1,9 @@
 // Reads EverQuest Live's data from client memory for Peridot's housing work (playerHousing/serverPlan.md, chunk 5): items'
-// housing fields, and whole-zone dumps. Nothing here asks the server for anything except the item links /peridotlive link
-// clicks, as a player would.
+// housing fields, whole-zone dumps, and every vendor's inventory as it opens. Nothing here asks the server for anything
+// except the item links /peridotlive link clicks, as a player would.
 #include <mq/Plugin.h>
 
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -11,12 +12,14 @@
 #include <fstream>
 #include <optional>
 #include <string>
+#include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.2);
+PLUGIN_VERSION(0.3);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
+  constexpr auto vendorSettle = std::chrono::seconds(1);
   constexpr const char *reportFileName = "peridotLiveItems.tsv";
 
   struct PendingLink {
@@ -26,6 +29,16 @@ namespace {
   };
 
   std::optional<PendingLink> pendingLink;
+
+  struct VendorCapture {
+    unsigned int merchantId = 0;
+    int itemCount = -1;
+    std::chrono::steady_clock::time_point changed;
+    std::filesystem::path path;
+    bool written = false;
+  };
+
+  std::optional<VendorCapture> vendorCapture;
 
   template <size_t Length>
   std::string boundedText(const char (&field)[Length]) {
@@ -47,6 +60,40 @@ namespace {
   template <typename T>
   void writeRaw(std::ofstream &out, const T &object) {
     out << "raw\t" << sizeof(T) << '\t' << hexBytes(&object, sizeof(T)) << '\n';
+  }
+
+  std::string timeStamp() {
+    const std::time_t now = std::time(nullptr);
+    std::tm local = {};
+    localtime_s(&local, &now);
+    char stamp[32] = {};
+    std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &local);
+    return stamp;
+  }
+
+  std::string fileNamePart(const std::string &text) {
+    std::string part;
+    for (char ch : text) {
+      part += std::isalnum(static_cast<unsigned char>(ch)) ? ch : '_';
+    }
+    return part;
+  }
+
+  void writeZoneHeader(std::ofstream &out, const std::string &stamp) {
+    out << "time\t" << stamp << '\n';
+    out << "zone\t" << boundedText(pZoneInfo->ShortName) << '\t' << boundedText(pZoneInfo->LongName) << '\t' << pZoneInfo->ZoneID << '\t'
+      << pLocalPC->zoneId << '\t' << pLocalPC->instance << '\n';
+    writeRaw(out, *pZoneInfo);
+  }
+
+  const char *spawnColumns = "spawnId\tname\tdisplayedName\tlastname\ttype\trace\tclass\tgender\tlevel\tx\ty\tz\theading\tavatarHeight\theight\tguildId\trealEstateItemId";
+
+  void writeSpawn(std::ofstream &out, const char *label, PlayerClient *spawn) {
+    out << label << '\t' << spawn->SpawnID << '\t' << boundedText(spawn->Name) << '\t' << boundedText(spawn->DisplayedName) << '\t' << boundedText(spawn->Lastname) << '\t'
+      << static_cast<int>(spawn->Type) << '\t' << spawn->GetRace() << '\t' << spawn->GetClass() << '\t' << spawn->GetGender() << '\t'
+      << static_cast<int>(spawn->GetLevel()) << '\t' << spawn->X << '\t' << spawn->Y << '\t' << spawn->Z << '\t' << spawn->Heading << '\t'
+      << spawn->AvatarHeight << '\t' << spawn->Height << '\t' << spawn->GuildID << '\t' << spawn->RealEstateItemId << '\n';
+    writeRaw(out, *spawn);
   }
 
   std::string itemLinkHash(ItemClient *item) {
@@ -277,13 +324,9 @@ namespace {
       WriteChatf("\ar[PeridotLive]\ax not in a zone");
       return;
     }
-    const std::time_t now = std::time(nullptr);
-    std::tm local = {};
-    localtime_s(&local, &now);
-    char stamp[32] = {};
-    std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &local);
-    const std::string zoneName = boundedText(pZoneInfo->ShortName);
-    const std::filesystem::path dumpPath = std::filesystem::path(gPathLogs) / fmt::format("peridotLiveZone_{}_{}_{}.txt", zoneName, pLocalPC->instance, stamp);
+    const std::string stamp = timeStamp();
+    const std::filesystem::path dumpPath = std::filesystem::path(gPathLogs)
+      / fmt::format("peridotLiveZone_{}_{}_{}.txt", fileNamePart(boundedText(pZoneInfo->ShortName)), pLocalPC->instance, stamp);
     std::ofstream out(dumpPath);
     if (!out) {
       WriteChatf("\ar[PeridotLive]\ax could not write %s", dumpPath.string().c_str());
@@ -291,19 +334,13 @@ namespace {
     }
     out << "# MQ2PeridotLive zone dump: everything read from client memory, nothing requested from the server.\n"
       << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
-    out << "time\t" << stamp << '\n';
-    out << "zone\t" << zoneName << '\t' << boundedText(pZoneInfo->LongName) << '\t' << pZoneInfo->ZoneID << '\t' << pLocalPC->zoneId << '\t' << pLocalPC->instance << '\n';
-    writeRaw(out, *pZoneInfo);
+    writeZoneHeader(out, stamp);
 
     int spawns = 0;
-    out << "[spawns] spawn\tspawnId\tname\tdisplayedName\tlastname\ttype\trace\tclass\tgender\tlevel\tx\ty\tz\theading\tavatarHeight\theight\tguildId\trealEstateItemId\n";
+    out << "[spawns] spawn\t" << spawnColumns << '\n';
     if (pSpawnManager) {
       for (PlayerClient *spawn = pSpawnManager->FirstSpawn; spawn; spawn = spawn->GetNext()) {
-        out << "spawn\t" << spawn->SpawnID << '\t' << boundedText(spawn->Name) << '\t' << boundedText(spawn->DisplayedName) << '\t' << boundedText(spawn->Lastname) << '\t'
-          << static_cast<int>(spawn->Type) << '\t' << spawn->GetRace() << '\t' << spawn->GetClass() << '\t' << spawn->GetGender() << '\t'
-          << static_cast<int>(spawn->GetLevel()) << '\t' << spawn->X << '\t' << spawn->Y << '\t' << spawn->Z << '\t' << spawn->Heading << '\t'
-          << spawn->AvatarHeight << '\t' << spawn->Height << '\t' << spawn->GuildID << '\t' << spawn->RealEstateItemId << '\n';
-        writeRaw(out, *spawn);
+        writeSpawn(out, "spawn", spawn);
         ++spawns;
       }
     }
@@ -355,6 +392,78 @@ namespace {
       dumpPath.filename().string().c_str(), spawns, doors, grounds, worldObjects, definitions, properties, placedItems);
   }
 
+  void writeVendor(const VendorCapture &capture, const std::vector<ItemPtr> &items) {
+    std::ofstream out(capture.path);
+    if (!out) {
+      WriteChatf("\ar[PeridotLive]\ax could not write %s", capture.path.string().c_str());
+      return;
+    }
+    out << "# MQ2PeridotLive vendor inventory: what the client holds after the vendor opened, nothing else requested.\n"
+      << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
+    writeZoneHeader(out, timeStamp());
+    out << "[merchant] merchant\t" << spawnColumns << '\n';
+    writeSpawn(out, "merchant", pActiveMerchant);
+    out << "[items] merchantItem\tindex\tprice\tmerchantQuantity\tmerchantSlot (each followed by its item line)\n";
+    int index = 0;
+    for (const ItemPtr &item : items) {
+      out << "merchantItem\t" << index++ << '\t' << item->Price << '\t' << item->MerchantQuantity << '\t' << item->MerchantSlot << '\n';
+      writeItem(out, item.get());
+    }
+    WriteChatf("\ag[PeridotLive]\ax wrote %s: %d items", capture.path.filename().string().c_str(), static_cast<int>(items.size()));
+  }
+
+  void watchVendor() {
+    if (!pMerchantWnd || !pMerchantWnd->IsVisible() || !pActiveMerchant || !pLocalPC || !pZoneInfo) {
+      vendorCapture.reset();
+      return;
+    }
+    const auto &page = pMerchantWnd->PageHandlers[RegularMerchantPage];
+    if (!page) {
+      return;
+    }
+    const auto now = std::chrono::steady_clock::now();
+    const int count = page->GetItemCount();
+    if (!vendorCapture || vendorCapture->merchantId != pActiveMerchant->SpawnID) {
+      const std::filesystem::path path = std::filesystem::path(gPathLogs) / fmt::format("peridotLiveVendor_{}_{}_{}.txt",
+        fileNamePart(boundedText(pZoneInfo->ShortName)), fileNamePart(boundedText(pActiveMerchant->Name)), timeStamp());
+      vendorCapture = VendorCapture{pActiveMerchant->SpawnID, count, now, path, false};
+      return;
+    }
+    if (count != vendorCapture->itemCount) {
+      vendorCapture->itemCount = count;
+      vendorCapture->changed = now;
+      vendorCapture->written = false;
+      return;
+    }
+    if (vendorCapture->written || count <= 0 || now - vendorCapture->changed < vendorSettle) {
+      return;
+    }
+    std::vector<ItemPtr> items;
+    for (int index = 0; index < count; ++index) {
+      if (ItemPtr item = page->GetItem(index)) {
+        items.push_back(item);
+      }
+    }
+    writeVendor(*vendorCapture, items);
+    vendorCapture->written = true;
+  }
+
+  void watchLink() {
+    if (!pendingLink) {
+      return;
+    }
+    if (ItemClient *item = displayedItem(pendingLink->itemId)) {
+      report(item, fmt::format("link hash {:08X}", pendingLink->hash));
+      pendingLink.reset();
+      return;
+    }
+    if (std::chrono::steady_clock::now() - pendingLink->sent > linkWait) {
+      WriteChatf("\ar[PeridotLive]\ax no item display opened for %d within %lld seconds: the link with hash %08X was not answered",
+        pendingLink->itemId, static_cast<long long>(linkWait.count()), pendingLink->hash);
+      pendingLink.reset();
+    }
+  }
+
   void peridotLiveCommand(PlayerClient *, const char *line) {
     char action[MAX_STRING] = {};
     char first[MAX_STRING] = {};
@@ -372,7 +481,7 @@ namespace {
       dumpZone();
     }
     else {
-      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump; files go to Logs");
+      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump; vendors are written as they open; files go to Logs");
     }
   }
 }
@@ -386,17 +495,6 @@ PLUGIN_API void ShutdownPlugin() {
 }
 
 PLUGIN_API void OnPulse() {
-  if (!pendingLink) {
-    return;
-  }
-  if (ItemClient *item = displayedItem(pendingLink->itemId)) {
-    report(item, fmt::format("link hash {:08X}", pendingLink->hash));
-    pendingLink.reset();
-    return;
-  }
-  if (std::chrono::steady_clock::now() - pendingLink->sent > linkWait) {
-    WriteChatf("\ar[PeridotLive]\ax no item display opened for %d within %lld seconds: the link with hash %08X was not answered",
-      pendingLink->itemId, static_cast<long long>(linkWait.count()), pendingLink->hash);
-    pendingLink.reset();
-  }
+  watchVendor();
+  watchLink();
 }
