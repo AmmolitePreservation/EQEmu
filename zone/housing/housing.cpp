@@ -260,6 +260,17 @@ namespace housing {
     return catalogReady && RuleB(Housing, EnableHousing);
   }
 
+  bool reloadCatalog() {
+    catalogReady = catalog().load();
+    if (!catalogReady) {
+      return false;
+    }
+    for (auto &[client, state] : sessions) {
+      sendZoneIn(client, state);
+    }
+    return true;
+  }
+
   Session *session(Client *client) {
     auto found = sessions.find(client);
     return found == sessions.end() ? nullptr : &found->second;

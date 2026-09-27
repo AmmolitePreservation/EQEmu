@@ -127,6 +127,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | Personal trophy benefits changed | the owner | recomputes the available benefits (they come from trophies placed in the owner's plots) |
 | Guild neighborhood created | the guild | `0x1d3c` |
 | Polls changed | all zones | re-sends the affected poll messages to players with the vote windows' data |
+| Catalog changed (a kept `#realestate` edit, `reload`) | all zones | reloads the catalog and re-sends it, and the state that depends on it, to everyone present |
 
 **Consistency:** every change runs inside a database **transaction** (`TransactionBegin` / `Commit` / `Rollback`, `common/dbcore.h`), and each property carries a **revision** checked and incremented by every change (`UPDATE ... WHERE id = ? AND revision = ?`). When two zones change the same property at once, the second change fails cleanly, and that player gets a result code and the fresh state. Transfers use a **pending-offer** record with an expiry, so an offer survives the hop between zones and can't be accepted twice.
 
@@ -364,11 +365,12 @@ Every housing message, **76 opcode values** (the register's sections 2 and 3, `s
 
 **To verify in game:** whether the client keeps its real-estate state across zoning (the probe shows it: the manager's current property and records after zoning out of a neighborhood); if it does, leaving a housing zone must clear it (an empty item list and region set, and records for the properties no longer relevant).
 
-**Plot authoring (T17: one registration in `zone/command.cpp` / `command.h`; the implementation is in the housing module):** a `#realestate` GM command for the spatial content the other tables need:
-- `region create | move | show`: a box at the GM's position and heading (sizes as arguments, its bottom at the GM's feet); `show` sends the zone's regions and reports which contain the GM, by the same math as the client;
-- `definition` and `cost` editing for content without SQL;
-- `neighborhood create`: a neighborhood property and its instance of the definition's template zone (X2), with **its plots created from the definition's children**; `town create` for plots hosted in a public zone (X3);
-- `property info`: the properties and regions at the GM's position; `reload`: re-send the catalog and state to the zone.
+**Plot authoring and administration (T17: one registration in `zone/command.cpp` / `command.h`; the implementation is `zone/housing/housingCommand.cpp`):** a `#realestate` GM command for the content the tables need, without SQL:
+- `info`: the properties and regions where the GM stands (the client's containment), with owner, definition, balances, upkeep and children;
+- `region create <across> <along> [name] | move <id> | size <id> <across> <along> | show`: a box at the GM's position and heading, 100 below the feet to 900 above (the catalog's convention);
+- `definition show <id> | set <id> <field> <value> | origin <id> | create <id> <type> <name> | child add|remove <parent> <child>`, and `cost set <id> <copper>` for the stored (item upkeep) costs, positive (reductions arrive with S13's special houses);
+- **every edit runs in a transaction and is validated by loading the resulting catalog before it is kept**: one that would break the catalog is rolled back with the loader's reasons, so a typo never switches housing off; a kept one reaches every zone through the **catalog changed** event (D2), as `reload` does;
+- later chunks add their own: `village create`, `neighborhood balance` and `neighborhood remove` (chunk 6: S6, D11; the one way anything is deleted), `poll` (chunk 7, S11). Random and world neighborhoods are made by world (D11, D12), not by the command.
 
 Its status level is an account status like EQEmu's other content commands; `Housing:EnableHousing` gates it with the rest.
 

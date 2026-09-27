@@ -8,6 +8,7 @@
 #include "../../common/repositories/real_estate_regions_repository.h"
 
 #include <map>
+#include <string>
 #include <vector>
 
 namespace housing {
@@ -53,11 +54,13 @@ namespace housing {
     const std::map<uint32, Definition> &allDefinitions() const { return definitions; }
     const std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> &allRegions() const { return regions; }
     WireWriter message() const;
+    const std::vector<std::string> &problems() const { return lastProblems; }
 
   private:
     std::map<uint32, Definition> definitions;
     std::map<uint32, Cost> costs;
     std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> regions;
+    std::vector<std::string> lastProblems;
     bool loaded = false;
   };
 
