@@ -222,7 +222,7 @@ def buildFieldTables():
 def buildTables():
   return {
     'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
-      'definitionsPath', 'costsPath', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
+      'definitionsManagerEntries', 'costsManagerEntries', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
       'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
@@ -412,8 +412,9 @@ def ingestZone(tables, capture):
       stable={**pick(fields, ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight']), 'itemId': itemId})
   managers = capture.all('manager')
   manager = managers[0]['fields'] if managers else {}
+  entries = {label: capture.all(label)[0]['fields']['entries'] if capture.all(label) else '' for label in ('definitionsManager', 'costsManager')}
   return {'zoneRealEstateId': manager.get('zoneRealEstateId', ''), 'zoneRealEstateType': manager.get('zoneRealEstateType', ''),
-    'definitionsPath': manager.get('definitionsPath', ''), 'costsPath': manager.get('costsPath', ''),
+    'definitionsManagerEntries': entries['definitionsManager'], 'costsManagerEntries': entries['costsManager'],
     'spawns': len(capture.all('spawn')), 'doors': len(capture.all('door')), 'definitions': len(capture.all('definition')),
     'costs': len(capture.all('cost')), 'properties': len(propertyIds), 'placedItems': len(placedItems),
     'placedObjects': len(capture.all('placedObject')), 'mismatchedPlacedObjects': mismatchedObjects, 'unlinkedItemSpawns': unlinkedSpawns}
