@@ -255,7 +255,7 @@ namespace {
 
     out << "[properties] property\tkey\tid\tstaticId\tparentId\tdefinitionId\tguildId\tfellowshipId\tprimaryOwner\tprimaryHandle\tdefaultPermissionLevel\tdynamicName\tdefaultUpkeepId\tupkeepExpiredTime\tvotingOptedOut\tchildIds\tescrow (currency:amount)\n";
     for (auto *entry = manager->realEstates.WalkFirstEntry(); entry; entry = manager->realEstates.WalkNextEntry(entry)) {
-      const RealEstate *property = entry->value();
+      RealEstate *property = entry->value();
       if (!property) {
         continue;
       }
@@ -264,8 +264,8 @@ namespace {
         children += (index ? "," : "") + std::to_string(property->childIds[index].UniqueEntityID);
       }
       std::string escrow;
-      for (auto balance = property->escrowAccount.begin(); balance != property->escrowAccount.end(); ++balance) {
-        escrow += fmt::format("{}{}:{}", escrow.empty() ? "" : ",", balance->first, balance->second);
+      for (auto [currency, amount] : property->escrowAccount) {
+        escrow += fmt::format("{}{}:{}", escrow.empty() ? "" : ",", currency, amount);
       }
       out << "property\t" << entry->key() << '\t' << property->id << '\t' << property->staticId << '\t' << property->parentId.UniqueEntityID << '\t'
         << property->definitionId << '\t' << property->guildId.UniqueEntityID << '\t' << property->fellowshipId.UniqueEntityID << '\t'
