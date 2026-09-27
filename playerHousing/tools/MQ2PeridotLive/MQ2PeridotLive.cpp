@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.6);
+PLUGIN_VERSION(0.7);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -93,6 +93,9 @@ namespace {
     out << "client\t" << (__ActualVersionDate ? reinterpret_cast<const char *>(__ActualVersionDate) : "unknown") << '\t'
       << (__ActualVersionTime ? reinterpret_cast<const char *>(__ActualVersionTime) : "unknown") << '\n';
     out << "plugin\tMQ2PeridotLive " << MQ2Version << '\n';
+#if defined(__ExpectedVersionDate) && defined(__ExpectedVersionTime)
+    out << "layout\t" << __ExpectedVersionDate << '\t' << __ExpectedVersionTime << '\n';
+#endif
     out << "zone\t" << boundedText(pZoneInfo->ShortName) << '\t' << boundedText(pZoneInfo->LongName) << '\t' << pZoneInfo->ZoneID << '\t'
       << pLocalPC->zoneId << '\t' << pLocalPC->instance << '\n';
     writeRaw(out, *pZoneInfo);
@@ -505,6 +508,37 @@ namespace {
     }
   }
 
+  void dumpWorld() {
+    if (!pLocalPC || !pZoneInfo || !pWorldData) {
+      WriteChatf("\ar[PeridotLive]\ax not in a zone");
+      return;
+    }
+    const std::string stamp = timeStamp();
+    const std::filesystem::path worldPath = std::filesystem::path(gPathLogs) / fmt::format("peridotLiveWorld_{}.txt", stamp);
+    std::ofstream out(worldPath);
+    if (!out) {
+      WriteChatf("\ar[PeridotLive]\ax could not write %s", worldPath.string().c_str());
+      return;
+    }
+    out << "# MQ2PeridotLive world zone list: every zone the client knows, read from client memory, nothing requested from the server.\n"
+      << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
+    writeZoneHeader(out, stamp);
+    out << "[zones] worldZone\tid\tshortName\tlongName\texpansion\tflags\tminLevel\taccessLevel\teqstrId\n";
+    int zones = 0;
+    for (int index = 0; index < MAX_ZONES; ++index) {
+      EQZoneInfo *zone = pWorldData->ZoneArray[index];
+      if (!zone) {
+        continue;
+      }
+      out << "worldZone\t" << static_cast<int>(zone->Id) << '\t' << boundedText(zone->ShortName) << '\t' << boundedText(zone->LongName) << '\t'
+        << static_cast<int>(zone->EQExpansion) << '\t' << zone->ZoneFlags << '\t' << zone->MinLevel << '\t' << static_cast<int>(zone->AccessLevel) << '\t'
+        << zone->eqstrID << '\n';
+      writeRaw(out, *zone);
+      ++zones;
+    }
+    WriteChatf("\ag[PeridotLive]\ax wrote %s: %d zones", worldPath.filename().string().c_str(), zones);
+  }
+
   void peridotLiveCommand(PlayerClient *, const char *line) {
     char action[MAX_STRING] = {};
     char first[MAX_STRING] = {};
@@ -521,8 +555,11 @@ namespace {
     else if (ci_equals(action, "dump")) {
       dumpZone();
     }
+    else if (ci_equals(action, "world")) {
+      dumpWorld();
+    }
     else {
-      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump; vendors are written as they open; files go to Logs");
+      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump | world; vendors are written as they open; files go to Logs");
     }
   }
 }
