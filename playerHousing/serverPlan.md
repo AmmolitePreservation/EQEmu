@@ -172,7 +172,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:DefaultAccessOwner` | int | 8191 | group 6: every permission |
 
 
-**Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (the upkeep `Timer`, its startup run and one call, mirroring the parcel block); the upkeep routine itself is new code in world, and `world/CMakeLists.txt` lists it (T16).
+**Touch points added:** T14 `common/ruletypes.h` (the `Housing` category), T15 `world/main.cpp` (one call per main-loop iteration, beside the parcel block); the upkeep component (`world/housingUpkeep.cpp`) keeps the `Timer` and the startup run itself, and `world/CMakeLists.txt` lists it (T16).
 
 ## Non-standard housing
 
