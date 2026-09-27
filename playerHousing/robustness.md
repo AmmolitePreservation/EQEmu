@@ -53,3 +53,5 @@ The prior research's first attempt at adding house interior zones crashed the cl
 - **The server's zone-in data** for zones EQEmu doesn't normally serve (zone header, spawns, doors), or a non-housing message during zone-in.
 
 **Test plan:** confirm the files above exist in the install; zone in with **no** housing messages at all; then add the housing messages one at a time. If it still crashes, the crash address (from the client's crash log) will say which code path it is.
+
+**On Peridot, steps 1 and 2 pass:** the RoF2 install has every zone above (`.eqg` and `.zon`), and with the zone rows added (`sql/housingZones.sql`), `#zone phinterior3a3` loads the three-room stone interior with no housing messages at all. So the zone level isn't the crash; step 3, the housing messages one at a time, remains.
