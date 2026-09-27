@@ -61,7 +61,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `layout_heading` FLOAT NOT NULL DEFAULT 0,
   `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `zone_version` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `unknown_30` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `max_houses` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_34` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_38` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_44` INT(10) UNSIGNED NOT NULL DEFAULT 336,
