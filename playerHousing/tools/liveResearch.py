@@ -14,8 +14,19 @@ itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'real
 headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'],
   'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
 itemOwners = ('placedItem', 'merchantItem', 'ground')
-# PlayerClient::RealEstateID in eqlib's layout for Live's Sep 17 2026 client; plugin 0.5 writes it as a named column.
+appearanceOwners = ('spawn', 'merchant')
+# PlayerClient offsets in eqlib's layout for Live's Sep 17 2026 client, for captures made before the plugin named these fields:
+# RealEstateID (named from 0.5); mActorClient's ActorBase, NpcTintIndex, Light and Equipment (named from 0.6). Decoding checks
+# race, class and gender against the named columns, so a wrong offset fails loudly.
 spawnRealEstateIdOffset = 0x498
+actorOffset = 0x0fc8
+npcTintIndexOffset = 0x458
+lightOffset = 0x384
+equipmentOffset = 0x1df4
+# Live varies an NPC's appearance between spawns (random gear, tints and per-spawn material and variation), so these are sets.
+appearanceFields = ['actorDef', 'textureType', 'material', 'variation', 'headType', 'faceStyle', 'hairStyle', 'hairColor', 'facialHair',
+  'facialHairColor', 'eyeColor1', 'eyeColor2', 'raceOverride', 'showHelm', 'heritage', 'tattoo', 'details', 'npcTintIndex', 'light', 'armorColors',
+  'actorEquipment', 'equipment']
 noProperty = ('0', '-1')
 
 
@@ -62,8 +73,13 @@ class Capture:
         raise ValueError(f'{where}: unknown record {head!r}')
       if len(parts) - 1 != len(names):
         raise ValueError(f'{where}: {head} has {len(parts) - 1} values for {len(names)} columns')
-      record = {'label': head, 'fields': dict(zip(names, parts[1:])), 'raw': [], 'item': None}
-      if head == 'item':
+      record = {'label': head, 'fields': dict(zip(names, parts[1:])), 'raw': [], 'item': None, 'appearance': None}
+      if head == 'appearance':
+        owner = self.records[-1] if self.records else None
+        if owner is None or owner['label'] not in appearanceOwners or owner['appearance'] is not None:
+          raise ValueError(f'{where}: an appearance line must follow a spawn or merchant line')
+        owner['appearance'] = record
+      elif head == 'item':
         owner = self.records[-1] if self.records else None
         if owner is None or owner['label'] not in itemOwners or owner['item'] is not None:
           raise ValueError(f'{where}: an item line must follow a placed item, merchant item or ground item')
@@ -123,7 +139,7 @@ class Table:
         row = self.rows[key]
         writer.writerow([tsvText(value) for value in list(key) + [row['stable'].get(field, '') for field in self.stableFields]
           + [row['volatile'].get(field, '') for field in self.volatileFields]
-          + [','.join(sorted(row['sets'][field], key=lambda value: sortKey((value,)))) for field in self.setFields]
+          + [' | '.join(sorted(row['sets'][field], key=lambda value: sortKey((value,)))) for field in self.setFields]
           + [row['firstSeen'], row['lastSeen'], len(row['captures'])]])
 
 
@@ -159,13 +175,14 @@ def buildTables():
     'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
       ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime']),
     'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'seenAs', 'soldBy']),
-    'npcLooks': Table('npcLooks', ['npcName'], npcLookFields, setFields=['zones']),
+    'npcLooks': Table('npcLooks', ['npcName'], npcLookFields, setFields=appearanceFields + ['zones']),
     'placedObjects': Table('placedObjects', ['propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
       ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones']),
-    'vendors': Table('vendors', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'itemCount']),
+    'vendors': Table('vendors', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'itemCount'], setFields=appearanceFields),
     'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
     'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
-    'spawns': Table('spawns', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'realEstateId', 'realEstateItemId']),
+    'spawns': Table('spawns', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'realEstateId', 'realEstateItemId'],
+      setFields=appearanceFields),
     'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
   }
 
@@ -176,6 +193,30 @@ def observeItem(tables, capture, itemRecord, seenAs, soldBy=None):
   if soldBy:
     sets['soldBy'] = soldBy
   tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemStableFields[:-1]), sets={**sets, 'linkHashes': fields['linkHash']})
+
+
+def equipmentText(raw, offset):
+  return ','.join(':'.join(str(value) for value in struct.unpack_from('<5I', raw, offset + 20 * slot)) for slot in range(9))
+
+
+def spawnAppearance(capture, spawn):
+  fields = spawn['fields']
+  if spawn['appearance'] is not None:
+    return spawn['appearance']['fields']
+  raw = spawn['raw'][0]
+  signed = lambda offset: str(struct.unpack_from('<b', raw, actorOffset + offset)[0])
+  unsigned = lambda offset: str(raw[actorOffset + offset])
+  integer = lambda offset: str(struct.unpack_from('<i', raw, actorOffset + offset)[0])
+  decoded = (integer(0x14), integer(0x1c), unsigned(0x20))
+  if decoded != (fields['race'], fields['class'], fields['gender']):
+    raise ValueError(f'{capture.path.name}: {fields["name"]} decodes as race, class, gender {decoded}, not the named {fields["race"]}, {fields["class"]}, {fields["gender"]}')
+  return {'actorDef': raw[actorOffset + 0x21:actorOffset + 0x61].split(b'\0')[0].decode('latin-1'), 'textureType': signed(0x08),
+    'material': signed(0x09), 'variation': signed(0x0a), 'headType': signed(0x0b), 'faceStyle': unsigned(0x0c), 'hairStyle': unsigned(0x11),
+    'hairColor': unsigned(0x0d), 'facialHair': unsigned(0x12), 'facialHairColor': unsigned(0x0e), 'eyeColor1': unsigned(0x0f), 'eyeColor2': unsigned(0x10),
+    'raceOverride': integer(0x18), 'showHelm': '1' if raw[actorOffset + 0x88] else '0', 'heritage': integer(0x8c), 'tattoo': integer(0x90),
+    'details': integer(0x94), 'npcTintIndex': str(struct.unpack_from('<i', raw, npcTintIndexOffset)[0]), 'light': str(raw[lightOffset]),
+    'armorColors': ','.join('%08X' % color for color in struct.unpack_from('<9I', raw, actorOffset + 0x64)),
+    'actorEquipment': equipmentText(raw, actorOffset + 0x98), 'equipment': equipmentText(raw, equipmentOffset)}
 
 
 def spawnPropertyId(capture, spawn):
@@ -196,7 +237,8 @@ def ingestVendor(tables, capture):
     raise ValueError(f'{capture.path.name}: {len(merchants)} merchant lines')
   merchant = merchants[0]['fields']
   soldItems = capture.all('merchantItem')
-  tables['vendors'].observe((capture.zoneShortName, merchant['name']), capture, stable=pick(merchant, spawnLookFields),
+  tables['vendors'].observe((capture.zoneShortName, merchant['name']), capture,
+    stable=pick(merchant, spawnLookFields), sets=pick(spawnAppearance(capture, merchants[0]), appearanceFields),
     volatile={**pick(merchant, ['x', 'y', 'z', 'heading']), 'itemCount': str(len(soldItems))})
   for sold in soldItems:
     if sold['item'] is None:
@@ -251,12 +293,13 @@ def ingestZone(tables, capture):
     if fields['type'] == '0':
       continue
     propertyId = spawnPropertyId(capture, spawn)
-    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, spawnLookFields),
+    appearance = pick(spawnAppearance(capture, spawn), appearanceFields)
+    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, spawnLookFields), sets=appearance,
       volatile={**pick(fields, ['x', 'y', 'z', 'heading', 'realEstateItemId']), 'realEstateId': propertyId})
     if propertyId in noProperty:
       continue
     npcName = re.sub(r'\d+$', '', fields['name'])
-    tables['npcLooks'].observe((npcName,), capture, stable=pick(fields, npcLookFields), sets={'zones': zone})
+    tables['npcLooks'].observe((npcName,), capture, stable=pick(fields, npcLookFields), sets={**appearance, 'zones': zone})
     item = placedItems.get((propertyId, fields['realEstateItemId']))
     if item is None:
       unlinkedSpawns += 1

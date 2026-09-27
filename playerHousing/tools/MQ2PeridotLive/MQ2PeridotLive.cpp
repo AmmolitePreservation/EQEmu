@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.5);
+PLUGIN_VERSION(0.6);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -100,12 +100,40 @@ namespace {
 
   const char *spawnColumns = "spawnId\tname\tdisplayedName\tlastname\ttype\trace\tclass\tgender\tlevel\tx\ty\tz\theading\tavatarHeight\theight\tguildId\trealEstateItemId\trealEstateId";
 
+  const char *appearanceColumns = "actorDef\ttextureType\tmaterial\tvariation\theadType\tfaceStyle\thairStyle\thairColor\tfacialHair\tfacialHairColor"
+    "\teyeColor1\teyeColor2\traceOverride\tshowHelm\theritage\ttattoo\tdetails\tnpcTintIndex\tlight\tarmorColors\tactorEquipment\tequipment";
+
+  std::string equipmentText(const EQUIPMENT &equipment) {
+    std::string text;
+    for (int slot = 0; slot < 9; ++slot) {
+      const ArmorProperties &item = equipment.Item[slot];
+      text += fmt::format("{}{}:{}:{}:{}:{}", slot ? "," : "", item.type, item.variation, item.material, item.newArmorID, item.newArmorType);
+    }
+    return text;
+  }
+
+  void writeAppearance(std::ofstream &out, PlayerClient *spawn) {
+    const ActorClient &actor = spawn->mActorClient;
+    std::string colors;
+    for (int slot = 0; slot < 9; ++slot) {
+      colors += fmt::format("{}{:08X}", slot ? "," : "", actor.ArmorColor[slot]);
+    }
+    out << "appearance\t" << boundedText(actor.ActorDef) << '\t' << static_cast<int>(actor.TextureType) << '\t' << static_cast<int>(actor.Material) << '\t'
+      << static_cast<int>(actor.Variation) << '\t' << static_cast<int>(actor.HeadType) << '\t' << static_cast<int>(actor.FaceStyle) << '\t'
+      << static_cast<int>(actor.HairStyle) << '\t' << static_cast<int>(actor.HairColor) << '\t' << static_cast<int>(actor.FacialHair) << '\t'
+      << static_cast<int>(actor.FacialHairColor) << '\t' << static_cast<int>(actor.EyeColor1) << '\t' << static_cast<int>(actor.EyeColor2) << '\t'
+      << actor.RaceOverride << '\t' << (actor.bShowHelm ? 1 : 0) << '\t' << actor.Heritage << '\t' << actor.Tattoo << '\t' << actor.Details << '\t'
+      << spawn->NpcTintIndex << '\t' << static_cast<int>(spawn->Light) << '\t' << colors << '\t' << equipmentText(actor.ActorEquipment) << '\t'
+      << equipmentText(spawn->Equipment) << '\n';
+  }
+
   void writeSpawn(std::ofstream &out, const char *label, PlayerClient *spawn) {
     out << label << '\t' << spawn->SpawnID << '\t' << boundedText(spawn->Name) << '\t' << boundedText(spawn->DisplayedName) << '\t' << boundedText(spawn->Lastname) << '\t'
       << static_cast<int>(spawn->Type) << '\t' << spawn->GetRace() << '\t' << spawn->GetClass() << '\t' << spawn->GetGender() << '\t'
       << static_cast<int>(spawn->GetLevel()) << '\t' << spawn->X << '\t' << spawn->Y << '\t' << spawn->Z << '\t' << spawn->Heading << '\t'
       << spawn->AvatarHeight << '\t' << spawn->Height << '\t' << spawn->GuildID << '\t' << spawn->RealEstateItemId << '\t' << spawn->RealEstateID << '\n';
     writeRaw(out, *spawn);
+    writeAppearance(out, spawn);
   }
 
   std::string itemLinkHash(ItemClient *item) {
@@ -350,7 +378,7 @@ namespace {
     writeZoneHeader(out, stamp);
 
     int spawns = 0;
-    out << "[spawns] spawn\t" << spawnColumns << '\n';
+    out << "[spawns] spawn\t" << spawnColumns << '\n' << "  appearance\t" << appearanceColumns << '\n';
     if (pSpawnManager) {
       for (PlayerClient *spawn = pSpawnManager->FirstSpawn; spawn; spawn = spawn->GetNext()) {
         writeSpawn(out, "spawn", spawn);
@@ -414,7 +442,7 @@ namespace {
     out << "# MQ2PeridotLive vendor inventory: what the client holds after the vendor opened, nothing else requested.\n"
       << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
     writeZoneHeader(out, timeStamp());
-    out << "[merchant] merchant\t" << spawnColumns << '\n';
+    out << "[merchant] merchant\t" << spawnColumns << '\n' << "  appearance\t" << appearanceColumns << '\n';
     writeSpawn(out, "merchant", pActiveMerchant);
     out << "[items] merchantItem\tindex\tprice\tmerchantQuantity\tmerchantSlot (each followed by its item line)\n";
     int index = 0;
