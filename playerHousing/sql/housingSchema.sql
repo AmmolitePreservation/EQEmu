@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_cost_items` (
 
 -- Alternate currencies a cost may also be paid in. Each cost stores only its coin option; the housing module adds one option
 -- per currency accepted for the cost's use, at max(1, the platinum amount / platinum_per_unit, rounded to nearest), Live's
--- rule. EQEmu's alternate_currency table stays untouched. Empty (Peridot's default): coin only.
+-- rule; a reduction (a negative amount, which the client nets against the day's costs) keeps its sign. EQEmu's alternate_currency table stays untouched. Empty (Peridot's default): coin only.
 CREATE TABLE IF NOT EXISTS `real_estate_currencies` (
   `alternate_currency_id` INT(10) UNSIGNED NOT NULL,
   `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,

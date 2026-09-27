@@ -117,7 +117,8 @@ namespace housing {
         item.option_key = static_cast<uint32>(cost.options.size());
         item.currency = currency.alternate_currency_id;
         item.sub_key = currency.sub_key;
-        item.amount = std::max<int64_t>(1, static_cast<int64_t>(std::llround(platinum / currency.platinum_per_unit)));
+        const int64_t units = std::max<int64_t>(1, static_cast<int64_t>(std::llround(std::fabs(platinum) / currency.platinum_per_unit)));
+        item.amount = coinAmount < 0 ? -units : units;
         cost.options.push_back(CostOption{item.option_key, currency.alternate_currency_id, {item}});
         currencyOptions++;
       }
@@ -128,8 +129,8 @@ namespace housing {
         continue;
       }
       const auto &coin = cost.options[0].items[0];
-      if (coin.currency != 0 || coin.sub_key != 0 || coin.amount <= 0) {
-        problems.push_back(fmt::format("cost [{}] option 0 must be a positive coin amount", id));
+      if (coin.currency != 0 || coin.sub_key != 0 || coin.amount == 0) {
+        problems.push_back(fmt::format("cost [{}] option 0 must be a nonzero coin amount (negative: a reduction)", id));
         continue;
       }
       addCurrencyOptions(cost, coin.amount, CostUse::itemUpkeep);

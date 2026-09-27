@@ -28,9 +28,9 @@ INSERT INTO real_estate_definitions (id, name, type, region_id, price, max_items
   VALUES (901, 'player plot 1', 4, 1, 5000000, 200, 150, 20), (902, 'guild plot 1', 8, 0, 5000000, 200, 150, 20);
 INSERT INTO real_estate_definitions (id, name, type, zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901, 5), (901, 31);
-INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep');
-INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0);
-INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (2, 0, 0, 0, 1000);
+INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep'), (3, 'upkeep reduction');
+INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0), (3, 0);
+INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (2, 0, 0, 0, 1000), (3, 0, 0, 0, -200);
 INSERT INTO real_estate_currencies VALUES (9, 1, 15, 1, 1, 0);
 INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (1, 0, 900, 712, 1001, 'Bridge Hills');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, next_upkeep_at, name)
@@ -82,6 +82,7 @@ check('the next free generated neighborhood name skips one in use', """
   WHERE pr.id IS NULL ORDER BY n.name LIMIT 1""", 'Bridge Lake')
 check('a primary anchor leads to an owned house', "SELECT p.id FROM character_real_estate_anchors a JOIN real_estate_properties p ON p.id = a.primary_property_id AND p.owner_character_id = a.character_id WHERE a.character_id = 7", '4')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
+check('an upkeep reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 3", '-200')
 check('a cost stores one coin option', "SELECT GROUP_CONCAT(CONCAT(option_key, ':', currency, ':', amount) ORDER BY option_key) FROM real_estate_cost_items WHERE cost_id = 1", '0:0:5000000')
 check('a currency accepted for plot upkeep, not item upkeep', "SELECT CONCAT(platinum_per_unit, ':', plot_purchase, plot_upkeep, item_upkeep) FROM real_estate_currencies WHERE alternate_currency_id = 9", '15:110')
 check('an hourly charge leaves a fractional balance', "UPDATE real_estate_property_balances SET amount = amount - 2 / 24 WHERE property_id = 2 AND currency = 9; SELECT amount FROM real_estate_property_balances WHERE property_id = 2 AND currency = 9", '2.916667')
