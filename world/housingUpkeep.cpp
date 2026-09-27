@@ -8,14 +8,8 @@ namespace housing {
   namespace {
     Timer upkeepTimer;
     bool intervalRefused = false;
-    bool chargingReported = false;
 
-    void chargeDueUpkeep() {
-      if (!chargingReported) {
-        LogInfo("Housing upkeep tick is running, but charging is not written yet (playerHousing/serverWork.md S8): nothing is charged");
-        chargingReported = true;
-      }
-    }
+    void chargeDueUpkeep();
   }
 
   void processUpkeep() {
