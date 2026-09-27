@@ -3,7 +3,7 @@
 #include "housingGeometry.h"
 
 namespace housing {
-  WireWriter propertyRecord(const Property &property, uint32 guildId, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances) {
+  WireWriter propertyRecord(const Property &property, uint32 guildId, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances, uint32 upkeepOptionKey) {
     WireWriter message;
     message.u32(property.id)
       .u32(0)
@@ -23,7 +23,7 @@ namespace housing {
     for (const auto &balance : propertyBalances) {
       message.u32(balance.currency).f64(balance.amount);
     }
-    message.u32(property.upkeep_option_key)
+    message.u32(upkeepOptionKey)
       .u32(property.upkeep_current)
       .u8(property.voting_opt_out);
     return message;

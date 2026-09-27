@@ -29,7 +29,7 @@ public:
 		uint32_t    host_instance_id;
 		uint32_t    interior_instance_id;
 		uint8_t     contained_in_item;
-		uint32_t    upkeep_option_key;
+		uint32_t    upkeep_currency;
 		uint8_t     upkeep_current;
 		time_t      next_upkeep_at;
 		uint8_t     voting_opt_out;
@@ -56,7 +56,7 @@ public:
 			"host_instance_id",
 			"interior_instance_id",
 			"contained_in_item",
-			"upkeep_option_key",
+			"upkeep_currency",
 			"upkeep_current",
 			"next_upkeep_at",
 			"voting_opt_out",
@@ -79,7 +79,7 @@ public:
 			"host_instance_id",
 			"interior_instance_id",
 			"contained_in_item",
-			"upkeep_option_key",
+			"upkeep_currency",
 			"upkeep_current",
 			"UNIX_TIMESTAMP(next_upkeep_at)",
 			"voting_opt_out",
@@ -136,7 +136,7 @@ public:
 		e.host_instance_id     = 0;
 		e.interior_instance_id = 0;
 		e.contained_in_item    = 0;
-		e.upkeep_option_key    = 0;
+		e.upkeep_currency      = 0;
 		e.upkeep_current       = 1;
 		e.next_upkeep_at       = 0;
 		e.voting_opt_out       = 0;
@@ -189,7 +189,7 @@ public:
 			e.host_instance_id     = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
 			e.interior_instance_id = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.contained_in_item    = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.upkeep_option_key    = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
+			e.upkeep_currency      = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
 			e.upkeep_current       = row[11] ? static_cast<uint8_t>(strtoul(row[11], nullptr, 10)) : 1;
 			e.next_upkeep_at       = strtoll(row[12] ? row[12] : "-1", nullptr, 10);
 			e.voting_opt_out       = row[13] ? static_cast<uint8_t>(strtoul(row[13], nullptr, 10)) : 0;
@@ -238,7 +238,7 @@ public:
 		v.push_back(columns[7] + " = " + std::to_string(e.host_instance_id));
 		v.push_back(columns[8] + " = " + std::to_string(e.interior_instance_id));
 		v.push_back(columns[9] + " = " + std::to_string(e.contained_in_item));
-		v.push_back(columns[10] + " = " + std::to_string(e.upkeep_option_key));
+		v.push_back(columns[10] + " = " + std::to_string(e.upkeep_currency));
 		v.push_back(columns[11] + " = " + std::to_string(e.upkeep_current));
 		v.push_back(columns[12] + " = FROM_UNIXTIME(" + (e.next_upkeep_at > 0 ? std::to_string(e.next_upkeep_at) : "null") + ")");
 		v.push_back(columns[13] + " = " + std::to_string(e.voting_opt_out));
@@ -276,7 +276,7 @@ public:
 		v.push_back(std::to_string(e.host_instance_id));
 		v.push_back(std::to_string(e.interior_instance_id));
 		v.push_back(std::to_string(e.contained_in_item));
-		v.push_back(std::to_string(e.upkeep_option_key));
+		v.push_back(std::to_string(e.upkeep_currency));
 		v.push_back(std::to_string(e.upkeep_current));
 		v.push_back("FROM_UNIXTIME(" + (e.next_upkeep_at > 0 ? std::to_string(e.next_upkeep_at) : "null") + ")");
 		v.push_back(std::to_string(e.voting_opt_out));
@@ -322,7 +322,7 @@ public:
 			v.push_back(std::to_string(e.host_instance_id));
 			v.push_back(std::to_string(e.interior_instance_id));
 			v.push_back(std::to_string(e.contained_in_item));
-			v.push_back(std::to_string(e.upkeep_option_key));
+			v.push_back(std::to_string(e.upkeep_currency));
 			v.push_back(std::to_string(e.upkeep_current));
 			v.push_back("FROM_UNIXTIME(" + (e.next_upkeep_at > 0 ? std::to_string(e.next_upkeep_at) : "null") + ")");
 			v.push_back(std::to_string(e.voting_opt_out));
@@ -372,7 +372,7 @@ public:
 			e.host_instance_id     = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
 			e.interior_instance_id = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.contained_in_item    = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.upkeep_option_key    = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
+			e.upkeep_currency      = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
 			e.upkeep_current       = row[11] ? static_cast<uint8_t>(strtoul(row[11], nullptr, 10)) : 1;
 			e.next_upkeep_at       = strtoll(row[12] ? row[12] : "-1", nullptr, 10);
 			e.voting_opt_out       = row[13] ? static_cast<uint8_t>(strtoul(row[13], nullptr, 10)) : 0;
@@ -413,7 +413,7 @@ public:
 			e.host_instance_id     = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
 			e.interior_instance_id = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.contained_in_item    = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.upkeep_option_key    = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
+			e.upkeep_currency      = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
 			e.upkeep_current       = row[11] ? static_cast<uint8_t>(strtoul(row[11], nullptr, 10)) : 1;
 			e.next_upkeep_at       = strtoll(row[12] ? row[12] : "-1", nullptr, 10);
 			e.voting_opt_out       = row[13] ? static_cast<uint8_t>(strtoul(row[13], nullptr, 10)) : 0;
@@ -504,7 +504,7 @@ public:
 		v.push_back(std::to_string(e.host_instance_id));
 		v.push_back(std::to_string(e.interior_instance_id));
 		v.push_back(std::to_string(e.contained_in_item));
-		v.push_back(std::to_string(e.upkeep_option_key));
+		v.push_back(std::to_string(e.upkeep_currency));
 		v.push_back(std::to_string(e.upkeep_current));
 		v.push_back("FROM_UNIXTIME(" + (e.next_upkeep_at > 0 ? std::to_string(e.next_upkeep_at) : "null") + ")");
 		v.push_back(std::to_string(e.voting_opt_out));
@@ -543,7 +543,7 @@ public:
 			v.push_back(std::to_string(e.host_instance_id));
 			v.push_back(std::to_string(e.interior_instance_id));
 			v.push_back(std::to_string(e.contained_in_item));
-			v.push_back(std::to_string(e.upkeep_option_key));
+			v.push_back(std::to_string(e.upkeep_currency));
 			v.push_back(std::to_string(e.upkeep_current));
 			v.push_back("FROM_UNIXTIME(" + (e.next_upkeep_at > 0 ? std::to_string(e.next_upkeep_at) : "null") + ")");
 			v.push_back(std::to_string(e.voting_opt_out));

@@ -29,8 +29,9 @@ INSERT INTO real_estate_definitions (id, name, type, region_id, purchase_cost_id
 INSERT INTO real_estate_definitions (id, name, type, zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901, 5), (901, 31);
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep');
-INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0), (2, 1);
-INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (1, 0, 9, 1, 25), (2, 0, 0, 0, 1000), (2, 1, 0, 0, -200);
+INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0);
+INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (2, 0, 0, 0, 1000);
+INSERT INTO real_estate_currencies VALUES (9, 1, 15, 1, 1, 0);
 INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (1, 0, 900, 712, 1001, 'Bridge Hills');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, next_upkeep_at, name)
   VALUES (2, 1, 901, 7, 712, 1001, NOW() - INTERVAL 1 HOUR, 'Plot 1'), (3, 1, 902, 0, 712, 1001, NULL, 'Guild plot 1');
@@ -65,8 +66,8 @@ check('neighborhood row: player plots, used, guild plots, used', """
   SELECT CONCAT_WS(',', SUM(d.type = 4), SUM(d.type = 4 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)),
                         SUM(d.type = 8), SUM(d.type = 8 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)))
   FROM real_estate_properties p JOIN real_estate_definitions d ON d.id = p.definition_id WHERE p.parent_id = 1""", '1,1,1,0')
-check('revision-guarded update, fresh', "UPDATE real_estate_properties SET upkeep_option_key = 1, revision = revision + 1 WHERE id = 2 AND revision = 0; SELECT ROW_COUNT()", '1')
-check('revision-guarded update, stale', "UPDATE real_estate_properties SET upkeep_option_key = 0, revision = revision + 1 WHERE id = 2 AND revision = 0; SELECT ROW_COUNT()", '0')
+check('revision-guarded update, fresh', "UPDATE real_estate_properties SET upkeep_currency = 9, revision = revision + 1 WHERE id = 2 AND revision = 0; SELECT ROW_COUNT()", '1')
+check('revision-guarded update, stale', "UPDATE real_estate_properties SET upkeep_currency = 0, revision = revision + 1 WHERE id = 2 AND revision = 0; SELECT ROW_COUNT()", '0')
 check('upkeep tick: due properties', "SELECT GROUP_CONCAT(id) FROM real_estate_properties WHERE next_upkeep_at <= NOW()", '2')
 plan = sql("EXPLAIN SELECT id FROM real_estate_properties FORCE INDEX (next_upkeep_at) WHERE next_upkeep_at <= NOW()")
 assert 'next_upkeep_at' in plan and 'range' in plan, plan
@@ -81,15 +82,16 @@ check('the next free generated neighborhood name skips one in use', """
   WHERE pr.id IS NULL ORDER BY n.name LIMIT 1""", 'Bridge Lake')
 check('a primary anchor leads to an owned house', "SELECT p.id FROM character_real_estate_anchors a JOIN real_estate_properties p ON p.id = a.primary_property_id AND p.owner_character_id = a.character_id WHERE a.character_id = 7", '4')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
-check('price with two currencies', "SELECT GROUP_CONCAT(CONCAT(currency, ':', amount) ORDER BY currency) FROM real_estate_cost_items WHERE cost_id = 1 AND option_key = 0", '0:5000000,9:25')
+check('a cost stores one coin option', "SELECT GROUP_CONCAT(CONCAT(option_key, ':', currency, ':', amount) ORDER BY option_key) FROM real_estate_cost_items WHERE cost_id = 1", '0:0:5000000')
+check('a currency accepted for plot upkeep, not item upkeep', "SELECT CONCAT(platinum_per_unit, ':', plot_purchase, plot_upkeep, item_upkeep) FROM real_estate_currencies WHERE alternate_currency_id = 9", '15:110')
 check('an hourly charge leaves a fractional balance', "UPDATE real_estate_property_balances SET amount = amount - 2 / 24 WHERE property_id = 2 AND currency = 9; SELECT amount FROM real_estate_property_balances WHERE property_id = 2 AND currency = 9", '2.916667')
-check('a reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 2 AND option_key = 1", '-200')
 for label, bad in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)"),
                    ('pet items above max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_pet_items) VALUES (998, 4, 10, 11)"),
                    ('access group above 6', "INSERT INTO real_estate_access_groups VALUES (2, 7, 1)"),
                    ('personal trophy slot above 9', "INSERT INTO character_trophy_tribute VALUES (7, 10, 100, 0)"),
                    ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)"),
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)"),
+                   ('currency rate of zero', "INSERT INTO real_estate_currencies (alternate_currency_id, platinum_per_unit) VALUES (10, 0)"),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)"),
                    ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())"),
                    ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')"),

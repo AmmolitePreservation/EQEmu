@@ -99,6 +99,17 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   PRIMARY KEY (`cost_id`, `option_key`, `currency`, `sub_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_currencies` (
+  `alternate_currency_id` INT(10) UNSIGNED NOT NULL,
+  `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `platinum_per_unit` FLOAT NOT NULL,
+  `plot_purchase` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `plot_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `item_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`alternate_currency_id`),
+  CONSTRAINT `real_estate_currency_rate` CHECK (`platinum_per_unit` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
@@ -148,7 +159,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `interior_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_option_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_current` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
   `next_upkeep_at` DATETIME NULL DEFAULT NULL,
   `voting_opt_out` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
