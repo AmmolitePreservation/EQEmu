@@ -206,15 +206,18 @@ definitionFields = ['id', 'name', 'description', 'address', 'zoneInX', 'zoneInY'
   'maxItems', 'maxNonRealEstateItems', 'maxChildren', 'zoneId', 'dzId', 'type', 'groupId', 'icon', 'maxNpcItems', 'switchX', 'switchY',
   'switchZ', 'switchHeading', 'childDefinitions']
 # Link hashes cover an item's own data and transformation molds change a placeable's appearance, so an item id can show several of each.
-itemStableFields = [column for column in itemColumns[1:] if column != 'linkHash'] + ['npcName']
+itemStableFields = [column for column in itemColumns[1:] if column != 'linkHash']
 # An item's spawned NPC is named after the item's house-pet name for every pet, mount, familiar and plushie seen; guild services
 # spawn differently named NPCs, learned where an item list links the spawn to its item.
 npcLookFields = ['displayedName', 'race', 'gender', 'class', 'level', 'height']
+# The same NPC name spawns with different levels, races, genders and heights between instances (two guild halls' training
+# dummies, randomized NPCs), and one item's copies spawn differently named NPCs, so these are kept as observed variants.
+spawnVariantFields = ['lastname', 'race', 'gender', 'level', 'height', 'avatarHeight']
 spawnLookFields = ['displayedName', 'lastname', 'race', 'class', 'gender', 'level', 'height', 'avatarHeight']
-doorStableFields = ['name', 'type', 'x', 'y', 'z', 'heading', 'defaultX', 'defaultY', 'defaultZ', 'defaultHeading', 'defaultState',
+doorStableFields = ['name', 'type', 'defaultX', 'defaultY', 'defaultZ', 'defaultHeading', 'defaultState',
   'scaleFactor', 'key', 'spellId', 'dynDoorId', 'usable', 'visible']
 # Before plugin 0.5 a door without a script wrote its script field's uninitialized bytes, which differ between sessions.
-doorVolatileFields = ['state', 'script']
+doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 
 
 def buildFieldTables():
@@ -236,14 +239,16 @@ def buildTables():
     'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
     'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
       ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime']),
-    'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'seenAs', 'soldBy']),
-    'npcLooks': Table('npcLooks', ['npcName'], npcLookFields, setFields=appearanceFields + ['zones']),
+    'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'npcNames', 'seenAs', 'soldBy']),
+    'npcLooks': Table('npcLooks', ['npcName'], ['displayedName', 'class'], setFields=[f for f in npcLookFields if f not in ('displayedName', 'class')]
+      + appearanceFields + ['zones']),
     'placedObjects': Table('placedObjects', ['propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
       ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones']),
-    'vendors': Table('vendors', ['zone', 'name'], spawnLookFields, ['itemCount'], setFields=['positions'] + appearanceFields),
+    'vendors': Table('vendors', ['zone', 'name'], ['displayedName', 'class'], ['itemCount'], setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
     'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
-    'spawns': Table('spawns', ['zone', 'name'], spawnLookFields, ['realEstateId', 'realEstateItemId'], setFields=['positions'] + appearanceFields),
+    'spawns': Table('spawns', ['zone', 'name'], ['displayedName', 'class'], ['realEstateId', 'realEstateItemId'],
+      setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'worldZones': Table('worldZones', ['id'], ['shortName', 'longName', 'expansion', 'flags', 'minLevel', 'accessLevel', 'eqstrId']),
     'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
     'windowWidgets': Table('windowWidgets', ['window', 'path'], [], ['depth', 'type', 'visible', 'text']),
@@ -309,7 +314,8 @@ def ingestVendor(tables, capture):
   soldItems = capture.all('merchantItem')
   observeSpawnFields(tables, capture, merchants[0])
   tables['vendors'].observe((capture.zoneShortName, merchant['name']), capture,
-    stable=pick(merchant, spawnLookFields), sets={**pick(spawnAppearance(capture, merchants[0]), appearanceFields), 'positions': position(merchant)},
+    stable=pick(merchant, ['displayedName', 'class']), sets={**pick(merchant, spawnVariantFields), **pick(spawnAppearance(capture, merchants[0]), appearanceFields),
+      'positions': position(merchant)},
     volatile={'itemCount': str(len(soldItems))})
   for sold in soldItems:
     if sold['item'] is None:
@@ -416,17 +422,19 @@ def ingestZone(tables, capture):
     propertyId = spawnPropertyId(capture, spawn)
     appearance = pick(spawnAppearance(capture, spawn), appearanceFields)
     observeSpawnFields(tables, capture, spawn)
-    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, spawnLookFields), sets={**appearance, 'positions': position(fields)},
+    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, ['displayedName', 'class']),
+      sets={**pick(fields, spawnVariantFields), **appearance, 'positions': position(fields)},
       volatile={'realEstateItemId': fields['realEstateItemId'], 'realEstateId': propertyId})
     if propertyId in noProperty:
       continue
     npcName = re.sub(r'\d+$', '', fields['name'])
-    tables['npcLooks'].observe((npcName,), capture, stable=pick(fields, npcLookFields), sets={**appearance, 'zones': zone})
+    tables['npcLooks'].observe((npcName,), capture, stable=pick(fields, ['displayedName', 'class']),
+      sets={**pick(fields, ['race', 'gender', 'level', 'height']), **appearance, 'zones': zone})
     item = placedItems.get((propertyId, fields['realEstateItemId']))
     if item is None:
       unlinkedSpawns += 1
       continue
-    tables['items'].observe((item['itemId'],), capture, stable={'npcName': npcName})
+    tables['items'].observe((item['itemId'],), capture, sets={'npcNames': npcName})
   for door in capture.all('door'):
     fields = door['fields']
     tables['doors'].observe((zone, fields['id']), capture, stable=pick(fields, doorStableFields), volatile=pick(fields, doorVolatileFields))
@@ -460,11 +468,13 @@ def writeNpcItems(tables):
       housepet = stable.get('housepetFileName', '')
       if not housepet:
         continue
-      npcName, lookSource = (stable['npcName'], 'itemList') if stable.get('npcName') else (housepet, 'housepetName')
+      linked = sorted(name for name in row['sets']['npcNames'] if (name,) in looks)
+      npcName, lookSource = (linked[0], 'itemList') if linked else (housepet, 'housepetName')
       look = looks.get((npcName,))
       if look is None:
         npcName, lookSource = '', ''
-      values = [look['stable'].get(field, '') for field in npcLookFields] if look else [''] * len(npcLookFields)
+      field = lambda name: look['stable'].get(name) or ' | '.join(sorted(look['sets'].get(name, ())))
+      values = [field(name) for name in npcLookFields] if look else [''] * len(npcLookFields)
       writer.writerow([tsvText(value) for value in [key[0], stable.get('name', ''), housepet, stable.get('npcRespawnInterval', ''),
         stable.get('placeable', ''), npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
 
