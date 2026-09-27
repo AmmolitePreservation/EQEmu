@@ -226,6 +226,7 @@ def buildTables():
       'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
+    'unreadableCosts': Table('unreadableCosts', ['key'], ['costId', 'components']),
     'properties': Table('properties', ['id'], ['definitionId', 'staticId', 'parentId', 'guildId', 'fellowshipId', 'primaryOwner', 'primaryHandle',
       'defaultPermissionLevel', 'dynamicName', 'defaultUpkeepId', 'votingOptedOut'], ['upkeepExpiredTime', 'escrow', 'childIds']),
     'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
@@ -345,6 +346,9 @@ def ingestZone(tables, capture):
   for cost in capture.all('cost'):
     fields = cost['fields']
     tables['costs'].observe((fields['costId'], fields['componentId']), capture, stable={'subComponents': fields['subComponents']})
+  for unreadable in capture.all('unreadableCost'):
+    fields = unreadable['fields']
+    tables['unreadableCosts'].observe((fields['key'],), capture, stable=pick(fields, ['costId', 'components']))
   propertyIds = set()
   for realEstate in capture.all('property'):
     fields = realEstate['fields']

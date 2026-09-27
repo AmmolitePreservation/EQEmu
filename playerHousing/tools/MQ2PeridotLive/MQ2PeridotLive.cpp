@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.9);
+PLUGIN_VERSION(1.0);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -78,6 +78,17 @@ namespace {
     return table.GetTotalEntries() > 0;
   }
 
+  // Live's RealEstateCostManager begins with a vtable that eqlib omits, so its path sits at +0x08 and its table at +0x10 (seen in its raw bytes:
+  // an eqgame pointer, an empty string, then a heap bucket array with 211 slots and 34 entries).
+  using CostTable = HashTable<RealEstateCostSchemeData, int>;
+  constexpr size_t liveCostTableOffset = 0x10;
+
+  const CostTable &liveCostTable(const RealEstateCostManager *costs) {
+    return *reinterpret_cast<const CostTable *>(reinterpret_cast<const uint8_t *>(costs) + liveCostTableOffset);
+  }
+
+  constexpr int maxCostParts = 64;
+
   std::string timeStamp() {
     const std::time_t now = std::time(nullptr);
     std::tm local = {};
@@ -99,7 +110,7 @@ namespace {
     out << "time\t" << stamp << '\n';
     out << "client\t" << (__ActualVersionDate ? reinterpret_cast<const char *>(__ActualVersionDate) : "unknown") << '\t'
       << (__ActualVersionTime ? reinterpret_cast<const char *>(__ActualVersionTime) : "unknown") << '\n';
-    out << "plugin\tMQ2PeridotLive " << MQ2Version << '\n';
+    out << "plugin\tMQ2PeridotLive " << fmt::format("{:.1f}", MQ2Version) << '\n';
 #if defined(__ExpectedVersionDate) && defined(__ExpectedVersionTime)
     out << "layout\t" << __ExpectedVersionDate << '\t' << __ExpectedVersionTime << '\n';
 #endif
@@ -271,7 +282,7 @@ namespace {
       writeRaw(out, *manager->definitions);
     }
     if (manager->costs) {
-      out << "costsManager\t" << manager->costs->costs.GetTotalEntries() << '\n';
+      out << "costsManager\t" << liveCostTable(manager->costs).GetTotalEntries() << '\n';
       writeRaw(out, *manager->costs);
     }
 
@@ -295,12 +306,23 @@ namespace {
       }
     }
 
-    out << "[costs] cost\tkey\tcostId\tcomponentId\tsubComponents (typeId:typeSubId:cost)\n";
+    out << "[costs] cost\tkey\tcostId\tcomponentId\tsubComponents (typeId:typeSubId:cost)\n" << "  unreadableCost\tkey\tcostId\tcomponents\n";
     if (manager->costs) {
-      auto &table = manager->costs->costs;
+      const CostTable &table = liveCostTable(manager->costs);
       for (auto *entry = hasEntries(table) ? table.WalkFirstEntry() : nullptr; entry; entry = table.WalkNextEntry(entry)) {
         const RealEstateCostSchemeData &cost = entry->value();
-        for (int index = 0; index < cost.costComponents.GetCount(); ++index) {
+        const int components = cost.costComponents.GetCount();
+        bool readable = cost.costId == entry->key() && components >= 0 && components <= maxCostParts;
+        for (int index = 0; readable && index < components; ++index) {
+          const int parts = cost.costComponents[index].subComponents.GetCount();
+          readable = parts >= 0 && parts <= maxCostParts;
+        }
+        if (!readable) {
+          out << "unreadableCost\t" << entry->key() << '\t' << cost.costId << '\t' << components << '\n';
+          writeRaw(out, cost);
+          continue;
+        }
+        for (int index = 0; index < components; ++index) {
           const RealEstateCostComponent &component = cost.costComponents[index];
           std::string subComponents;
           for (int sub = 0; sub < component.subComponents.GetCount(); ++sub) {
