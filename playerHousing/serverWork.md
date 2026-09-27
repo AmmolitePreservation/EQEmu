@@ -78,7 +78,7 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Client → server:** `0x2691` requests (types 0, 1, 2, 4, 5), `0x218c` with record id -1 (enter a neighborhood), `OP_FindPersonRequest` type 4 (plots), guild-name requests.
 - **Server → client:** `0x2691` replies by mode (neighborhood list, details, single property, plot search results), guild names, `0x1d3c` (a new guild neighborhood announcement).
 - **Server rules:** the client dispatches on the reply's mode, not the request; the Neighborhood window's filters start unchecked with the stock XML (critical finding 13: an empty-looking list isn't a server bug).
-- **Depends on:** S2. **Readiness:** Specified; what an empty name search returns is **Design**; the neighborhoods and plots are **Content**.
+- **Depends on:** S2. **Readiness:** Specified; what an empty name search returns is **Design**; the neighborhood template is **Content**, and world generates the neighborhoods from it (`serverPlan.md` D11).
 - **Source:** `opcode2691PropertySearch.md`, `flows/neighborhoods.md`, `flows/plotSearch.md`.
 
 ### S7. Purchase, sell and transfer
