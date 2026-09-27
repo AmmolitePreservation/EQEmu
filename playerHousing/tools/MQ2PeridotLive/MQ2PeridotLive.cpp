@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.4);
+PLUGIN_VERSION(0.5);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -213,9 +213,10 @@ namespace {
       out << "[realEstate] no real estate manager\n";
       return;
     }
-    out << "[realEstate] manager\tzoneRealEstateId\tzoneRealEstateType\tcurrentRealEstateId\tcurrentYardId\tcurrentHouseId\tcurrentMovingCrateId\tlastRefreshTime\n";
+    out << "[realEstate] manager\tzoneRealEstateId\tzoneRealEstateType\tcurrentRealEstateId\tcurrentYardId\tcurrentHouseId\tcurrentMovingCrateId\tlastRefreshTime\tdefinitionsPath\tcostsPath\n";
     out << "manager\t" << manager->zoneRealEstateId << '\t' << static_cast<int>(manager->zoneRealEstateType) << '\t' << manager->currentRealEstateId << '\t'
-      << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\n';
+      << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\t'
+      << (manager->definitions ? manager->definitions->path.c_str() : "") << '\t' << (manager->costs ? manager->costs->path.c_str() : "") << '\n';
     writeRaw(out, *manager);
 
     out << "[definitions] definition\tkey\tid\tname\tdescription\taddress\tzoneInX\tzoneInY\tzoneInZ\tareaId\tcostDefinition\tupkeepDefinition\tmaxItems\tmaxNonRealEstateItems\tmaxChildren\tzoneId\tdzId\ttype\tgroupId\ticon\tmaxNpcItems\tswitchX\tswitchY\tswitchZ\tswitchHeading\tchildDefinitions\n";
