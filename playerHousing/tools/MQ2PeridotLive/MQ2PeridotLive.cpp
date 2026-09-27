@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.8);
+PLUGIN_VERSION(0.9);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -257,7 +257,8 @@ namespace {
     out << "manager\t" << manager->zoneRealEstateId << '\t' << static_cast<int>(manager->zoneRealEstateType) << '\t' << manager->currentRealEstateId << '\t'
       << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\n';
     writeRaw(out, *manager);
-    // Their CXStr path members are not valid strings on Live: c_str() crashed in CXStr::Assure. Only counts and raw bytes are read.
+    // eqlib's cost manager layout does not match Live: its CXStr path crashed CXStr::Assure and walking its table crashed once it held costs.
+    // Only each manager's count and raw bytes are read.
     out << "  definitionsManager\tentries\n" << "  costsManager\tentries\n";
     if (manager->definitions) {
       out << "definitionsManager\t" << manager->definitions->definitions.GetTotalEntries() << '\n';
@@ -285,24 +286,6 @@ namespace {
           << definition.switchCoords.X << '\t' << definition.switchCoords.Y << '\t' << definition.switchCoords.Z << '\t' << definition.switchHeading << '\t' << children << '\n';
         writeRaw(out, definition);
         ++definitions;
-      }
-    }
-
-    out << "[costs] cost\tkey\tcostId\tcomponentId\tsubComponents (typeId:typeSubId:cost)\n";
-    if (manager->costs) {
-      auto &table = manager->costs->costs;
-      for (auto *entry = table.WalkFirstEntry(); entry; entry = table.WalkNextEntry(entry)) {
-        const RealEstateCostSchemeData &cost = entry->value();
-        for (int index = 0; index < cost.costComponents.GetCount(); ++index) {
-          const RealEstateCostComponent &component = cost.costComponents[index];
-          std::string subComponents;
-          for (int sub = 0; sub < component.subComponents.GetCount(); ++sub) {
-            const RealEstateCostSubComponent &part = component.subComponents[sub];
-            subComponents += fmt::format("{}{}:{}:{}", sub ? "," : "", part.typeId, part.typeSubId, part.cost);
-          }
-          out << "cost\t" << entry->key() << '\t' << cost.costId << '\t' << component.id << '\t' << subComponents << '\n';
-        }
-        writeRaw(out, cost);
       }
     }
 
