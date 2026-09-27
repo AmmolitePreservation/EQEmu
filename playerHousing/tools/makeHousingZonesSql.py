@@ -4,8 +4,10 @@ Ids, short names and titles are the RoF2 client's zone table (robustness.md). Ev
 gates from the neighborhood's row, and the rest from the classic guild hall's, an indoor zone; bypass_expansion_check is
 set, because EQEmu's zoning check refuses a zone newer than the server's current expansion unless its row bypasses it (a
 PoP-era server, housing needs it on every housing zone, the neighborhood included). Empty file_name and map_file_name make EQEmu use each zone's own short name; underworld sits below any
-floor. Safe points: the Palatial Guild Hall's (guildhalllrg) from Live; every other one derived from the client's zone
-files by housingZoneGeometry.py (its entrance's entry point). Writes the rows (housingZones.sql) and, for rows already
+floor. Safe points: the Palatial Guild Hall's (guildhalllrg) from Live and Evantil's Abode's (phinteriortree) chosen by
+/loc on Peridot; every other one derived from the client's zone files by housingZoneGeometry.py (its entrance's entry
+point). Entering a property from outside puts a player at its zone's safe point, except where entryPoints says otherwise
+(no table holds those yet; the property entry handler needs them). Writes the rows (housingZones.sql) and, for rows already
 added, their safe points and the bypass, with the neighborhood's bypass (housingZoneSettings.sql).
 
 Usage: python3 makeHousingZonesSql.py
@@ -13,7 +15,8 @@ Usage: python3 makeHousingZonesSql.py
 import os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
-# (id, short name, title, safe point (x, y, z)): the Palatial's from Live, the rest from housingZoneGeometry.py
+# (id, short name, title, safe point (x, y, z)): the Palatial's from Live, Evantil's Abode's by /loc on Peridot, the rest from
+# housingZoneGeometry.py
 housingZones = [
   (714, 'phinterior3a1', 'House Interior', (-7.0, 6.2, 3.0)),
   (715, 'phinterior1a1', 'House Interior', (-0.4, 5.4, 3.0)),
@@ -38,8 +41,13 @@ housingZones = [
   (749, 'plhdkeinteriors3a2', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
   (750, 'plhdkeinteriors3a3', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
   (751, 'guildhall3', 'Modest Guild Hall', (134.6, -0.2, -13.9)),
-  (766, 'phinteriortree', "Evantil's Abode", (-115.0, 101.1, 192.7)),
+  (766, 'phinteriortree', "Evantil's Abode", (11.25, 79.75, 3.75)),
 ]
+# Entry points (x, y, z) that differ from the safe point: the Palatial's from Live, Evantil's Abode's by /loc on Peridot
+entryPoints = {
+  'guildhalllrg': (71.0, -1.0, 1.56),
+  'phinteriortree': (0.38, 3.21, 3.75),
+}
 gateColumns = ['min_expansion', 'max_expansion', 'content_flags', 'content_flags_disabled', 'expansion']
 
 
@@ -69,6 +77,9 @@ def insertStatement(columns, zoneId, shortName, longName, safePoint):
 
 def main():
   columns = zoneColumns()
+  unknown = set(entryPoints) - {shortName for _, shortName, _, _ in housingZones}
+  if unknown:
+    raise ValueError(f'entry points for zones not in housingZones: {sorted(unknown)}')
   ids = ', '.join(str(zoneId) for zoneId, _, _, _ in housingZones)
   names = ', '.join(f"'{shortName}'" for _, shortName, _, _ in housingZones)
   inserts = ''.join(insertStatement(columns, *zone) for zone in housingZones)
