@@ -1,10 +1,10 @@
 # NPC items to author
 
-Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/exportPlaceableItems.sql`, `tools/exportNpcItemSources.sql`; `serverPlan.md`, chunk 5). The other 162, mounts and familiars, take the creature their click spell summons, which is also their look in a yard (checked on Live). Fill the last column; related NPCs are the Guild Lobby's and classic Guild Hall's, matched only by name or class, for reference.
+Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/exportPlaceableItems.sql`, `tools/exportNpcItemSources.sql`; `serverPlan.md`, chunk 5). The other 162, mounts and familiars, take the creature their click spell summons, which is also their look in a yard (checked on Live). Names in the item tables are the items'; the NPC shown takes the name of the NPC type chosen. Fill the last column; related NPCs are the Guild Lobby's and classic Guild Hall's, matched only by name or class, for reference.
 
 ## 1. Guild services and decorations (27)
 
-| Item | Name | Placeable in | Max per property | NO DROP | Respawn | Related NPCs | NPC to use |
+| Item | Item name | Placeable in | Max per property | NO DROP | Respawn | Related NPCs | NPC to use |
 |---|---|---|---|---|---|---|---|
 | 66639 | Friendly Guild General Supply Merchant | guild hall | any | no | 750 | 345000 Yenny Werlikanin | |
 | 66640 | Friendly Guild Teleportation Assistant | guild hall | any | no | 750 | 345005 #Porter | |
@@ -38,7 +38,7 @@ Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/expo
 
 Their look travels in the item's house-pet model string, which Peridot's data lacks.
 
-| Item | Name | Icon | Placeable in | Look (race, gender, texture, size) |
+| Item | Item name | Icon | Placeable in | Look (race, gender, texture, size) |
 |---|---|---|---|---|
 | 52509 | Doomsday Beetle | 927 | guild hall, house, yard, guild yard | |
 | 52593 | Mini Jokester | 650 | guild hall, house, yard, guild yard | |
@@ -104,7 +104,7 @@ Their look travels in the item's house-pet model string, which Peridot's data la
 
 Their spell names a mount or pet Peridot's database doesn't have, so EQEmu can't summon them either.
 
-| Item | Name | Spell | Names | Missing | Creature to use |
+| Item | Item name | Spell | Names | Missing | Creature to use |
 |---|---|---|---|---|---|
 | 17572 | Collar of the Cursed Lupine | 20745 Familiar: Red Werewolf Cub | `FamiliarRedWerewolfCub` | `pets` row | |
 | 40700 | Familiar of Severilous | 12882 Familiar: Gilded Dragon | `FamiliarGildedDragon` | `pets` row | |
@@ -136,7 +136,7 @@ Their spell names a mount or pet Peridot's database doesn't have, so EQEmu can't
 
 ## Reference: NPCs in the Guild Lobby and classic Guild Hall (46)
 
-| Zone | NPC | Name | Class | Race | Gender | Texture | Merchant list |
+| Zone | NPC | NPC name | Class | Race | Gender | Texture | Merchant list |
 |---|---|---|---|---|---|---|---|
 | guildhall | 345006 | #Healer | 1 Warrior | 240 | 2 | 0 |  |
 | guildhall | 345005 | #Porter | 1 Warrior | 240 | 2 | 0 |  |
