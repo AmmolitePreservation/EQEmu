@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.3);
+PLUGIN_VERSION(0.4);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -81,6 +81,9 @@ namespace {
 
   void writeZoneHeader(std::ofstream &out, const std::string &stamp) {
     out << "time\t" << stamp << '\n';
+    out << "client\t" << (__ActualVersionDate ? reinterpret_cast<const char *>(__ActualVersionDate) : "unknown") << '\t'
+      << (__ActualVersionTime ? reinterpret_cast<const char *>(__ActualVersionTime) : "unknown") << '\n';
+    out << "plugin\tMQ2PeridotLive " << MQ2Version << '\n';
     out << "zone\t" << boundedText(pZoneInfo->ShortName) << '\t' << boundedText(pZoneInfo->LongName) << '\t' << pZoneInfo->ZoneID << '\t'
       << pLocalPC->zoneId << '\t' << pLocalPC->instance << '\n';
     writeRaw(out, *pZoneInfo);
