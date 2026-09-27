@@ -47,6 +47,8 @@ SET(zone_sources
     housing/housing.cpp
     housing/housingAccess.cpp
     housing/housingCatalog.cpp
+    housing/housingCommand.cpp
+    housing/housingEvents.cpp
     housing/housingItemTail.cpp
     housing/housingItems.cpp
     housing/housingMessages.cpp
@@ -168,6 +170,7 @@ SET(zone_headers
     housing/housing.h
     housing/housingAccess.h
     housing/housingCatalog.h
+    housing/housingEvents.h
     housing/housingGeometry.h
     housing/housingItemTail.h
     housing/housingItems.h

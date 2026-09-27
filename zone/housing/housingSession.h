@@ -19,6 +19,7 @@ namespace housing {
   };
 
   bool housingActive();
+  bool reloadCatalog();
   Session *session(Client *client);
 }
 

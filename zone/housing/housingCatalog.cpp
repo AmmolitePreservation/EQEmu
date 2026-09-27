@@ -182,6 +182,7 @@ namespace housing {
     for (const auto &problem : problems) {
       LogError("Housing catalog: {}", problem);
     }
+    lastProblems = problems;
     loaded = problems.empty();
     LogHousing("Catalog [{}]: [{}] definitions, [{}] costs ([{}] for plots, [{}] currency options from [{}] currencies), [{}] regions", loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), plotCosts, currencyOptions, currencies.size(), regions.size());
     return loaded;
