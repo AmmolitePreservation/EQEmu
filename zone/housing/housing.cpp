@@ -151,10 +151,26 @@ namespace housing {
       std::stable_sort(ordered.begin(), ordered.end(), [&](const Property *a, const Property *b) {
         return depthOf(*a, state.properties) < depthOf(*b, state.properties);
       });
+      auto upkeepOptionKey = [&](const Property &property) -> uint32 {
+        const Definition *definition = catalog().definition(property.definition_id);
+        if (!definition) {
+          LogError("Housing: property [{}] names unknown definition [{}]", property.id, property.definition_id);
+          return 0;
+        }
+        if (!definition->row.upkeep_cost_id) {
+          return 0;
+        }
+        const CostOption *option = catalog().option(definition->row.upkeep_cost_id, property.upkeep_currency);
+        if (!option) {
+          LogError("Housing: property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer", property.id, property.upkeep_currency, definition->row.upkeep_cost_id);
+          return 0;
+        }
+        return option->key;
+      };
       auto recordOf = [&](const Property &property) {
         auto name = names.find(property.owner_character_id);
         auto propertyMoney = money.find(property.id);
-        return propertyRecord(property, activeGuildId(property), children[property.id], name == names.end() ? "" : name->second, propertyMoney == money.end() ? std::vector<Balance>{} : propertyMoney->second);
+        return propertyRecord(property, activeGuildId(property), children[property.id], name == names.end() ? "" : name->second, propertyMoney == money.end() ? std::vector<Balance>{} : propertyMoney->second, upkeepOptionKey(property));
       };
       for (const Property *property : ordered) {
         sendMessage(client, OP_RealEstateProperty, recordOf(*property));

@@ -1,6 +1,6 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, poll states, region matrices, the character's property lists, trophy flags).
--- Content tables: definitions, costs, regions, NPC items, neighborhood names, poll labels. The rest is player state.
+-- Content tables: definitions, costs, currencies, regions, NPC items, neighborhood words, poll labels. The rest is player state.
 
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
@@ -58,6 +58,20 @@ CREATE TABLE IF NOT EXISTS `real_estate_cost_items` (
   PRIMARY KEY (`cost_id`, `option_key`, `currency`, `sub_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Alternate currencies a cost may also be paid in. Each cost stores only its coin option; the housing module adds one option
+-- per currency accepted for the cost's use, at max(1, the platinum amount / platinum_per_unit, rounded to nearest), Live's
+-- rule. EQEmu's alternate_currency table stays untouched. Empty (Peridot's default): coin only.
+CREATE TABLE IF NOT EXISTS `real_estate_currencies` (
+  `alternate_currency_id` INT(10) UNSIGNED NOT NULL,
+  `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `platinum_per_unit` FLOAT NOT NULL,
+  `plot_purchase` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `plot_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `item_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`alternate_currency_id`),
+  CONSTRAINT `real_estate_currency_rate` CHECK (`platinum_per_unit` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
@@ -90,6 +104,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- upkeep_currency is 0 (coin) or a real_estate_currencies id: the record's option key is derived from it when sent, since
+-- option positions move when currencies are enabled or disabled.
 CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `parent_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -101,7 +117,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `interior_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_option_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_current` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
   `next_upkeep_at` DATETIME NULL DEFAULT NULL,
   `voting_opt_out` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,

@@ -30,6 +30,7 @@ namespace housing {
 
   struct CostOption {
     uint32 key;
+    uint32 currency;
     std::vector<RealEstateCostItemsRepository::RealEstateCostItems> items;
   };
 
@@ -44,6 +45,7 @@ namespace housing {
     bool valid() const { return loaded; }
     const Definition *definition(uint32 id) const;
     const Cost *cost(uint32 id) const;
+    const CostOption *option(uint32 costId, uint32 currency) const;
     const RealEstateRegionsRepository::RealEstateRegions *region(uint32 id) const;
     const std::map<uint32, Definition> &allDefinitions() const { return definitions; }
     const std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> &allRegions() const { return regions; }
