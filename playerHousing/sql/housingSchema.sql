@@ -1,17 +1,18 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, poll states, region matrices, the character's property lists, trophy flags).
--- Content tables: definitions, costs, currencies, regions, NPC items, neighborhood words, poll labels. The rest is player state.
+-- Content tables: definitions, costs, regions, NPC items, neighborhood words, poll labels. The rest is player state.
 
--- A price (copper) makes a plot or guild plot purchasable. Its purchase and upkeep costs are derived when the catalog loads
--- (upkeep: Housing:PlotUpkeepPercent of the price), so neither is stored; placed items pay their own upkeep ids. max_houses
--- is the client's +0x30: the houses and guild halls a yard holds (placement counts its children that aren't crates).
+-- purchase_cost_id and upkeep_cost_id name real_estate_costs, as Live's definitions do (plots buy with one of five price
+-- tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their own upkeep ids. max_houses is the
+-- client's +0x30 (Live's maxChildren): the houses and guild halls a yard holds (placement counts its children that aren't crates).
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
   `type` TINYINT(3) UNSIGNED NOT NULL,
   `category` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `region_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `price` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+  `purchase_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_non_real_estate_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_pet_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -28,7 +29,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
-  CONSTRAINT `real_estate_definition_price` CHECK (`price` = 0 OR `type` IN (4, 8)),
   CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -44,11 +44,16 @@ CREATE TABLE IF NOT EXISTS `real_estate_costs` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- The client uses an option key as the index into its cost element's options (0x7fb970), so each cost's keys are 0, 1, 2, ...
--- in order; the housing module refuses to load a cost whose keys have gaps.
+-- A cost's options are alternative ways to pay it, each gated by expansion like other EQEmu content (Live accepts Doubloons,
+-- Orux and Phosphenes from TBS, Faycitum from SoF and Chronobines from SoD beside coin). option_key orders them; the client
+-- uses an option's position as its index (0x7fb970), so the housing module numbers the enabled options 0, 1, 2, ... when sent.
 CREATE TABLE IF NOT EXISTS `real_estate_cost_options` (
   `cost_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
+  `min_expansion` TINYINT(4) NOT NULL DEFAULT -1,
+  `max_expansion` TINYINT(4) NOT NULL DEFAULT -1,
+  `content_flags` VARCHAR(100) NULL DEFAULT NULL,
+  `content_flags_disabled` VARCHAR(100) NULL DEFAULT NULL,
   PRIMARY KEY (`cost_id`, `option_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -59,20 +64,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_cost_items` (
   `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `amount` BIGINT(20) NOT NULL DEFAULT 0,
   PRIMARY KEY (`cost_id`, `option_key`, `currency`, `sub_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Alternate currencies a cost may also be paid in. Each cost stores only its coin option; the housing module adds one option
--- per currency accepted for the cost's use, at max(1, the platinum amount / platinum_per_unit, rounded to nearest), Live's
--- rule; a reduction (a negative amount, which the client nets against the day's costs) keeps its sign. EQEmu's alternate_currency table stays untouched. Empty (Peridot's default): coin only.
-CREATE TABLE IF NOT EXISTS `real_estate_currencies` (
-  `alternate_currency_id` INT(10) UNSIGNED NOT NULL,
-  `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `platinum_per_unit` FLOAT NOT NULL,
-  `plot_purchase` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `plot_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `item_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`alternate_currency_id`),
-  CONSTRAINT `real_estate_currency_rate` CHECK (`platinum_per_unit` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_regions` (
@@ -107,8 +98,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- upkeep_currency is 0 (coin) or a real_estate_currencies id: the record's option key is derived from it when sent, since
--- option positions move when currencies are enabled or disabled.
+-- upkeep_currency is 0 (coin) or an alternate currency id: the record's option key is derived from it when sent, since
+-- option positions move as the expansion enables options.
 CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `parent_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,

@@ -310,7 +310,6 @@ SET(repositories
     repositories/base/base_real_estate_cost_items_repository.h
     repositories/base/base_real_estate_cost_options_repository.h
     repositories/base/base_real_estate_costs_repository.h
-    repositories/base/base_real_estate_currencies_repository.h
     repositories/base/base_real_estate_definition_children_repository.h
     repositories/base/base_real_estate_definitions_repository.h
     repositories/base/base_real_estate_items_repository.h
@@ -529,7 +528,6 @@ SET(repositories
     repositories/real_estate_cost_items_repository.h
     repositories/real_estate_cost_options_repository.h
     repositories/real_estate_costs_repository.h
-    repositories/real_estate_currencies_repository.h
     repositories/real_estate_definition_children_repository.h
     repositories/real_estate_definitions_repository.h
     repositories/real_estate_items_repository.h
@@ -643,7 +641,6 @@ SET(common_headers
     global_define.h
     guild_base.h
     guilds.h
-    housingPrices.h
     housingPropertyItem.h
     http/httplib.h
     http/uri.h

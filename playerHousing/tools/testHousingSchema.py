@@ -24,14 +24,14 @@ print(f'created {len(tables)} tables; re-running the schema is safe')
 sql("""
 INSERT INTO real_estate_regions (id, name, x, y, z, size_x, size_y, size_z, heading) VALUES (1, 'plot 1', 100, 200, 0, 60, 40, 30, 128);
 INSERT INTO real_estate_definitions (id, name, type, zone_id) VALUES (900, 'Sunrise Hills neighborhood', 5, 712);
-INSERT INTO real_estate_definitions (id, name, type, region_id, price, max_items, max_non_real_estate_items, max_pet_items)
-  VALUES (901, 'player plot 1', 4, 1, 5000000, 200, 150, 20), (902, 'guild plot 1', 8, 0, 5000000, 200, 150, 20);
+INSERT INTO real_estate_definitions (id, name, type, region_id, purchase_cost_id, upkeep_cost_id, max_items, max_non_real_estate_items, max_pet_items)
+  VALUES (901, 'player plot 1', 4, 1, 1, 2, 200, 150, 20), (902, 'guild plot 1', 8, 0, 1, 2, 200, 150, 20);
 INSERT INTO real_estate_definitions (id, name, type, zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901, 5), (901, 31);
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep'), (3, 'upkeep reduction');
-INSERT INTO real_estate_cost_options VALUES (1, 0), (2, 0), (3, 0);
-INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (2, 0, 0, 0, 1000), (3, 0, 0, 0, -200);
-INSERT INTO real_estate_currencies VALUES (9, 1, 15, 1, 1, 0);
+INSERT INTO real_estate_cost_options (cost_id, option_key) VALUES (1, 0), (2, 0), (3, 0);
+INSERT INTO real_estate_cost_options (cost_id, option_key, min_expansion) VALUES (1, 1, 13), (1, 2, 15);
+INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (1, 1, 10, 1, 6), (1, 2, 15, 1, 3), (2, 0, 0, 0, 1000), (3, 0, 0, 0, -200);
 INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (1, 0, 900, 712, 1001, 'Bridge Hills');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, next_upkeep_at, name)
   VALUES (2, 1, 901, 7, 712, 1001, NOW() - INTERVAL 1 HOUR, 'Plot 1'), (3, 1, 902, 0, 712, 1001, NULL, 'Guild plot 1');
@@ -83,8 +83,12 @@ check('the next free generated neighborhood name skips one in use', """
 check('a primary anchor leads to an owned house', "SELECT p.id FROM character_real_estate_anchors a JOIN real_estate_properties p ON p.id = a.primary_property_id AND p.owner_character_id = a.character_id WHERE a.character_id = 7", '4')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
 check('an upkeep reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 3", '-200')
-check('a cost stores one coin option', "SELECT GROUP_CONCAT(CONCAT(option_key, ':', currency, ':', amount) ORDER BY option_key) FROM real_estate_cost_items WHERE cost_id = 1", '0:0:5000000')
-check('a currency accepted for plot upkeep, not item upkeep', "SELECT CONCAT(platinum_per_unit, ':', plot_purchase, plot_upkeep, item_upkeep) FROM real_estate_currencies WHERE alternate_currency_id = 9", '15:110')
+check('a cost stores each option it can be paid with', "SELECT GROUP_CONCAT(CONCAT(option_key, ':', currency, ':', amount) ORDER BY option_key) FROM real_estate_cost_items WHERE cost_id = 1", '0:0:5000000,1:10:6,2:15:3')
+enabledAt = lambda expansion: (f"SELECT GROUP_CONCAT(option_key ORDER BY option_key) FROM real_estate_cost_options WHERE cost_id = 1"
+  f" AND (min_expansion <= {expansion} OR min_expansion = -1) AND (max_expansion >= {expansion} OR max_expansion = -1)")
+check("EQEmu's expansion filter leaves only coin at PoP", enabledAt(4), '0')
+check("EQEmu's expansion filter adds the TBS option at TBS", enabledAt(13), '0,1')
+check("EQEmu's expansion filter adds the SoD option at SoD", enabledAt(15), '0,1,2')
 check('an hourly charge leaves a fractional balance', "UPDATE real_estate_property_balances SET amount = amount - 2 / 24 WHERE property_id = 2 AND currency = 9; SELECT amount FROM real_estate_property_balances WHERE property_id = 2 AND currency = 9", '2.916667')
 for label, bad in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)"),
                    ('pet items above max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_pet_items) VALUES (998, 4, 10, 11)"),
@@ -92,8 +96,6 @@ for label, bad in [('definition type out of range', "INSERT INTO real_estate_def
                    ('personal trophy slot above 9', "INSERT INTO character_trophy_tribute VALUES (7, 10, 100, 0)"),
                    ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)"),
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)"),
-                   ('a price on a house', "INSERT INTO real_estate_definitions (id, type, price) VALUES (997, 3, 1000)"),
-                   ('currency rate of zero', "INSERT INTO real_estate_currencies (alternate_currency_id, platinum_per_unit) VALUES (10, 0)"),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)"),
                    ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())"),
                    ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')"),
