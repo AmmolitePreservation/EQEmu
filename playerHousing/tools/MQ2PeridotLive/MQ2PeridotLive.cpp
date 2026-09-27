@@ -40,9 +40,18 @@ namespace {
 
   std::optional<VendorCapture> vendorCapture;
 
+  std::string tsvText(std::string text) {
+    for (char &ch : text) {
+      if (static_cast<unsigned char>(ch) < 0x20) {
+        ch = '?';
+      }
+    }
+    return text;
+  }
+
   template <size_t Length>
   std::string boundedText(const char (&field)[Length]) {
-    return std::string(field, strnlen(field, Length));
+    return tsvText(std::string(field, strnlen(field, Length)));
   }
 
   std::string hexBytes(const void *data, size_t size) {
@@ -118,7 +127,7 @@ namespace {
 
   void writeItem(std::ofstream &out, ItemClient *item) {
     const ItemDefinition *definition = item->GetItemDefinition();
-    out << "item\t" << item->GetID() << '\t' << item->GetName() << '\t' << boundedText(definition->HousepetFileName) << '\t'
+    out << "item\t" << item->GetID() << '\t' << tsvText(item->GetName()) << '\t' << boundedText(definition->HousepetFileName) << '\t'
       << definition->NpcRespawnInterval << '\t' << definition->RealEstateDefID << '\t' << definition->RealEstateUpkeepID << '\t'
       << definition->MaxPerRealEstate << '\t' << definition->Placeable << '\t' << definition->PlacementType << '\t'
       << definition->TrophyBenefitID << '\t' << (definition->bInteractiveObject ? 1 : 0) << '\t' << itemLinkHash(item) << '\n';
@@ -216,7 +225,7 @@ namespace {
     out << "[realEstate] manager\tzoneRealEstateId\tzoneRealEstateType\tcurrentRealEstateId\tcurrentYardId\tcurrentHouseId\tcurrentMovingCrateId\tlastRefreshTime\tdefinitionsPath\tcostsPath\n";
     out << "manager\t" << manager->zoneRealEstateId << '\t' << static_cast<int>(manager->zoneRealEstateType) << '\t' << manager->currentRealEstateId << '\t'
       << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\t'
-      << (manager->definitions ? manager->definitions->path.c_str() : "") << '\t' << (manager->costs ? manager->costs->path.c_str() : "") << '\n';
+      << tsvText(manager->definitions ? manager->definitions->path.c_str() : "") << '\t' << tsvText(manager->costs ? manager->costs->path.c_str() : "") << '\n';
     writeRaw(out, *manager);
 
     out << "[definitions] definition\tkey\tid\tname\tdescription\taddress\tzoneInX\tzoneInY\tzoneInZ\tareaId\tcostDefinition\tupkeepDefinition\tmaxItems\tmaxNonRealEstateItems\tmaxChildren\tzoneId\tdzId\ttype\tgroupId\ticon\tmaxNpcItems\tswitchX\tswitchY\tswitchZ\tswitchHeading\tchildDefinitions\n";
@@ -228,8 +237,8 @@ namespace {
         for (int index = 0; index < definition.childDefinitions.GetCount(); ++index) {
           children += (index ? "," : "") + std::to_string(definition.childDefinitions[index]);
         }
-        out << "definition\t" << entry->key() << '\t' << definition.id << '\t' << definition.name.c_str() << '\t' << definition.description.c_str() << '\t'
-          << definition.address.c_str() << '\t' << definition.zoneInCoords.X << '\t' << definition.zoneInCoords.Y << '\t' << definition.zoneInCoords.Z << '\t'
+        out << "definition\t" << entry->key() << '\t' << definition.id << '\t' << tsvText(definition.name.c_str()) << '\t' << tsvText(definition.description.c_str()) << '\t'
+          << tsvText(definition.address.c_str()) << '\t' << definition.zoneInCoords.X << '\t' << definition.zoneInCoords.Y << '\t' << definition.zoneInCoords.Z << '\t'
           << definition.areaId << '\t' << definition.costDefinition << '\t' << definition.upkeepDefinition << '\t' << definition.maxItems << '\t'
           << definition.maxNonRealEstateItems << '\t' << definition.maxChildren << '\t' << definition.zoneId << '\t' << definition.dzId << '\t'
           << static_cast<int>(definition.type) << '\t' << definition.groupId << '\t' << definition.icon << '\t' << definition.maxNpcItems << '\t'
@@ -273,8 +282,8 @@ namespace {
       }
       out << "property\t" << entry->key() << '\t' << property->id << '\t' << property->staticId << '\t' << property->parentId.UniqueEntityID << '\t'
         << property->definitionId << '\t' << property->guildId.UniqueEntityID << '\t' << property->fellowshipId.UniqueEntityID << '\t'
-        << property->primaryOwner.c_str() << '\t' << property->primaryHandle.c_str() << '\t' << property->defaultPermissionLevel << '\t'
-        << property->dynamicName.c_str() << '\t' << property->defaultUpkeepId << '\t' << static_cast<long long>(property->upkeepExpiredTime) << '\t'
+        << tsvText(property->primaryOwner.c_str()) << '\t' << tsvText(property->primaryHandle.c_str()) << '\t' << property->defaultPermissionLevel << '\t'
+        << tsvText(property->dynamicName.c_str()) << '\t' << property->defaultUpkeepId << '\t' << static_cast<long long>(property->upkeepExpiredTime) << '\t'
         << (property->votingOptedOut ? 1 : 0) << '\t' << children << '\t' << escrow << '\n';
       writeRaw(out, *property);
       ++properties;
@@ -311,8 +320,8 @@ namespace {
         }
         out << "placedItem\t" << itemEntry->key() << '\t' << placed->GetRealEstateId() << '\t' << placed->GetRealEstateItemId() << '\t' << (placed->IsPlaced() ? 1 : 0) << '\t'
           << static_cast<long long>(placed->GetUpkeepExpiredTime()) << '\t' << placed->GetX() << '\t' << placed->GetY() << '\t' << placed->GetZ() << '\t'
-          << placed->GetHeading() << '\t' << placed->GetPitch() << '\t' << placed->GetRoll() << '\t' << placed->GetOwnerName().c_str() << '\t'
-          << placed->GetOwnerHandle().c_str() << '\t' << placed->GetOwnerNameHashKey() << '\n';
+          << placed->GetHeading() << '\t' << placed->GetPitch() << '\t' << placed->GetRoll() << '\t' << tsvText(placed->GetOwnerName().c_str()) << '\t'
+          << tsvText(placed->GetOwnerHandle().c_str()) << '\t' << placed->GetOwnerNameHashKey() << '\n';
         writeRaw(out, *placed);
         if (ItemPtr item = placed->GetItem()) {
           writeItem(out, item.get());
@@ -360,7 +369,7 @@ namespace {
         << door->X << '\t' << door->Y << '\t' << door->Z << '\t' << door->Heading << '\t' << door->DefaultX << '\t' << door->DefaultY << '\t'
         << door->DefaultZ << '\t' << door->DefaultHeading << '\t' << static_cast<int>(door->DefaultState) << '\t' << door->ScaleFactor << '\t'
         << door->Key << '\t' << door->SpellID << '\t' << door->DynDoorID << '\t' << (door->bUsable ? 1 : 0) << '\t' << (door->bVisible ? 1 : 0) << '\t'
-        << boundedText(door->Script) << '\n';
+        << (door->bHasScript ? boundedText(door->Script) : std::string()) << '\n';
       writeRaw(out, *door);
       ++doors;
     }

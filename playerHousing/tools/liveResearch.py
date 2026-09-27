@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""Rebuilds research/live/master/ from every MQ2PeridotLive capture in research/live/."""
+import collections
+import csv
+import pathlib
+import struct
+
+researchDirectory = pathlib.Path(__file__).resolve().parent.parent / 'research' / 'live'
+masterDirectory = researchDirectory / 'master'
+
+itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'realEstateDefinitionId', 'realEstateUpkeepId',
+  'maxPerRealEstate', 'placeable', 'placementType', 'trophyBenefitId', 'interactiveObject', 'linkHash']
+headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'],
+  'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
+itemOwners = ('placedItem', 'merchantItem', 'ground')
+# PlayerClient::RealEstateID in eqlib's layout for Live's Sep 17 2026 client; plugin 0.5 writes it as a named column.
+spawnRealEstateIdOffset = 0x498
+noProperty = ('0', '-1')
+
+
+class Capture:
+  def __init__(self, path):
+    self.path = path
+    if path.name.startswith('peridotLiveZone_'):
+      self.kind = 'zone'
+    elif path.name.startswith('peridotLiveVendor_'):
+      self.kind = 'vendor'
+    else:
+      raise ValueError(f'{path.name} is not an MQ2PeridotLive capture')
+    self.header = {}
+    self.headerRecords = {}
+    self.records = []
+    columns = {}
+    current = None
+    for lineNumber, line in enumerate(path.read_text(encoding='latin-1').rstrip('\n').split('\n'), 1):
+      line = line.rstrip('\r')
+      where = f'{path.name}:{lineNumber}'
+      if not line or line.startswith('#'):
+        continue
+      parts = line.split('\t')
+      head = parts[0]
+      if head.startswith('[') or head.startswith('  '):
+        if len(parts) == 1:
+          continue
+        label = head.split('] ', 1)[1] if head.startswith('[') else head.strip()
+        columns[label] = [column.split(' (')[0].strip() for column in parts[1:]]
+        continue
+      if head == 'raw':
+        if current is None or len(parts) != 3 or len(parts[2]) != int(parts[1]) * 2:
+          raise ValueError(f'{where}: malformed raw line')
+        current['raw'].append(bytes.fromhex(parts[2]))
+        continue
+      if head in headerColumns:
+        if len(parts) - 1 != len(headerColumns[head]):
+          raise ValueError(f'{where}: {head} has {len(parts) - 1} values')
+        self.header[head] = dict(zip(headerColumns[head], parts[1:]))
+        current = self.headerRecords[head] = {'label': head, 'raw': []}
+        continue
+      names = itemColumns if head == 'item' else columns.get(head)
+      if names is None:
+        raise ValueError(f'{where}: unknown record {head!r}')
+      if len(parts) - 1 != len(names):
+        raise ValueError(f'{where}: {head} has {len(parts) - 1} values for {len(names)} columns')
+      record = {'label': head, 'fields': dict(zip(names, parts[1:])), 'raw': [], 'item': None}
+      if head == 'item':
+        owner = self.records[-1] if self.records else None
+        if owner is None or owner['label'] not in itemOwners or owner['item'] is not None:
+          raise ValueError(f'{where}: an item line must follow a placed item, merchant item or ground item')
+        owner['item'] = record
+      else:
+        self.records.append(record)
+      current = record
+    for required in ('time', 'zone'):
+      if required not in self.header:
+        raise ValueError(f'{path.name}: no {required} line')
+    self.stamp = self.header['time']['stamp']
+    self.zoneShortName = self.header['zone']['shortName']
+
+  def all(self, label):
+    return [record for record in self.records if record['label'] == label]
+
+
+def tsvText(value):
+  return ''.join('?' if ord(ch) < 0x20 else ch for ch in str(value))
+
+
+def sortKey(key):
+  return tuple((0, int(part), '') if part.lstrip('-').isdigit() else (1, 0, part) for part in key)
+
+
+class Table:
+  def __init__(self, name, keyFields, stableFields, volatileFields=(), setFields=()):
+    self.name = name
+    self.keyFields = list(keyFields)
+    self.stableFields = list(stableFields)
+    self.volatileFields = list(volatileFields)
+    self.setFields = list(setFields)
+    self.rows = {}
+    self.conflicts = []
+
+  def observe(self, key, capture, stable=None, volatile=None, sets=None):
+    row = self.rows.get(key)
+    if row is None:
+      row = self.rows[key] = {'stable': {}, 'volatile': {}, 'sets': collections.defaultdict(set), 'firstSeen': capture.stamp,
+        'lastSeen': capture.stamp, 'captures': set()}
+    for field, value in (stable or {}).items():
+      old = row['stable'].get(field)
+      if old is not None and old != value:
+        self.conflicts.append((self.name, '/'.join(key), field, old, value, capture.path.name))
+      row['stable'][field] = value
+    row['volatile'].update(volatile or {})
+    for field, value in (sets or {}).items():
+      row['sets'][field].add(value)
+    row['lastSeen'] = capture.stamp
+    row['captures'].add(capture.path.name)
+
+  def write(self):
+    with (masterDirectory / f'{self.name}.tsv').open('w', encoding='latin-1', newline='') as out:
+      writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+      writer.writerow(self.keyFields + self.stableFields + self.volatileFields + self.setFields + ['firstSeen', 'lastSeen', 'captureCount'])
+      for key in sorted(self.rows, key=sortKey):
+        row = self.rows[key]
+        writer.writerow([tsvText(value) for value in list(key) + [row['stable'].get(field, '') for field in self.stableFields]
+          + [row['volatile'].get(field, '') for field in self.volatileFields]
+          + [','.join(sorted(row['sets'][field], key=lambda value: sortKey((value,)))) for field in self.setFields]
+          + [row['firstSeen'], row['lastSeen'], len(row['captures'])]])
+
+
+def pick(fields, names):
+  return {name: fields[name] for name in names}
+
+
+definitionFields = ['id', 'name', 'description', 'address', 'zoneInX', 'zoneInY', 'zoneInZ', 'areaId', 'costDefinition', 'upkeepDefinition',
+  'maxItems', 'maxNonRealEstateItems', 'maxChildren', 'zoneId', 'dzId', 'type', 'groupId', 'icon', 'maxNpcItems', 'switchX', 'switchY',
+  'switchZ', 'switchHeading', 'childDefinitions']
+itemStableFields = itemColumns[1:] + ['actorTag', 'npcDisplayedName', 'npcRace', 'npcGender', 'npcClass', 'npcLevel', 'npcHeight']
+spawnLookFields = ['displayedName', 'lastname', 'race', 'class', 'gender', 'level', 'height', 'avatarHeight']
+doorStableFields = ['name', 'type', 'x', 'y', 'z', 'heading', 'defaultX', 'defaultY', 'defaultZ', 'defaultHeading', 'defaultState',
+  'scaleFactor', 'key', 'spellId', 'dynDoorId', 'usable', 'visible']
+# Before plugin 0.5 a door without a script wrote its script field's uninitialized bytes, which differ between sessions.
+doorVolatileFields = ['state', 'script']
+
+
+def buildTables():
+  return {
+    'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
+      'definitionsPath', 'costsPath', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
+      'unmatchedPlacedObjects', 'unmatchedItemSpawns']),
+    'definitions': Table('definitions', ['id'], definitionFields[1:]),
+    'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
+    'properties': Table('properties', ['id'], ['definitionId', 'staticId', 'parentId', 'guildId', 'fellowshipId', 'primaryOwner', 'primaryHandle',
+      'defaultPermissionLevel', 'dynamicName', 'defaultUpkeepId', 'votingOptedOut'], ['upkeepExpiredTime', 'escrow', 'childIds']),
+    'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
+    'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
+      ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime']),
+    'items': Table('items', ['itemId'], itemStableFields, setFields=['seenAs', 'soldBy']),
+    'vendors': Table('vendors', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'itemCount']),
+    'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
+    'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
+    'spawns': Table('spawns', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'realEstateId', 'realEstateItemId']),
+    'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
+  }
+
+
+def observeItem(tables, capture, itemRecord, seenAs, soldBy=None):
+  fields = itemRecord['fields']
+  sets = {'seenAs': seenAs}
+  if soldBy:
+    sets['soldBy'] = soldBy
+  tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemColumns[1:]), sets=sets)
+
+
+def spawnPropertyId(capture, spawn, propertyIds):
+  fields = spawn['fields']
+  if 'realEstateId' in fields:
+    propertyId = fields['realEstateId']
+  else:
+    propertyId = str(struct.unpack_from('<i', spawn['raw'][0], spawnRealEstateIdOffset)[0])
+  if propertyId not in noProperty and propertyId not in propertyIds:
+    raise ValueError(f'{capture.path.name}: spawn {fields["name"]} names property {propertyId}, which the capture does not hold')
+  return propertyId
+
+
+def ingestVendor(tables, capture):
+  merchants = capture.all('merchant')
+  if len(merchants) != 1:
+    raise ValueError(f'{capture.path.name}: {len(merchants)} merchant lines')
+  merchant = merchants[0]['fields']
+  soldItems = capture.all('merchantItem')
+  tables['vendors'].observe((capture.zoneShortName, merchant['name']), capture, stable=pick(merchant, spawnLookFields),
+    volatile={**pick(merchant, ['x', 'y', 'z', 'heading']), 'itemCount': str(len(soldItems))})
+  for sold in soldItems:
+    if sold['item'] is None:
+      raise ValueError(f'{capture.path.name}: merchant item {sold["fields"]["index"]} has no item line')
+    item = sold['item']['fields']
+    observeItem(tables, capture, sold['item'], 'vendor', f'{capture.zoneShortName}/{merchant["displayedName"]}')
+    tables['vendorItems'].observe((capture.zoneShortName, merchant['name'], item['itemId']), capture, stable={'itemName': item['name']},
+      volatile=pick(sold['fields'], ['index', 'price', 'merchantQuantity', 'merchantSlot']))
+  return {'vendorItems': len(soldItems)}
+
+
+def ingestZone(tables, capture):
+  zone = capture.zoneShortName
+  for definition in capture.all('definition'):
+    fields = definition['fields']
+    tables['definitions'].observe((fields['id'],), capture, stable=pick(fields, definitionFields[1:]))
+  for cost in capture.all('cost'):
+    fields = cost['fields']
+    tables['costs'].observe((fields['costId'], fields['componentId']), capture, stable={'subComponents': fields['subComponents']})
+  propertyIds = set()
+  for realEstate in capture.all('property'):
+    fields = realEstate['fields']
+    propertyIds.add(fields['id'])
+    tables['properties'].observe((fields['id'],), capture, stable=pick(fields, tables['properties'].stableFields),
+      volatile=pick(fields, tables['properties'].volatileFields))
+  for guildPlot in capture.all('guildPlot'):
+    fields = guildPlot['fields']
+    tables['guildPlots'].observe((fields['guildId'],), capture, stable={'realEstateId': fields['realEstateId']})
+  placedItems = {}
+  for placed in capture.all('placedItem'):
+    fields = placed['fields']
+    key = (fields['realEstateId'], fields['realEstateItemId'])
+    if placed['item'] is None:
+      raise ValueError(f'{capture.path.name}: placed item {key} has no item line')
+    placedItems[key] = placed['item']['fields']
+    observeItem(tables, capture, placed['item'], 'placed')
+    tables['propertyItems'].observe(key, capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
+      'ownerName': fields['ownerName']}, volatile=pick(fields, tables['propertyItems'].volatileFields))
+  unmatchedObjects = 0
+  for placedObject in capture.all('placedObject'):
+    fields = placedObject['fields']
+    item = placedItems.get((fields['realEstateId'], fields['realEstateItemId']))
+    if item is None:
+      unmatchedObjects += 1
+      continue
+    tables['items'].observe((item['itemId'],), capture, stable={'actorTag': fields['name']})
+  unmatchedSpawns = 0
+  for spawn in capture.all('spawn'):
+    fields = spawn['fields']
+    if fields['type'] == '0':
+      continue
+    propertyId = spawnPropertyId(capture, spawn, propertyIds)
+    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, spawnLookFields),
+      volatile={**pick(fields, ['x', 'y', 'z', 'heading', 'realEstateItemId']), 'realEstateId': propertyId})
+    if propertyId in noProperty:
+      continue
+    item = placedItems.get((propertyId, fields['realEstateItemId']))
+    if item is None:
+      unmatchedSpawns += 1
+      continue
+    tables['items'].observe((item['itemId'],), capture, stable={'npcDisplayedName': fields['displayedName'], 'npcRace': fields['race'],
+      'npcGender': fields['gender'], 'npcClass': fields['class'], 'npcLevel': fields['level'], 'npcHeight': fields['height']})
+  for door in capture.all('door'):
+    fields = door['fields']
+    tables['doors'].observe((zone, fields['id']), capture, stable=pick(fields, doorStableFields), volatile=pick(fields, doorVolatileFields))
+  for ground in capture.all('ground'):
+    fields = ground['fields']
+    itemId = ground['item']['fields']['itemId'] if ground['item'] else ''
+    if ground['item']:
+      observeItem(tables, capture, ground['item'], 'ground')
+    tables['ground'].observe((zone, fields['dropId']), capture,
+      stable={**pick(fields, ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight']), 'itemId': itemId})
+  managers = capture.all('manager')
+  manager = managers[0]['fields'] if managers else {}
+  return {'zoneRealEstateId': manager.get('zoneRealEstateId', ''), 'zoneRealEstateType': manager.get('zoneRealEstateType', ''),
+    'definitionsPath': manager.get('definitionsPath', ''), 'costsPath': manager.get('costsPath', ''),
+    'spawns': len(capture.all('spawn')), 'doors': len(capture.all('door')), 'definitions': len(capture.all('definition')),
+    'costs': len(capture.all('cost')), 'properties': len(propertyIds), 'placedItems': len(placedItems),
+    'unmatchedPlacedObjects': unmatchedObjects, 'unmatchedItemSpawns': unmatchedSpawns}
+
+
+def main():
+  captures = sorted((Capture(path) for path in researchDirectory.glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
+  tables = buildTables()
+  for capture in captures:
+    counts = ingestVendor(tables, capture) if capture.kind == 'vendor' else ingestZone(tables, capture)
+    client = capture.header.get('client')
+    tables['captures'].observe((capture.path.name,), capture, stable={'kind': capture.kind,
+      'client': f'{client["date"]} {client["time"]}' if client else '', 'plugin': capture.header.get('plugin', {}).get('version', ''),
+      'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
+      **{field: str(value) for field, value in counts.items()}})
+  masterDirectory.mkdir(exist_ok=True)
+  for table in tables.values():
+    table.write()
+  conflicts = [conflict for table in tables.values() for conflict in table.conflicts]
+  with (masterDirectory / 'conflicts.tsv').open('w', encoding='latin-1', newline='') as out:
+    writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+    writer.writerow(['table', 'key', 'field', 'earlierValue', 'laterValue', 'laterCapture'])
+    writer.writerows([[tsvText(value) for value in conflict] for conflict in conflicts])
+  print(f'{len(captures)} captures -> ' + ', '.join(f'{name} {len(table.rows)}' for name, table in tables.items()) + f', conflicts {len(conflicts)}')
+
+
+if __name__ == '__main__':
+  main()
