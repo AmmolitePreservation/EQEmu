@@ -44,6 +44,14 @@ SET(zone_sources
     hate_list.cpp
     heal_rotation.cpp
     horse.cpp
+    housing/housing.cpp
+    housing/housingAccess.cpp
+    housing/housingCatalog.cpp
+    housing/housingItemTail.cpp
+    housing/housingItems.cpp
+    housing/housingMessages.cpp
+    housing/housingStore.cpp
+    housing/housingWire.cpp
     inventory.cpp
     loot.cpp
     embperl.cpp
@@ -157,6 +165,16 @@ SET(zone_headers
     hate_list.h
     heal_rotation.h
     horse.h
+    housing/housing.h
+    housing/housingAccess.h
+    housing/housingCatalog.h
+    housing/housingGeometry.h
+    housing/housingItemTail.h
+    housing/housingItems.h
+    housing/housingMessages.h
+    housing/housingSession.h
+    housing/housingStore.h
+    housing/housingWire.h
     lua_bot.h
     lua_bit.h
     lua_buff.h
