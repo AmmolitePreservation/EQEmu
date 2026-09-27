@@ -1,5 +1,5 @@
 // Reads EverQuest Live's data from client memory for Peridot's housing work (playerHousing/serverPlan.md, chunk 5): items'
-// housing fields, whole-zone dumps, and every vendor's inventory as it opens. Nothing here asks the server for anything
+// housing fields, whole-zone dumps, every item the character holds, and every vendor's inventory and housing window as it opens. Nothing here asks the server for anything
 // except the item links /peridotlive link clicks, as a player would.
 #include <mq/Plugin.h>
 
@@ -10,16 +10,22 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(1.0);
+PLUGIN_VERSION(1.1);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
   constexpr auto vendorSettle = std::chrono::seconds(1);
+  constexpr auto windowSettle = std::chrono::seconds(1);
+  constexpr auto windowCheckInterval = std::chrono::milliseconds(500);
+  // The RoF2 client's housing windows (its EQUI_*.xml): what they show is what the server sent for that view.
+  constexpr const char *housingWindows[] = {"RealEstateItemsWnd", "RealEstateLayoutDetailsWnd", "RealEstateManageWnd", "RealEstateNeighborhoodWnd",
+    "RealEstatePlotSearchWnd", "RealEstatePurchaseWnd", "TributeBenefitWnd", "TributeMasterWnd", "TributeTrophyWnd", "VoteResultsWnd", "VoteWnd"};
   constexpr const char *reportFileName = "peridotLiveItems.tsv";
 
   struct PendingLink {
@@ -39,6 +45,14 @@ namespace {
   };
 
   std::optional<VendorCapture> vendorCapture;
+
+  struct WindowCapture {
+    std::string content;
+    std::chrono::steady_clock::time_point changed;
+    bool written = false;
+  };
+
+  std::map<std::string, WindowCapture> windowCaptures;
 
   std::string tsvText(std::string text) {
     for (char &ch : text) {
@@ -577,6 +591,126 @@ namespace {
     WriteChatf("\ag[PeridotLive]\ax wrote %s: %d zones", worldPath.filename().string().c_str(), zones);
   }
 
+  void writeHeldItems(std::ofstream &out, const char *container, const ItemContainer &items, const std::string &parent, int &count) {
+    int slot = 0;
+    for (const ItemPtr &item : items) {
+      const std::string path = parent.empty() ? std::to_string(slot) : parent + "/" + std::to_string(slot);
+      ++slot;
+      if (!item) {
+        continue;
+      }
+      out << "heldItem\t" << container << '\t' << path << '\n';
+      writeItem(out, item.get());
+      ++count;
+      if (const ItemContainer *contents = item->GetChildItemContainer()) {
+        writeHeldItems(out, container, *contents, path, count);
+      }
+    }
+  }
+
+  void dumpItems() {
+    if (!pLocalPC || !pZoneInfo) {
+      WriteChatf("\ar[PeridotLive]\ax not in a zone");
+      return;
+    }
+    const std::string stamp = timeStamp();
+    const std::filesystem::path itemsPath = std::filesystem::path(gPathLogs) / fmt::format("peridotLiveItems_{}.txt", stamp);
+    std::ofstream out(itemsPath);
+    if (!out) {
+      WriteChatf("\ar[PeridotLive]\ax could not write %s", itemsPath.string().c_str());
+      return;
+    }
+    out << "# MQ2PeridotLive held items: every item the character holds, read from client memory, nothing requested from the server.\n"
+      << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
+    writeZoneHeader(out, stamp);
+    out << "[items] heldItem\tcontainer\tpath (each followed by its item line)\n";
+    PcProfile *profile = pLocalPC->GetCurrentPcProfile();
+    const std::pair<const char *, const ItemContainer *> containers[] = {
+      {"inventory", profile ? &profile->InventoryContainer : nullptr}, {"bank", &pLocalPC->BankItems}, {"sharedBank", &pLocalPC->SharedBankItems},
+      {"overflow", &pLocalPC->OverflowBufferItems}, {"limbo", &pLocalPC->LimboBufferItems}, {"dragonHoard", &pLocalPC->DragonHoardItems},
+      {"mountKeyRing", &pLocalPC->MountKeyRingItems}, {"illusionKeyRing", &pLocalPC->IllusionKeyRingItems},
+      {"familiarKeyRing", &pLocalPC->FamiliarKeyRingItems}, {"heroForgeKeyRing", &pLocalPC->HeroForgeKeyRingItems},
+      {"teleportationKeyRing", &pLocalPC->TeleportationKeyRingItems}, {"activatedKeyRing", &pLocalPC->ActivatedKeyRingItems},
+      {"tributeBenefits", profile ? &profile->TributeBenefitItems : nullptr},
+      {"trophyTributeBenefits", profile ? &profile->TrophyTributeBenefitItems : nullptr},
+      {"guildTributeBenefits", profile ? &profile->GuildTributeBenefitItems : nullptr}};
+    int count = 0;
+    for (const auto &[container, items] : containers) {
+      if (items) {
+        writeHeldItems(out, container, *items, "", count);
+      }
+    }
+    WriteChatf("\ag[PeridotLive]\ax wrote %s: %d items", itemsPath.filename().string().c_str(), count);
+  }
+
+  void windowLines(CXWnd *window, int depth, const std::string &parent, std::vector<std::string> &lines) {
+    const std::string name = tsvText(window->GetXMLName().c_str());
+    const std::string path = parent.empty() ? name : parent + "/" + name;
+    const UIType type = window->GetType();
+    const std::string text = type == UI_STMLBox ? tsvText(static_cast<CStmlWnd *>(window)->GetSTMLText().c_str()) : tsvText(window->GetWindowText().c_str());
+    lines.push_back(fmt::format("widget\t{}\t{}\t{}\t{}\t{}", depth, path, static_cast<int>(type), window->IsVisible() ? 1 : 0, text));
+    if (type == UI_Listbox) {
+      auto *list = static_cast<CListWnd *>(window);
+      for (int row = 0; row < list->GetItemCount(); ++row) {
+        std::string cells;
+        for (int column = 0; column < list->GetColumnCount(); ++column) {
+          cells += (column ? " | " : "") + tsvText(list->GetItemText(row, column).c_str());
+        }
+        lines.push_back(fmt::format("listRow\t{}\t{}\t{}", path, row, cells));
+      }
+    }
+    for (CXWnd *child = window->GetFirstChildWnd(); child; child = child->GetNextSiblingWnd()) {
+      windowLines(child, depth + 1, path, lines);
+    }
+  }
+
+  void writeWindow(const char *name, const std::vector<std::string> &lines) {
+    const std::filesystem::path windowPath = std::filesystem::path(gPathLogs) / fmt::format("peridotLiveWindow_{}_{}.txt", name, timeStamp());
+    std::ofstream out(windowPath);
+    if (!out) {
+      WriteChatf("\ar[PeridotLive]\ax could not write %s", windowPath.string().c_str());
+      return;
+    }
+    out << "# MQ2PeridotLive housing window: what the window showed once it settled, read from client memory, nothing requested from the server.\n";
+    writeZoneHeader(out, timeStamp());
+    out << "[widgets] widget\tdepth\tpath\ttype\tvisible\ttext\n" << "  listRow\tpath\trow\tcells\n";
+    for (const std::string &line : lines) {
+      out << line << '\n';
+    }
+    WriteChatf("\ag[PeridotLive]\ax wrote %s", windowPath.filename().string().c_str());
+  }
+
+  void watchWindows() {
+    static auto nextCheck = std::chrono::steady_clock::now();
+    const auto now = std::chrono::steady_clock::now();
+    if (now < nextCheck || !pLocalPC || !pZoneInfo) {
+      return;
+    }
+    nextCheck = now + windowCheckInterval;
+    for (const char *name : housingWindows) {
+      WindowCapture &capture = windowCaptures[name];
+      CXWnd *window = FindMQ2Window(name);
+      if (!window || !window->IsVisible()) {
+        capture = WindowCapture{};
+        continue;
+      }
+      std::vector<std::string> lines;
+      windowLines(window, 0, "", lines);
+      std::string content;
+      for (const std::string &line : lines) {
+        content += line + '\n';
+      }
+      if (content != capture.content) {
+        capture = WindowCapture{content, now, false};
+        continue;
+      }
+      if (!capture.written && now - capture.changed >= windowSettle) {
+        writeWindow(name, lines);
+        capture.written = true;
+      }
+    }
+  }
+
   void peridotLiveCommand(PlayerClient *, const char *line) {
     char action[MAX_STRING] = {};
     char first[MAX_STRING] = {};
@@ -596,8 +730,11 @@ namespace {
     else if (ci_equals(action, "world")) {
       dumpWorld();
     }
+    else if (ci_equals(action, "items")) {
+      dumpItems();
+    }
     else {
-      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump | world; vendors are written as they open; files go to Logs");
+      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump | world | items; vendors and housing windows are written as they open; files go to Logs");
     }
   }
 }
@@ -612,5 +749,6 @@ PLUGIN_API void ShutdownPlugin() {
 
 PLUGIN_API void OnPulse() {
   watchVendor();
+  watchWindows();
   watchLink();
 }

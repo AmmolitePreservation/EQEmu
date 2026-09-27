@@ -18,7 +18,7 @@ itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'real
   'maxPerRealEstate', 'placeable', 'placementType', 'trophyBenefitId', 'interactiveObject', 'linkHash']
 headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'], 'layout': ['date', 'time'],
   'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
-itemOwners = ('placedItem', 'merchantItem', 'ground')
+itemOwners = ('placedItem', 'merchantItem', 'ground', 'heldItem')
 appearanceOwners = ('spawn', 'merchant')
 # PlayerClient offsets in eqlib's layout for Live's Sep 17 2026 client, for captures made before the plugin named these fields:
 # RealEstateID (named from 0.5); mActorClient's ActorBase, NpcTintIndex, Light and Equipment (named from 0.6). Decoding checks
@@ -44,6 +44,10 @@ class Capture:
       self.kind = 'vendor'
     elif path.name.startswith('peridotLiveWorld_'):
       self.kind = 'world'
+    elif path.name.startswith('peridotLiveItems_'):
+      self.kind = 'items'
+    elif path.name.startswith('peridotLiveWindow_'):
+      self.kind = 'window'
     else:
       raise ValueError(f'{path.name} is not an MQ2PeridotLive capture')
     self.header = {}
@@ -89,7 +93,7 @@ class Capture:
       elif head == 'item':
         owner = self.records[-1] if self.records else None
         if owner is None or owner['label'] not in itemOwners or owner['item'] is not None:
-          raise ValueError(f'{where}: an item line must follow a placed item, merchant item or ground item')
+          raise ValueError(f'{where}: an item line must follow a placed, merchant, ground or held item')
         owner['item'] = record
       else:
         self.records.append(record)
@@ -223,7 +227,7 @@ def buildTables():
   return {
     'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
       'definitionsManagerEntries', 'costsManagerEntries', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
-      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns']),
+      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
     'unreadableCosts': Table('unreadableCosts', ['key'], ['costId', 'components']),
@@ -242,6 +246,8 @@ def buildTables():
     'spawns': Table('spawns', ['zone', 'name'], spawnLookFields, ['realEstateId', 'realEstateItemId'], setFields=['positions'] + appearanceFields),
     'worldZones': Table('worldZones', ['id'], ['shortName', 'longName', 'expansion', 'flags', 'minLevel', 'accessLevel', 'eqstrId']),
     'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
+    'windowWidgets': Table('windowWidgets', ['window', 'path'], [], ['depth', 'type', 'visible', 'text']),
+    'windowRows': Table('windowRows', ['window', 'path', 'row'], [], ['cells']),
   }
 
 
@@ -334,6 +340,25 @@ def ingestWorld(tables, capture):
     tables['fields']['worldZones'].observe((fields['id'],), capture, decodeRecord(capture, 'EQZoneInfo', zone['raw'][0],
       {'Id': fields['id'], 'ShortName': fields['shortName']}))
   return {'worldZones': len(zones)}
+
+
+def ingestItems(tables, capture):
+  held = capture.all('heldItem')
+  for record in held:
+    if record['item'] is None:
+      raise ValueError(f'{capture.path.name}: held item {record["fields"]["path"]} has no item line')
+    observeItem(tables, capture, record['item'], 'held')
+  return {'heldItems': len(held)}
+
+
+def ingestWindow(tables, capture):
+  window = capture.path.name.split('_')[1]
+  widgets, rows = capture.all('widget'), capture.all('listRow')
+  for widget in widgets:
+    tables['windowWidgets'].observe((window, widget['fields']['path']), capture, volatile=pick(widget['fields'], ['depth', 'type', 'visible', 'text']))
+  for row in rows:
+    tables['windowRows'].observe((window, row['fields']['path'], row['fields']['row']), capture, volatile={'cells': row['fields']['cells']})
+  return {'widgets': len(widgets), 'listRows': len(rows)}
 
 
 def ingestZone(tables, capture):
@@ -448,7 +473,7 @@ def main():
   captures = sorted((Capture(path) for path in researchDirectory.glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
   tables = buildTables()
   fieldTables = tables['fields'] = buildFieldTables()
-  ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld}
+  ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow}
   for capture in captures:
     counts = ingest[capture.kind](tables, capture)
     client = capture.header.get('client')
