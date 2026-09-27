@@ -1,8 +1,9 @@
 """Derives the Sunrise Hills plot template from the neighborhood map's plot layer (content/neighborhood_2.txt).
 
 The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
-(center, size, orientation) is fitted to its four sides, and its purchase price and daily upkeep come from Live's plot table
-(Allakhazam, "EQ:Player Housing in EverQuest"), except Park Circle's capacity, 120 in Live's purchase window where the table
+(center, size, orientation) is fitted to its four sides, and its purchase price comes from Live's plot table (Allakhazam,
+"EQ:Player Housing in EverQuest"; its daily upkeep, checked to be 10% of the price, is Housing:PlotUpkeepPercent's default,
+since the catalog derives upkeep), except Park Circle's capacity, 120 in Live's purchase window where the table
 says 105. Its item capacity is House of Thule's launch value for its tier (40, 50, 60 where Live's table later has 90, 105,
 120, and Live today 120 on every plot): Peridot's defaults are each feature's values at its own launch. No launch pet cap is
 known, so every player plot takes Live's current one, 6.
@@ -57,7 +58,14 @@ liveGuildPlots = [
   ('Brimming', [(-1872.99, 732.14, 4.86), (-2583.03, 409.50, 48.46)], 'north', 0, '200 Brimming Way'),
   ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0, '200 Vanward Heights'),
 ]
-liveGuildPlotTerms = dict(pricePlatinum=21, upkeepCopperPerDay=2100, capacity=210, vault=0, pets=12)
+liveGuildPlotTerms = dict(pricePlatinum=21, capacity=210, vault=0, pets=12)
+liveGuildPlotUpkeepCopperPerDay = 2100
+livePlotUpkeepPercent = 10
+
+
+def requireLiveUpkeepRule(pricePlatinum, upkeepCopperPerDay, what):
+  if upkeepCopperPerDay * 100 != pricePlatinum * 1000 * livePlotUpkeepPercent:
+    raise ValueError(f'{what}: Live upkeep {upkeepCopperPerDay} copper is not {livePlotUpkeepPercent}% of {pricePlatinum} platinum')
 guildBorderLength, guildBorderWidth = 699.8, 351.2
 guildBorderCenter = (4.89, -1.30)
 compassSides = dict(north=(0, 1), south=(0, -1), west=(1, 0), east=(-1, 0))
@@ -183,6 +191,7 @@ def loadStones(path):
 
 
 if __name__ == '__main__':
+  requireLiveUpkeepRule(liveGuildPlotTerms['pricePlatinum'], liveGuildPlotUpkeepCopperPerDay, 'guild plots')
   here = os.path.dirname(os.path.abspath(__file__))
   segments, labels = parse(os.path.join(here, '..', 'content', 'neighborhood_2.txt'))
   stones = loadStones(os.path.join(here, '..', 'content', 'sunriseHillsLotSquares.tsv'))
@@ -201,9 +210,10 @@ if __name__ == '__main__':
     turn = (stone['heading'] - heading) % 128
     if min(turn, 128 - turn) > 1:
       raise ValueError(f"{plot['address']}: box heading {heading:.1f} disagrees with its stone's {stone['heading']:.0f}")
+    requireLiveUpkeepRule(group[2], group[3], plot['address'])
     rows.append(dict(kind='plot', address=plot['address'], door=stone['door'], center=[round(worldX, 3), round(worldY, 3), stone['position'][2]],
                      heading=stone['heading'], sizeAcross=round(box['sizeAcross'], 2), sizeAlong=round(box['sizeAlong'], 2),
-                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=launchPlotCapacity[group[4]], pets=livePlotPets))
+                     pricePlatinum=group[2], capacity=launchPlotCapacity[group[4]], pets=livePlotPets))
   for group in liveGroups:
     key = group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))
     if counts[key] != group[5]:

@@ -1,6 +1,8 @@
 #include "housingCatalog.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingPrices.h"
+#include "../../common/rulesys.h"
 #include "../../common/repositories/alternate_currency_repository.h"
 #include "../../common/repositories/real_estate_cost_options_repository.h"
 #include "../../common/repositories/real_estate_costs_repository.h"
@@ -72,11 +74,8 @@ namespace housing {
 
     for (const auto &[id, entry] : definitions) {
       const auto &row = entry.row;
-      if (row.purchase_cost_id && !costs.count(row.purchase_cost_id)) {
-        problems.push_back(fmt::format("definition [{}] purchase cost [{}] does not exist", id, row.purchase_cost_id));
-      }
-      if (row.upkeep_cost_id && !costs.count(row.upkeep_cost_id)) {
-        problems.push_back(fmt::format("definition [{}] upkeep cost [{}] does not exist", id, row.upkeep_cost_id));
+      if (row.price && row.type != static_cast<uint8>(DefinitionType::plot) && row.type != static_cast<uint8>(DefinitionType::guildPlot)) {
+        problems.push_back(fmt::format("definition [{}] has a price, but only plots and guild plots are sold", id));
       }
       if (row.region_id && !regions.count(row.region_id)) {
         problems.push_back(fmt::format("definition [{}] region [{}] does not exist", id, row.region_id));
@@ -86,21 +85,6 @@ namespace housing {
       }
     }
 
-    enum class CostUse { purchase, propertyUpkeep, itemUpkeep };
-    std::map<uint32, CostUse> uses;
-    auto noteUse = [&](uint32 costId, CostUse use, uint32 definitionId) {
-      if (!costId) {
-        return;
-      }
-      auto [known, inserted] = uses.emplace(costId, use);
-      if (!inserted && known->second != use) {
-        problems.push_back(fmt::format("cost [{}] is both a purchase and an upkeep cost (definition [{}])", costId, definitionId));
-      }
-    };
-    for (const auto &[id, entry] : definitions) {
-      noteUse(entry.row.purchase_cost_id, CostUse::purchase, id);
-      noteUse(entry.row.upkeep_cost_id, CostUse::propertyUpkeep, id);
-    }
     std::set<int32> alternateCurrencies;
     for (const auto &row : AlternateCurrencyRepository::All(content_db)) {
       alternateCurrencies.insert(row.id);
@@ -117,7 +101,27 @@ namespace housing {
         problems.push_back(fmt::format("currency [{}] needs a positive platinum_per_unit", currency.alternate_currency_id));
       }
     }
+    enum class CostUse { plotPurchase, plotUpkeep, itemUpkeep };
     size_t currencyOptions = 0;
+    auto addCurrencyOptions = [&](Cost &cost, int64_t coinAmount, CostUse use) {
+      const double platinum = static_cast<double>(coinAmount) / 1000.0;
+      for (const auto &currency : currencies) {
+        const bool accepted = use == CostUse::plotPurchase ? currency.plot_purchase != 0
+          : use == CostUse::plotUpkeep ? currency.plot_upkeep != 0
+          : currency.item_upkeep != 0;
+        if (!accepted) {
+          continue;
+        }
+        RealEstateCostItemsRepository::RealEstateCostItems item{};
+        item.cost_id = cost.id;
+        item.option_key = static_cast<uint32>(cost.options.size());
+        item.currency = currency.alternate_currency_id;
+        item.sub_key = currency.sub_key;
+        item.amount = std::max<int64_t>(1, static_cast<int64_t>(std::llround(platinum / currency.platinum_per_unit)));
+        cost.options.push_back(CostOption{item.option_key, currency.alternate_currency_id, {item}});
+        currencyOptions++;
+      }
+    };
     for (auto &[id, cost] : costs) {
       if (cost.options.size() != 1 || cost.options[0].items.size() != 1) {
         problems.push_back(fmt::format("cost [{}] must store exactly one option with one item, its coin amount; currencies add the others", id));
@@ -128,31 +132,40 @@ namespace housing {
         problems.push_back(fmt::format("cost [{}] option 0 must be a positive coin amount", id));
         continue;
       }
-      const auto found = uses.find(id);
-      const CostUse use = found == uses.end() ? CostUse::itemUpkeep : found->second;
-      const double platinum = static_cast<double>(coin.amount) / 1000.0;
-      for (const auto &currency : currencies) {
-        const bool accepted = use == CostUse::purchase ? currency.plot_purchase != 0
-          : use == CostUse::propertyUpkeep ? currency.plot_upkeep != 0
-          : currency.item_upkeep != 0;
-        if (!accepted) {
+      addCurrencyOptions(cost, coin.amount, CostUse::itemUpkeep);
+    }
+    const double upkeepPercent = RuleR(Housing, PlotUpkeepPercent);
+    size_t plotCosts = 0;
+    if (!(upkeepPercent >= 0.0)) {
+      problems.push_back(fmt::format("Housing:PlotUpkeepPercent [{}] must be zero or more", upkeepPercent));
+    }
+    else {
+      uint32 nextCostId = costs.empty() ? 1 : costs.rbegin()->first + 1;
+      auto derivedCost = [&](uint64 amount, CostUse use) {
+        const uint32 id = nextCostId++;
+        RealEstateCostItemsRepository::RealEstateCostItems coin{};
+        coin.cost_id = id;
+        coin.amount = static_cast<int64_t>(amount);
+        Cost cost{id, {CostOption{0, 0, {coin}}}};
+        addCurrencyOptions(cost, coin.amount, use);
+        costs.emplace(id, std::move(cost));
+        plotCosts++;
+        return id;
+      };
+      for (auto &[id, entry] : definitions) {
+        if (!entry.row.price) {
           continue;
         }
-        RealEstateCostItemsRepository::RealEstateCostItems item{};
-        item.cost_id = id;
-        item.option_key = static_cast<uint32>(cost.options.size());
-        item.currency = currency.alternate_currency_id;
-        item.sub_key = currency.sub_key;
-        item.amount = std::max<int64_t>(1, static_cast<int64_t>(std::llround(platinum / currency.platinum_per_unit)));
-        cost.options.push_back(CostOption{item.option_key, currency.alternate_currency_id, {item}});
-        currencyOptions++;
+        entry.purchaseCostId = derivedCost(entry.row.price, CostUse::plotPurchase);
+        const uint64 upkeep = plotUpkeepCopper(entry.row.price, upkeepPercent);
+        entry.upkeepCostId = upkeep ? derivedCost(upkeep, CostUse::plotUpkeep) : 0;
       }
     }
     for (const auto &problem : problems) {
       LogError("Housing catalog: {}", problem);
     }
     loaded = problems.empty();
-    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs ([{}] options from [{}] currencies), [{}] regions", loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), currencyOptions, currencies.size(), regions.size());
+    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs ([{}] for plots, [{}] currency options from [{}] currencies), [{}] regions", loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), plotCosts, currencyOptions, currencies.size(), regions.size());
     return loaded;
   }
 
@@ -191,8 +204,8 @@ namespace housing {
       const auto &row = entry.row;
       message.u32(row.id)
         .u32(row.region_id)
-        .u32(row.purchase_cost_id)
-        .u32(row.upkeep_cost_id)
+        .u32(entry.purchaseCostId)
+        .u32(entry.upkeepCostId)
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
         .u32(row.unknown_30)

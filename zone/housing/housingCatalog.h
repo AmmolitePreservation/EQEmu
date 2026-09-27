@@ -26,6 +26,8 @@ namespace housing {
   struct Definition {
     RealEstateDefinitionsRepository::RealEstateDefinitions row;
     std::vector<uint32> children;
+    uint32 purchaseCostId = 0;
+    uint32 upkeepCostId = 0;
   };
 
   struct CostOption {

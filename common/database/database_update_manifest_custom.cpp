@@ -51,8 +51,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `type` TINYINT(3) UNSIGNED NOT NULL,
   `category` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `region_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `purchase_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `price` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
   `max_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_non_real_estate_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_pet_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -69,6 +68,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
+  CONSTRAINT `real_estate_definition_price` CHECK (`price` = 0 OR `type` IN (4, 8)),
   CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"

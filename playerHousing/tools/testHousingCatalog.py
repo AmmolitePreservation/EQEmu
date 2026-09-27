@@ -41,10 +41,10 @@ print('the committed catalog equals a fresh generation')
 
 freshDatabase()
 sql(catalog)
-check('counts', "SELECT CONCAT_WS(' ', (SELECT COUNT(*) FROM real_estate_definitions), (SELECT COUNT(*) FROM real_estate_definition_children), (SELECT COUNT(*) FROM real_estate_costs), (SELECT COUNT(*) FROM real_estate_cost_options), (SELECT COUNT(*) FROM real_estate_cost_items), (SELECT COUNT(*) FROM real_estate_regions), (SELECT COUNT(*) FROM real_estate_neighborhood_words), (SELECT COUNT(*) FROM real_estate_currencies))", '119 75 29 29 29 75 30 0')
+check('counts', "SELECT CONCAT_WS(' ', (SELECT COUNT(*) FROM real_estate_definitions), (SELECT COUNT(*) FROM real_estate_definition_children), (SELECT COUNT(*) FROM real_estate_costs), (SELECT COUNT(*) FROM real_estate_cost_options), (SELECT COUNT(*) FROM real_estate_cost_items), (SELECT COUNT(*) FROM real_estate_regions), (SELECT COUNT(*) FROM real_estate_neighborhood_words), (SELECT COUNT(*) FROM real_estate_currencies))", '119 75 19 19 19 75 30 0')
 check('each cost stores one positive coin option', "SELECT COUNT(*) FROM real_estate_costs c WHERE (SELECT COUNT(*) FROM real_estate_cost_options o WHERE o.cost_id = c.id AND o.option_key = 0) <> 1 OR (SELECT COUNT(*) FROM real_estate_cost_items i WHERE i.cost_id = c.id AND i.option_key = 0 AND i.currency = 0 AND i.sub_key = 0 AND i.amount > 0) <> 1 OR EXISTS (SELECT 1 FROM real_estate_cost_items i WHERE i.cost_id = c.id AND (i.option_key <> 0 OR i.currency <> 0))", '0')
-check('no cost is both a purchase and an upkeep cost', "SELECT COUNT(*) FROM real_estate_definitions a JOIN real_estate_definitions b ON a.purchase_cost_id <> 0 AND a.purchase_cost_id = b.upkeep_cost_id", '0')
-check('every reference resolves', "SELECT (SELECT COUNT(*) FROM real_estate_definitions d WHERE (d.region_id <> 0 AND NOT EXISTS (SELECT 1 FROM real_estate_regions r WHERE r.id = d.region_id)) OR (d.purchase_cost_id <> 0 AND NOT EXISTS (SELECT 1 FROM real_estate_costs c WHERE c.id = d.purchase_cost_id)) OR (d.upkeep_cost_id <> 0 AND NOT EXISTS (SELECT 1 FROM real_estate_costs c WHERE c.id = d.upkeep_cost_id))) + (SELECT COUNT(*) FROM real_estate_definition_children h WHERE NOT EXISTS (SELECT 1 FROM real_estate_definitions d WHERE d.id = h.child_id) OR NOT EXISTS (SELECT 1 FROM real_estate_definitions d WHERE d.id = h.parent_id))", '0')
+check('only the 75 plots carry a price, in copper', "SELECT CONCAT_WS(' ', COUNT(*), SUM(type IN (4, 8)), MIN(price), MAX(price)) FROM real_estate_definitions WHERE price > 0", '75 75 21000 168000')
+check('every reference resolves', "SELECT (SELECT COUNT(*) FROM real_estate_definitions d WHERE (d.region_id <> 0 AND NOT EXISTS (SELECT 1 FROM real_estate_regions r WHERE r.id = d.region_id))) + (SELECT COUNT(*) FROM real_estate_definition_children h WHERE NOT EXISTS (SELECT 1 FROM real_estate_definitions d WHERE d.id = h.child_id) OR NOT EXISTS (SELECT 1 FROM real_estate_definitions d WHERE d.id = h.parent_id))", '0')
 
 groups = [row for row in csv.reader(open(os.path.join(here, '..', 'content', 'itemDefinitions.txt')), delimiter='\t') if row and row[0] == 'items']
 upkeepIds = sorted({int(row[2]) for row in groups if int(row[2])})
@@ -59,16 +59,16 @@ template = json.load(open(os.path.join(here, '..', 'content', 'sunriseHillsPlots
 first = template[0]
 stones = {int(r[1]): r for r in csv.reader(open(os.path.join(here, '..', 'content', 'sunriseHillsLotSquares.tsv')), delimiter='\t')}
 stone = stones[first['door']]
-check(f"plot 42, {first['address']}", "SELECT CONCAT_WS(' ', d.name, d.type, d.max_items, d.max_non_real_estate_items, d.max_pet_items, p.amount, u.amount) FROM real_estate_definitions d JOIN real_estate_cost_items p ON p.cost_id = d.purchase_cost_id JOIN real_estate_cost_items u ON u.cost_id = d.upkeep_cost_id WHERE d.id = 42",
-      f"{first['address']} 4 {first['capacity']} 0 6 {first['pricePlatinum'] * 1000} {first['upkeepCopperPerDay']}")
+check(f"plot 42, {first['address']}", "SELECT CONCAT_WS(' ', name, type, max_items, max_non_real_estate_items, max_pet_items, price) FROM real_estate_definitions WHERE id = 42",
+      f"{first['address']} 4 {first['capacity']} 0 6 {first['pricePlatinum'] * 1000}")
 check('its layout origin is its border stone', "SELECT CONCAT_WS(' ', ROUND(layout_origin_x, 2), ROUND(layout_origin_y, 2), ROUND(layout_heading)) FROM real_estate_definitions WHERE id = 42",
       f'{float(stone[2]):.2f} {float(stone[3]):.2f} {round(float(stone[5]))}')
 check('its region is its box, 100 below its ground to 900 above', "SELECT CONCAT_WS(' ', ROUND(x, 2), ROUND(y, 2), ROUND(z, 2), ROUND(size_x, 2), ROUND(size_y, 2), size_z, heading) FROM real_estate_regions WHERE id = 42",
       f"{first['center'][0]:.2f} {first['center'][1]:.2f} {first['center'][2] + 400:.2f} {first['sizeAcross']:.2f} {first['sizeAlong']:.2f} 1000 {first['heading']:g}")
-check('guild plot 113, 200 Guild Way', "SELECT CONCAT_WS(' ', d.name, d.type, d.max_items, d.max_non_real_estate_items, d.max_pet_items, p.amount, u.amount, ROUND(d.layout_origin_x, 1), ROUND(d.layout_origin_y, 1), d.layout_heading) FROM real_estate_definitions d JOIN real_estate_cost_items p ON p.cost_id = d.purchase_cost_id JOIN real_estate_cost_items u ON u.cost_id = d.upkeep_cost_id WHERE d.id = 113",
-      '200 Guild Way 8 210 0 12 21000 2100 2689.8 2633.5 123')
-check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
-      '5:714:300:40:0:0:0,18:715:100:20:0:0:0,34:717:500:300:0:0:0')
+check('guild plot 113, 200 Guild Way', "SELECT CONCAT_WS(' ', name, type, max_items, max_non_real_estate_items, max_pet_items, price, ROUND(layout_origin_x, 1), ROUND(layout_origin_y, 1), layout_heading) FROM real_estate_definitions WHERE id = 113",
+      '200 Guild Way 8 210 0 12 21000 2689.8 2633.5 123')
+check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items, price) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
+      '5:714:300:40:0:0,18:715:100:20:0:0,34:717:500:300:0:0')
 check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
       '38:345:1000:0:0,39:738:1500:0:0,40:737:2000:0:0,41:751:1500:0:0')
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",
@@ -100,6 +100,8 @@ for r in regions:
 print(f'client containment: {tested} points, each in its own plot region only')
 
 sql(catalog, expectError=True)
+sql("INSERT INTO real_estate_definitions (id, type, price) VALUES (997, 3, 1000)", expectError=True)
+print('rejected: a price on a house')
 check('a second run is refused and changes nothing', 'SELECT COUNT(*) FROM real_estate_definitions', '119')
 freshDatabase()
 broken = catalog.replace('  COMMIT;\n', "  INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (999, 0, 1, 1);\n  COMMIT;\n")

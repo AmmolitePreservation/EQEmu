@@ -643,6 +643,7 @@ SET(common_headers
     global_define.h
     guild_base.h
     guilds.h
+    housingPrices.h
     http/httplib.h
     http/uri.h
     inventory_profile.h

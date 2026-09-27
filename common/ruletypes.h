@@ -1183,6 +1183,7 @@ RULE_BOOL(Housing, EnableHousing, true, "Master switch for player housing: when 
 RULE_BOOL(Housing, EnableUpkeep, true, "Charge property and item upkeep on the world upkeep tick.")
 RULE_INT(Housing, UpkeepTickSeconds, 3600, "Seconds between upkeep ticks; each tick charges the elapsed share of the daily cost (Live: hourly).")
 RULE_INT(Housing, UpkeepGraceHours, 0, "Hours after a purchase before the first upkeep charge.")
+RULE_REAL(Housing, PlotUpkeepPercent, 10, "Daily plot upkeep as a percent of the plot's price, rounded to the nearest coin one tier below the price's smallest coin (Live: 10).")
 RULE_INT(Housing, InactivityDays, 90, "Days without a login before an owner loses a player plot to the bank (everything into a moving crate, escrow refunded; the client's text says 90). 0 = never.")
 RULE_INT(Housing, GuildInactivityDays, 30, "Days without any member of the guild logging in before the guild loses its guild plot, as a player plot for inactivity (the client's text says 30). 0 = never.")
 RULE_INT(Housing, UnpaidUpkeepEvictionDays, 0, "Days a plot may stay unpaid before it is reclaimed. 0 = never (Live never evicted for unpaid upkeep).")
