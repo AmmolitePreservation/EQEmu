@@ -392,7 +392,7 @@ namespace {
       dumpPath.filename().string().c_str(), spawns, doors, grounds, worldObjects, definitions, properties, placedItems);
   }
 
-  void writeVendor(const VendorCapture &capture, const std::vector<ItemPtr> &items) {
+  void writeVendor(const VendorCapture &capture, const std::vector<ItemClient *> &items) {
     std::ofstream out(capture.path);
     if (!out) {
       WriteChatf("\ar[PeridotLive]\ax could not write %s", capture.path.string().c_str());
@@ -405,9 +405,9 @@ namespace {
     writeSpawn(out, "merchant", pActiveMerchant);
     out << "[items] merchantItem\tindex\tprice\tmerchantQuantity\tmerchantSlot (each followed by its item line)\n";
     int index = 0;
-    for (const ItemPtr &item : items) {
+    for (ItemClient *item : items) {
       out << "merchantItem\t" << index++ << '\t' << item->Price << '\t' << item->MerchantQuantity << '\t' << item->MerchantSlot << '\n';
-      writeItem(out, item.get());
+      writeItem(out, item);
     }
     WriteChatf("\ag[PeridotLive]\ax wrote %s: %d items", capture.path.filename().string().c_str(), static_cast<int>(items.size()));
   }
@@ -438,10 +438,10 @@ namespace {
     if (vendorCapture->written || count <= 0 || now - vendorCapture->changed < vendorSettle) {
       return;
     }
-    std::vector<ItemPtr> items;
+    std::vector<ItemClient *> items;
     for (int index = 0; index < count; ++index) {
       if (ItemPtr item = page->GetItem(index)) {
-        items.push_back(item);
+        items.push_back(item.get());
       }
     }
     writeVendor(*vendorCapture, items);
