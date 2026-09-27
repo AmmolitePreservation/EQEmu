@@ -37,10 +37,14 @@ namespace {
   void report(ItemClient *item, const std::string &source) {
     const ItemDefinition *definition = item->GetItemDefinition();
     const std::string housepetFileName(definition->HousepetFileName, strnlen(definition->HousepetFileName, sizeof(definition->HousepetFileName)));
-    WriteChatf("\ag[PeridotLive]\ax %d %s: housepet '\ay%s\ax', respawn %d, definition %d, upkeep %d, max %d, placeable 0x%X, placement %d, trophy %d, interactive %d",
+    char itemLink[512] = {};
+    FormatItemLink(itemLink, sizeof(itemLink), item);
+    ItemLinkInfo linkInfo;
+    const std::string linkHash = ParseItemLink(itemLink, linkInfo) ? fmt::format("{:08X}", linkInfo.itemHash) : "unparsed";
+    WriteChatf("\ag[PeridotLive]\ax %d %s: housepet '\ay%s\ax', respawn %d, definition %d, upkeep %d, max %d, placeable 0x%X, placement %d, trophy %d, interactive %d, link hash \ay%s\ax",
       item->GetID(), item->GetName(), housepetFileName.c_str(), definition->NpcRespawnInterval, definition->RealEstateDefID,
       definition->RealEstateUpkeepID, definition->MaxPerRealEstate, definition->Placeable, definition->PlacementType,
-      definition->TrophyBenefitID, definition->bInteractiveObject ? 1 : 0);
+      definition->TrophyBenefitID, definition->bInteractiveObject ? 1 : 0, linkHash.c_str());
     const std::filesystem::path reportPath = std::filesystem::path(gPathLogs) / reportFileName;
     const bool isNew = !std::filesystem::exists(reportPath);
     std::ofstream reportFile(reportPath, std::ios::app);
@@ -49,11 +53,11 @@ namespace {
       return;
     }
     if (isNew) {
-      reportFile << "itemId\tname\thousepetFileName\tnpcRespawnInterval\trealEstateDefinitionId\trealEstateUpkeepId\tmaxPerRealEstate\tplaceable\tplacementType\ttrophyBenefitId\tinteractiveObject\tsource\n";
+      reportFile << "itemId\tname\thousepetFileName\tnpcRespawnInterval\trealEstateDefinitionId\trealEstateUpkeepId\tmaxPerRealEstate\tplaceable\tplacementType\ttrophyBenefitId\tinteractiveObject\tsource\tlinkHash\n";
     }
     reportFile << item->GetID() << '\t' << item->GetName() << '\t' << housepetFileName << '\t' << definition->NpcRespawnInterval << '\t'
       << definition->RealEstateDefID << '\t' << definition->RealEstateUpkeepID << '\t' << definition->MaxPerRealEstate << '\t' << definition->Placeable << '\t'
-      << definition->PlacementType << '\t' << definition->TrophyBenefitID << '\t' << (definition->bInteractiveObject ? 1 : 0) << '\t' << source << '\n';
+      << definition->PlacementType << '\t' << definition->TrophyBenefitID << '\t' << (definition->bInteractiveObject ? 1 : 0) << '\t' << source << '\t' << linkHash << '\n';
   }
 
   ItemClient *displayedItem(int itemId) {
