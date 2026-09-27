@@ -15,38 +15,39 @@ Usage: python3 makeHousingZonesSql.py
 import os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
-# (id, short name, title, safe point (x, y, z)): the Palatial's from Live, Evantil's Abode's by /loc on Peridot, the rest from
-# housingZoneGeometry.py
+# (id, short name, title, safe point (x, y, z, heading)): the Palatial's from Live with its heading by #loc on Peridot,
+# Evantil's Abode's by /loc and #loc on Peridot, the rest from housingZoneGeometry.py with heading 0 (none known yet)
 housingZones = [
-  (714, 'phinterior3a1', 'House Interior', (-7.0, 6.2, 3.0)),
-  (715, 'phinterior1a1', 'House Interior', (-0.4, 5.4, 3.0)),
-  (716, 'phinterior3a2', 'House Interior', (-7.0, 6.2, 3.0)),
-  (717, 'phinterior3a3', 'House Interior', (-7.0, 6.2, 3.0)),
-  (718, 'phinterior1a2', 'House Interior', (-0.4, 5.4, 3.0)),
-  (719, 'phinterior1a3', 'House Interior', (-0.4, 5.4, 3.0)),
-  (720, 'phinterior1b1', 'Dragon House Interior', (-12.8, -23.4, 3.0)),
-  (723, 'phinterior1d1', 'Dragon House Interior', (-0.4, 5.4, 3.0)),
-  (737, 'guildhalllrg', 'Grand Guild Hall', (0.0, -12.0, 2.2)),
-  (738, 'guildhallsml', 'Greater Guild Hall', (133.0, -0.2, -13.9)),
-  (739, 'plhogrinteriors1a1', 'One Bedroom House Interior', (-1.6, 2.9, -1.4)),
-  (740, 'plhogrinteriors1a2', 'One Bedroom House Interior', (-1.7, 3.9, -2.4)),
-  (741, 'plhogrinteriors3a1', 'Three Bedroom House Interior', (-0.1, 2.1, -2.1)),
-  (742, 'plhogrinteriors3a2', 'Three Bedroom House Interior', (0.1, -0.4, -1.6)),
-  (743, 'plhogrinteriors3b1', 'Three Bedroom House Interior', (1.1, -0.9, -0.6)),
-  (744, 'plhogrinteriors3b2', 'Three Bedroom House Interior', (1.5, -0.5, -1.1)),
-  (745, 'plhdkeinteriors1a1', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (746, 'plhdkeinteriors1a2', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (747, 'plhdkeinteriors1a3', 'One Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (748, 'plhdkeinteriors3a1', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (749, 'plhdkeinteriors3a2', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (750, 'plhdkeinteriors3a3', 'Three Bedroom House Interior', (0.0, 2.0, 3.0)),
-  (751, 'guildhall3', 'Modest Guild Hall', (134.6, -0.2, -13.9)),
-  (766, 'phinteriortree', "Evantil's Abode", (11.25, 79.75, 3.75)),
+  (714, 'phinterior3a1', 'House Interior', (-7.0, 6.2, 3.0, 0.0)),
+  (715, 'phinterior1a1', 'House Interior', (-0.4, 5.4, 3.0, 0.0)),
+  (716, 'phinterior3a2', 'House Interior', (-7.0, 6.2, 3.0, 0.0)),
+  (717, 'phinterior3a3', 'House Interior', (-7.0, 6.2, 3.0, 0.0)),
+  (718, 'phinterior1a2', 'House Interior', (-0.4, 5.4, 3.0, 0.0)),
+  (719, 'phinterior1a3', 'House Interior', (-0.4, 5.4, 3.0, 0.0)),
+  (720, 'phinterior1b1', 'Dragon House Interior', (-12.8, -23.4, 3.0, 0.0)),
+  (723, 'phinterior1d1', 'Dragon House Interior', (-0.4, 5.4, 3.0, 0.0)),
+  (737, 'guildhalllrg', 'Grand Guild Hall', (0.0, -12.0, 2.2, 384.75)),
+  (738, 'guildhallsml', 'Greater Guild Hall', (133.0, -0.2, -13.9, 0.0)),
+  (739, 'plhogrinteriors1a1', 'One Bedroom House Interior', (-1.6, 2.9, -1.4, 0.0)),
+  (740, 'plhogrinteriors1a2', 'One Bedroom House Interior', (-1.7, 3.9, -2.4, 0.0)),
+  (741, 'plhogrinteriors3a1', 'Three Bedroom House Interior', (-0.1, 2.1, -2.1, 0.0)),
+  (742, 'plhogrinteriors3a2', 'Three Bedroom House Interior', (0.1, -0.4, -1.6, 0.0)),
+  (743, 'plhogrinteriors3b1', 'Three Bedroom House Interior', (1.1, -0.9, -0.6, 0.0)),
+  (744, 'plhogrinteriors3b2', 'Three Bedroom House Interior', (1.5, -0.5, -1.1, 0.0)),
+  (745, 'plhdkeinteriors1a1', 'One Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (746, 'plhdkeinteriors1a2', 'One Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (747, 'plhdkeinteriors1a3', 'One Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (748, 'plhdkeinteriors3a1', 'Three Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (749, 'plhdkeinteriors3a2', 'Three Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (750, 'plhdkeinteriors3a3', 'Three Bedroom House Interior', (0.0, 2.0, 3.0, 0.0)),
+  (751, 'guildhall3', 'Modest Guild Hall', (134.6, -0.2, -13.9, 0.0)),
+  (766, 'phinteriortree', "Evantil's Abode", (11.25, 79.75, 3.75, 511.25)),
 ]
-# Entry points (x, y, z) that differ from the safe point: the Palatial's from Live, Evantil's Abode's by /loc on Peridot
+# Entry points (x, y, z, heading) that differ from the safe point: the Palatial's from Live, Evantil's Abode's by /loc on
+# Peridot; both headings by #loc on Peridot
 entryPoints = {
-  'guildhalllrg': (71.0, -1.0, 1.56),
-  'phinteriortree': (0.38, 3.21, 3.75),
+  'guildhalllrg': (71.0, -1.0, 1.56, 384.75),
+  'phinteriortree': (0.38, 3.21, 3.75, 511.25),
 }
 gateColumns = ['min_expansion', 'max_expansion', 'content_flags', 'content_flags_disabled', 'expansion']
 
@@ -67,7 +68,7 @@ def insertStatement(columns, zoneId, shortName, longName, safePoint):
   quoted = lambda text: "'" + text.replace("'", "''") + "'"
   values = dict(zoneidnumber=str(zoneId), version='0', short_name=quoted(shortName), long_name=quoted(longName),
                 file_name="''", map_file_name="''", note=quoted('Player housing'), underworld='-2000',
-                safe_x=repr(safePoint[0]), safe_y=repr(safePoint[1]), safe_z=repr(safePoint[2]), safe_heading='0',
+                safe_x=repr(safePoint[0]), safe_y=repr(safePoint[1]), safe_z=repr(safePoint[2]), safe_heading=repr(safePoint[3]),
                 bypass_expansion_check='1')
   values.update({column: f'gate.`{column}`' for column in gateColumns})
   selected = ', '.join(values.get(column, f'template.`{column}`') for column in columns)
@@ -80,6 +81,10 @@ def main():
   unknown = set(entryPoints) - {shortName for _, shortName, _, _ in housingZones}
   if unknown:
     raise ValueError(f'entry points for zones not in housingZones: {sorted(unknown)}')
+  points = [(shortName, point) for _, shortName, _, point in housingZones] + list(entryPoints.items())
+  badHeadings = [(shortName, point) for shortName, point in points if len(point) != 4 or not 0 <= point[3] < 512]
+  if badHeadings:
+    raise ValueError(f'points need (x, y, z, heading) with a heading in [0, 512): {badHeadings}')
   ids = ', '.join(str(zoneId) for zoneId, _, _, _ in housingZones)
   names = ', '.join(f"'{shortName}'" for _, shortName, _, _ in housingZones)
   inserts = ''.join(insertStatement(columns, *zone) for zone in housingZones)
@@ -105,8 +110,8 @@ SELECT zoneidnumber, short_name, long_name, min_expansion, max_expansion, underw
 """
   path = os.path.join(here, '..', 'sql', 'housingZones.sql')
   open(path, 'w', encoding='ascii').write(sql)
-  updates = ''.join(f"  UPDATE zone SET safe_x = {x!r}, safe_y = {y!r}, safe_z = {z!r}, bypass_expansion_check = 1 WHERE zoneidnumber = {zoneId} AND version = 0 AND short_name = '{shortName}';\n"
-                    for zoneId, shortName, _, (x, y, z) in housingZones)
+  updates = ''.join(f"  UPDATE zone SET safe_x = {x!r}, safe_y = {y!r}, safe_z = {z!r}, safe_heading = {heading!r}, bypass_expansion_check = 1 WHERE zoneidnumber = {zoneId} AND version = 0 AND short_name = '{shortName}';\n"
+                    for zoneId, shortName, _, (x, y, z, heading) in housingZones)
   updates += "  UPDATE zone SET bypass_expansion_check = 1 WHERE short_name = 'neighborhood';\n"
   update = f"""-- Generated by playerHousing/tools/makeHousingZonesSql.py: safe points and the expansion bypass for the rows
 -- housingZones.sql added, and the neighborhood's bypass.
@@ -120,7 +125,7 @@ BEGIN NOT ATOMIC
   END IF;
 {updates}END //
 DELIMITER ;
-SELECT zoneidnumber, short_name, safe_x, safe_y, safe_z, expansion, bypass_expansion_check FROM zone WHERE short_name = 'neighborhood' OR (version = 0 AND zoneidnumber IN ({ids})) ORDER BY zoneidnumber;
+SELECT zoneidnumber, short_name, safe_x, safe_y, safe_z, safe_heading, expansion, bypass_expansion_check FROM zone WHERE short_name = 'neighborhood' OR (version = 0 AND zoneidnumber IN ({ids})) ORDER BY zoneidnumber;
 """
   updatePath = os.path.join(here, '..', 'sql', 'housingZoneSettings.sql')
   open(updatePath, 'w', encoding='ascii').write(update)
