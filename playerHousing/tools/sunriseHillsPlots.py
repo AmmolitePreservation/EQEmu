@@ -1,10 +1,11 @@
 """Derives the Sunrise Hills plot template from the neighborhood map's plot layer (content/neighborhood_2.txt).
 
 The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
-(center, size, orientation) is fitted to its four sides, and its purchase price, daily upkeep and pet cap come from Live's
-plot table (Allakhazam, "EQ:Player Housing in EverQuest"), except Park Circle's capacity, 120 in Live's purchase window
-where the table says 105. Its item capacity is House of Thule's launch value for its tier
-(40, 50, 60 where Live's table later has 90, 105, 120): Peridot's defaults are each feature's values at its own launch.
+(center, size, orientation) is fitted to its four sides, and its purchase price and daily upkeep come from Live's plot table
+(Allakhazam, "EQ:Player Housing in EverQuest"), except Park Circle's capacity, 120 in Live's purchase window where the table
+says 105. Its item capacity is House of Thule's launch value for its tier (40, 50, 60 where Live's table later has 90, 105,
+120, and Live today 120 on every plot): Peridot's defaults are each feature's values at its own launch. No launch pet cap is
+known, so every player plot takes Live's current one, 6.
 
 World coordinates: the map stores (-x, -y) (verified: every plot center lands within 1.2 units of one of Live's plot border
 stones, the OBP_LOTSQUARE doors in content/sunriseHillsLotSquares.tsv, exported from PEQ's doors table). EQ headings (512 per
@@ -26,27 +27,28 @@ Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 import collections, json, math, os, re, sys
 
 # Live's plot table: (street, the house numbers the row covers or None for the rest of the street) ->
-# (price in platinum, daily upkeep in copper, item capacity, pet cap, plot count).
+# (price in platinum, daily upkeep in copper, item capacity, plot count).
 liveGroups = [
-  ('Betwixt Avenue', None, 84, 8400, 105, 5, 7),
-  ('Brimming Heights', None, 126, 12600, 120, 6, 8),
-  ('Brimming Way', {101, 102, 107}, 168, 16800, 120, 6, 3),
-  ('Brimming Way', {113}, 42, 4200, 90, 4, 1),
-  ('Brimming Way', None, 84, 8400, 105, 5, 9),
-  ('Guild Way', None, 84, 8400, 105, 5, 5),
-  ('Market Street', {101, 102}, 42, 4200, 90, 4, 2),
-  ('Market Street', {103, 104}, 21, 2100, 90, 4, 2),
-  ('Market Heights', None, 168, 16800, 120, 6, 3),
-  ('Park Circle', None, 126, 12600, 120, 6, 8),
-  ('Terminus Street', {107}, 126, 12600, 120, 6, 1),
-  ('Terminus Street', None, 84, 8400, 105, 5, 5),
-  ('Terminus Heights', None, 168, 16800, 120, 6, 1),
-  ('Vanward Street', {105, 116}, 21, 2100, 90, 4, 2),
-  ('Vanward Street', None, 84, 8400, 105, 5, 13),
-  ('Vanward Heights', None, 168, 16800, 120, 6, 1),
+  ('Betwixt Avenue', None, 84, 8400, 105, 7),
+  ('Brimming Heights', None, 126, 12600, 120, 8),
+  ('Brimming Way', {101, 102, 107}, 168, 16800, 120, 3),
+  ('Brimming Way', {113}, 42, 4200, 90, 1),
+  ('Brimming Way', None, 84, 8400, 105, 9),
+  ('Guild Way', None, 84, 8400, 105, 5),
+  ('Market Street', {101, 102}, 42, 4200, 90, 2),
+  ('Market Street', {103, 104}, 21, 2100, 90, 2),
+  ('Market Heights', None, 168, 16800, 120, 3),
+  ('Park Circle', None, 126, 12600, 120, 8),
+  ('Terminus Street', {107}, 126, 12600, 120, 1),
+  ('Terminus Street', None, 84, 8400, 105, 5),
+  ('Terminus Heights', None, 168, 16800, 120, 1),
+  ('Vanward Street', {105, 116}, 21, 2100, 90, 2),
+  ('Vanward Street', None, 84, 8400, 105, 13),
+  ('Vanward Heights', None, 168, 16800, 120, 1),
 ]
 
 launchPlotCapacity = {90: 40, 105: 50, 120: 60}
+livePlotPets = 6
 
 # (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the address)
 liveGuildPlots = [
@@ -201,11 +203,11 @@ if __name__ == '__main__':
       raise ValueError(f"{plot['address']}: box heading {heading:.1f} disagrees with its stone's {stone['heading']:.0f}")
     rows.append(dict(kind='plot', address=plot['address'], door=stone['door'], center=[round(worldX, 3), round(worldY, 3), stone['position'][2]],
                      heading=stone['heading'], sizeAcross=round(box['sizeAcross'], 2), sizeAlong=round(box['sizeAlong'], 2),
-                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=launchPlotCapacity[group[4]], pets=group[5]))
+                     pricePlatinum=group[2], upkeepCopperPerDay=group[3], capacity=launchPlotCapacity[group[4]], pets=livePlotPets))
   for group in liveGroups:
     key = group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))
-    if counts[key] != group[6]:
-      raise ValueError(f'{group[0]} {group[1] or ""}: {counts[key]} plots on the map, {group[6]} in Live\'s table')
+    if counts[key] != group[5]:
+      raise ValueError(f'{group[0]} {group[1] or ""}: {counts[key]} plots on the map, {group[5]} in Live\'s table')
   claimed = {row['door'] for row in rows}
   if len(claimed) != len(rows):
     raise ValueError('two plots claimed one border stone')

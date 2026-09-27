@@ -1,0 +1,94 @@
+result	definition_id	upkeep_id	placeable	items	first_item	names
+items	5	17	8	6	61823	Monel Style Brick House, Stucco interior | Monel Style Country House, Stucco interior | Monel Style Plaster House, Stucco interior | Zimel Style Plaster House, Stucco interior | Zimel Style Stone House, Stucco interior | Zimel Style Stucco House, Stucco interior
+items	7	17	8	6	61824	Monel Style Brick House, Wood interior | Monel Style Country House, Wood interior | Monel Style Plaster House, Wood interior | Zimel Style Plaster House, Wood interior | Zimel Style Stone House, Wood interior | Zimel Style Stucco House, Wood interior
+items	8	17	8	6	61825	Monel Style Brick House, Stone interior | Monel Style Country House, Stone interior | Monel Style Plaster House, Stone interior | Zimel Style Plaster House, Stone interior | Zimel Style Stone House, Stone interior | Zimel Style Stucco House, Stone interior
+items	9	18	8	6	61841	Monel Style Brick Hut, Stucco interior | Monel Style Country Hut, Stucco interior | Monel Style Plaster Hut, Stucco interior | Zimel Style Plaster Hut, Stucco interior | Zimel Style Stone Hut, Stucco interior | Zimel Style Stucco Hut, Stucco interior
+items	10	18	8	6	61842	Monel Style Brick Hut, Wood interior | Monel Style Country Hut, Wood interior | Monel Style Plaster Hut, Wood interior | Zimel Style Plaster Hut, Wood interior | Zimel Style Stone Hut, Wood interior | Zimel Style Stucco Hut, Wood interior
+items	11	18	8	6	61843	Monel Style Brick Hut, Stone interior | Monel Style Country Hut, Stone interior | Monel Style Plaster Hut, Stone interior | Zimel Style Plaster Hut, Stone interior | Zimel Style Stone Hut, Stone interior | Zimel Style Stucco Hut, Stone interior
+items	12	19	8	6	61859	Monel Style Brick Residence, Stucco interior | Monel Style Country Residence, Stucco interior | Monel Style Plaster Residence, Stucco interior | Zimel Style Plaster Residence, Stucco interior | Zimel Style Stone Residence, Stucco interior | Zimel Style Stucco Residence, Stucco interior
+items	13	19	8	6	61860	Monel Style Brick Residence, Wood interior | Monel Style Country Residence, Wood interior | Monel Style Plaster Residence, Wood interior | Zimel Style Plaster Residence, Wood interior | Zimel Style Stone Residence, Wood interior | Zimel Style Stucco Residence, Wood interior
+items	14	19	8	6	61861	Monel Style Brick Residence, Stone interior | Monel Style Country Residence, Stone interior | Monel Style Plaster Residence, Stone interior | Zimel Style Plaster Residence, Stone interior | Zimel Style Stone Residence, Stone interior | Zimel Style Stucco Residence, Stone interior
+items	15	20	8	6	61877	Monel Style Brick Domicile, Stucco interior | Monel Style Country Domicile, Stucco interior | Monel Style Plaster Domicile, Stucco interior | Zimel Style Plaster Domicile, Stucco interior | Zimel Style Stone Domicile, Stucco interior | Zimel Style Stucco Domicile, Stucco interior
+items	16	20	8	6	61878	Monel Style Brick Domicile, Wood interior | Monel Style Country Domicile, Wood interior | Monel Style Plaster Domicile, Wood interior | Zimel Style Plaster Domicile, Wood interior | Zimel Style Stone Domicile, Wood interior | Zimel Style Stucco Domicile, Wood interior
+items	17	20	8	6	61879	Monel Style Brick Domicile, Stone interior | Monel Style Country Domicile, Stone interior | Monel Style Plaster Domicile, Stone interior | Zimel Style Plaster Domicile, Stone interior | Zimel Style Stone Domicile, Stone interior | Zimel Style Stucco Domicile, Stone interior
+items	18	21	8	4	61895	Behroe Style Brick House, Stucco interior | Behroe Style Stone House, Stucco interior | Cobbler Style Plaster House, Stucco interior | Cobbler Style Stone House, Stucco interior
+items	19	21	8	4	61896	Behroe Style Brick House, Wood interior | Behroe Style Stone House, Wood interior | Cobbler Style Plaster House, Wood interior | Cobbler Style Stone House, Wood interior
+items	20	21	8	4	61897	Behroe Style Brick House, Stone interior | Behroe Style Stone House, Stone interior | Cobbler Style Plaster House, Stone interior | Cobbler Style Stone House, Stone interior
+items	21	22	8	5	61907	Behroe Style Brick Hut, Stucco interior | Behroe Style Stone Hut, Stucco interior | Cobbler Style Plaster Hut, Stucco interior | Cobbler Style Stone Hut, Stucco interior
+items	22	22	8	4	61908	Behroe Style Brick Hut, Wood interior | Behroe Style Stone Hut, Wood interior | Cobbler Style Plaster Hut, Wood interior | Cobbler Style Stone Hut, Wood interior
+items	23	22	8	4	61909	Behroe Style Brick Hut, Stone interior | Behroe Style Stone Hut, Stone interior | Cobbler Style Plaster Hut, Stone interior | Cobbler Style Stone Hut, Stone interior
+items	24	23	8	4	61919	Behroe Style Brick Residence, Stucco interior | Behroe Style Stone Residence, Stucco interior | Cobbler Style Plaster Residence, Stucco interior | Cobbler Style Stone Residence, Stucco interior
+items	25	23	8	4	61920	Behroe Style Brick Residence, Wood interior | Behroe Style Stone Residence, Wood interior | Cobbler Style Plaster Residence, Wood interior | Cobbler Style Stone Residence, Wood interior
+items	26	23	8	4	61921	Behroe Style Brick Residence, Stone interior | Behroe Style Stone Residence, Stone interior | Cobbler Style Plaster Residence, Stone interior | Cobbler Style Stone Residence, Stone interior
+items	27	24	8	4	61931	Behroe Style Brick Domicile, Stucco interior | Behroe Style Stone Domicile, Stucco interior | Cobbler Style Plaster Domicile, Stucco interior | Cobbler Style Stone Domicile, Stucco interior
+items	28	24	8	4	61932	Behroe Style Brick Domicile, Wood interior | Behroe Style Stone Domicile, Wood interior | Cobbler Style Plaster Domicile, Wood interior | Cobbler Style Stone Domicile, Wood interior
+items	29	24	8	4	61933	Behroe Style Brick Domicile, Stone interior | Behroe Style Stone Domicile, Stone interior | Cobbler Style Plaster Domicile, Stone interior | Cobbler Style Stone Domicile, Stone interior
+items	31	0	142	1	52147	Crate of Eviction
+items	32	0	8	12	57501	Monel Style Brick Manor, Stucco interior | Monel Style Country Manor, Stucco interior | Monel Style Plaster Manor, Stucco interior | Zimel Style Plaster Manor, Stucco interior | Zimel Style Stone Manor, Stucco interior | Zimel Style Stucco Manor, Stucco interior
+items	33	0	8	12	57502	Monel Style Brick Manor, Wood interior | Monel Style Country Manor, Wood interior | Monel Style Plaster Manor, Wood interior | Zimel Style Plaster Manor, Wood interior | Zimel Style Stone Manor, Wood interior | Zimel Style Stucco Manor, Wood interior
+items	34	0	8	12	57503	Monel Style Brick Manor, Stone interior | Monel Style Country Manor, Stone interior | Monel Style Plaster Manor, Stone interior | Zimel Style Plaster Manor, Stone interior | Zimel Style Stone Manor, Stone interior | Zimel Style Stucco Manor, Stone interior
+items	38	0	128	1	66618	Standard Guild Hall
+items	39	0	128	1	66619	Grand Guild Hall
+items	40	0	128	1	66620	Palatial Guild Hall
+items	41	0	128	1	66660	Modest Guild Hall
+items	174	26	142	1	62586	Small Storage Crate
+items	175	27	142	1	62587	Hut Storage Crate
+items	176	28	142	1	62588	Medium Storage Crate
+items	177	29	142	1	62589	Domicile Storage Crate
+items	178	30	142	1	62590	Large Storage Crate
+items	179	31	142	1	62591	House Storage Crate
+items	180	32	142	1	62592	Giant Storage Crate
+items	181	33	142	1	62593	Mansion Storage Crate
+items	182	34	142	1	62594	Enormous Storage Crate
+items	183	35	142	1	62595	Estate Storage Crate
+items	184	27	142	1	62596	All Hallows Eve Storage Crate
+result	alternate_currency_id	item_id	item_name
+currencies	4	40903	Radiant Crystal
+currencies	5	40902	Ebon Crystal
+currencies	10	79910	Doubloon
+currencies	11	79911	Orum
+currencies	12	79912	Phosphene
+currencies	13	79913	Phosphite
+currencies	14	100941	Faycetum
+currencies	15	103000	Chronobine
+currencies	16	43942	Silver Token
+currencies	17	43943	Gold Token
+currencies	18	41408	McKenzie's Special Brew
+currencies	19	46779	Bayle Mark
+currencies	20	47698	Token of Reclamation
+currencies	21	47900	Brellium Token
+currencies	22	52149	Dream Mote
+currencies	23	61080	Rebellion Chit
+currencies	24	61081	Diamond Coin
+currencies	25	61082	Bronze Fiat
+currencies	26	55249	Expedient Delivery Voucher
+currencies	27	61998	Velium Shard
+currencies	28	61999	Crystallized Fear
+currencies	29	63778	Shadowstone
+currencies	30	64188	Dreadstone
+currencies	31	56772	Mark of Valor
+currencies	32	56773	Medal of Heroism
+currencies	33	85966	Commemorative Coin
+currencies	34	57057	Fist of Bayle
+currencies	35	18000	Noble
+currencies	36	18441	Arx Energy Crystal
+currencies	37	18442	Piece of Eight
+currencies	38	36627	Remnant of Tranquility
+currencies	39	39000	Bifurcated Coin
+currencies	40	106981	NULL
+currencies	41	106983	NULL
+currencies	42	106984	NULL
+currencies	43	106993	NULL
+currencies	44	106994	NULL
+currencies	45	106995	NULL
+currencies	46	106996	NULL
+currencies	47	106998	NULL
+currencies	48	164318	NULL
+currencies	49	164319	NULL
+currencies	50	107000	NULL
+currencies	51	165182	NULL
+currencies	52	165183	NULL
+currencies	53	165191	NULL
+currencies	54	165192	NULL
+currencies	55	165193	NULL
+currencies	56	165194	NULL

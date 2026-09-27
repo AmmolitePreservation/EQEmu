@@ -14,7 +14,7 @@
   "pricePlatinum": 42,
   "upkeepCopperPerDay": 4200,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -31,7 +31,7 @@
   "pricePlatinum": 21,
   "upkeepCopperPerDay": 2100,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -48,7 +48,7 @@
   "pricePlatinum": 21,
   "upkeepCopperPerDay": 2100,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -65,7 +65,7 @@
   "pricePlatinum": 42,
   "upkeepCopperPerDay": 4200,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -167,7 +167,7 @@
   "pricePlatinum": 42,
   "upkeepCopperPerDay": 4200,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -184,7 +184,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -201,7 +201,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -218,7 +218,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -235,7 +235,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -252,7 +252,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -269,7 +269,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -422,7 +422,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -439,7 +439,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -456,7 +456,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -490,7 +490,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -507,7 +507,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -524,7 +524,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -541,7 +541,7 @@
   "pricePlatinum": 21,
   "upkeepCopperPerDay": 2100,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -558,7 +558,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -575,7 +575,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -592,7 +592,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -609,7 +609,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -626,7 +626,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -643,7 +643,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -660,7 +660,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -677,7 +677,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -694,7 +694,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -711,7 +711,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -728,7 +728,7 @@
   "pricePlatinum": 21,
   "upkeepCopperPerDay": 2100,
   "capacity": 40,
-  "pets": 4
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -898,7 +898,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -915,7 +915,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -932,7 +932,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -949,7 +949,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -966,7 +966,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -983,7 +983,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1000,7 +1000,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1017,7 +1017,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1034,7 +1034,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1068,7 +1068,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1102,7 +1102,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1119,7 +1119,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1136,7 +1136,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1153,7 +1153,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1170,7 +1170,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1187,7 +1187,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "plot",
@@ -1204,7 +1204,7 @@
   "pricePlatinum": 84,
   "upkeepCopperPerDay": 8400,
   "capacity": 50,
-  "pets": 5
+  "pets": 6
  },
  {
   "kind": "guild plot",
