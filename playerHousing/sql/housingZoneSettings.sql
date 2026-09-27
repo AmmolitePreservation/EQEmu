@@ -31,7 +31,7 @@ BEGIN NOT ATOMIC
   UPDATE zone SET safe_x = 0.0, safe_y = 2.0, safe_z = 3.0, bypass_expansion_check = 1 WHERE zoneidnumber = 749 AND version = 0 AND short_name = 'plhdkeinteriors3a2';
   UPDATE zone SET safe_x = 0.0, safe_y = 2.0, safe_z = 3.0, bypass_expansion_check = 1 WHERE zoneidnumber = 750 AND version = 0 AND short_name = 'plhdkeinteriors3a3';
   UPDATE zone SET safe_x = 134.6, safe_y = -0.2, safe_z = -13.9, bypass_expansion_check = 1 WHERE zoneidnumber = 751 AND version = 0 AND short_name = 'guildhall3';
-  UPDATE zone SET safe_x = -115.0, safe_y = 101.1, safe_z = 192.7, bypass_expansion_check = 1 WHERE zoneidnumber = 766 AND version = 0 AND short_name = 'phinteriortree';
+  UPDATE zone SET safe_x = 11.25, safe_y = 79.75, safe_z = 3.75, bypass_expansion_check = 1 WHERE zoneidnumber = 766 AND version = 0 AND short_name = 'phinteriortree';
   UPDATE zone SET bypass_expansion_check = 1 WHERE short_name = 'neighborhood';
 END //
 DELIMITER ;

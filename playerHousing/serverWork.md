@@ -129,11 +129,19 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Depends on:** S4, F1 (trophy benefit ids). **Readiness:** Specified; which items are trophies and their benefits is **Content**.
 - **Source:** `trophyTribute.md`, `flows/trophies.md`.
 
+### S13. The unshipped and edition-only houses (last)
+
+- **What:** every interior Live never sold becomes a house like the standard ones, with its item and definition: Evantil's Abode (`phinteriortree`, sold only in Rain of Fear's Collector's Edition), the two dragon houses (`phinterior1b1`, `phinterior1d1`), the six ogre interiors (`plhogrinteriors1a1`, `1a2`, `3a1`, `3a2`, `3b1`, `3b2`) and the six dark elf interiors (`plhdkeinteriors1a1`-`1a3`, `3a1`-`3a3`). All 15 are committed; they come last because nothing on Live depends on them.
+- **Per house:** the item (placeable in a yard), its definition (type, category, caps, pet cap, upkeep id and cost), its interior zone's entry and safe points (Evantil's Abode's are set; the rest derived, or by `/loc`), and its exterior model.
+- **Server rules:** none new; they are ordinary houses (S1, S5, S10).
+- **Depends on:** S10. **Readiness:** **Content** (values and names are Peridot's to choose); the exteriors are **Verify**: Evantil's Abode's is very likely `IT23651`, and the dragon, ogre and dark elf houses' are still to be found in the client.
+- **Source:** `serverPlan.md` (the interior zones), `robustness.md` (the client's zone table), `tools/makeHousingZonesSql.py` (zone rows, safe and entry points).
+
 ## Build order
 
 ```
 F1 item tail --+
-F2 opcodes ----+--> S1 catalog --> S2 properties --> S3 regions --+--> S5 placement --> S10 houses, crate, layouts
+F2 opcodes ----+--> S1 catalog --> S2 properties --> S3 regions --+--> S5 placement --> S10 houses, crate, layouts --> S13 unshipped houses (last)
 F4 schema -----+                        |                         |
 F6 constraints                          +--> S4 item lists -------+
 F3 zones (verify Q11 early)             +--> S6 neighborhoods, search
