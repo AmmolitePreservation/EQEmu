@@ -15,7 +15,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(0.7);
+PLUGIN_VERSION(0.8);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -253,11 +253,20 @@ namespace {
       out << "[realEstate] no real estate manager\n";
       return;
     }
-    out << "[realEstate] manager\tzoneRealEstateId\tzoneRealEstateType\tcurrentRealEstateId\tcurrentYardId\tcurrentHouseId\tcurrentMovingCrateId\tlastRefreshTime\tdefinitionsPath\tcostsPath\n";
+    out << "[realEstate] manager\tzoneRealEstateId\tzoneRealEstateType\tcurrentRealEstateId\tcurrentYardId\tcurrentHouseId\tcurrentMovingCrateId\tlastRefreshTime\n";
     out << "manager\t" << manager->zoneRealEstateId << '\t' << static_cast<int>(manager->zoneRealEstateType) << '\t' << manager->currentRealEstateId << '\t'
-      << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\t'
-      << tsvText(manager->definitions ? manager->definitions->path.c_str() : "") << '\t' << tsvText(manager->costs ? manager->costs->path.c_str() : "") << '\n';
+      << manager->currentYardId << '\t' << manager->currentHouseId << '\t' << manager->currentMovingCrateId << '\t' << manager->lastRefreshTime << '\n';
     writeRaw(out, *manager);
+    // Their CXStr path members are not valid strings on Live: c_str() crashed in CXStr::Assure. Only counts and raw bytes are read.
+    out << "  definitionsManager\tentries\n" << "  costsManager\tentries\n";
+    if (manager->definitions) {
+      out << "definitionsManager\t" << manager->definitions->definitions.GetTotalEntries() << '\n';
+      writeRaw(out, *manager->definitions);
+    }
+    if (manager->costs) {
+      out << "costsManager\t" << manager->costs->costs.GetTotalEntries() << '\n';
+      writeRaw(out, *manager->costs);
+    }
 
     out << "[definitions] definition\tkey\tid\tname\tdescription\taddress\tzoneInX\tzoneInY\tzoneInZ\tareaId\tcostDefinition\tupkeepDefinition\tmaxItems\tmaxNonRealEstateItems\tmaxChildren\tzoneId\tdzId\ttype\tgroupId\ticon\tmaxNpcItems\tswitchX\tswitchY\tswitchZ\tswitchHeading\tchildDefinitions\n";
     if (manager->definitions) {
