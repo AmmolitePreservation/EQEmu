@@ -1,6 +1,7 @@
 #ifndef EQEMU_ZONE_HOUSING_HOUSING_STORE_H
 #define EQEMU_ZONE_HOUSING_HOUSING_STORE_H
 
+#include "../../common/housingPropertyItem.h"
 #include "../../common/repositories/real_estate_properties_repository.h"
 
 #include <map>
@@ -10,7 +11,6 @@
 
 namespace housing {
   // an item carrying a property (a packed crate, a picked-up house) names it in its custom data; inventory guids change at every load
-  constexpr const char *propertyItemKey = "real_estate_property_id";
 
   using Property = RealEstatePropertiesRepository::RealEstateProperties;
 

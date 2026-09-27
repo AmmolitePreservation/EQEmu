@@ -30,6 +30,7 @@
 #include "../misc_functions.h"
 #include "../strings.h"
 #include "../inventory_profile.h"
+#include "../housingPropertyItem.h"
 #include "../itemHousingTail.h"
 #include "rof2_structs.h"
 #include "../rulesys.h"
@@ -6564,7 +6565,8 @@ namespace RoF2
 		hdrf.ornamentHeroModel = hero_model;
 		hdrf.unknown063 = 0;
 		hdrf.Copied = 0;
-		hdrf.unknowna4 = 0xffffffff;
+		const uint32 carried_property_id = housing::carriedPropertyId(inst->GetCustomDataString());
+		hdrf.real_estate_id = carried_property_id ? static_cast<int32>(carried_property_id) : -1;
 		hdrf.unknowna5 = 0;
 		hdrf.ItemClass = item->ItemClass;
 
