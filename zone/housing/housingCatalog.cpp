@@ -85,6 +85,23 @@ namespace housing {
       }
     }
 
+    const int maxHousesOverride = RuleI(Housing, MaxHousesOverride);
+    const int maxHousesAdditive = RuleI(Housing, MaxHousesAdditive);
+    if (maxHousesOverride < -1) {
+      problems.push_back(fmt::format("Housing:MaxHousesOverride [{}] must be -1 (off) or a count", maxHousesOverride));
+    }
+    for (auto &[id, entry] : definitions) {
+      const bool yard = entry.row.type == static_cast<uint8>(DefinitionType::plot) || entry.row.type == static_cast<uint8>(DefinitionType::guildPlot);
+      if (!yard) {
+        entry.maxHouses = entry.row.max_houses;
+      }
+      else if (maxHousesOverride >= 0) {
+        entry.maxHouses = static_cast<uint32>(maxHousesOverride);
+      }
+      else {
+        entry.maxHouses = static_cast<uint32>(std::max<int64_t>(0, static_cast<int64_t>(entry.row.max_houses) + maxHousesAdditive));
+      }
+    }
     std::set<int32> alternateCurrencies;
     for (const auto &row : AlternateCurrencyRepository::All(content_db)) {
       alternateCurrencies.insert(row.id);
@@ -209,7 +226,7 @@ namespace housing {
         .u32(entry.upkeepCostId)
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
-        .u32(row.max_houses)
+        .u32(entry.maxHouses)
         .u32(row.unknown_34)
         .u32(row.unknown_38)
         .u32(row.type)

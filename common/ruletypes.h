@@ -1190,6 +1190,8 @@ RULE_INT(Housing, UnpaidUpkeepEvictionDays, 0, "Days a plot may stay unpaid befo
 RULE_INT(Housing, SellRefundPercent, 0, "Percent of the purchase price refunded when a plot is sold.")
 RULE_BOOL(Housing, SellRefundsEscrow, true, "Selling a plot returns its escrow balance.")
 RULE_INT(Housing, MaxPlotsPerCharacter, 2, "Plots a character may own across all neighborhoods (two at House of Thule's launch, three on Live later).")
+RULE_INT(Housing, MaxHousesOverride, -1, "Houses and guild halls every plot and guild plot holds, replacing each plot's own max_houses (a zone's ruleset may set its own). -1 = each plot's own.")
+RULE_INT(Housing, MaxHousesAdditive, 0, "Houses and guild halls added to each plot and guild plot's own max_houses, never below 0 (a zone's ruleset may set its own); ignored while MaxHousesOverride is set.")
 RULE_INT(Housing, MaxGuildPlotsPerGuild, 1, "Guild plots a guild may own across all neighborhoods.")
 RULE_INT(Housing, GuildPlotMinimumMembers, 10, "Members a guild needs to buy a guild plot unless it owns a guild neighborhood (ten at Veil of Alaris' launch). 0 = no minimum.")
 RULE_INT(Housing, TransferOfferExpirySeconds, 300, "Seconds a plot transfer offer waits for an answer.")
