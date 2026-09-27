@@ -1199,6 +1199,7 @@ RULE_INT(Housing, MinimumVacantNeighborhoodsPerDefinition, 1, "Random neighborho
 RULE_INT(Housing, NeighborhoodGrowthOccupancyPercent, 30, "Once this percent of the player plots across all random neighborhoods is owned, world creates another (1-100; guild plots do not count).")
 RULE_INT(Housing, NeighborhoodPruneMargin, 1, "Empty random neighborhoods beyond the number needed that are left alone; with more, world prunes back to the number needed.")
 RULE_BOOL(Housing, EnableWorldPlots, false, "Allow plots hosted in public zones.")
+RULE_STRING(Housing, WorldNeighborhoodDefinitions, "", "Comma-delimited neighborhood definitions hosted in their public zones (instance 0, zone version 0) while EnableWorldPlots is on; each exists once.")
 RULE_BOOL(Housing, EnablePolls, true, "Enable real estate polls.")
 RULE_BOOL(Housing, EnableTrophyTribute, true, "Enable trophy tribute.")
 RULE_INT(Housing, PersonalTrophySlots, 4, "Personal trophy benefits a character may have active (Live: four).")
