@@ -2,7 +2,7 @@
 
 The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
 (center, size, orientation) is fitted to its four sides, and its purchase price comes from Live's plot table (Allakhazam,
-"EQ:Player Housing in EverQuest"; its daily upkeep, checked to be 10% of the price, is Housing:PlotUpkeepPercent's default,
+"EQ:Player Housing in EverQuest"; its daily upkeep, checked to be 10% of the price, is Live's (its cost table's upkeep tiers),
 since the catalog derives upkeep), except Park Circle's capacity, 120 in Live's purchase window where the table
 says 105. Its item capacity is House of Thule's launch value for its tier (40, 50, 60 where Live's table later has 90, 105,
 120, and Live today 120 on every plot): Peridot's defaults are each feature's values at its own launch. No launch pet cap is

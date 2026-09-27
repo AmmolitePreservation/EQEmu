@@ -19,8 +19,12 @@
 class BaseRealEstateCostOptionsRepository {
 public:
 	struct RealEstateCostOptions {
-		uint32_t cost_id;
-		uint32_t option_key;
+		uint32_t    cost_id;
+		uint32_t    option_key;
+		int8_t      min_expansion;
+		int8_t      max_expansion;
+		std::string content_flags;
+		std::string content_flags_disabled;
 	};
 
 	static std::string PrimaryKey()
@@ -33,6 +37,10 @@ public:
 		return {
 			"cost_id",
 			"option_key",
+			"min_expansion",
+			"max_expansion",
+			"content_flags",
+			"content_flags_disabled",
 		};
 	}
 
@@ -41,6 +49,10 @@ public:
 		return {
 			"cost_id",
 			"option_key",
+			"min_expansion",
+			"max_expansion",
+			"content_flags",
+			"content_flags_disabled",
 		};
 	}
 
@@ -81,8 +93,12 @@ public:
 	{
 		RealEstateCostOptions e{};
 
-		e.cost_id    = 0;
-		e.option_key = 0;
+		e.cost_id                = 0;
+		e.option_key             = 0;
+		e.min_expansion          = -1;
+		e.max_expansion          = -1;
+		e.content_flags          = "";
+		e.content_flags_disabled = "";
 
 		return e;
 	}
@@ -119,8 +135,12 @@ public:
 		if (results.RowCount() == 1) {
 			RealEstateCostOptions e{};
 
-			e.cost_id    = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.option_key = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.cost_id                = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.option_key             = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.min_expansion          = row[2] ? static_cast<int8_t>(atoi(row[2])) : -1;
+			e.max_expansion          = row[3] ? static_cast<int8_t>(atoi(row[3])) : -1;
+			e.content_flags          = row[4] ? row[4] : "";
+			e.content_flags_disabled = row[5] ? row[5] : "";
 
 			return e;
 		}
@@ -156,6 +176,10 @@ public:
 
 		v.push_back(columns[0] + " = " + std::to_string(e.cost_id));
 		v.push_back(columns[1] + " = " + std::to_string(e.option_key));
+		v.push_back(columns[2] + " = " + std::to_string(e.min_expansion));
+		v.push_back(columns[3] + " = " + std::to_string(e.max_expansion));
+		v.push_back(columns[4] + " = '" + Strings::Escape(e.content_flags) + "'");
+		v.push_back(columns[5] + " = '" + Strings::Escape(e.content_flags_disabled) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -179,6 +203,10 @@ public:
 
 		v.push_back(std::to_string(e.cost_id));
 		v.push_back(std::to_string(e.option_key));
+		v.push_back(std::to_string(e.min_expansion));
+		v.push_back(std::to_string(e.max_expansion));
+		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
+		v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -210,6 +238,10 @@ public:
 
 			v.push_back(std::to_string(e.cost_id));
 			v.push_back(std::to_string(e.option_key));
+			v.push_back(std::to_string(e.min_expansion));
+			v.push_back(std::to_string(e.max_expansion));
+			v.push_back("'" + Strings::Escape(e.content_flags) + "'");
+			v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -243,8 +275,12 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			RealEstateCostOptions e{};
 
-			e.cost_id    = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.option_key = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.cost_id                = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.option_key             = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.min_expansion          = row[2] ? static_cast<int8_t>(atoi(row[2])) : -1;
+			e.max_expansion          = row[3] ? static_cast<int8_t>(atoi(row[3])) : -1;
+			e.content_flags          = row[4] ? row[4] : "";
+			e.content_flags_disabled = row[5] ? row[5] : "";
 
 			all_entries.push_back(e);
 		}
@@ -269,8 +305,12 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			RealEstateCostOptions e{};
 
-			e.cost_id    = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.option_key = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.cost_id                = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.option_key             = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.min_expansion          = row[2] ? static_cast<int8_t>(atoi(row[2])) : -1;
+			e.max_expansion          = row[3] ? static_cast<int8_t>(atoi(row[3])) : -1;
+			e.content_flags          = row[4] ? row[4] : "";
+			e.content_flags_disabled = row[5] ? row[5] : "";
 
 			all_entries.push_back(e);
 		}
@@ -347,6 +387,10 @@ public:
 
 		v.push_back(std::to_string(e.cost_id));
 		v.push_back(std::to_string(e.option_key));
+		v.push_back(std::to_string(e.min_expansion));
+		v.push_back(std::to_string(e.max_expansion));
+		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
+		v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -371,6 +415,10 @@ public:
 
 			v.push_back(std::to_string(e.cost_id));
 			v.push_back(std::to_string(e.option_key));
+			v.push_back(std::to_string(e.min_expansion));
+			v.push_back(std::to_string(e.max_expansion));
+			v.push_back("'" + Strings::Escape(e.content_flags) + "'");
+			v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

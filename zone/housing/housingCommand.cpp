@@ -25,8 +25,8 @@ namespace housing {
   namespace {
     constexpr float regionBelowFeet = 100.0f;
     constexpr float regionAboveFeet = 900.0f;
-    const std::set<std::string> numericDefinitionFields = {"price", "max_items", "max_non_real_estate_items", "max_pet_items", "max_houses",
-                                                           "region_id", "zone_id", "zone_version", "type", "category"};
+    const std::set<std::string> numericDefinitionFields = {"purchase_cost_id", "upkeep_cost_id", "max_items", "max_non_real_estate_items",
+                                                           "max_pet_items", "max_houses", "region_id", "zone_id", "zone_version", "type", "category"};
 
     void say(Client *client, const std::string &text) {
       client->Message(Chat::White, "%s", text.c_str());
@@ -58,8 +58,8 @@ namespace housing {
     }
 
     int64 coinOf(uint32 costId) {
-      const Cost *cost = catalog().cost(costId);
-      return cost && !cost->options.empty() && !cost->options[0].items.empty() ? cost->options[0].items[0].amount : 0;
+      const CostOption *coin = catalog().option(costId, 0);
+      return coin ? coin->items[0].amount : 0;
     }
 
     bool applyEdit(Client *client, const std::string &done, const std::vector<std::string> &statements) {
@@ -219,10 +219,10 @@ namespace housing {
       }
       say(client, fmt::format("Definition {} '{}': type {} ({}), category {}, region {}, zone {} version {}",
         row.id, row.name, row.type, typeName(row.type), row.category, row.region_id, row.zone_id, row.zone_version));
-      say(client, fmt::format("  items {}, vault {}, pets {}, houses {} (effective {}), price {} copper",
-        row.max_items, row.max_non_real_estate_items, row.max_pet_items, row.max_houses, entry.maxHouses, row.price));
+      say(client, fmt::format("  items {}, vault {}, pets {}, houses {} (effective {})",
+        row.max_items, row.max_non_real_estate_items, row.max_pet_items, row.max_houses, entry.maxHouses));
       say(client, fmt::format("  purchase cost {} ({} copper), upkeep cost {} ({} copper a day)",
-        entry.purchaseCostId, coinOf(entry.purchaseCostId), entry.upkeepCostId, coinOf(entry.upkeepCostId)));
+        row.purchase_cost_id, coinOf(row.purchase_cost_id), row.upkeep_cost_id, coinOf(row.upkeep_cost_id)));
       say(client, fmt::format("  layout origin ({:.1f}, {:.1f}, {:.1f}) heading {:.1f}; children: {}",
         row.layout_origin_x, row.layout_origin_y, row.layout_origin_z, row.layout_heading, children.empty() ? "none" : Strings::Join(children, " ")));
     }
@@ -295,18 +295,17 @@ namespace housing {
     void costCommand(Client *client, const Seperator *sep) {
       int64 id = 0;
       int64 amount = 0;
-      if (Strings::ToLower(sep->arg[2]) != "set" || !parseInteger(sep->arg[3], id) || id <= 0 || !parseInteger(sep->arg[4], amount) || amount <= 0) {
-        refuse(client, "Usage: #realestate cost set <stored cost id> <copper, above 0> (reductions arrive with the special houses)");
+      if (Strings::ToLower(sep->arg[2]) != "set" || !parseInteger(sep->arg[3], id) || id <= 0 || !parseInteger(sep->arg[4], amount) || amount == 0) {
+        refuse(client, "Usage: #realestate cost set <cost id> <copper, not 0; negative is a reduction>");
         return;
       }
-      auto rows = content_db.QueryDatabase(fmt::format(
-        "SELECT COUNT(*) FROM real_estate_cost_items WHERE cost_id = {} AND option_key = 0 AND currency = 0", id));
+      auto rows = content_db.QueryDatabase(fmt::format("SELECT COUNT(*) FROM real_estate_cost_items WHERE cost_id = {} AND currency = 0", id));
       if (!rows.Success() || rows.RowCount() != 1 || Strings::ToInt(rows.begin()[0]) != 1) {
-        refuse(client, fmt::format("No stored cost {} (a plot's costs come from its price).", id));
+        refuse(client, fmt::format("Cost {} has no coin option.", id));
         return;
       }
       applyEdit(client, fmt::format("Cost {} set to {} copper", id, amount), {fmt::format(
-        "UPDATE real_estate_cost_items SET amount = {} WHERE cost_id = {} AND option_key = 0 AND currency = 0", amount, id)});
+        "UPDATE real_estate_cost_items SET amount = {} WHERE cost_id = {} AND currency = 0", amount, id)});
     }
 
     void help(Client *client) {

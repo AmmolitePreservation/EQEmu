@@ -51,7 +51,8 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `type` TINYINT(3) UNSIGNED NOT NULL,
   `category` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `region_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `price` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+  `purchase_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_non_real_estate_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_pet_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -68,7 +69,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
-  CONSTRAINT `real_estate_definition_price` CHECK (`price` = 0 OR `type` IN (4, 8)),
   CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
@@ -87,6 +87,10 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_cost_options` (
   `cost_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
+  `min_expansion` TINYINT(4) NOT NULL DEFAULT -1,
+  `max_expansion` TINYINT(4) NOT NULL DEFAULT -1,
+  `content_flags` VARCHAR(100) NULL DEFAULT NULL,
+  `content_flags_disabled` VARCHAR(100) NULL DEFAULT NULL,
   PRIMARY KEY (`cost_id`, `option_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
@@ -97,17 +101,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `amount` BIGINT(20) NOT NULL DEFAULT 0,
   PRIMARY KEY (`cost_id`, `option_key`, `currency`, `sub_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `real_estate_currencies` (
-  `alternate_currency_id` INT(10) UNSIGNED NOT NULL,
-  `sub_key` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `platinum_per_unit` FLOAT NOT NULL,
-  `plot_purchase` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `plot_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `item_upkeep` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`alternate_currency_id`),
-  CONSTRAINT `real_estate_currency_rate` CHECK (`platinum_per_unit` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_regions` (
@@ -326,6 +319,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 )",
 		.content_schema_update = false,
 	},
+
 // Used for testing
 //	ManifestEntry{
 //		.version = 9229,
