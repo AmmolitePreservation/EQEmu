@@ -3,6 +3,7 @@
 import collections
 import csv
 import pathlib
+import re
 import struct
 
 researchDirectory = pathlib.Path(__file__).resolve().parent.parent / 'research' / 'live'
@@ -133,7 +134,11 @@ def pick(fields, names):
 definitionFields = ['id', 'name', 'description', 'address', 'zoneInX', 'zoneInY', 'zoneInZ', 'areaId', 'costDefinition', 'upkeepDefinition',
   'maxItems', 'maxNonRealEstateItems', 'maxChildren', 'zoneId', 'dzId', 'type', 'groupId', 'icon', 'maxNpcItems', 'switchX', 'switchY',
   'switchZ', 'switchHeading', 'childDefinitions']
-itemStableFields = itemColumns[1:] + ['actorTag', 'npcDisplayedName', 'npcRace', 'npcGender', 'npcClass', 'npcLevel', 'npcHeight']
+# Link hashes cover an item's own data and transformation molds change a placeable's appearance, so an item id can show several of each.
+itemStableFields = [column for column in itemColumns[1:] if column != 'linkHash'] + ['npcName']
+# An item's spawned NPC is named after the item's house-pet name for every pet, mount, familiar and plushie seen; guild services
+# spawn differently named NPCs, learned where an item list links the spawn to its item.
+npcLookFields = ['displayedName', 'race', 'gender', 'class', 'level', 'height']
 spawnLookFields = ['displayedName', 'lastname', 'race', 'class', 'gender', 'level', 'height', 'avatarHeight']
 doorStableFields = ['name', 'type', 'x', 'y', 'z', 'heading', 'defaultX', 'defaultY', 'defaultZ', 'defaultHeading', 'defaultState',
   'scaleFactor', 'key', 'spellId', 'dynDoorId', 'usable', 'visible']
@@ -145,7 +150,7 @@ def buildTables():
   return {
     'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
       'definitionsPath', 'costsPath', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
-      'unmatchedPlacedObjects', 'unmatchedItemSpawns']),
+      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
     'properties': Table('properties', ['id'], ['definitionId', 'staticId', 'parentId', 'guildId', 'fellowshipId', 'primaryOwner', 'primaryHandle',
@@ -153,7 +158,10 @@ def buildTables():
     'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
     'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
       ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime']),
-    'items': Table('items', ['itemId'], itemStableFields, setFields=['seenAs', 'soldBy']),
+    'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'seenAs', 'soldBy']),
+    'npcLooks': Table('npcLooks', ['npcName'], npcLookFields, setFields=['zones']),
+    'placedObjects': Table('placedObjects', ['propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
+      ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones']),
     'vendors': Table('vendors', ['zone', 'name'], spawnLookFields, ['x', 'y', 'z', 'heading', 'itemCount']),
     'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
     'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
@@ -167,17 +175,18 @@ def observeItem(tables, capture, itemRecord, seenAs, soldBy=None):
   sets = {'seenAs': seenAs}
   if soldBy:
     sets['soldBy'] = soldBy
-  tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemColumns[1:]), sets=sets)
+  tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemStableFields[:-1]), sets={**sets, 'linkHashes': fields['linkHash']})
 
 
-def spawnPropertyId(capture, spawn, propertyIds):
+def spawnPropertyId(capture, spawn):
   fields = spawn['fields']
   if 'realEstateId' in fields:
     propertyId = fields['realEstateId']
   else:
     propertyId = str(struct.unpack_from('<i', spawn['raw'][0], spawnRealEstateIdOffset)[0])
-  if propertyId not in noProperty and propertyId not in propertyIds:
-    raise ValueError(f'{capture.path.name}: spawn {fields["name"]} names property {propertyId}, which the capture does not hold')
+  isItemSpawn = int(fields['realEstateItemId']) > 0
+  if isItemSpawn != (int(propertyId) > 0):
+    raise ValueError(f'{capture.path.name}: spawn {fields["name"]} has real estate item {fields["realEstateItemId"]} but property {propertyId}')
   return propertyId
 
 
@@ -226,30 +235,33 @@ def ingestZone(tables, capture):
     observeItem(tables, capture, placed['item'], 'placed')
     tables['propertyItems'].observe(key, capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
       'ownerName': fields['ownerName']}, volatile=pick(fields, tables['propertyItems'].volatileFields))
-  unmatchedObjects = 0
+  mismatchedObjects = 0
   for placedObject in capture.all('placedObject'):
     fields = placedObject['fields']
-    item = placedItems.get((fields['realEstateId'], fields['realEstateItemId']))
-    if item is None:
-      unmatchedObjects += 1
-      continue
-    tables['items'].observe((item['itemId'],), capture, stable={'actorTag': fields['name']})
-  unmatchedSpawns = 0
+    key = (fields['realEstateId'], fields['realEstateItemId'])
+    listed = placedItems.get(key)
+    if listed is not None and listed['itemId'] != fields['recordNum']:
+      mismatchedObjects += 1
+    tables['placedObjects'].observe(key, capture, stable={'itemId': fields['recordNum'], 'actorTag': fields['name']},
+      volatile=pick(fields, ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale']), sets={'zones': zone})
+    tables['items'].observe((fields['recordNum'],), capture, sets={'seenAs': 'object', 'actorTags': fields['name']})
+  unlinkedSpawns = 0
   for spawn in capture.all('spawn'):
     fields = spawn['fields']
     if fields['type'] == '0':
       continue
-    propertyId = spawnPropertyId(capture, spawn, propertyIds)
+    propertyId = spawnPropertyId(capture, spawn)
     tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, spawnLookFields),
       volatile={**pick(fields, ['x', 'y', 'z', 'heading', 'realEstateItemId']), 'realEstateId': propertyId})
     if propertyId in noProperty:
       continue
+    npcName = re.sub(r'\d+$', '', fields['name'])
+    tables['npcLooks'].observe((npcName,), capture, stable=pick(fields, npcLookFields), sets={'zones': zone})
     item = placedItems.get((propertyId, fields['realEstateItemId']))
     if item is None:
-      unmatchedSpawns += 1
+      unlinkedSpawns += 1
       continue
-    tables['items'].observe((item['itemId'],), capture, stable={'npcDisplayedName': fields['displayedName'], 'npcRace': fields['race'],
-      'npcGender': fields['gender'], 'npcClass': fields['class'], 'npcLevel': fields['level'], 'npcHeight': fields['height']})
+    tables['items'].observe((item['itemId'],), capture, stable={'npcName': npcName})
   for door in capture.all('door'):
     fields = door['fields']
     tables['doors'].observe((zone, fields['id']), capture, stable=pick(fields, doorStableFields), volatile=pick(fields, doorVolatileFields))
@@ -266,7 +278,27 @@ def ingestZone(tables, capture):
     'definitionsPath': manager.get('definitionsPath', ''), 'costsPath': manager.get('costsPath', ''),
     'spawns': len(capture.all('spawn')), 'doors': len(capture.all('door')), 'definitions': len(capture.all('definition')),
     'costs': len(capture.all('cost')), 'properties': len(propertyIds), 'placedItems': len(placedItems),
-    'unmatchedPlacedObjects': unmatchedObjects, 'unmatchedItemSpawns': unmatchedSpawns}
+    'placedObjects': len(capture.all('placedObject')), 'mismatchedPlacedObjects': mismatchedObjects, 'unlinkedItemSpawns': unlinkedSpawns}
+
+
+def writeNpcItems(tables):
+  looks = tables['npcLooks'].rows
+  with (masterDirectory / 'npcItems.tsv').open('w', encoding='latin-1', newline='') as out:
+    writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+    writer.writerow(['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'placeable', 'npcName', 'lookSource'] + npcLookFields + ['soldBy'])
+    for key in sorted(tables['items'].rows, key=sortKey):
+      row = tables['items'].rows[key]
+      stable = row['stable']
+      housepet = stable.get('housepetFileName', '')
+      if not housepet:
+        continue
+      npcName, lookSource = (stable['npcName'], 'itemList') if stable.get('npcName') else (housepet, 'housepetName')
+      look = looks.get((npcName,))
+      if look is None:
+        npcName, lookSource = '', ''
+      values = [look['stable'].get(field, '') for field in npcLookFields] if look else [''] * len(npcLookFields)
+      writer.writerow([tsvText(value) for value in [key[0], stable.get('name', ''), housepet, stable.get('npcRespawnInterval', ''),
+        stable.get('placeable', ''), npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
 
 
 def main():
@@ -282,6 +314,7 @@ def main():
   masterDirectory.mkdir(exist_ok=True)
   for table in tables.values():
     table.write()
+  writeNpcItems(tables)
   conflicts = [conflict for table in tables.values() for conflict in table.conflicts]
   with (masterDirectory / 'conflicts.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
