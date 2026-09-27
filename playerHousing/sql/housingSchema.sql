@@ -2,14 +2,15 @@
 -- when sent (owner names, children, poll states, region matrices, the character's property lists, trophy flags).
 -- Content tables: definitions, costs, currencies, regions, NPC items, neighborhood words, poll labels. The rest is player state.
 
+-- A price (copper) makes a plot or guild plot purchasable. Its purchase and upkeep costs are derived when the catalog loads
+-- (upkeep: Housing:PlotUpkeepPercent of the price), so neither is stored; placed items pay their own upkeep ids.
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
   `type` TINYINT(3) UNSIGNED NOT NULL,
   `category` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `region_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `purchase_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `price` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
   `max_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_non_real_estate_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_pet_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
+  CONSTRAINT `real_estate_definition_price` CHECK (`price` = 0 OR `type` IN (4, 8)),
   CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

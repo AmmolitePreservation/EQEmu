@@ -157,12 +157,12 @@ namespace housing {
           LogError("Housing: property [{}] names unknown definition [{}]", property.id, property.definition_id);
           return 0;
         }
-        if (!definition->row.upkeep_cost_id) {
+        if (!definition->upkeepCostId) {
           return 0;
         }
-        const CostOption *option = catalog().option(definition->row.upkeep_cost_id, property.upkeep_currency);
+        const CostOption *option = catalog().option(definition->upkeepCostId, property.upkeep_currency);
         if (!option) {
-          LogError("Housing: property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer", property.id, property.upkeep_currency, definition->row.upkeep_cost_id);
+          LogError("Housing: property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer", property.id, property.upkeep_currency, definition->upkeepCostId);
           return 0;
         }
         return option->key;

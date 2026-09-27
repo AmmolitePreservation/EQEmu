@@ -1,12 +1,12 @@
 """Writes sql/housingCatalog.sql: the housing catalog (serverPlan.md, the content sections).
 
 The Sunrise Hills neighborhood is definition 1 (Housing:RandomNeighborhoodDefinitions' default), its children the 71 player
-plots and 4 guild plots of content/sunriseHillsPlots.json as definitions 42-116, each with its region (same id) and its
-border stone's position and heading as layout origin. Every definition an item names comes from content/itemDefinitions.txt
+plots and 4 guild plots of content/sunriseHillsPlots.json as definitions 42-116, each with its price in copper, its region
+(same id) and its border stone's position and heading as layout origin. Every definition an item names comes from content/itemDefinitions.txt
 (tools/exportItemDefinitions.sql): houses and manors by their names' style, tier and finish, the guild halls, the storage
-crates and the Crate of Eviction. New ids stay under 174, inside the range items prove the client accepts. Plots cost
-platinum (costs 36 onward, prices then upkeeps); item upkeep costs are the plan's table. Each cost stores its coin option
-only: the zone derives currency options from real_estate_currencies. A pet cap of 0 is no separate pet cap (Live's halls).
+crates and the Crate of Eviction. New ids stay under 174, inside the range items prove the client accepts. The only stored
+costs are the item upkeep costs of the plan's table, each its coin option: the zone derives each plot's purchase and upkeep
+costs from its price (upkeep: Housing:PlotUpkeepPercent) and every currency option. A pet cap of 0 is no separate pet cap.
 
 Refuses to write when an item's definition can't be placed, an item upkeep id has no amount, two plot footprints overlap
 or an id collides. The SQL refuses non-empty catalog tables and loads in one transaction.
@@ -20,7 +20,6 @@ content = os.path.join(here, '..', 'content')
 neighborhoodDefinitionId = 1
 neighborhoodZoneId = 712
 firstPlotDefinitionId = 42
-firstPlotCostId = 36
 itemProvenIdLimit = 174
 regionBelowGround = 100.0
 regionAboveGround = 900.0
@@ -131,18 +130,12 @@ def main():
   plotIds = list(range(firstPlotDefinitionId, firstPlotDefinitionId + len(plots)))
   if plotIds[-1] >= itemProvenIdLimit or itemDefinitionIds & set(plotIds) or neighborhoodDefinitionId in itemDefinitionIds | set(plotIds):
     raise ValueError('plot definition ids collide with item definitions or leave the proven range')
-  prices = sorted({plot['pricePlatinum'] for plot in plots})
-  upkeeps = sorted({plot['upkeepCopperPerDay'] for plot in plots})
-  priceCosts = {price: firstPlotCostId + i for i, price in enumerate(prices)}
-  upkeepCosts = {upkeep: firstPlotCostId + len(prices) + i for i, upkeep in enumerate(upkeeps)}
-  if set(priceCosts.values()) & set(itemUpkeeps) or set(upkeepCosts.values()) & set(itemUpkeeps):
-    raise ValueError('plot cost ids collide with item upkeep ids')
   for group in groups:
     if group['upkeep'] and group['upkeep'] not in itemUpkeeps:
       raise ValueError(f"definition {group['definition']}: upkeep id {group['upkeep']} has no amount in the plan's table")
 
   definitions, regions = [], []
-  definitions.append(dict(id=neighborhoodDefinitionId, name='Sunrise Hills', type=typeNeighborhood, region=0, purchase=0, upkeep=0,
+  definitions.append(dict(id=neighborhoodDefinitionId, name='Sunrise Hills', type=typeNeighborhood, region=0, price=0,
                           maxItems=0, vault=0, pets=0, origin=(0.0, 0.0, 0.0, 0.0), zone=neighborhoodZoneId))
   for definitionId, plot in zip(plotIds, plots):
     guild = plot['kind'] == 'guild plot'
@@ -152,11 +145,11 @@ def main():
                         sizeZ=regionBelowGround + regionAboveGround, heading=plot['heading']))
     origin = (*plot['doorPosition'], plot['heading']) if guild else stones[plot['door']]
     definitions.append(dict(id=definitionId, name=plot['address'], type=typeGuildPlot if guild else typePlot, region=definitionId,
-                            purchase=priceCosts[plot['pricePlatinum']], upkeep=upkeepCosts[plot['upkeepCopperPerDay']],
+                            price=plot['pricePlatinum'] * 1000,
                             maxItems=plot['capacity'], vault=plot.get('vault', 0), pets=plot['pets'], origin=origin, zone=0))
   for group in sorted(groups, key=lambda g: g['definition']):
     entry = itemDefinition(group)
-    definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, purchase=0, upkeep=0,
+    definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, price=0,
                             maxItems=entry['maxItems'], vault=entry['vault'], pets=entry['pets'], origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
   if len({d['id'] for d in definitions}) != len(definitions):
     raise ValueError('duplicate definition ids')
@@ -166,15 +159,13 @@ def main():
       if overlapDepth(corners[i], corners[j]) > 0.01:
         raise ValueError(f"plot footprints overlap: {regions[i]['name']} and {regions[j]['name']}")
 
-  costs = [(priceCosts[p], f'Plot price, {p} platinum', p * 1000) for p in prices]
-  costs += [(upkeepCosts[u], f'Plot upkeep, {u} copper a day', u) for u in upkeeps]
-  costs += [(costId, f'Item upkeep, {amount} copper a day', amount) for costId, amount in sorted(itemUpkeeps.items())]
+  costs = [(costId, f'Item upkeep, {amount} copper a day', amount) for costId, amount in sorted(itemUpkeeps.items())]
   wordRows = [(0, w) for w in words['trees']] + [(1, w) for w in words['middles']] + [(2, w) for w in words['places']]
 
   quoted = lambda text: "'" + text.replace("'", "''") + "'"
   number = lambda value: repr(round(float(value), 3))
   values = lambda rows: ',\n'.join('    (' + ', '.join(row) + ')' for row in rows) + ';\n'
-  definitionRows = [(str(d['id']), quoted(d['name']), str(d['type']), '0', str(d['region']), str(d['purchase']), str(d['upkeep']),
+  definitionRows = [(str(d['id']), quoted(d['name']), str(d['type']), '0', str(d['region']), str(d['price']),
                      str(d['maxItems']), str(d['vault']), str(d['pets']), *[number(v) for v in d['origin']], str(d['zone']), '0')
                     for d in sorted(definitions, key=lambda d: d['id'])]
   catalogTables = ['real_estate_definitions', 'real_estate_definition_children', 'real_estate_costs', 'real_estate_cost_options',
@@ -183,7 +174,7 @@ def main():
          '  DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;\n'
          f"  IF {' OR '.join(f'EXISTS (SELECT 1 FROM {t})' for t in catalogTables)} THEN\n"
          "    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the housing catalog tables are not empty';\n  END IF;\n  START TRANSACTION;\n"
-         '  INSERT INTO real_estate_definitions (id, name, type, category, region_id, purchase_cost_id, upkeep_cost_id, max_items,\n'
+         '  INSERT INTO real_estate_definitions (id, name, type, category, region_id, price, max_items,\n'
          '    max_non_real_estate_items, max_pet_items, layout_origin_x, layout_origin_y, layout_origin_z, layout_heading, zone_id, zone_version) VALUES\n'
          + values(definitionRows)
          + '  INSERT INTO real_estate_definition_children (parent_id, child_id) VALUES\n' + values([(str(neighborhoodDefinitionId), str(i)) for i in plotIds])

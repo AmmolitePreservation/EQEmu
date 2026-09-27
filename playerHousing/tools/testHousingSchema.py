@@ -24,8 +24,8 @@ print(f'created {len(tables)} tables; re-running the schema is safe')
 sql("""
 INSERT INTO real_estate_regions (id, name, x, y, z, size_x, size_y, size_z, heading) VALUES (1, 'plot 1', 100, 200, 0, 60, 40, 30, 128);
 INSERT INTO real_estate_definitions (id, name, type, zone_id) VALUES (900, 'Sunrise Hills neighborhood', 5, 712);
-INSERT INTO real_estate_definitions (id, name, type, region_id, purchase_cost_id, upkeep_cost_id, max_items, max_non_real_estate_items, max_pet_items)
-  VALUES (901, 'player plot 1', 4, 1, 1, 2, 200, 150, 20), (902, 'guild plot 1', 8, 0, 1, 2, 200, 150, 20);
+INSERT INTO real_estate_definitions (id, name, type, region_id, price, max_items, max_non_real_estate_items, max_pet_items)
+  VALUES (901, 'player plot 1', 4, 1, 5000000, 200, 150, 20), (902, 'guild plot 1', 8, 0, 5000000, 200, 150, 20);
 INSERT INTO real_estate_definitions (id, name, type, zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901, 5), (901, 31);
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep');
@@ -91,6 +91,7 @@ for label, bad in [('definition type out of range', "INSERT INTO real_estate_def
                    ('personal trophy slot above 9', "INSERT INTO character_trophy_tribute VALUES (7, 10, 100, 0)"),
                    ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)"),
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)"),
+                   ('a price on a house', "INSERT INTO real_estate_definitions (id, type, price) VALUES (997, 3, 1000)"),
                    ('currency rate of zero', "INSERT INTO real_estate_currencies (alternate_currency_id, platinum_per_unit) VALUES (10, 0)"),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)"),
                    ('second pending offer for one property', "INSERT INTO real_estate_transfer_offers (property_id, from_character_id, to_character_id, expires_at) VALUES (2, 7, 8, NOW()), (2, 7, 9, NOW())"),
