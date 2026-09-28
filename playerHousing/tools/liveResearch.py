@@ -2,11 +2,14 @@
 """Rebuilds research/live/master/ from every MQ2PeridotLive capture in research/live/."""
 import collections
 import csv
+import json
 import pathlib
 import re
+import statistics
 import struct
 
 from eqlibLayouts import Layouts
+from makeHousingCatalogSql import footprint
 
 researchDirectory = pathlib.Path(__file__).resolve().parent.parent / 'research' / 'live'
 masterDirectory = researchDirectory / 'master'
@@ -495,6 +498,52 @@ def itemsTxtConflicts(tables, extract):
   return conflicts
 
 
+def insidePolygon(x, y, corners):
+  inside = False
+  for (x1, y1), (x2, y2) in zip(corners, corners[1:] + corners[:1]):
+    if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+      inside = not inside
+  return inside
+
+
+def writeVisitCandidates(captures, tables, fieldTables, extract):
+  template = json.load((researchDirectory.parent.parent / 'content' / 'sunriseHillsPlots.json').open())
+  plots = [(plot['address'], footprint(dict(x=plot['center'][0], y=plot['center'][1], sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
+    heading=plot['heading']))) for plot in template]
+  interiors = {key[0] for key, row in tables['definitions'].rows.items() if row['stable'].get('type') in ('2', '3')}
+  recorded = {key[0] for key in fieldTables['itemDefinitions'].rows}
+  names = lambda propertyId: tables['properties'].rows.get((propertyId,), {'stable': {}})['stable'].get('dynamicName', '?')
+  visited = {capture.all('manager')[0]['fields']['currentYardId'] for capture in captures
+    if capture.kind == 'zone' and capture.zoneShortName not in ('neighborhood', 'guildlobby', 'poknowledge') and capture.all('manager')}
+  yards = {}
+  for capture in captures:
+    if capture.kind != 'zone' or capture.zoneShortName != 'neighborhood' or not capture.all('manager'):
+      continue
+    neighborhood = names(capture.all('manager')[0]['fields']['zoneRealEstateId'])
+    for placed in capture.all('placedObject'):
+      fields = placed['fields']
+      yard = yards.setdefault((neighborhood, fields['realEstateId']), {'objects': {}, 'positions': [], 'pets': set(), 'lastSeen': ''})
+      yard['objects'][fields['realEstateItemId']] = fields['recordNum']
+      yard['positions'].append((float(fields['x']), float(fields['y'])))
+      yard['lastSeen'] = max(yard['lastSeen'], capture.stamp)
+    for spawn in capture.all('spawn'):
+      if spawn['fields']['type'] != '0' and (neighborhood, spawnPropertyId(capture, spawn)) in yards:
+        yards[(neighborhood, spawnPropertyId(capture, spawn))]['pets'].add(spawn['fields']['name'])
+  rows = []
+  for (neighborhood, yardId), yard in yards.items():
+    x, y = statistics.median(p[0] for p in yard['positions']), statistics.median(p[1] for p in yard['positions'])
+    address = next((name for name, corners in plots if insidePolygon(x, y, corners)), '?')
+    items = set(yard['objects'].values())
+    houses = sorted({extract[i]['name'] for i in items if extract.get(i, {}).get('realEstateDefinitionId') in interiors})
+    rows.append([neighborhood, address, yardId, ' | '.join(houses), 'yes' if yardId in visited else 'no', len(yard['objects']),
+      len(items - recorded), len(yard['pets']), yard['lastSeen']])
+  rows.sort(key=lambda r: (r[4] == 'yes', not r[3], -r[6], -r[5]))
+  with (masterDirectory / 'visitCandidates.tsv').open('w', encoding='latin-1', newline='') as out:
+    writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+    writer.writerow(['neighborhood', 'address', 'yardPropertyId', 'house', 'interiorVisited', 'yardObjects', 'itemsWithoutFullRecord', 'yardPets', 'lastSeen'])
+    writer.writerows([[tsvText(value) for value in row] for row in rows])
+
+
 def writeNpcItems(tables, extract):
   looks = tables['npcLooks'].rows
   captured = tables['items'].rows
@@ -541,6 +590,7 @@ def main():
   for table in list(tables.values()) + list(fieldTables.values()):
     table.write()
   writeNpcItems(tables, extract)
+  writeVisitCandidates(captures, tables, fieldTables, extract)
   conflicts = [conflict for table in tables.values() for conflict in table.conflicts] + itemsTxtConflicts(tables, extract)
   with (masterDirectory / 'conflicts.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
