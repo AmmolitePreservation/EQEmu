@@ -4,7 +4,7 @@ A dispatcher compares the opcode register with constants (cmp / ja / jb / je / j
 a jump table; this follows those instructions for one opcode value and reports the address where the case's code begins, so
 the opcode-to-handler map comes from the binary, not from a document.
 
-Usage: python3 traceClientDispatch.py 0x5b2500 0x2698 [0x...]
+Usage: python3 traceClientDispatch.py eqgameRoF2.exe 0x5b2500 0x2698 [0x...]
 """
 import os, re, struct, sys
 here = os.path.dirname(os.path.abspath(__file__))
@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.join(here, '..'))
 from realEstateOpcodeScan import ClientImage
 from clientAnalysis import functionDisassembly
 
-client = ClientImage('/mnt/user-data/uploads/eqgame.exe')
 listings = {}
 
 
@@ -94,6 +93,7 @@ def dispatch(function, opcode, register='eax', start=None):
 
 
 if __name__ == '__main__':
-  function = int(sys.argv[1], 16)
-  for arg in sys.argv[2:]:
+  client = ClientImage(sys.argv[1])
+  function = int(sys.argv[2], 16)
+  for arg in sys.argv[3:]:
     print(arg, dispatch(function, int(arg, 16), start=0x5b2525 if function == 0x5b2500 else None))

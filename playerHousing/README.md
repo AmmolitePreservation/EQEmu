@@ -64,24 +64,24 @@ All scripts take the owner's client files as arguments; none of those files is c
 
 | Script | Purpose | Usage |
 |---|---|---|
-| `realEstateOpcodeScan.py` | Decodes both `HandleWorldMessage` switches, the manager's `HandleMessage` cases, and the full client send inventory (with shared send tails); cross-references EQEmu names | `python realEstateOpcodeScan.py eqgame.exe [--eqemuConf patch_RoF2.conf] [--jsonOut sendInventory.json] [--casesOut cases.json]` |
-| `guiControlInventory.py` | Joins every control in the given XML files with the client's binding for it; writes `guiControlInventory.md` | `python guiControlInventory.py eqgame.exe <xml dir> guiControlInventory.md "EQUI_RealEstate*.xml" "EQUI_Vote*.xml" "EQUI_TributeTrophyWnd.xml"` |
-| `controlUsageMap.py` | For one window: every instruction that uses each bound control, classified; the per-window reading checklist (`windows/*.usage.md`) | `python controlUsageMap.py eqgame.exe guiControlInventory.md <PREFIX> <codeStart> <codeEnd> <out.md>` |
-| `robustnessScan.py` | Flags crash-relevant assumptions in the housing receive handlers (unchecked lookups, data-sized allocations, indexed writes, window pointers); writes `robustnessScan.md` | `python robustnessScan.py eqgame.exe robustnessScan.md` |
-| `clientAnalysis.py` | General helpers with a command line: annotated function disassembly, a cached call/reference index, callers, references, strings, containing function | `python clientAnalysis.py eqgame.exe fn <addr> [--eqstr eqstr_us.txt]` |
+| `realEstateOpcodeScan.py` | Decodes both `HandleWorldMessage` switches, the manager's `HandleMessage` cases, and the full client send inventory (with shared send tails); cross-references EQEmu names | `python realEstateOpcodeScan.py eqgameRoF2.exe [--eqemuConf patch_RoF2.conf] [--jsonOut sendInventory.json] [--casesOut cases.json]` |
+| `guiControlInventory.py` | Joins every control in the given XML files with the client's binding for it; writes `guiControlInventory.md` | `python guiControlInventory.py eqgameRoF2.exe <xml dir> guiControlInventory.md "EQUI_RealEstate*.xml" "EQUI_Vote*.xml" "EQUI_TributeTrophyWnd.xml"` |
+| `controlUsageMap.py` | For one window: every instruction that uses each bound control, classified; the per-window reading checklist (`windows/*.usage.md`) | `python controlUsageMap.py eqgameRoF2.exe guiControlInventory.md <PREFIX> <codeStart> <codeEnd> <out.md>` |
+| `robustnessScan.py` | Flags crash-relevant assumptions in the housing receive handlers (unchecked lookups, data-sized allocations, indexed writes, window pointers); writes `robustnessScan.md` | `python robustnessScan.py eqgameRoF2.exe robustnessScan.md` |
+| `clientAnalysis.py` | General helpers with a command line: annotated function disassembly, a cached call/reference index, callers, references, strings, containing function | `python clientAnalysis.py eqgameRoF2.exe fn <addr> [--eqstr eqstr_us.txt]` |
 
 `realEstateOpcodeScan.py` verifies the build stamp and every anchor address before use and fails loudly on a mismatch. `clientAnalysis.py` builds its index once (a few minutes) and caches it at `/tmp/clientAnalysisIndex.pkl`; delete the cache to rebuild. In `--casesOut`, an entry whose handler is a single `jmp 0x4d3f70` is an empty case (handled, does nothing).
 
 ### Session setup
 
 1. `pip install pefile capstone --break-system-packages`
-2. **Client files** from the owner (not committed): `eqgame.exe` (May 10 2013 build), `eqstr_us.txt`, `dbstr_us.txt`, and the default UI folder (`uifiles/default`, XML only; the textures aren't needed).
+2. **Client files** from the owner (not committed): `eqgameRoF2.exe` (the RoF2 client, May 10 2013 build; the documents' `eqgame.exe`), `eqgameLive.exe` (Live's client, built 2026-09-17, for comparing with Live), `eqstr_us.txt`, `dbstr_us.txt`, and the default UI folder (`uifiles/default`, XML only; the textures aren't needed).
 3. **EQEmu reference files are in this repository**, which is Peridot's own EQEmu source (upstream `ab45d4358`, v23.8.1, plus Peridot's commits): `utils/patches/patch_RoF2.conf` (opcode names), `common/patches/rof2_structs.h` and `common/patches/rof2.cpp` (the RoF2 structs and encoders), `world/client.cpp` (membership settings). Use these, not upstream `master`, which has moved on.
 4. Regenerate the case maps and send inventory with `realEstateOpcodeScan.py` (`--casesOut`, `--jsonOut`) before any receive- or send-side work.
 
 ## Client build
 
-- `eqgame.exe`, PE32, build stamp `May 10 2013 23:30:08` — the standard EQEmu RoF2 target.
+- `eqgameRoF2.exe`, PE32, build stamp `May 10 2013 23:30:08` — the standard EQEmu RoF2 target.
 - **The full real-estate subsystem is present.** It is not stubbed: `RealEstateManagerClient`, seven windows, the item placement system, and data-file loaders are all in the binary.
 
 ## What the client needs to show housing at all
