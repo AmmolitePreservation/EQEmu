@@ -243,7 +243,7 @@ def buildTables():
       'defaultPermissionLevel', 'dynamicName', 'defaultUpkeepId', 'votingOptedOut'], ['upkeepExpiredTime', 'escrow', 'childIds']),
     'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
     'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
-      ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime']),
+      ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime', 'tint']),
     'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'npcNames', 'seenAs', 'soldBy']),
     'npcLooks': Table('npcLooks', ['npcName'], ['displayedName', 'class'], setFields=[f for f in npcLookFields if f not in ('displayedName', 'class')]
       + appearanceFields + ['zones']),
@@ -428,7 +428,7 @@ def ingestZone(tables, capture):
     tables['fields']['propertyItems'].observe(key, capture, decodeRecord(capture, 'RealEstateItem', placed['raw'][0],
       {'ids.realEstateID': key[0], 'ids.realEstateItemID': key[1]}))
     tables['propertyItems'].observe(key, capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
-      'ownerName': fields['ownerName']}, volatile=pick(fields, tables['propertyItems'].volatileFields))
+      'ownerName': fields['ownerName']}, volatile=pick(fields, [name for name in tables['propertyItems'].volatileFields if name != 'tint' or 'tint' in fields]))
   mismatchedObjects = 0
   for placedObject in capture.all('placedObject'):
     fields = placedObject['fields']
