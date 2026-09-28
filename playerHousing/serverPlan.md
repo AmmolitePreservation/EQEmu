@@ -536,7 +536,7 @@ Live's merchant prices are PEQ's `price` plus 5%, less a copper (10,000p shows 1
 
 **Guild plots, as Live's purchase windows show them:** each is **200 on a street of its section** ("200 Guild Way", "200 Terminus Heights", "200 Brimming Way", "200 Vanward Heights"), and **all four have the same terms**: 21 platinum, upkeep 2 platinum 1 gold a day, capacity 210, vault 0, pets 12 (in the template). They were **seen in a guild village**; a public neighborhood's window is to compare, and it should have no Guild row.
 
-**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message; every upkeep amount is above): a plot region's height. **The Crate of Eviction holds 3,000** (owner's decision, so it takes a guild hall's eviction too: every cap, items, non-real-estate items and pets, in definition 31's row, where an operator changes it).
+**Not documented anywhere found** (EQEmu's source, EQExtractor2's 2010-2013 opcode tables and its docs' 2018 Live captures, ShowEQ and Spire included: none holds the costs message; every upkeep amount is above): a plot region's height. **The Crate of Eviction has Live's caps** (definition 31: 0 items, 0 non-real-estate items; no launch value is known), and as with pets **0 is no cap**: it takes everything a sold or evicted property held, a guild hall's included. The catalog generator holds every item-defined capacity to Live's catalog except the houses' launch values.
 
 ## Moving players: only EQEmu's own mechanisms
 
