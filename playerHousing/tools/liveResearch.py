@@ -30,6 +30,8 @@ itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'real
   'maxPerRealEstate', 'placeable', 'placementType', 'trophyBenefitId', 'interactiveObject', 'linkHash']
 headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'], 'layout': ['date', 'time'], 'server': ['shortName'], 'character': ['name'],
   'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
+watchColumns = {'session': ['event', 'time', 'reason'], 'seen': ['time', 'spawnId'], 'changed': ['time', 'spawnId', 'from', 'to'], 'gone': ['time', 'spawnId'],
+  'targetBuffs': ['time', 'spawnId', 'buffs']}
 itemOwners = ('placedItem', 'merchantItem', 'ground', 'heldItem')
 appearanceOwners = ('spawn', 'merchant')
 # PlayerClient offsets in eqlib's layout for Live's Sep 17 2026 client, for captures made before the plugin named these fields:
@@ -62,11 +64,17 @@ class Capture:
       self.kind = 'window'
     elif path.name.startswith(('peridotLiveBuffs_', 'peridotLiveSpell_')):
       self.kind = 'spells'
+    elif path.name.startswith('peridotLiveVisage_'):
+      self.kind = 'visage'
+    elif path.name.startswith('peridotLiveMenus_'):
+      self.kind = 'menus'
     else:
       raise ValueError(f'{path.name} is not an MQ2PeridotLive capture')
     self.header = {}
     self.headerRecords = {}
     self.records = []
+    self.sessions = []
+    session = None
     columns = {}
     current = None
     for lineNumber, line in enumerate(path.read_text(encoding='latin-1').rstrip('\n').split('\n'), 1):
@@ -91,14 +99,25 @@ class Capture:
         if len(parts) - 1 != len(headerColumns[head]):
           raise ValueError(f'{where}: {head} has {len(parts) - 1} values')
         self.header[head] = dict(zip(headerColumns[head], parts[1:]))
+        if session is not None:
+          session[head] = self.header[head]
         current = self.headerRecords[head] = {'label': head, 'raw': []}
         continue
-      names = itemColumns if head == 'item' else columns.get(head)
+      names = itemColumns if head == 'item' else watchColumns[head] if self.kind == 'visage' and head in watchColumns else columns.get(head)
       if names is None:
         raise ValueError(f'{where}: unknown record {head!r}')
-      if len(parts) - 1 != len(names):
-        raise ValueError(f'{where}: {head} has {len(parts) - 1} values for {len(names)} columns')
-      record = {'label': head, 'fields': dict(zip(names, parts[1:])), 'raw': [], 'item': None, 'appearance': None}
+      values = parts[1:]
+      # A watch session's start line carries no reason.
+      if self.kind == 'visage' and head == 'session' and values[:1] == ['start']:
+        values.append('')
+      if len(values) != len(names):
+        raise ValueError(f'{where}: {head} has {len(values)} values for {len(names)} columns')
+      record = {'label': head, 'fields': dict(zip(names, values)), 'raw': [], 'item': None, 'appearance': None}
+      if self.kind == 'visage':
+        if head == 'session' and values[0] == 'start':
+          session = {}
+          self.sessions.append(session)
+        record['session'] = session
       if head == 'appearance':
         owner = self.records[-1] if self.records else None
         if owner is None or owner['label'] not in appearanceOwners or owner['appearance'] is not None:
@@ -112,23 +131,68 @@ class Capture:
       else:
         self.records.append(record)
       current = record
-    for required in ('time', 'zone'):
-      if required not in self.header:
-        raise ValueError(f'{path.name}: no {required} line')
-    self.stamp = self.header['time']['stamp']
-    self.zoneShortName = self.header['zone']['shortName']
-    self.server = self.header['server']['shortName'] if 'server' in self.header else serverBeforeHeaders
-    self.character = self.header['character']['name'] if 'character' in self.header else characterBeforeHeaders
-    client = self.header.get('client')
-    self.build = f'{client["date"]} {client["time"]}' if client else buildBeforeHeaders
-    layout = self.header.get('layout')
-    if layout and f'{layout["date"]} {layout["time"]}' != self.build:
-      raise ValueError(f'{path.name}: plugin built for {layout["date"]} {layout["time"]} but captured on client {self.build}')
+    if self.kind == 'menus':
+      self.readMenuContexts()
+      return
+    headers = self.sessions if self.kind == 'visage' else [self.header]
+    if not headers:
+      raise ValueError(f'{path.name}: no watch session')
+    for header in headers:
+      for required in ('time', 'zone'):
+        if required not in header:
+          raise ValueError(f'{path.name}: no {required} line')
+    header = headers[0]
+    self.stamp = header['time']['stamp']
+    self.zoneShortName = header['zone']['shortName']
+    self.zoneId, self.instance = header['zone']['zoneId'], header['zone']['instance']
+    self.server = header['server']['shortName'] if 'server' in header else serverBeforeHeaders
+    self.character = header['character']['name'] if 'character' in header else characterBeforeHeaders
+    self.plugin = header.get('plugin', {}).get('version', '')
+    builds = set()
+    for session in headers:
+      client = session.get('client')
+      self.build = f'{client["date"]} {client["time"]}' if client else buildBeforeHeaders
+      builds.add(self.build)
+      layout = session.get('layout')
+      if layout and f'{layout["date"]} {layout["time"]}' != self.build:
+        raise ValueError(f'{path.name}: plugin built for {layout["date"]} {layout["time"]} but captured on client {self.build}')
+    if len(builds) != 1:
+      raise ValueError(f'{path.name}: sessions from more than one client build: {sorted(builds)}')
+    self.clientText = self.build if header.get('client') else ''
     if self.build not in layoutDirectories:
       raise ValueError(f'{path.name}: no eqlib headers for client {self.build}; freeze them in eqlib/ of the livedumps clone first')
 
+  def readMenuContexts(self):
+    menus = self.all('menu')
+    contexts = [record['fields'] for record in self.all('context')]
+    if not menus or len(contexts) != len(menus):
+      raise ValueError(f'{self.path.name}: {len(menus)} menus with {len(contexts)} context lines')
+    for field in ('server', 'client'):
+      values = {context[field] for context in contexts}
+      if len(values) != 1:
+        raise ValueError(f'{self.path.name}: menus from more than one {field}: {sorted(values)}')
+    first = contexts[0]
+    # A context line names only the client's build date; exactly one frozen eqlib build must match it.
+    builds = [build for build in layoutDirectories if build.split(' ')[:3] == first['client'].split(' ')]
+    if len(builds) != 1:
+      raise ValueError(f"{self.path.name}: client {first['client']} matches {len(builds)} frozen eqlib builds")
+    self.build = self.clientText = builds[0]
+    self.stamp = menus[0]['fields']['time']
+    self.zoneShortName, self.zoneId, self.instance = first['zone'], first['zoneId'], first['instance']
+    self.server, self.character, self.plugin = first['server'], first['character'], f"MQ2PeridotLive {first['plugin']}"
+
   def all(self, label):
     return [record for record in self.records if record['label'] == label]
+
+
+class AtTime:
+  """A watch file's capture as one of its records saw it: observations made through it carry the record's own time."""
+
+  def __init__(self, capture, stamp):
+    self.capture, self.stamp = capture, stamp
+
+  def __getattr__(self, name):
+    return getattr(self.capture, name)
 
 
 def tsvText(value):
@@ -252,6 +316,8 @@ spawnLookFields = ['displayedName', 'lastname', 'race', 'class', 'gender', 'leve
 doorStableFields = ['name', 'type', 'defaultX', 'defaultY', 'defaultZ', 'defaultHeading', 'defaultState',
   'scaleFactor', 'key', 'spellId', 'dynDoorId', 'usable', 'visible']
 # Before plugin 0.5 a door without a script wrote its script field's uninitialized bytes, which differ between sessions.
+visageSpawnFields = ['displayedName', 'realEstateId', 'realEstateItemId', 'race', 'gender', 'height']
+visageAppearanceFields = ['actorDef', 'textureType', 'material', 'variation', 'headType']
 doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 
 
@@ -265,7 +331,8 @@ def buildTables():
   return {
     'captures': Table('captures', ['file'], ['kind', 'server', 'character', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
       'definitionsManagerEntries', 'costsManagerEntries', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
-      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows', 'spells']),
+      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows', 'spells',
+      'visageEvents', 'menus', 'menuEntries']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
     'unreadableCosts': Table('unreadableCosts', ['key'], ['costId', 'components']),
@@ -293,6 +360,10 @@ def buildTables():
     'spells': Table('spells', ['id'], ['name', 'range', 'aeRange', 'castTime', 'recastTime', 'durationType', 'durationCap', 'spellIcon', 'category',
       'subcategory', 'spellType', 'targetType']),
     'spellEffects': Table('spellEffects', ['spellId', 'index'], ['slot', 'attrib', 'base', 'base2', 'max', 'calc']),
+    'visageEvents': Table('visageEvents', ['server', 'time', 'event', 'spawnId'], ['zone', 'instance', 'character'] + visageSpawnFields
+      + visageAppearanceFields + ['buffs', 'reason']),
+    'menus': Table('menus', ['server', 'time', 'propertyId', 'recordId'], ['character', 'viewerGuildId', 'zone', 'instance', 'itemId', 'itemName',
+      'npcSpawnId', 'guid', 'entries', 'propertyOwner', 'propertyGuildId', 'role']),
   }
 
 
@@ -407,11 +478,7 @@ def ingestWindow(tables, capture):
   return {'widgets': len(widgets), 'listRows': len(rows)}
 
 
-def ingestSpells(tables, capture):
-  for buff in capture.all('buff'):
-    fields = buff['fields']
-    tables['buffs'].observe((capture.zoneShortName, fields['spellId']), capture, volatile=pick(fields, ['duration', 'initialDuration', 'hitCount']),
-      sets={'kinds': fields['kind']})
+def observeSpells(tables, capture):
   for spell in capture.all('spell'):
     fields = spell['fields']
     tables['spells'].observe((fields['id'],), capture, stable=pick(fields, tables['spells'].stableFields))
@@ -422,7 +489,35 @@ def ingestSpells(tables, capture):
   missing = capture.all('missingSpell')
   if missing:
     raise ValueError(f"{capture.path.name}: spells the client does not know: {[m['fields']['id'] for m in missing]}")
+
+
+def ingestSpells(tables, capture):
+  for buff in capture.all('buff'):
+    fields = buff['fields']
+    tables['buffs'].observe((capture.zoneShortName, fields['spellId']), capture, volatile=pick(fields, ['duration', 'initialDuration', 'hitCount']),
+      sets={'kinds': fields['kind']})
+  observeSpells(tables, capture)
   return {'spells': len(capture.all('spell'))}
+
+
+def observeProperty(tables, capture, realEstate):
+  fields = realEstate['fields']
+  tables['properties'].observe((capture.server, fields['id']), capture, stable=pick(fields, tables['properties'].stableFields),
+    volatile=pick(fields, tables['properties'].volatileFields))
+  tables['fields']['properties'].observe((capture.server, fields['id']), capture, decodeRecord(capture, 'RealEstate', realEstate['raw'][0], {'id': fields['id']}))
+
+
+def observePlacedItem(tables, capture, placed):
+  fields = placed['fields']
+  key = (fields['realEstateId'], fields['realEstateItemId'])
+  if placed['item'] is None:
+    raise ValueError(f'{capture.path.name}: placed item {key} has no item line')
+  observeItem(tables, capture, placed['item'], 'placed')
+  tables['fields']['propertyItems'].observe((capture.server, *key), capture, decodeRecord(capture, 'RealEstateItem', placed['raw'][0],
+    {'ids.realEstateID': key[0], 'ids.realEstateItemID': key[1]}))
+  tables['propertyItems'].observe((capture.server, *key), capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
+    'ownerName': fields['ownerName']}, volatile=pick(fields, [name for name in tables['propertyItems'].volatileFields if name != 'tint' or 'tint' in fields]))
+  return placed['item']['fields']
 
 
 def ingestZone(tables, capture):
@@ -440,26 +535,15 @@ def ingestZone(tables, capture):
     tables['unreadableCosts'].observe((fields['key'],), capture, stable=pick(fields, ['costId', 'components']))
   propertyIds = set()
   for realEstate in capture.all('property'):
-    fields = realEstate['fields']
-    propertyIds.add(fields['id'])
-    tables['properties'].observe((capture.server, fields['id']), capture, stable=pick(fields, tables['properties'].stableFields),
-      volatile=pick(fields, tables['properties'].volatileFields))
-    tables['fields']['properties'].observe((capture.server, fields['id']), capture, decodeRecord(capture, 'RealEstate', realEstate['raw'][0], {'id': fields['id']}))
+    propertyIds.add(realEstate['fields']['id'])
+    observeProperty(tables, capture, realEstate)
   for guildPlot in capture.all('guildPlot'):
     fields = guildPlot['fields']
     tables['guildPlots'].observe((capture.server, fields['guildId']), capture, stable={'realEstateId': fields['realEstateId']})
   placedItems = {}
   for placed in capture.all('placedItem'):
     fields = placed['fields']
-    key = (fields['realEstateId'], fields['realEstateItemId'])
-    if placed['item'] is None:
-      raise ValueError(f'{capture.path.name}: placed item {key} has no item line')
-    placedItems[key] = placed['item']['fields']
-    observeItem(tables, capture, placed['item'], 'placed')
-    tables['fields']['propertyItems'].observe((capture.server, *key), capture, decodeRecord(capture, 'RealEstateItem', placed['raw'][0],
-      {'ids.realEstateID': key[0], 'ids.realEstateItemID': key[1]}))
-    tables['propertyItems'].observe((capture.server, *key), capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
-      'ownerName': fields['ownerName']}, volatile=pick(fields, [name for name in tables['propertyItems'].volatileFields if name != 'tint' or 'tint' in fields]))
+    placedItems[(fields['realEstateId'], fields['realEstateItemId'])] = observePlacedItem(tables, capture, placed)
   mismatchedObjects = 0
   for placedObject in capture.all('placedObject'):
     fields = placedObject['fields']
@@ -502,8 +586,8 @@ def ingestZone(tables, capture):
     itemId = ground['item']['fields']['itemId'] if ground['item'] else ''
     if ground['item']:
       observeItem(tables, capture, ground['item'], 'ground')
-    tables['fields']['ground'].observe((capture.server, zone, capture.header['zone']['instance'], fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
-    tables['ground'].observe((capture.server, zone, capture.header['zone']['instance'], fields['dropId']), capture,
+    tables['fields']['ground'].observe((capture.server, zone, capture.instance, fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
+    tables['ground'].observe((capture.server, zone, capture.instance, fields['dropId']), capture,
       stable={**pick(fields, ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight']), 'itemId': itemId})
   managers = capture.all('manager')
   manager = managers[0]['fields'] if managers else {}
@@ -513,6 +597,95 @@ def ingestZone(tables, capture):
     'spawns': len(capture.all('spawn')), 'doors': len(capture.all('door')), 'definitions': len(capture.all('definition')),
     'costs': len(capture.all('cost')), 'properties': len(propertyIds), 'placedItems': len(placedItems),
     'placedObjects': len(capture.all('placedObject')), 'mismatchedPlacedObjects': mismatchedObjects, 'unlinkedItemSpawns': unlinkedSpawns}
+
+
+def ingestVisage(tables, capture):
+  events = 0
+  records = capture.records
+  for index, record in enumerate(records):
+    if record['label'] not in watchColumns:
+      continue
+    fields, session = record['fields'], record['session']
+    if session is None:
+      raise ValueError(f"{capture.path.name}: {record['label']} before any session")
+    stable = {'zone': session['zone']['shortName'], 'instance': session['zone']['instance'], 'character': session['character']['name']}
+    if record['label'] == 'session':
+      key = (capture.server, fields['time'], f"session {fields['event']}", '')
+      stable['reason'] = fields['reason']
+    else:
+      key = (capture.server, fields['time'], record['label'], fields['spawnId'])
+      if record['label'] in ('seen', 'changed'):
+        spawn = records[index + 1] if index + 1 < len(records) else None
+        if spawn is None or spawn['label'] != 'spawn' or spawn['fields']['spawnId'] != fields['spawnId'] or spawn['appearance'] is None:
+          raise ValueError(f"{capture.path.name}: {record['label']} {fields['spawnId']} at {fields['time']} has no spawn record")
+        stable.update({**pick(spawn['fields'], visageSpawnFields), **pick(spawn['appearance']['fields'], visageAppearanceFields)})
+      elif record['label'] == 'targetBuffs':
+        stable['buffs'] = fields['buffs']
+    tables['visageEvents'].observe(key, AtTime(capture, fields['time']), stable=stable)
+    events += 1
+  observeSpells(tables, capture)
+  return {'visageEvents': events, 'spells': len(capture.all('spell'))}
+
+
+def signedText(value):
+  number = int(value)
+  return str(number - (1 << 32) if number >= 1 << 31 else number)
+
+
+def ingestMenus(tables, capture):
+  groups = []
+  for record in capture.records:
+    if record['label'] == 'menu':
+      groups.append([record])
+    elif groups:
+      groups[-1].append(record)
+    else:
+      raise ValueError(f"{capture.path.name}: {record['label']} before any menu")
+  entries = 0
+  for group in groups:
+    menu = group[0]['fields']
+    at = AtTime(capture, menu['time'])
+    context = next(record['fields'] for record in group if record['label'] == 'context')
+    item = {}
+    for record in group:
+      if record['label'] == 'property':
+        observeProperty(tables, at, record)
+      elif record['label'] == 'placedItem':
+        placedItem = observePlacedItem(tables, at, record)
+        if (record['fields']['realEstateId'], record['fields']['realEstateItemId']) == (menu['propertyId'], menu['recordId']):
+          item = placedItem
+    menuEntries = [record['fields'] for record in group if record['label'] == 'entry']
+    entries += len(menuEntries)
+    tables['menus'].observe((capture.server, menu['time'], menu['propertyId'], menu['recordId']), at, stable={'character': context['character'],
+      # A player's guild id carries its server in the high 32 bits; properties name the guild by the low 32.
+      'viewerGuildId': str(int(context['guildId']) & 0xffffffff), 'zone': context['zone'], 'instance': context['instance'],
+      'itemId': item.get('itemId', ''), 'itemName': item.get('name', ''), 'npcSpawnId': menu['npcSpawnId'], 'guid': menu['guid'],
+      'entries': ' | '.join(f"{entry['type']}:{signedText(entry['b'])}:{entry['labelId']}:{signedText(entry['d'])} {entry['label']}".rstrip()
+                             for entry in menuEntries)})
+  return {'menus': len(groups), 'menuEntries': entries}
+
+
+def assignMenuRoles(tables):
+  """Each menu's viewer as owner, guild member or visitor, from its property or the nearest parent naming an owner or guild."""
+  properties = tables['properties'].rows
+  for (server, _, propertyId, _), row in tables['menus'].rows.items():
+    stable = row['stable']
+    owner, guild, current, visited = '', '', propertyId, set()
+    while current not in noProperty and current not in visited and (server, current) in properties:
+      visited.add(current)
+      property = properties[(server, current)]['stable']
+      owner = owner or property['primaryOwner']
+      guild = guild if guild not in ('', '0') else property['guildId']
+      current = property['parentId']
+    stable['propertyOwner'], stable['propertyGuildId'] = owner, guild
+    if not visited:
+      stable['role'] = 'unknown property'
+    elif owner and owner.lower() == stable['character'].lower():
+      stable['role'] = 'owner'
+    elif guild not in ('', '0') and guild == stable['viewerGuildId']:
+      stable['role'] = 'guild'
+    else:
+      stable['role'] = 'visitor'
 
 
 def readItemsTxt():
@@ -620,7 +793,7 @@ class TableRecorder:
     return getattr(self.recorder.templates[self.name], attribute)
 
   def observe(self, key, capture, *arguments, **keywords):
-    self.recorder.observations.append((self.name, key, arguments, keywords))
+    self.recorder.observations.append((self.name, key, arguments, keywords, capture.stamp))
 
 
 class FieldRecorder:
@@ -636,7 +809,7 @@ class FieldTableRecorder:
     self.recorder, self.name = recorder, name
 
   def observe(self, key, capture, values):
-    self.recorder.observations.append((('fields', self.name), key, (values,), {}))
+    self.recorder.observations.append((('fields', self.name), key, (values,), {}, capture.stamp))
 
 
 class ObservedCapture:
@@ -661,11 +834,9 @@ def parseCapture(path):
   capture = Capture(path)
   recorder = Recorder()
   counts = ingest[capture.kind](recorder, capture)
-  client = capture.header.get('client')
   return {'name': path.name, 'stamp': capture.stamp, 'observations': recorder.observations, 'visit': visitSummary(capture),
-    'captureRow': {'kind': capture.kind, 'server': capture.server, 'character': capture.character,
-      'client': f'{client["date"]} {client["time"]}' if client else '', 'plugin': capture.header.get('plugin', {}).get('version', ''),
-      'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
+    'captureRow': {'kind': capture.kind, 'server': capture.server, 'character': capture.character, 'client': capture.clientText,
+      'plugin': capture.plugin, 'zone': capture.zoneShortName, 'zoneId': capture.zoneId, 'instance': capture.instance,
       **{field: str(value) for field, value in counts.items()}}}
 
 
@@ -689,9 +860,9 @@ def parserVersion():
 def captureStamp(path):
   with open(path, encoding='latin-1') as source:
     for line in source:
-      if line.startswith('time\t'):
+      if line.startswith(('time\t', 'menu\t')):
         return line.rstrip('\r\n').split('\t')[1]
-  raise ValueError(f'{path.name}: no time header')
+  raise ValueError(f'{path.name}: no time header or menu')
 
 
 def parsedCaptures(paths, full):
@@ -743,14 +914,16 @@ def main():
   fieldTables = tables['fields'] = buildFieldTables()
   visits = []
   for parse in parsedCaptures(paths, arguments.full):
-    capture = ObservedCapture(parse['name'], parse['stamp'])
-    for target, key, observeArguments, observeKeywords in parse['observations']:
+    observed = {}
+    for target, key, observeArguments, observeKeywords, stamp in parse['observations']:
+      capture = observed.get(stamp) or observed.setdefault(stamp, ObservedCapture(parse['name'], stamp))
       table = tables['fields'][target[1]] if isinstance(target, tuple) else tables[target]
       table.observe(key, capture, *observeArguments, **observeKeywords)
-    tables['captures'].observe((parse['name'],), capture, stable=parse['captureRow'])
+    tables['captures'].observe((parse['name'],), ObservedCapture(parse['name'], parse['stamp']), stable=parse['captureRow'])
     if parse['visit']:
       visits.append((parse['stamp'], parse['visit']))
   del tables['fields']
+  assignMenuRoles(tables)
   extract = readItemsTxt()
   masterDirectory.mkdir(exist_ok=True)
   for table in list(tables.values()) + list(fieldTables.values()):
@@ -766,7 +939,8 @@ def main():
   print('fields: ' + ', '.join(f'{name} {len(table.rows)}x{len(table.columns)}' for name, table in fieldTables.items()))
 
 
-ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells}
+ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells,
+  'visage': ingestVisage, 'menus': ingestMenus}
 
 if __name__ == '__main__':
   main()
