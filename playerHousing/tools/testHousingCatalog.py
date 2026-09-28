@@ -67,7 +67,7 @@ stones = {int(r[1]): r for r in csv.reader(open(os.path.join(here, '..', 'conten
 stone = stones[first['door']]
 live = {row['id']: row for row in csv.DictReader(open(os.path.join(here, '..', 'research', 'live', 'master', 'definitions.tsv'), encoding='latin-1'), delimiter='\t')}['171']
 check(f"plot 171 is Live's {first['address']}", "SELECT CONCAT_WS(' ', name, type, region_id, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id) FROM real_estate_definitions WHERE id = 171",
-      f"{first['address']} 4 {live['areaId']} {first['capacity']} 0 {live['maxNpcItems']} {live['costDefinition']} {live['upkeepDefinition']}")
+      f"{first['address']} 4 {live['areaId']} {live['maxItems']} 0 {live['maxNpcItems']} {live['costDefinition']} {live['upkeepDefinition']}")
 check('its layout origin is its border stone', "SELECT CONCAT_WS(' ', ROUND(layout_origin_x, 2), ROUND(layout_origin_y, 2), ROUND(layout_heading)) FROM real_estate_definitions WHERE id = 171",
       f'{float(stone[2]):.2f} {float(stone[3]):.2f} {round(float(stone[5]))}')
 check('its region is its box, 100 below its ground to 900 above', "SELECT CONCAT_WS(' ', ROUND(x, 2), ROUND(y, 2), ROUND(z, 2), ROUND(size_x, 2), ROUND(size_y, 2), size_z, heading) FROM real_estate_regions WHERE id = 171",
@@ -75,7 +75,7 @@ check('its region is its box, 100 below its ground to 900 above', "SELECT CONCAT
 check('guild plot 200 Guild Way', "SELECT CONCAT_WS(' ', id BETWEEN 187 AND 190, type, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id, ROUND(layout_origin_x, 1), ROUND(layout_origin_y, 1), layout_heading) FROM real_estate_definitions WHERE name = '200 Guild Way'",
       '1 8 210 0 12 16 11 2689.8 2633.5 123')
 check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items, upkeep_cost_id) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
-      '5:714:300:40:0:17,18:715:100:20:0:21,34:717:500:300:0:0')
+      '5:714:500:75:0:17,18:715:300:60:0:21,34:717:500:300:0:0')
 check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
       '38:345:1000:0:0,39:738:1500:0:0,40:737:2000:0:0,41:751:1500:0:0')
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",
