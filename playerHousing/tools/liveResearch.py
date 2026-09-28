@@ -267,7 +267,7 @@ def observeItem(tables, capture, itemRecord, seenAs, soldBy=None):
   sets = {'seenAs': seenAs}
   if soldBy:
     sets['soldBy'] = soldBy
-  tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemStableFields[:-1]), sets={**sets, 'linkHashes': fields['linkHash']})
+  tables['items'].observe((fields['itemId'],), capture, stable=pick(fields, itemStableFields), sets={**sets, 'linkHashes': fields['linkHash']})
 
 
 def equipmentText(raw, offset):
@@ -488,7 +488,9 @@ def writeNpcItems(tables, extract):
       linked = sorted(name for name in row['sets']['npcNames'] if (name,) in looks)
       npcName, lookSource = (linked[0], 'itemList') if linked else (housepet, 'housepetName')
       look = looks.get((npcName,))
-      if look is None:
+      if stable.get('interactiveObject') == '1':
+        npcName, lookSource, look = '', 'interactive object', None
+      elif look is None:
         npcName, lookSource = '', ''
       field = lambda name: look['stable'].get(name) or ' | '.join(sorted(look['sets'].get(name, ())))
       values = [field(name) for name in npcLookFields] if look else [''] * len(npcLookFields)
