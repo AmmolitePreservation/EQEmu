@@ -79,6 +79,7 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Server → client:** `0x2691` replies by mode (neighborhood list, details, single property, plot search results), guild names, `0x1d3c` (a new guild neighborhood announcement).
 - **Server rules:** the client dispatches on the reply's mode, not the request; the Neighborhood window's filters start unchecked with the stock XML (critical finding 13: an empty-looking list isn't a server bug).
 - **Depends on:** S2. **Readiness:** Specified; what an empty name search returns is **Design**; the neighborhood template is **Content**, and world generates the neighborhoods from it (`serverPlan.md` D11).
+- **Deferred to polish: the teleflinger's fling.** On Live the server arms Plot Search with `0x8a99 {u8}` (it opens the window and sets its fling flag), and Go then sends `0x1708 {rowValue}` once and is answered with a fling to the plot. RoF2 has only the sending half (`0x796c`, flag `+0x24c`) and no handler for the arming message, so its Go always sends `OP_FindPersonRequest` type 4; a fling there (EQEmu's `Client::Fling`, `OP_Fling`) would be a server-side choice on that request. Revisit if testing shows a way to arm RoF2.
 - **Source:** `opcode2691PropertySearch.md`, `flows/neighborhoods.md`, `flows/plotSearch.md`.
 
 ### S7. Purchase, sell and transfer
@@ -157,4 +158,4 @@ Choices the client leaves to us, to settle in phase 2 before code: the catalog a
 
 ## To verify by test or Live comparison
 
-Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; `/leaverealestate`'s server behavior (Live); the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin).
+Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; `/leaverealestate`'s server behavior (Live); the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin); what makes Live send the fling-arming `0x8a99` (MQ2PeridotLive 1.4 reports the flag's changes).
