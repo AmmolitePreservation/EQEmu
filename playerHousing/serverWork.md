@@ -158,4 +158,4 @@ Choices the client leaves to us, to settle in phase 2 before code: the catalog a
 
 ## To verify by test or Live comparison
 
-Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; `/leaverealestate`'s server behavior (Live); the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin).
+Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; `/leaverealestate`'s server behavior (Live); the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin); which RoF2 code shows the aura menu entries (`eqstr_us.txt` 5322-5324 and 5340) and how Live's regeneration pool menu reaches it.
