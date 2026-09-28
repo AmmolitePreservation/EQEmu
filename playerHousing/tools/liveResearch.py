@@ -32,6 +32,10 @@ headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['vers
   'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
 watchColumns = {'session': ['event', 'time', 'reason'], 'seen': ['time', 'spawnId'], 'changed': ['time', 'spawnId', 'from', 'to'], 'gone': ['time', 'spawnId'],
   'targetBuffs': ['time', 'spawnId', 'buffs']}
+scanColumns = {'scanStart': ['time', 'propertyId', 'zoneRealEstateId', 'currentYardId', 'dump'], 'scanItem': ['time', 'propertyId', 'recordId', 'status'],
+  'scanEnd': ['time', 'reason', 'answered', 'unanswered', 'removed', 'added', 'notListed']}
+scanStatuses = ['listed', 'added', 'answered', 'unanswered', 'removed', 'notListed']
+menuLabels = ('menu', 'context', 'entry', 'property', 'placedItem', 'spawn')
 itemOwners = ('placedItem', 'merchantItem', 'ground', 'heldItem')
 appearanceOwners = ('spawn', 'merchant')
 # PlayerClient offsets in eqlib's layout for Live's Sep 17 2026 client, for captures made before the plugin named these fields:
@@ -68,6 +72,8 @@ class Capture:
       self.kind = 'visage'
     elif path.name.startswith('peridotLiveMenus_'):
       self.kind = 'menus'
+    elif path.name.startswith('peridotLiveMenuScan_'):
+      self.kind = 'menuScan'
     else:
       raise ValueError(f'{path.name} is not an MQ2PeridotLive capture')
     self.header = {}
@@ -103,7 +109,8 @@ class Capture:
           session[head] = self.header[head]
         current = self.headerRecords[head] = {'label': head, 'raw': []}
         continue
-      names = itemColumns if head == 'item' else watchColumns[head] if self.kind == 'visage' and head in watchColumns else columns.get(head)
+      names = (itemColumns if head == 'item' else watchColumns[head] if self.kind == 'visage' and head in watchColumns
+               else scanColumns[head] if self.kind == 'menuScan' and head in scanColumns else columns.get(head))
       if names is None:
         raise ValueError(f'{where}: unknown record {head!r}')
       values = parts[1:]
@@ -363,7 +370,9 @@ def buildTables():
     'visageEvents': Table('visageEvents', ['server', 'time', 'event', 'spawnId'], ['zone', 'instance', 'character'] + visageSpawnFields
       + visageAppearanceFields + ['buffs', 'reason']),
     'menus': Table('menus', ['server', 'time', 'propertyId', 'recordId'], ['character', 'viewerGuildId', 'zone', 'instance', 'itemId', 'itemName',
-      'npcSpawnId', 'guid', 'entries', 'propertyOwner', 'propertyGuildId', 'role']),
+      'npcSpawnId', 'guid', 'entries', 'propertyOwner', 'propertyGuildId', 'role'], setFields=['captures']),
+    'menuScans': Table('menuScans', ['server', 'time', 'propertyId'], ['zone', 'instance', 'character', 'zoneRealEstateId', 'currentYardId', 'dump',
+      'endTime', 'endReason'] + scanStatuses),
   }
 
 
@@ -632,15 +641,15 @@ def signedText(value):
   return str(number - (1 << 32) if number >= 1 << 31 else number)
 
 
-def ingestMenus(tables, capture):
+def observeMenus(tables, capture):
   groups = []
   for record in capture.records:
     if record['label'] == 'menu':
       groups.append([record])
-    elif groups:
+    elif record['label'] in menuLabels:
+      if not groups:
+        raise ValueError(f"{capture.path.name}: {record['label']} before any menu")
       groups[-1].append(record)
-    else:
-      raise ValueError(f"{capture.path.name}: {record['label']} before any menu")
   entries = 0
   for group in groups:
     menu = group[0]['fields']
@@ -661,8 +670,32 @@ def ingestMenus(tables, capture):
       'viewerGuildId': str(int(context['guildId']) & 0xffffffff), 'zone': context['zone'], 'instance': context['instance'],
       'itemId': item.get('itemId', ''), 'itemName': item.get('name', ''), 'npcSpawnId': menu['npcSpawnId'], 'guid': menu['guid'],
       'entries': ' | '.join(f"{entry['type']}:{signedText(entry['b'])}:{entry['labelId']}:{signedText(entry['d'])} {entry['label']}".rstrip()
-                             for entry in menuEntries)})
-  return {'menus': len(groups), 'menuEntries': entries}
+                             for entry in menuEntries)}, sets={'captures': capture.path.name})
+  return len(groups), entries
+
+
+def ingestMenus(tables, capture):
+  menus, entries = observeMenus(tables, capture)
+  return {'menus': menus, 'menuEntries': entries}
+
+
+def ingestMenuScan(tables, capture):
+  menus, entries = observeMenus(tables, capture)
+  starts = capture.all('scanStart')
+  if len(starts) != 1:
+    raise ValueError(f'{capture.path.name}: {len(starts)} scanStart lines')
+  start = starts[0]['fields']
+  # A scan the client's exit cut short has no scanEnd line.
+  ends = capture.all('scanEnd')
+  end = ends[0]['fields'] if ends else {}
+  statuses = collections.Counter(record['fields']['status'] for record in capture.all('scanItem'))
+  unknown = set(statuses) - set(scanStatuses)
+  if unknown:
+    raise ValueError(f'{capture.path.name}: unknown scan item statuses {sorted(unknown)}')
+  tables['menuScans'].observe((capture.server, start['time'], start['propertyId']), capture, stable={'zone': capture.zoneShortName,
+    'instance': capture.instance, 'character': capture.character, 'zoneRealEstateId': start['zoneRealEstateId'], 'currentYardId': start['currentYardId'],
+    'dump': start['dump'], 'endTime': end.get('time', ''), 'endReason': end.get('reason', ''), **{status: str(statuses[status]) for status in scanStatuses}})
+  return {'menus': menus, 'menuEntries': entries}
 
 
 def assignMenuRoles(tables):
@@ -940,7 +973,7 @@ def main():
 
 
 ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells,
-  'visage': ingestVisage, 'menus': ingestMenus}
+  'visage': ingestVisage, 'menus': ingestMenus, 'menuScan': ingestMenuScan}
 
 if __name__ == '__main__':
   main()
