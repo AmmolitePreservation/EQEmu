@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `max_houses` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_34` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_38` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `unknown_44` INT(10) UNSIGNED NOT NULL DEFAULT 336,
+  `icon` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
