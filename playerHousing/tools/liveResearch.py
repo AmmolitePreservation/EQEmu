@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Rebuilds a livedumps clone's master/ from every MQ2PeridotLive capture in its captures/.
 
-Usage: python liveResearch.py --live <livedumps clone>
+Each capture's parse is cached in the clone's .cache/liveResearch/ (keyed by the capture's content and this tool's own code and
+headers), so a rebuild parses only new or changed captures; the tables are always folded from every capture, in order.
+
+Usage: python liveResearch.py --live <livedumps clone> [--full]
 """
 import argparse
 import collections
 import csv
+import hashlib
 import json
 import pathlib
+import pickle
 import re
 import statistics
 import struct
@@ -198,10 +203,29 @@ class FieldTable:
 layoutCache = {}
 
 
+def loadLayouts(directory):
+  """A build's layouts: parsing its headers takes minutes, so the result is cached until the headers or eqlibLayouts.py change."""
+  digest = hashlib.sha1((pathlib.Path(__file__).resolve().parent / 'eqlibLayouts.py').read_bytes())
+  for path in sorted(p for p in directory.rglob('*') if p.is_file()):
+    digest.update(path.relative_to(directory).as_posix().encode())
+    digest.update(path.read_bytes())
+  entry = liveDirectory / '.cache' / 'liveResearch' / 'layouts' / f'{directory.name}.pickle'
+  if entry.exists():
+    with entry.open('rb') as source:
+      cached = pickle.load(source)
+    if cached['digest'] == digest.hexdigest():
+      return cached['layouts']
+  layouts = Layouts(directory)
+  entry.parent.mkdir(parents=True, exist_ok=True)
+  with entry.open('wb') as out:
+    pickle.dump({'digest': digest.hexdigest(), 'layouts': layouts}, out, protocol=pickle.HIGHEST_PROTOCOL)
+  return layouts
+
+
 def decodeRecord(capture, typeName, raw, checks):
   directory = layoutDirectories[capture.build]
   if directory not in layoutCache:
-    layoutCache[directory] = Layouts(directory)
+    layoutCache[directory] = loadLayouts(directory)
   values = layoutCache[directory].decode(typeName, raw)
   for field, expected in checks.items():
     if values.get(field) != expected:
@@ -512,29 +536,27 @@ def insidePolygon(x, y, corners):
   return inside
 
 
-def writeVisitCandidates(captures, tables, fieldTables, extract):
+def writeVisitCandidates(visits, tables, fieldTables, extract):
   template = json.load((housingDirectory / 'content' / 'sunriseHillsPlots.json').open())
   plots = [(plot['address'], footprint(dict(x=plot['center'][0], y=plot['center'][1], sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
     heading=plot['heading']))) for plot in template]
   interiors = {key[0] for key, row in tables['definitions'].rows.items() if row['stable'].get('type') in ('2', '3')}
   recorded = {key[0] for key in fieldTables['itemDefinitions'].rows}
   names = lambda server, propertyId: tables['properties'].rows.get((server, propertyId), {'stable': {}})['stable'].get('dynamicName', '?')
-  visited = {(capture.server, capture.all('manager')[0]['fields']['currentYardId']) for capture in captures
-    if capture.kind == 'zone' and capture.zoneShortName not in ('neighborhood', 'guildlobby', 'poknowledge') and capture.all('manager')}
+  visited = {(visit['server'], visit['currentYardId']) for stamp, visit in visits if visit['zone'] not in ('neighborhood', 'guildlobby', 'poknowledge')}
   yards = {}
-  for capture in captures:
-    if capture.kind != 'zone' or capture.zoneShortName != 'neighborhood' or not capture.all('manager'):
+  for stamp, visit in visits:
+    if visit['zone'] != 'neighborhood':
       continue
-    neighborhood = names(capture.server, capture.all('manager')[0]['fields']['zoneRealEstateId'])
-    for placed in capture.all('placedObject'):
-      fields = placed['fields']
-      yard = yards.setdefault((capture.server, neighborhood, fields['realEstateId']), {'objects': {}, 'positions': [], 'pets': set(), 'lastSeen': ''})
-      yard['objects'][fields['realEstateItemId']] = fields['recordNum']
-      yard['positions'].append((float(fields['x']), float(fields['y'])))
-      yard['lastSeen'] = max(yard['lastSeen'], capture.stamp)
-    for spawn in capture.all('spawn'):
-      if spawn['fields']['type'] != '0' and (capture.server, neighborhood, spawnPropertyId(capture, spawn)) in yards:
-        yards[(capture.server, neighborhood, spawnPropertyId(capture, spawn))]['pets'].add(spawn['fields']['name'])
+    neighborhood = names(visit['server'], visit['zoneRealEstateId'])
+    for realEstateId, realEstateItemId, recordNum, x, y in visit['objects']:
+      yard = yards.setdefault((visit['server'], neighborhood, realEstateId), {'objects': {}, 'positions': [], 'pets': set(), 'lastSeen': ''})
+      yard['objects'][realEstateItemId] = recordNum
+      yard['positions'].append((x, y))
+      yard['lastSeen'] = max(yard['lastSeen'], stamp)
+    for spawnType, name, propertyId in visit['spawns']:
+      if spawnType != '0' and (visit['server'], neighborhood, propertyId) in yards:
+        yards[(visit['server'], neighborhood, propertyId)]['pets'].add(name)
   rows = []
   for (server, neighborhood, yardId), yard in yards.items():
     x, y = statistics.median(p[0] for p in yard['positions']), statistics.median(p[1] for p in yard['positions'])
@@ -578,6 +600,127 @@ def writeNpcItems(tables, extract):
         npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
 
 
+class Recorder:
+  """Stands in for the tables while one capture is parsed: records every observation, in order, for the fold to replay."""
+
+  def __init__(self):
+    self.templates = buildTables()
+    self.observations = []
+
+  def __getitem__(self, name):
+    return FieldRecorder(self) if name == 'fields' else TableRecorder(self, name)
+
+
+class TableRecorder:
+  def __init__(self, recorder, name):
+    self.recorder, self.name = recorder, name
+
+  def __getattr__(self, attribute):
+    return getattr(self.recorder.templates[self.name], attribute)
+
+  def observe(self, key, capture, *arguments, **keywords):
+    self.recorder.observations.append((self.name, key, arguments, keywords))
+
+
+class FieldRecorder:
+  def __init__(self, recorder):
+    self.recorder = recorder
+
+  def __getitem__(self, name):
+    return FieldTableRecorder(self.recorder, name)
+
+
+class FieldTableRecorder:
+  def __init__(self, recorder, name):
+    self.recorder, self.name = recorder, name
+
+  def observe(self, key, capture, values):
+    self.recorder.observations.append((('fields', self.name), key, (values,), {}))
+
+
+class ObservedCapture:
+  """What a replayed observation keeps of its capture: the file and its time."""
+
+  def __init__(self, name, stamp):
+    self.path, self.stamp = pathlib.PurePath(name), stamp
+
+
+def visitSummary(capture):
+  if capture.kind != 'zone' or not capture.all('manager'):
+    return None
+  manager = capture.all('manager')[0]['fields']
+  neighborhood = capture.zoneShortName == 'neighborhood'
+  return {'zone': capture.zoneShortName, 'server': capture.server, 'zoneRealEstateId': manager['zoneRealEstateId'], 'currentYardId': manager['currentYardId'],
+    'objects': [(o['fields']['realEstateId'], o['fields']['realEstateItemId'], o['fields']['recordNum'], float(o['fields']['x']), float(o['fields']['y']))
+                for o in capture.all('placedObject')] if neighborhood else [],
+    'spawns': [(s['fields']['type'], s['fields']['name'], spawnPropertyId(capture, s)) for s in capture.all('spawn')] if neighborhood else []}
+
+
+def parseCapture(path):
+  capture = Capture(path)
+  recorder = Recorder()
+  counts = ingest[capture.kind](recorder, capture)
+  client = capture.header.get('client')
+  return {'name': path.name, 'stamp': capture.stamp, 'observations': recorder.observations, 'visit': visitSummary(capture),
+    'captureRow': {'kind': capture.kind, 'server': capture.server, 'character': capture.character,
+      'client': f'{client["date"]} {client["time"]}' if client else '', 'plugin': capture.header.get('plugin', {}).get('version', ''),
+      'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
+      **{field: str(value) for field, value in counts.items()}}}
+
+
+def fileDigest(path):
+  digest = hashlib.sha1()
+  with open(path, 'rb') as source:
+    for block in iter(lambda: source.read(1 << 20), b''):
+      digest.update(block)
+  return digest.hexdigest()
+
+
+def parserVersion():
+  digest = hashlib.sha1()
+  here = pathlib.Path(__file__).resolve().parent
+  for path in [here / 'liveResearch.py', here / 'eqlibLayouts.py'] + sorted(p for p in (liveDirectory / 'eqlib').rglob('*') if p.is_file()):
+    digest.update((path.relative_to(liveDirectory).as_posix() if path.is_relative_to(liveDirectory) else path.name).encode())
+    digest.update(path.read_bytes())
+  return digest.hexdigest()
+
+
+def captureStamp(path):
+  with open(path, encoding='latin-1') as source:
+    for line in source:
+      if line.startswith('time\t'):
+        return line.rstrip('\r\n').split('\t')[1]
+  raise ValueError(f'{path.name}: no time header')
+
+
+def parsedCaptures(paths, full):
+  """Each capture's parse, from the cache when its content and this tool are unchanged; stale entries are pruned."""
+  cacheDirectory = liveDirectory / '.cache' / 'liveResearch'
+  cacheDirectory.mkdir(parents=True, exist_ok=True)
+  version = parserVersion()
+  counts = collections.Counter()
+  for path in paths:
+    entry = cacheDirectory / f'{path.name}.pickle'
+    digest = fileDigest(path)
+    if not full and entry.exists():
+      with entry.open('rb') as source:
+        cached = pickle.load(source)
+      if cached['version'] == version and cached['digest'] == digest:
+        counts['cached'] += 1
+        yield cached['parse']
+        continue
+    parse = parseCapture(path)
+    with entry.open('wb') as out:
+      pickle.dump({'version': version, 'digest': digest, 'parse': parse}, out, protocol=pickle.HIGHEST_PROTOCOL)
+    counts['parsed'] += 1
+    yield parse
+  names = {f'{path.name}.pickle' for path in paths}
+  for entry in cacheDirectory.glob('*.pickle'):
+    if entry.name not in names:
+      entry.unlink()
+  print(f"{counts['parsed']} captures parsed, {counts['cached']} from the cache")
+
+
 def useLiveClone(path):
   global liveDirectory, masterDirectory, layoutDirectories
   liveDirectory = pathlib.Path(path).resolve()
@@ -591,33 +734,38 @@ def useLiveClone(path):
 def main():
   parser = argparse.ArgumentParser(description='Rebuild the master tables from every capture.')
   parser.add_argument('--live', required=True, help='a livedumps clone')
-  useLiveClone(parser.parse_args().live)
-  captures = sorted((Capture(path) for path in (liveDirectory / 'captures').glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
+  parser.add_argument('--full', action='store_true', help='parse every capture again instead of reusing the cache')
+  arguments = parser.parse_args()
+  useLiveClone(arguments.live)
+  paths = sorted((liveDirectory / 'captures').glob('peridotLive*.txt'), key=lambda path: (captureStamp(path), path.name))
   tables = buildTables()
   fieldTables = tables['fields'] = buildFieldTables()
-  ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells}
-  for capture in captures:
-    counts = ingest[capture.kind](tables, capture)
-    client = capture.header.get('client')
-    tables['captures'].observe((capture.path.name,), capture, stable={'kind': capture.kind, 'server': capture.server, 'character': capture.character,
-      'client': f'{client["date"]} {client["time"]}' if client else '', 'plugin': capture.header.get('plugin', {}).get('version', ''),
-      'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
-      **{field: str(value) for field, value in counts.items()}})
+  visits = []
+  for parse in parsedCaptures(paths, arguments.full):
+    capture = ObservedCapture(parse['name'], parse['stamp'])
+    for target, key, observeArguments, observeKeywords in parse['observations']:
+      table = tables['fields'][target[1]] if isinstance(target, tuple) else tables[target]
+      table.observe(key, capture, *observeArguments, **observeKeywords)
+    tables['captures'].observe((parse['name'],), capture, stable=parse['captureRow'])
+    if parse['visit']:
+      visits.append((parse['stamp'], parse['visit']))
   del tables['fields']
   extract = readItemsTxt()
   masterDirectory.mkdir(exist_ok=True)
   for table in list(tables.values()) + list(fieldTables.values()):
     table.write()
   writeNpcItems(tables, extract)
-  writeVisitCandidates(captures, tables, fieldTables, extract)
+  writeVisitCandidates(visits, tables, fieldTables, extract)
   conflicts = [conflict for table in tables.values() for conflict in table.conflicts] + itemsTxtConflicts(tables, extract)
   with (masterDirectory / 'conflicts.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
     writer.writerow(['table', 'key', 'field', 'earlierValue', 'laterValue', 'laterCapture'])
     writer.writerows([[tsvText(value) for value in conflict] for conflict in conflicts])
-  print(f'{len(captures)} captures -> ' + ', '.join(f'{name} {len(table.rows)}' for name, table in tables.items()) + f', conflicts {len(conflicts)}')
+  print(f'{len(paths)} captures -> ' + ', '.join(f'{name} {len(table.rows)}' for name, table in tables.items()) + f', conflicts {len(conflicts)}')
   print('fields: ' + ', '.join(f'{name} {len(table.rows)}x{len(table.columns)}' for name, table in fieldTables.items()))
 
+
+ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells}
 
 if __name__ == '__main__':
   main()
