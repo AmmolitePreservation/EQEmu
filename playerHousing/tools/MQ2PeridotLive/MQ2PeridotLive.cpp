@@ -12,11 +12,12 @@
 #include <fstream>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(1.1);
+PLUGIN_VERSION(1.2);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -711,6 +712,97 @@ namespace {
     }
   }
 
+  const char *spellColumns = "[spells] spell\tid\tname\trange\taeRange\tcastTime\trecastTime\tdurationType\tdurationCap\tspellIcon\tcategory"
+    "\tsubcategory\tspellType\ttargetType\n  effect\tspellId\tindex\tslot\tattrib\tbase\tbase2\tmax\tcalc\n  missingSpell\tid\n";
+
+  void writeSpell(std::ofstream &out, int spellId) {
+    EQ_Spell *spell = GetSpellByID(spellId);
+    if (!spell) {
+      out << "missingSpell\t" << spellId << '\n';
+      return;
+    }
+    out << "spell\t" << spell->ID << '\t' << boundedText(spell->Name) << '\t' << spell->Range << '\t' << spell->AERange << '\t' << spell->CastTime << '\t'
+      << spell->RecastTime << '\t' << spell->DurationType << '\t' << spell->DurationCap << '\t' << spell->SpellIcon << '\t' << spell->Category << '\t'
+      << spell->Subcategory << '\t' << static_cast<int>(spell->SpellType) << '\t' << static_cast<int>(spell->TargetType) << '\n';
+    writeRaw(out, *spell);
+    for (int index = 0; index < spell->GetNumEffects(); ++index) {
+      if (const SpellAffectData *effect = spell->GetSpellAffectByIndex(index)) {
+        out << "effect\t" << spell->ID << '\t' << index << '\t' << effect->Slot << '\t' << effect->Attrib << '\t' << effect->Base << '\t' << effect->Base2 << '\t'
+          << effect->Max << '\t' << effect->Calc << '\n';
+      }
+    }
+  }
+
+  std::filesystem::path openCapture(std::ofstream &out, const std::string &name, const char *description) {
+    const std::string stamp = timeStamp();
+    const std::filesystem::path path = std::filesystem::path(gPathLogs) / fmt::format("{}_{}.txt", name, stamp);
+    out.open(path);
+    if (out) {
+      out << "# MQ2PeridotLive " << description << ", read from client memory, nothing requested from the server.\n"
+        << "# Each record's named fields are followed by a raw line: its size and every byte, in eqlib's layout for this client.\n";
+      writeZoneHeader(out, stamp);
+    }
+    else {
+      WriteChatf("\ar[PeridotLive]\ax could not write %s", path.string().c_str());
+    }
+    return path;
+  }
+
+  void dumpBuffs() {
+    PcProfile *profile = pLocalPC && pZoneInfo ? pLocalPC->GetCurrentPcProfile() : nullptr;
+    if (!profile) {
+      WriteChatf("\ar[PeridotLive]\ax not in a zone");
+      return;
+    }
+    std::ofstream out;
+    const std::filesystem::path path = openCapture(out, fmt::format("peridotLiveBuffs_{}", fileNamePart(boundedText(pZoneInfo->ShortName))), "buffs and their spells");
+    if (!out) {
+      return;
+    }
+    out << "[buffs] buff\tkind\tslot\tspellId\tduration\tinitialDuration\thitCount\n";
+    std::set<int> spellIds;
+    const auto writeBuff = [&](const char *kind, int slot, const EQ_Affect &buff) {
+      if (buff.SpellID <= 0) {
+        return;
+      }
+      out << "buff\t" << kind << '\t' << slot << '\t' << buff.SpellID << '\t' << buff.Duration << '\t' << buff.InitialDuration << '\t' << buff.HitCount << '\n';
+      writeRaw(out, buff);
+      spellIds.insert(buff.SpellID);
+    };
+    for (int slot = 0; slot < NUM_LONG_BUFFS; ++slot) {
+      writeBuff("long", slot, profile->GetEffect(slot));
+    }
+    for (int slot = 0; slot < NUM_SHORT_BUFFS; ++slot) {
+      writeBuff("short", slot, profile->GetTempEffect(slot));
+    }
+    out << spellColumns;
+    for (int spellId : spellIds) {
+      writeSpell(out, spellId);
+    }
+    WriteChatf("\ag[PeridotLive]\ax wrote %s: %d spells in effect", path.filename().string().c_str(), static_cast<int>(spellIds.size()));
+  }
+
+  void dumpSpell(const char *argument) {
+    char *end = nullptr;
+    const long spellId = std::strtol(argument, &end, 10);
+    if (!*argument || *end || spellId <= 0) {
+      WriteChatf("\ar[PeridotLive]\ax usage: /peridotlive spell <spellID>");
+      return;
+    }
+    if (!pLocalPC || !pZoneInfo) {
+      WriteChatf("\ar[PeridotLive]\ax not in a zone");
+      return;
+    }
+    std::ofstream out;
+    const std::filesystem::path path = openCapture(out, fmt::format("peridotLiveSpell_{}", spellId), "spell definition");
+    if (!out) {
+      return;
+    }
+    out << spellColumns;
+    writeSpell(out, static_cast<int>(spellId));
+    WriteChatf("\ag[PeridotLive]\ax wrote %s", path.filename().string().c_str());
+  }
+
   void peridotLiveCommand(PlayerClient *, const char *line) {
     char action[MAX_STRING] = {};
     char first[MAX_STRING] = {};
@@ -733,8 +825,14 @@ namespace {
     else if (ci_equals(action, "items")) {
       dumpItems();
     }
+    else if (ci_equals(action, "buffs")) {
+      dumpBuffs();
+    }
+    else if (ci_equals(action, "spell")) {
+      dumpSpell(first);
+    }
     else {
-      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump | world | items; vendors and housing windows are written as they open; files go to Logs");
+      WriteChatf("\ag[PeridotLive]\ax /peridotlive link <itemID> [hash in hex] | show | dump | world | items | buffs | spell <spellID>; vendors and housing windows are written as they open; files go to Logs");
     }
   }
 }
