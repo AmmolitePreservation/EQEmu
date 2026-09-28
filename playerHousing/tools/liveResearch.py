@@ -18,10 +18,12 @@ from makeHousingCatalogSql import footprint
 housingDirectory = pathlib.Path(__file__).resolve().parent.parent
 liveDirectory = masterDirectory = layoutDirectories = None
 buildBeforeHeaders = 'Sep 17 2026 15:46:17'
+# Captures made before plugin 1.7 recorded no server or character: all came from Pariator on Bristlebane.
+serverBeforeHeaders, characterBeforeHeaders = 'bristle', 'Pariator'
 
 itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'realEstateDefinitionId', 'realEstateUpkeepId',
   'maxPerRealEstate', 'placeable', 'placementType', 'trophyBenefitId', 'interactiveObject', 'linkHash']
-headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'], 'layout': ['date', 'time'],
+headerColumns = {'time': ['stamp'], 'client': ['date', 'time'], 'plugin': ['version'], 'layout': ['date', 'time'], 'server': ['shortName'], 'character': ['name'],
   'zone': ['shortName', 'longName', 'designId', 'zoneId', 'instance']}
 itemOwners = ('placedItem', 'merchantItem', 'ground', 'heldItem')
 appearanceOwners = ('spawn', 'merchant')
@@ -110,6 +112,8 @@ class Capture:
         raise ValueError(f'{path.name}: no {required} line')
     self.stamp = self.header['time']['stamp']
     self.zoneShortName = self.header['zone']['shortName']
+    self.server = self.header['server']['shortName'] if 'server' in self.header else serverBeforeHeaders
+    self.character = self.header['character']['name'] if 'character' in self.header else characterBeforeHeaders
     client = self.header.get('client')
     self.build = f'{client["date"]} {client["time"]}' if client else buildBeforeHeaders
     layout = self.header.get('layout')
@@ -228,38 +232,38 @@ doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 
 
 def buildFieldTables():
-  return {name: FieldTable(name, keys) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['zone', 'name']), ('doors', ['zone', 'id']),
-    ('zoneHeaders', ['zone']), ('ground', ['zone', 'dropId']), ('placedObjects', ['propertyId', 'realEstateItemId']), ('definitions', ['id']),
-    ('properties', ['id']), ('propertyItems', ['propertyId', 'realEstateItemId']), ('worldZones', ['id']), ('spells', ['id']))}
+  return {name: FieldTable(name, keys) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['server', 'zone', 'name']), ('doors', ['zone', 'id']),
+    ('zoneHeaders', ['zone']), ('ground', ['server', 'zone', 'dropId']), ('placedObjects', ['server', 'propertyId', 'realEstateItemId']), ('definitions', ['id']),
+    ('properties', ['server', 'id']), ('propertyItems', ['server', 'propertyId', 'realEstateItemId']), ('worldZones', ['id']), ('spells', ['id']))}
 
 
 def buildTables():
   return {
-    'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
+    'captures': Table('captures', ['file'], ['kind', 'server', 'character', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
       'definitionsManagerEntries', 'costsManagerEntries', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
       'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows', 'spells']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
     'unreadableCosts': Table('unreadableCosts', ['key'], ['costId', 'components']),
-    'properties': Table('properties', ['id'], ['definitionId', 'staticId', 'parentId', 'guildId', 'fellowshipId', 'primaryOwner', 'primaryHandle',
+    'properties': Table('properties', ['server', 'id'], ['definitionId', 'staticId', 'parentId', 'guildId', 'fellowshipId', 'primaryOwner', 'primaryHandle',
       'defaultPermissionLevel', 'dynamicName', 'defaultUpkeepId', 'votingOptedOut'], ['upkeepExpiredTime', 'escrow', 'childIds']),
-    'guildPlots': Table('guildPlots', ['guildId'], ['realEstateId']),
-    'propertyItems': Table('propertyItems', ['propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
+    'guildPlots': Table('guildPlots', ['server', 'guildId'], ['realEstateId']),
+    'propertyItems': Table('propertyItems', ['server', 'propertyId', 'realEstateItemId'], ['itemId', 'itemName', 'ownerName'],
       ['placed', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'upkeepExpiredTime', 'tint']),
     'items': Table('items', ['itemId'], itemStableFields, setFields=['actorTags', 'linkHashes', 'npcNames', 'seenAs', 'soldBy']),
     'npcLooks': Table('npcLooks', ['npcName'], ['displayedName', 'class'], setFields=[f for f in npcLookFields if f not in ('displayedName', 'class')]
       + appearanceFields + ['zones']),
-    'placedObjects': Table('placedObjects', ['propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
+    'placedObjects': Table('placedObjects', ['server', 'propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
       ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones']),
     'vendors': Table('vendors', ['zone', 'name'], ['displayedName', 'class'], ['itemCount'], setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
     'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
-    'spawns': Table('spawns', ['zone', 'name'], ['displayedName', 'class'], ['realEstateId', 'realEstateItemId'],
+    'spawns': Table('spawns', ['server', 'zone', 'name'], ['displayedName', 'class'], ['realEstateId', 'realEstateItemId'],
       setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'worldZones': Table('worldZones', ['id'], ['shortName', 'longName', 'expansion', 'flags', 'minLevel', 'accessLevel', 'eqstrId']),
-    'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
-    'windowWidgets': Table('windowWidgets', ['window', 'path'], [], ['depth', 'type', 'visible', 'text']),
-    'windowRows': Table('windowRows', ['window', 'path', 'row'], [], ['cells']),
+    'ground': Table('ground', ['server', 'zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
+    'windowWidgets': Table('windowWidgets', ['server', 'window', 'path'], [], ['depth', 'type', 'visible', 'text']),
+    'windowRows': Table('windowRows', ['server', 'window', 'path', 'row'], [], ['cells']),
     'buffs': Table('buffs', ['zone', 'spellId'], [], ['duration', 'initialDuration', 'hitCount'], setFields=['kinds']),
     'spells': Table('spells', ['id'], ['name', 'range', 'aeRange', 'castTime', 'recastTime', 'durationType', 'durationCap', 'spellIcon', 'category',
       'subcategory', 'spellType', 'targetType']),
@@ -340,7 +344,7 @@ def ingestVendor(tables, capture):
 
 def observeSpawnFields(tables, capture, spawn):
   fields = spawn['fields']
-  tables['fields']['spawns'].observe((capture.zoneShortName, fields['name']), capture, decodeRecord(capture, 'PlayerClient', spawn['raw'][0],
+  tables['fields']['spawns'].observe((capture.server, capture.zoneShortName, fields['name']), capture, decodeRecord(capture, 'PlayerClient', spawn['raw'][0],
     {'SpawnID': fields['spawnId'], 'Name': fields['name']}))
 
 
@@ -372,9 +376,9 @@ def ingestWindow(tables, capture):
   window = capture.path.name.split('_')[1]
   widgets, rows = capture.all('widget'), capture.all('listRow')
   for widget in widgets:
-    tables['windowWidgets'].observe((window, widget['fields']['path']), capture, volatile=pick(widget['fields'], ['depth', 'type', 'visible', 'text']))
+    tables['windowWidgets'].observe((capture.server, window, widget['fields']['path']), capture, volatile=pick(widget['fields'], ['depth', 'type', 'visible', 'text']))
   for row in rows:
-    tables['windowRows'].observe((window, row['fields']['path'], row['fields']['row']), capture, volatile={'cells': row['fields']['cells']})
+    tables['windowRows'].observe((capture.server, window, row['fields']['path'], row['fields']['row']), capture, volatile={'cells': row['fields']['cells']})
   return {'widgets': len(widgets), 'listRows': len(rows)}
 
 
@@ -413,12 +417,12 @@ def ingestZone(tables, capture):
   for realEstate in capture.all('property'):
     fields = realEstate['fields']
     propertyIds.add(fields['id'])
-    tables['properties'].observe((fields['id'],), capture, stable=pick(fields, tables['properties'].stableFields),
+    tables['properties'].observe((capture.server, fields['id']), capture, stable=pick(fields, tables['properties'].stableFields),
       volatile=pick(fields, tables['properties'].volatileFields))
-    tables['fields']['properties'].observe((fields['id'],), capture, decodeRecord(capture, 'RealEstate', realEstate['raw'][0], {'id': fields['id']}))
+    tables['fields']['properties'].observe((capture.server, fields['id']), capture, decodeRecord(capture, 'RealEstate', realEstate['raw'][0], {'id': fields['id']}))
   for guildPlot in capture.all('guildPlot'):
     fields = guildPlot['fields']
-    tables['guildPlots'].observe((fields['guildId'],), capture, stable={'realEstateId': fields['realEstateId']})
+    tables['guildPlots'].observe((capture.server, fields['guildId']), capture, stable={'realEstateId': fields['realEstateId']})
   placedItems = {}
   for placed in capture.all('placedItem'):
     fields = placed['fields']
@@ -427,9 +431,9 @@ def ingestZone(tables, capture):
       raise ValueError(f'{capture.path.name}: placed item {key} has no item line')
     placedItems[key] = placed['item']['fields']
     observeItem(tables, capture, placed['item'], 'placed')
-    tables['fields']['propertyItems'].observe(key, capture, decodeRecord(capture, 'RealEstateItem', placed['raw'][0],
+    tables['fields']['propertyItems'].observe((capture.server, *key), capture, decodeRecord(capture, 'RealEstateItem', placed['raw'][0],
       {'ids.realEstateID': key[0], 'ids.realEstateItemID': key[1]}))
-    tables['propertyItems'].observe(key, capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
+    tables['propertyItems'].observe((capture.server, *key), capture, stable={'itemId': placed['item']['fields']['itemId'], 'itemName': placed['item']['fields']['name'],
       'ownerName': fields['ownerName']}, volatile=pick(fields, [name for name in tables['propertyItems'].volatileFields if name != 'tint' or 'tint' in fields]))
   mismatchedObjects = 0
   for placedObject in capture.all('placedObject'):
@@ -438,9 +442,9 @@ def ingestZone(tables, capture):
     listed = placedItems.get(key)
     if listed is not None and listed['itemId'] != fields['recordNum']:
       mismatchedObjects += 1
-    tables['fields']['placedObjects'].observe(key, capture, decodeRecord(capture, 'EQPlacedItem', placedObject['raw'][0],
+    tables['fields']['placedObjects'].observe((capture.server, *key), capture, decodeRecord(capture, 'EQPlacedItem', placedObject['raw'][0],
       {'RecordNum': fields['recordNum'], 'RealEstateID': key[0], 'RealEstateItemID': key[1]}))
-    tables['placedObjects'].observe(key, capture, stable={'itemId': fields['recordNum'], 'actorTag': fields['name']},
+    tables['placedObjects'].observe((capture.server, *key), capture, stable={'itemId': fields['recordNum'], 'actorTag': fields['name']},
       volatile=pick(fields, ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale']), sets={'zones': zone})
     tables['items'].observe((fields['recordNum'],), capture, sets={'seenAs': 'object', 'actorTags': fields['name']})
   unlinkedSpawns = 0
@@ -451,7 +455,7 @@ def ingestZone(tables, capture):
     propertyId = spawnPropertyId(capture, spawn)
     appearance = pick(spawnAppearance(capture, spawn), appearanceFields)
     observeSpawnFields(tables, capture, spawn)
-    tables['spawns'].observe((zone, fields['name']), capture, stable=pick(fields, ['displayedName', 'class']),
+    tables['spawns'].observe((capture.server, zone, fields['name']), capture, stable=pick(fields, ['displayedName', 'class']),
       sets={**pick(fields, spawnVariantFields), **appearance, 'positions': position(fields)},
       volatile={'realEstateItemId': fields['realEstateItemId'], 'realEstateId': propertyId})
     if propertyId in noProperty:
@@ -473,8 +477,8 @@ def ingestZone(tables, capture):
     itemId = ground['item']['fields']['itemId'] if ground['item'] else ''
     if ground['item']:
       observeItem(tables, capture, ground['item'], 'ground')
-    tables['fields']['ground'].observe((zone, fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
-    tables['ground'].observe((zone, fields['dropId']), capture,
+    tables['fields']['ground'].observe((capture.server, zone, fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
+    tables['ground'].observe((capture.server, zone, fields['dropId']), capture,
       stable={**pick(fields, ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight']), 'itemId': itemId})
   managers = capture.all('manager')
   manager = managers[0]['fields'] if managers else {}
@@ -514,35 +518,35 @@ def writeVisitCandidates(captures, tables, fieldTables, extract):
     heading=plot['heading']))) for plot in template]
   interiors = {key[0] for key, row in tables['definitions'].rows.items() if row['stable'].get('type') in ('2', '3')}
   recorded = {key[0] for key in fieldTables['itemDefinitions'].rows}
-  names = lambda propertyId: tables['properties'].rows.get((propertyId,), {'stable': {}})['stable'].get('dynamicName', '?')
-  visited = {capture.all('manager')[0]['fields']['currentYardId'] for capture in captures
+  names = lambda server, propertyId: tables['properties'].rows.get((server, propertyId), {'stable': {}})['stable'].get('dynamicName', '?')
+  visited = {(capture.server, capture.all('manager')[0]['fields']['currentYardId']) for capture in captures
     if capture.kind == 'zone' and capture.zoneShortName not in ('neighborhood', 'guildlobby', 'poknowledge') and capture.all('manager')}
   yards = {}
   for capture in captures:
     if capture.kind != 'zone' or capture.zoneShortName != 'neighborhood' or not capture.all('manager'):
       continue
-    neighborhood = names(capture.all('manager')[0]['fields']['zoneRealEstateId'])
+    neighborhood = names(capture.server, capture.all('manager')[0]['fields']['zoneRealEstateId'])
     for placed in capture.all('placedObject'):
       fields = placed['fields']
-      yard = yards.setdefault((neighborhood, fields['realEstateId']), {'objects': {}, 'positions': [], 'pets': set(), 'lastSeen': ''})
+      yard = yards.setdefault((capture.server, neighborhood, fields['realEstateId']), {'objects': {}, 'positions': [], 'pets': set(), 'lastSeen': ''})
       yard['objects'][fields['realEstateItemId']] = fields['recordNum']
       yard['positions'].append((float(fields['x']), float(fields['y'])))
       yard['lastSeen'] = max(yard['lastSeen'], capture.stamp)
     for spawn in capture.all('spawn'):
-      if spawn['fields']['type'] != '0' and (neighborhood, spawnPropertyId(capture, spawn)) in yards:
-        yards[(neighborhood, spawnPropertyId(capture, spawn))]['pets'].add(spawn['fields']['name'])
+      if spawn['fields']['type'] != '0' and (capture.server, neighborhood, spawnPropertyId(capture, spawn)) in yards:
+        yards[(capture.server, neighborhood, spawnPropertyId(capture, spawn))]['pets'].add(spawn['fields']['name'])
   rows = []
-  for (neighborhood, yardId), yard in yards.items():
+  for (server, neighborhood, yardId), yard in yards.items():
     x, y = statistics.median(p[0] for p in yard['positions']), statistics.median(p[1] for p in yard['positions'])
     address = next((name for name, corners in plots if insidePolygon(x, y, corners)), '?')
     items = set(yard['objects'].values())
     houses = sorted({extract[i]['name'] for i in items if extract.get(i, {}).get('realEstateDefinitionId') in interiors})
-    rows.append([neighborhood, address, yardId, ' | '.join(houses), 'yes' if yardId in visited else 'no', len(yard['objects']),
+    rows.append([server, neighborhood, address, yardId, ' | '.join(houses), 'yes' if (server, yardId) in visited else 'no', len(yard['objects']),
       len(items - recorded), len(yard['pets']), yard['lastSeen']])
-  rows.sort(key=lambda r: (r[4] == 'yes', not r[3], -r[6], -r[5]))
+  rows.sort(key=lambda r: (r[5] == 'yes', not r[4], -r[7], -r[6]))
   with (masterDirectory / 'visitCandidates.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
-    writer.writerow(['neighborhood', 'address', 'yardPropertyId', 'house', 'interiorVisited', 'yardObjects', 'itemsWithoutFullRecord', 'yardPets', 'lastSeen'])
+    writer.writerow(['server', 'neighborhood', 'address', 'yardPropertyId', 'house', 'interiorVisited', 'yardObjects', 'itemsWithoutFullRecord', 'yardPets', 'lastSeen'])
     writer.writerows([[tsvText(value) for value in row] for row in rows])
 
 
@@ -595,7 +599,7 @@ def main():
   for capture in captures:
     counts = ingest[capture.kind](tables, capture)
     client = capture.header.get('client')
-    tables['captures'].observe((capture.path.name,), capture, stable={'kind': capture.kind,
+    tables['captures'].observe((capture.path.name,), capture, stable={'kind': capture.kind, 'server': capture.server, 'character': capture.character,
       'client': f'{client["date"]} {client["time"]}' if client else '', 'plugin': capture.header.get('plugin', {}).get('version', ''),
       'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
       **{field: str(value) for field, value in counts.items()}})
