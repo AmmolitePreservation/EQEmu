@@ -1,138 +1,140 @@
 # NPC items to author
 
-Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/exportPlaceableItems.sql`, `tools/exportNpcItemSources.sql`; `serverPlan.md`, chunk 5). The other 162, mounts and familiars, take the creature their click spell summons, which is also their look in a yard (checked on Live). Names in the item tables are the items'; the NPC shown takes the name of the NPC type chosen. Fill the last column; related NPCs are the Guild Lobby's and classic Guild Hall's, matched only by name or class, for reference.
+Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/exportPlaceableItems.sql`, `tools/exportNpcItemSources.sql`; `serverPlan.md`, chunk 5). The other 162, mounts and familiars, take the creature their click spell summons, which is also their look in a yard (checked on Live). Names in the item tables are the items'; the NPC shown takes the name of the NPC type chosen. **Sections 2 and 3 take Live's captured look exactly**: the livedumps master links each item to its look (`npcItems.tsv` to `npcLooks.tsv`: race, gender, texture, size and the rest of the appearance), and the content generator reads it from there, so nothing is assigned by hand. **Section 1 records each decision in its last column.** Related NPCs are the Guild Lobby's and classic Guild Hall's, matched only by name or class, for reference.
 
 ## 1. Guild services and decorations (27)
 
+Races are Live's defaults, the race most halls show: the others seen are owners' re-skins with the Convoluted Assistant Appearance Augmentater (item 66656). Each dummy's level is likewise the one most halls show; the dummies rise from 50 (Azia) to 95 (Paza, Qela).
+
 | Item | Item name | Placeable in | Max per property | NO DROP | Respawn | Related NPCs | NPC to use |
 |---|---|---|---|---|---|---|---|
-| 66639 | Friendly Guild General Supply Merchant | guild hall | any | no | 750 | 345000 Yenny Werlikanin | |
-| 66640 | Friendly Guild Teleportation Assistant | guild hall | any | no | 750 | 345005 #Porter | |
-| 66641 | Friendly Guild Personal-Banker | guild hall | any | no | 750 | 345002 a bank broker; 344014 A Shrewd Banker; 344023 A Shrewd Banker | |
-| 66642 | Friendly Guild Guild-Banker | guild hall | any | no | 750 | 345003 a guild treasurer | |
-| 66643 | Friendly Guild Guild-Tribute Master | guild hall | any | no | 750 | 345001 Melody the Singer of Great Deeds | |
-| 66644 | Friendly Guild Personal-Tribute Master | guild hall | any | no | 750 | none in the guild zones | |
-| 66645 | Guild Regeneration Pool | guild hall | 1 | no | 38 | 345006 #Healer | |
-| 66646 | Guild Teleportation Device | guild hall | 1 | no | 750 | 345005 #Porter | |
-| 66647 | Friendly Guild Parcel Delivery Liaison | guild hall | any | yes | 750 |  | |
-| 66648 | Hyredel Swiftstride | guild hall, house | 1 | yes | 750 |  | |
-| 66700 | Decorative Dummy: Azia | guild hall | any | yes | 750 |  | |
-| 66701 | Decorative Dummy: Beza | guild hall | any | yes | 750 |  | |
-| 66702 | Decorative Dummy: Caza | guild hall | any | yes | 750 |  | |
-| 66703 | Decorative Dummy: Dena | guild hall | any | yes | 750 |  | |
-| 66704 | Decorative Dummy: Ena | guild hall | any | yes | 750 |  | |
-| 66705 | Decorative Dummy: Fana | guild hall | any | yes | 750 |  | |
-| 66706 | Decorative Dummy: Geza | guild hall | any | yes | 750 |  | |
-| 66707 | Decorative Dummy: Heda | guild hall | any | yes | 750 |  | |
-| 66708 | Decorative Dummy: Izah | guild hall | any | yes | 750 |  | |
-| 66709 | Decorative Dummy: Jaka | guild hall | any | yes | 750 |  | |
-| 66710 | Decorative Dummy: Kala | guild hall | any | yes | 750 |  | |
-| 66711 | Decorative Dummy: Lena | guild hall | any | yes | 750 |  | |
-| 66712 | Decorative Dummy: Meda | guild hall | any | yes | 750 |  | |
-| 66713 | Decorative Dummy: Neza | guild hall | any | yes | 750 |  | |
-| 66714 | Decorative Dummy: Ozah | guild hall | any | yes | 750 |  | |
-| 66715 | Decorative Dummy: Paza | guild hall | any | yes | 750 |  | |
-| 66716 | Decorative Dummy: Qela | guild hall | any | yes | 750 |  | |
+| 66639 | Friendly Guild General Supply Merchant | guild hall | any | no | 750 | 345000 Yenny Werlikanin | Live's look, race 6 (Dark Elf), class 41, level 70; function in S5 |
+| 66640 | Friendly Guild Teleportation Assistant | guild hall | any | no | 750 | 345005 #Porter | Live's look, race 12 (Gnome), class 41, level 70; function in S5 |
+| 66641 | Friendly Guild Personal-Banker | guild hall | any | no | 750 | 345002 a bank broker; 344014 A Shrewd Banker; 344023 A Shrewd Banker | Live's look, race 3 (Erudite), class 40, level 99; function in S5 |
+| 66642 | Friendly Guild Guild-Banker | guild hall | any | no | 750 | 345003 a guild treasurer | Live's look, race 1 (Human), class 66, level 70; function in S5 |
+| 66643 | Friendly Guild Guild-Tribute Master | guild hall | any | no | 750 | 345001 Melody the Singer of Great Deeds | Live's look, race 522 (Drakkin), class 64, level 70; function in S5 |
+| 66644 | Friendly Guild Personal-Tribute Master | guild hall | any | no | 750 | none in the guild zones | Live's look, race 5 (High Elf), class 74, level 70; function in S5 |
+| 66645 | Guild Regeneration Pool | guild hall | 1 | no | 38 | 345006 #Healer | none: an interactive object (`IT23628`); its aura is spell 31874 (`serverPlan.md`) |
+| 66646 | Guild Teleportation Device | guild hall | 1 | no | 750 | 345005 #Porter | Live's look, race 706, class 1, level 70; function in S5 |
+| 66647 | Friendly Guild Parcel Delivery Liaison | guild hall | any | yes | 750 |  | Live's look, race 1 (Human), class 41, level 70; function in S5 |
+| 66648 | Hyredel Swiftstride | guild hall, house | 1 | yes | 750 |  | Live's look, race 7 (Half Elf), class 41, level 70; function in S5 |
+| 66700 | Decorative Dummy: Azia | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 50 |
+| 66701 | Decorative Dummy: Beza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 60 |
+| 66702 | Decorative Dummy: Caza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 60 |
+| 66703 | Decorative Dummy: Dena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 65 |
+| 66704 | Decorative Dummy: Ena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 65 |
+| 66705 | Decorative Dummy: Fana | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66706 | Decorative Dummy: Geza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66707 | Decorative Dummy: Heda | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66708 | Decorative Dummy: Izah | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66709 | Decorative Dummy: Jaka | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66710 | Decorative Dummy: Kala | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
+| 66711 | Decorative Dummy: Lena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 75 |
+| 66712 | Decorative Dummy: Meda | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 80 |
+| 66713 | Decorative Dummy: Neza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 85 |
+| 66714 | Decorative Dummy: Ozah | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 90 |
+| 66715 | Decorative Dummy: Paza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 95 |
+| 66716 | Decorative Dummy: Qela | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 95 |
 
 ## 2. House pets with no summoning spell (59)
 
 Their look travels in the item's house-pet model string, which Peridot's data lacks.
 
-| Item | Item name | Icon | Placeable in | Look (race, gender, texture, size) |
-|---|---|---|---|---|
-| 52509 | Doomsday Beetle | 927 | guild hall, house, yard, guild yard | |
-| 52593 | Mini Jokester | 650 | guild hall, house, yard, guild yard | |
-| 54769 | Airship in a Bottle | 3991 | guild hall, house, yard, guild yard | |
-| 54998 | Baby Red Dragon | 2603 | guild hall, house | |
-| 55444 | Scarecrow Pet | 1481 | guild hall, house, yard | |
-| 55445 | Skeleton Pet | 3184 | guild hall, house, yard, guild yard | |
-| 57534 | Chocolate Bunny | 3657 | guild hall, house, yard, guild yard | |
-| 60380 | Olive | 1489 | guild hall, house, yard, guild yard | |
-| 60958 | Flame Wurmling | 1906 | guild hall, house, yard, guild yard | |
-| 61949 | Young Tiger Raptor | 833 | guild hall, house, yard, guild yard | |
-| 107105 | Vampire Bat | 791 | guild hall, house, yard, guild yard | |
-| 107106 | Stambles the Reincarnate | 3659 | guild hall, house, yard, guild yard | |
-| 107109 | Polar Bear Cub | 2909 | guild hall, house, yard, guild yard | |
-| 107111 | Tiny Icepup | 2907 | guild hall, house, yard, guild yard | |
-| 107135 | Scrounging Rat | 3303 | guild hall, house, yard, guild yard | |
-| 107136 | Dirty Rat | 3303 | guild hall, house, yard, guild yard | |
-| 107137 | Fabled Icerat | 3303 | guild hall, house, yard, guild yard | |
-| 107138 | Herbert the Bouncing Baby Bunny | 3659 | guild hall, house, yard, guild yard | |
-| 107139 | Albert the Hopping Hare | 3657 | guild hall, house, yard, guild yard | |
-| 107140 | David the Rambunctious Rabbit | 3656 | guild hall, house, yard, guild yard | |
-| 107141 | Robert the Leaping Longear | 3658 | guild hall, house, yard, guild yard | |
-| 107142 | Shik`Nar Spawn | 1242 | guild hall, house, yard, guild yard | |
-| 107143 | Venomous Crawler | 1089 | guild hall, house, yard, guild yard | |
-| 107144 | Itty Bitty Spider | 1089 | guild hall, house, yard, guild yard | |
-| 107145 | Tiny Terrorantula | 1089 | guild hall, house, yard, guild yard | |
-| 107146 | Aviak Starling | 2908 | guild hall, house, yard, guild yard | |
-| 107147 | Aviak Chick | 2908 | guild hall, house, yard, guild yard | |
-| 107148 | Aviak Egret | 2908 | guild hall, house, yard, guild yard | |
-| 107149 | Aviak Quetzel | 2908 | guild hall, house, yard, guild yard | |
-| 107150 | Aviak Guardian | 2908 | guild hall, house, yard, guild yard | |
-| 107151 | Aviak Avocet | 2908 | guild hall, house, yard, guild yard | |
-| 107152 | Black Bear Cub | 2909 | guild hall, house, yard, guild yard | |
-| 107153 | Surefall Brown Bear Cub | 2909 | guild hall, house, yard, guild yard | |
-| 107154 | Beautiful Black Bear | 2909 | guild hall, house, yard, guild yard | |
-| 107155 | Jaggedpine Brown Bear | 2909 | guild hall, house, yard, guild yard | |
-| 107156 | Guardian Worg | 1910 | guild hall, house, yard, guild yard | |
-| 107157 | Guardian Worg Pup | 1910 | guild hall, house, yard, guild yard | |
-| 107158 | Haze Panther | 2910 | guild hall, house, yard, guild yard | |
-| 107159 | Haze Panther Cub | 2910 | house, yard | |
-| 107160 | Icefall Leopard | 2910 | guild hall, house, yard, guild yard | |
-| 107161 | Icefall Leopard Cub | 2910 | house, yard | |
-| 107162 | Timorous Tigeraptor | 1473 | guild hall, house, yard, guild yard | |
-| 107163 | Dolorous Jester of Guk | 1245 | guild hall, house | |
-| 107164 | Obstructive Werewolf | 743 | guild hall, house | |
-| 107165 | Friendly Canine | 2907 | guild hall, house, yard, guild yard | |
-| 107166 | Friendly Puppy | 2907 | house, yard | |
-| 107167 | Desert Coyote | 2907 | house, yard | |
-| 107210 | Action Goblin: Green | 2633 | house | |
-| 107211 | Action Goblin: Red | 2673 | house | |
-| 107212 | Action Goblin: Blue | 2633 | house | |
-| 107213 | Action Goblin: Purple | 2633 | house | |
-| 107214 | Action Goblin: Tan | 2673 | guild hall, house | |
-| 107215 | Action Goblin: Aqua | 2633 | guild hall, house | |
-| 107216 | Decorative Polar Bear | 2909 | guild hall, house | |
-| 107217 | Decorative Black Bear | 2909 | guild hall, house | |
-| 107218 | Decorative Brown Bear | 2909 | guild hall, house | |
-| 107219 | Armored Action Centaur | 1907 | guild hall, house | |
-| 107350 | The Punting Gnome | 994 | yard, guild yard | |
-| 124273 | Miniature Action Lashun | 894 | guild hall, house | |
+| Item | Item name | Icon | Placeable in |
+|---|---|---|---|
+| 52509 | Doomsday Beetle | 927 | guild hall, house, yard, guild yard |
+| 52593 | Mini Jokester | 650 | guild hall, house, yard, guild yard |
+| 54769 | Airship in a Bottle | 3991 | guild hall, house, yard, guild yard |
+| 54998 | Baby Red Dragon | 2603 | guild hall, house |
+| 55444 | Scarecrow Pet | 1481 | guild hall, house, yard |
+| 55445 | Skeleton Pet | 3184 | guild hall, house, yard, guild yard |
+| 57534 | Chocolate Bunny | 3657 | guild hall, house, yard, guild yard |
+| 60380 | Olive | 1489 | guild hall, house, yard, guild yard |
+| 60958 | Flame Wurmling | 1906 | guild hall, house, yard, guild yard |
+| 61949 | Young Tiger Raptor | 833 | guild hall, house, yard, guild yard |
+| 107105 | Vampire Bat | 791 | guild hall, house, yard, guild yard |
+| 107106 | Stambles the Reincarnate | 3659 | guild hall, house, yard, guild yard |
+| 107109 | Polar Bear Cub | 2909 | guild hall, house, yard, guild yard |
+| 107111 | Tiny Icepup | 2907 | guild hall, house, yard, guild yard |
+| 107135 | Scrounging Rat | 3303 | guild hall, house, yard, guild yard |
+| 107136 | Dirty Rat | 3303 | guild hall, house, yard, guild yard |
+| 107137 | Fabled Icerat | 3303 | guild hall, house, yard, guild yard |
+| 107138 | Herbert the Bouncing Baby Bunny | 3659 | guild hall, house, yard, guild yard |
+| 107139 | Albert the Hopping Hare | 3657 | guild hall, house, yard, guild yard |
+| 107140 | David the Rambunctious Rabbit | 3656 | guild hall, house, yard, guild yard |
+| 107141 | Robert the Leaping Longear | 3658 | guild hall, house, yard, guild yard |
+| 107142 | Shik`Nar Spawn | 1242 | guild hall, house, yard, guild yard |
+| 107143 | Venomous Crawler | 1089 | guild hall, house, yard, guild yard |
+| 107144 | Itty Bitty Spider | 1089 | guild hall, house, yard, guild yard |
+| 107145 | Tiny Terrorantula | 1089 | guild hall, house, yard, guild yard |
+| 107146 | Aviak Starling | 2908 | guild hall, house, yard, guild yard |
+| 107147 | Aviak Chick | 2908 | guild hall, house, yard, guild yard |
+| 107148 | Aviak Egret | 2908 | guild hall, house, yard, guild yard |
+| 107149 | Aviak Quetzel | 2908 | guild hall, house, yard, guild yard |
+| 107150 | Aviak Guardian | 2908 | guild hall, house, yard, guild yard |
+| 107151 | Aviak Avocet | 2908 | guild hall, house, yard, guild yard |
+| 107152 | Black Bear Cub | 2909 | guild hall, house, yard, guild yard |
+| 107153 | Surefall Brown Bear Cub | 2909 | guild hall, house, yard, guild yard |
+| 107154 | Beautiful Black Bear | 2909 | guild hall, house, yard, guild yard |
+| 107155 | Jaggedpine Brown Bear | 2909 | guild hall, house, yard, guild yard |
+| 107156 | Guardian Worg | 1910 | guild hall, house, yard, guild yard |
+| 107157 | Guardian Worg Pup | 1910 | guild hall, house, yard, guild yard |
+| 107158 | Haze Panther | 2910 | guild hall, house, yard, guild yard |
+| 107159 | Haze Panther Cub | 2910 | house, yard |
+| 107160 | Icefall Leopard | 2910 | guild hall, house, yard, guild yard |
+| 107161 | Icefall Leopard Cub | 2910 | house, yard |
+| 107162 | Timorous Tigeraptor | 1473 | guild hall, house, yard, guild yard |
+| 107163 | Dolorous Jester of Guk | 1245 | guild hall, house |
+| 107164 | Obstructive Werewolf | 743 | guild hall, house |
+| 107165 | Friendly Canine | 2907 | guild hall, house, yard, guild yard |
+| 107166 | Friendly Puppy | 2907 | house, yard |
+| 107167 | Desert Coyote | 2907 | house, yard |
+| 107210 | Action Goblin: Green | 2633 | house |
+| 107211 | Action Goblin: Red | 2673 | house |
+| 107212 | Action Goblin: Blue | 2633 | house |
+| 107213 | Action Goblin: Purple | 2633 | house |
+| 107214 | Action Goblin: Tan | 2673 | guild hall, house |
+| 107215 | Action Goblin: Aqua | 2633 | guild hall, house |
+| 107216 | Decorative Polar Bear | 2909 | guild hall, house |
+| 107217 | Decorative Black Bear | 2909 | guild hall, house |
+| 107218 | Decorative Brown Bear | 2909 | guild hall, house |
+| 107219 | Armored Action Centaur | 1907 | guild hall, house |
+| 107350 | The Punting Gnome | 994 | yard, guild yard |
+| 124273 | Miniature Action Lashun | 894 | guild hall, house |
 
 ## 3. Summons whose creature is missing (27)
 
 Their spell names a mount or pet Peridot's database doesn't have, so EQEmu can't summon them either.
 
-| Item | Item name | Spell | Names | Missing | Creature to use |
-|---|---|---|---|---|---|
-| 17572 | Collar of the Cursed Lupine | 20745 Familiar: Red Werewolf Cub | `FamiliarRedWerewolfCub` | `pets` row | |
-| 40700 | Familiar of Severilous | 12882 Familiar: Gilded Dragon | `FamiliarGildedDragon` | `pets` row | |
-| 43000 | Everburning Ember | 21381 Familiar: Fire Elemental | `FamiliarFireElemental` | `pets` row | |
-| 43596 | Cit Chac's Collar | 21621 Familiar: Puma Cub | `FamiliarPumaCub` | `pets` row | |
-| 44496 | Panpipes of the Dancer | 21639 Familiar: Satyr | `FamiliarSatyrBasic` | `pets` row | |
-| 45193 | Fae-Touched Gnome | 21650 Familiar: Pocket Gnome | `FamiliarPocketGnome` | `pets` row | |
-| 47088 | Stone Companion | 21930 Familiar: Stone Companion | `FamiliarStoneCompanion` | `pets` row | |
-| 47090 | Ticking Companion | 21932 Familiar: Ticking Companion | `FamiliarTickingCompanion` | `pets` row | |
-| 47091 | Springwork Spider | 21933 Familiar: Springwork Spider | `FamiliarSpringworkSpider` | `pets` row | |
-| 47812 | Captured Bone of the Lost | 21957 Familiar: Zombie | `FamiliarZombie` | `pets` row | |
-| 48090 | Unstable Ooze | 22473 Unstable Ooze | `FamiliarUnstableOoze` | `pets` row | |
-| 48092 | Spitting Ooze | 22475 Spitting Ooze | `FamiliarSpittingOoze` | `pets` row | |
-| 48979 | Guardian Wolf Whistle | 16905 Familiar: Guardian Wolf | `FamiliarGuardianWolf` | `pets` row | |
-| 48991 | Erollisi's Doll | 16914 Familiar: Erollisi's Doll | `FamiliarErrolisiDoll` | `pets` row | |
-| 48992 | Caged Aggressive Rat | 16915 Familiar: Aggressive Rat | `FamiliarAggressiveRat` | `pets` row | |
-| 52198 | Walking Death | 19999 Familiar: Walking Death | `FamiliarWalkingDeath` | `pets` row | |
-| 52285 | Clockwork Fireworks Engineer | 24065 Familiar: Clockwork Fireworks Engineer | `FamiliarFireworksEngineer` | `pets` row | |
-| 53769 | Verdant Selyrah Whistle | 12327 Verdant Selyrah | `SumMSLm4Run2` | `horses` row | |
-| 54931 | Spore Curer Bait | 24056 Spore Curer | `FamiliarDCSporali` | `pets` row | |
-| 54977 | Drake of Pure Nature | 17846 Drake of Pure Nature | `FamiliarPureNature` | `pets` row | |
-| 56063 | Familiar of Thankful Days | 23489 Familiar: Edible Aviak | `FamiliarEdibleAviak` | `pets` row | |
-| 57388 | Santug Claugg Familiar | 27380 Familiar: Santug Claugg | `FamiliarSantugClaugg` | `pets` row | |
-| 57888 | Solusek Ro Puppet | 27789 Solusek Ro Puppet | `FamiliarSolusekRoDoll` | `pets` row | |
-| 60939 | Venomous Raptor Familiar | 9696 Venomous Raptor Familiar | `FamiliarVenomousRaptor` | `pets` row | |
-| 61951 | Maraca Familiar | 27855 Maraca Familiar | `FamiliarMaraca` | `pets` row | |
-| 64702 | Tumbleweed Twig | 12340 Familiar: Tumbleweed | `FamiliarTumbleweed` | `pets` row | |
-| 64713 | Steamwork Companion | 12342 Familiar: Steamwork Flier | `FamiliarSteamworkCompanion` | `pets` row | |
+| Item | Item name | Spell | Names | Missing |
+|---|---|---|---|---|
+| 17572 | Collar of the Cursed Lupine | 20745 Familiar: Red Werewolf Cub | `FamiliarRedWerewolfCub` | `pets` row |
+| 40700 | Familiar of Severilous | 12882 Familiar: Gilded Dragon | `FamiliarGildedDragon` | `pets` row |
+| 43000 | Everburning Ember | 21381 Familiar: Fire Elemental | `FamiliarFireElemental` | `pets` row |
+| 43596 | Cit Chac's Collar | 21621 Familiar: Puma Cub | `FamiliarPumaCub` | `pets` row |
+| 44496 | Panpipes of the Dancer | 21639 Familiar: Satyr | `FamiliarSatyrBasic` | `pets` row |
+| 45193 | Fae-Touched Gnome | 21650 Familiar: Pocket Gnome | `FamiliarPocketGnome` | `pets` row |
+| 47088 | Stone Companion | 21930 Familiar: Stone Companion | `FamiliarStoneCompanion` | `pets` row |
+| 47090 | Ticking Companion | 21932 Familiar: Ticking Companion | `FamiliarTickingCompanion` | `pets` row |
+| 47091 | Springwork Spider | 21933 Familiar: Springwork Spider | `FamiliarSpringworkSpider` | `pets` row |
+| 47812 | Captured Bone of the Lost | 21957 Familiar: Zombie | `FamiliarZombie` | `pets` row |
+| 48090 | Unstable Ooze | 22473 Unstable Ooze | `FamiliarUnstableOoze` | `pets` row |
+| 48092 | Spitting Ooze | 22475 Spitting Ooze | `FamiliarSpittingOoze` | `pets` row |
+| 48979 | Guardian Wolf Whistle | 16905 Familiar: Guardian Wolf | `FamiliarGuardianWolf` | `pets` row |
+| 48991 | Erollisi's Doll | 16914 Familiar: Erollisi's Doll | `FamiliarErrolisiDoll` | `pets` row |
+| 48992 | Caged Aggressive Rat | 16915 Familiar: Aggressive Rat | `FamiliarAggressiveRat` | `pets` row |
+| 52198 | Walking Death | 19999 Familiar: Walking Death | `FamiliarWalkingDeath` | `pets` row |
+| 52285 | Clockwork Fireworks Engineer | 24065 Familiar: Clockwork Fireworks Engineer | `FamiliarFireworksEngineer` | `pets` row |
+| 53769 | Verdant Selyrah Whistle | 12327 Verdant Selyrah | `SumMSLm4Run2` | `horses` row |
+| 54931 | Spore Curer Bait | 24056 Spore Curer | `FamiliarDCSporali` | `pets` row |
+| 54977 | Drake of Pure Nature | 17846 Drake of Pure Nature | `FamiliarPureNature` | `pets` row |
+| 56063 | Familiar of Thankful Days | 23489 Familiar: Edible Aviak | `FamiliarEdibleAviak` | `pets` row |
+| 57388 | Santug Claugg Familiar | 27380 Familiar: Santug Claugg | `FamiliarSantugClaugg` | `pets` row |
+| 57888 | Solusek Ro Puppet | 27789 Solusek Ro Puppet | `FamiliarSolusekRoDoll` | `pets` row |
+| 60939 | Venomous Raptor Familiar | 9696 Venomous Raptor Familiar | `FamiliarVenomousRaptor` | `pets` row |
+| 61951 | Maraca Familiar | 27855 Maraca Familiar | `FamiliarMaraca` | `pets` row |
+| 64702 | Tumbleweed Twig | 12340 Familiar: Tumbleweed | `FamiliarTumbleweed` | `pets` row |
+| 64713 | Steamwork Companion | 12342 Familiar: Steamwork Flier | `FamiliarSteamworkCompanion` | `pets` row |
 
 ## Reference: NPCs in the Guild Lobby and classic Guild Hall (46)
 
