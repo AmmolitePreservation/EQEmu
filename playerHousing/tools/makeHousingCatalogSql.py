@@ -25,7 +25,6 @@ neighborhoodDefinitionId = 2
 neighborhoodZoneId = 712
 regionBelowGround = 100.0
 regionAboveGround = 900.0
-evictionCrateCapacity = 3000
 stoneMatchUnits = 6.0
 # Live's alternate currency ids (eqlib's ALTCURRENCY) and the EQEmu expansion (Expansion::ExpansionNumber) each arrived in.
 currencyExpansions = {10: 13, 11: 13, 12: 13, 13: 13, 14: 14, 15: 15}
@@ -106,7 +105,7 @@ def itemDefinition(group):
       raise ValueError(f"definition {group['definition']}: no {tier} in its size: {names}")
     maxItems, vault = caps[tier]
     name = f"{'Manor' if tier == 'Manor' else ('Three' if threeRoom else 'One') + '-room ' + tier}, {finish} interior"
-    return dict(name=name, type=typePlayerHouse, maxItems=maxItems, vault=vault, pets=0, zone=zones[finish])
+    return dict(name=name, type=typePlayerHouse, maxItems=maxItems, vault=vault, pets=0, zone=zones[finish], launchCapacity=tier != 'Manor')
   if len(names) != 1:
     raise ValueError(f"definition {group['definition']}: unrecognized items {names}")
   name = names[0]
@@ -114,12 +113,12 @@ def itemDefinition(group):
     if not group['placeable'] & placeableInGuildPlots:
       raise ValueError(f'{name}: not placeable in guild yards')
     zone, maxItems = guildHalls[name]
-    return dict(name=name, type=typeGuildHall, maxItems=maxItems, vault=0, pets=0, zone=zone)
+    return dict(name=name, type=typeGuildHall, maxItems=maxItems, vault=0, pets=0, zone=zone, launchCapacity=False)
   crate = re.fullmatch(r'(.+) Storage Crate', name)
   if crate and crate.group(1) in storageCrates:
-    return dict(name=name, type=typeMovingCrate, maxItems=storageCrates[crate.group(1)], vault=0, pets=0, zone=0)
+    return dict(name=name, type=typeMovingCrate, maxItems=storageCrates[crate.group(1)], vault=0, pets=0, zone=0, launchCapacity=False)
   if name == 'Crate of Eviction':
-    return dict(name=name, type=typeMovingCrate, maxItems=evictionCrateCapacity, vault=evictionCrateCapacity, pets=evictionCrateCapacity, zone=0)
+    return dict(name=name, type=typeMovingCrate, maxItems=0, vault=0, pets=0, zone=0, launchCapacity=False)
   raise ValueError(f"definition {group['definition']}: unrecognized item {name}")
 
 
@@ -182,16 +181,22 @@ def main():
   for costId, amount in sorted(itemUpkeeps.items()):
     if costId not in liveCosts or coin(costId) != amount:
       raise ValueError(f"item upkeep {costId}: the plan's {amount} copper is not Live's {coin(costId) if costId in liveCosts else 'missing cost'}")
+  capacityMismatches = []
   for group in sorted(groups, key=lambda g: g['definition']):
     entry = itemDefinition(group)
     live = liveDefinitions.get(group['definition'])
     if live is None:
       raise ValueError(f"definition {group['definition']} ({entry['name']}) is not in Live's catalog")
+    if not entry['launchCapacity'] and (entry['maxItems'], entry['vault']) != (int(live['maxItems']), int(live['maxNonRealEstateItems'])):
+      capacityMismatches.append(f"definition {group['definition']} ({entry['name']}): items {entry['maxItems']} / vault {entry['vault']}, Live's "
+                                f"{live['maxItems']} / {live['maxNonRealEstateItems']}")
     if group['upkeep'] and group['upkeep'] not in itemUpkeeps:
       raise ValueError(f"definition {group['definition']}: upkeep id {group['upkeep']} is not in the plan's item upkeep table")
     definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, purchase=int(live['costDefinition']),
                             upkeep=int(live['upkeepDefinition']), houses=0, maxItems=entry['maxItems'], vault=entry['vault'], pets=entry['pets'],
                             origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
+  if capacityMismatches:
+    raise ValueError('capacities differing from Live:\n' + '\n'.join(capacityMismatches))
   if len({d['id'] for d in definitions}) != len(definitions):
     raise ValueError('duplicate definition ids')
   corners = [footprint(region) for region in regions]

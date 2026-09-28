@@ -79,7 +79,7 @@ check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CON
 check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
       '38:345:1000:0:0,39:738:1500:0:0,40:737:2000:0:0,41:751:1500:0:0')
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",
-      '31:3000:3000:3000,174:50:0:0,183:500:0:0,184:100:0:0')
+      '31:0:0:0,174:50:0:0,183:500:0:0,184:100:0:0')
 check('item upkeep: station, three-room Domicile, Estate crate', "SELECT GROUP_CONCAT(CONCAT(cost_id, ':', amount) ORDER BY cost_id) FROM real_estate_cost_items WHERE cost_id IN (6, 20, 35) AND currency = 0", '6:100,20:7350,35:220')
 check('neighborhood words by position', "SELECT GROUP_CONCAT(n ORDER BY position) FROM (SELECT position, COUNT(*) AS n FROM real_estate_neighborhood_words GROUP BY position) w", '10,5,15')
 
