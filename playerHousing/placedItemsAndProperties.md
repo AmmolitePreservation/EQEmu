@@ -189,7 +189,7 @@ Verified as a context menu from the client's own menu code: `[0x15d391c]` is the
 
 ### Menu entry `{u32 type, u32 b, u32 labelID, u32 d}`
 
-- **`labelID`:** a **`dbstr_us.txt` category 28 id**, looked up with `[0xd1f380]->0x4866c0(id, 0x1c, 0)`. Category 28 in the owner's file holds 132 interaction actions, for example "Stay", "Follow Me", "Open the Door", "Pose: Sit / Stand", "Activate/Deactivate Idol", "Fly / Stop Flying", "Pet the Tiny Bear".
+- **`labelID`:** for a **type 9** entry or a **type `0xa`** submenu header, a **`dbstr_us.txt` category 28 id**, looked up with `[0xd1f380]->0x4866c0(id, 0x1c, 0)`; for **every other type**, an **`eqstr_us.txt` id**, looked up with `[0xdd25c4]->0x7d0660(id, 0)` (the type 9 test at `0x737b2b`; Live's client makes the same split at `0x1404f3a20`, and its own menus label Enter, Inspect, Show Items and Help, types 1, 7, `0xb` and `0xe`, with eqstr 723, 720, 5285 and 13300). Category 28 in the owner's file holds 132 interaction actions, for example "Stay", "Follow Me", "Open the Door", "Pose: Sit / Stand", "Activate/Deactivate Idol", "Fly / Stop Flying", "Pet the Tiny Bear".
 - **`type`:** -1 means an empty slot, which is skipped. Type `0xa` entries go into a **submenu** keyed by `d`: an existing submenu with that key is reused, otherwise a new one is created. Types choose the text color:
   - `0x12`: `0xffc04080`
   - 1, 8, 9, `0xa`, `0xc`, `0xd`: `0xff40c0c0`
