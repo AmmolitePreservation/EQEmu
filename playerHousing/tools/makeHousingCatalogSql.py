@@ -30,13 +30,11 @@ stoneMatchUnits = 6.0
 currencyExpansions = {10: 13, 11: 13, 12: 13, 13: 13, 14: 14, 15: 15}
 
 threeRoomStyles, oneRoomStyles = {'Monel', 'Zimel'}, {'Behroe', 'Cobbler'}
-threeRoomCaps = {'Hut': (300, 0), 'House': (300, 40), 'Residence': (300, 80), 'Domicile': (300, 120), 'Manor': (500, 300)}
-oneRoomCaps = {'Hut': (100, 0), 'House': (100, 20), 'Residence': (100, 40), 'Domicile': (100, 60)}
+threeRoomTiers, oneRoomTiers = {'Hut', 'House', 'Residence', 'Domicile', 'Manor'}, {'Hut', 'House', 'Residence', 'Domicile'}
 threeRoomZones = {'Stucco': 714, 'Wood': 716, 'Stone': 717}
 oneRoomZones = {'Stucco': 715, 'Wood': 718, 'Stone': 719}
-guildHalls = {'Standard Guild Hall': (345, 1000), 'Grand Guild Hall': (738, 1500), 'Palatial Guild Hall': (737, 2000), 'Modest Guild Hall': (751, 1500)}
-storageCrates = {'Small': 50, 'Hut': 100, 'All Hallows Eve': 100, 'Medium': 150, 'Domicile': 200, 'Large': 250, 'House': 300,
-                 'Giant': 350, 'Mansion': 400, 'Enormous': 450, 'Estate': 500}
+guildHallZones = {'Standard Guild Hall': 345, 'Grand Guild Hall': 738, 'Palatial Guild Hall': 737, 'Modest Guild Hall': 751}
+storageCrates = {'Small', 'Hut', 'All Hallows Eve', 'Medium', 'Domicile', 'Large', 'House', 'Giant', 'Mansion', 'Enormous', 'Estate'}
 typeGuildHall, typePlayerHouse, typePlot, typeNeighborhood, typeMovingCrate, typeGuildPlot = 2, 3, 4, 5, 7, 8
 placeableInPlots, placeableInGuildPlots = 0x08, 0x80
 
@@ -100,25 +98,23 @@ def itemDefinition(group):
     threeRoom, oneRoom, tier, finish = kinds.pop()
     if threeRoom == oneRoom or not group['placeable'] & placeableInPlots:
       raise ValueError(f"definition {group['definition']}: not a one- or three-room house placeable in yards: {names}")
-    caps, zones = (threeRoomCaps, threeRoomZones) if threeRoom else (oneRoomCaps, oneRoomZones)
-    if tier not in caps:
+    tiers, zones = (threeRoomTiers, threeRoomZones) if threeRoom else (oneRoomTiers, oneRoomZones)
+    if tier not in tiers:
       raise ValueError(f"definition {group['definition']}: no {tier} in its size: {names}")
-    maxItems, vault = caps[tier]
     name = f"{'Manor' if tier == 'Manor' else ('Three' if threeRoom else 'One') + '-room ' + tier}, {finish} interior"
-    return dict(name=name, type=typePlayerHouse, maxItems=maxItems, vault=vault, pets=0, zone=zones[finish], launchCapacity=tier != 'Manor')
+    return dict(name=name, type=typePlayerHouse, zone=zones[finish])
   if len(names) != 1:
     raise ValueError(f"definition {group['definition']}: unrecognized items {names}")
   name = names[0]
-  if name in guildHalls:
+  if name in guildHallZones:
     if not group['placeable'] & placeableInGuildPlots:
       raise ValueError(f'{name}: not placeable in guild yards')
-    zone, maxItems = guildHalls[name]
-    return dict(name=name, type=typeGuildHall, maxItems=maxItems, vault=0, pets=0, zone=zone, launchCapacity=False)
+    return dict(name=name, type=typeGuildHall, zone=guildHallZones[name])
   crate = re.fullmatch(r'(.+) Storage Crate', name)
   if crate and crate.group(1) in storageCrates:
-    return dict(name=name, type=typeMovingCrate, maxItems=storageCrates[crate.group(1)], vault=0, pets=0, zone=0, launchCapacity=False)
+    return dict(name=name, type=typeMovingCrate, zone=0)
   if name == 'Crate of Eviction':
-    return dict(name=name, type=typeMovingCrate, maxItems=0, vault=0, pets=0, zone=0, launchCapacity=False)
+    return dict(name=name, type=typeMovingCrate, zone=0)
   raise ValueError(f"definition {group['definition']}: unrecognized item {name}")
 
 
@@ -175,28 +171,22 @@ def main():
                         sizeZ=regionBelowGround + regionAboveGround, heading=plot['heading']))
     origin = (*plot['doorPosition'], plot['heading']) if guild else stones[plot['door']]
     definitions.append(dict(id=liveId, name=plot['address'], type=typeGuildPlot if guild else typePlot, region=regionId, purchase=purchase,
-                            upkeep=upkeep, houses=int(live['maxChildren']), maxItems=plot['capacity'], vault=plot.get('vault', 0),
+                            upkeep=upkeep, houses=int(live['maxChildren']), maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']),
                             pets=int(live['maxNpcItems']), origin=origin, zone=0))
   itemUpkeeps = readPlanItemUpkeeps()
   for costId, amount in sorted(itemUpkeeps.items()):
     if costId not in liveCosts or coin(costId) != amount:
       raise ValueError(f"item upkeep {costId}: the plan's {amount} copper is not Live's {coin(costId) if costId in liveCosts else 'missing cost'}")
-  capacityMismatches = []
   for group in sorted(groups, key=lambda g: g['definition']):
     entry = itemDefinition(group)
     live = liveDefinitions.get(group['definition'])
     if live is None:
       raise ValueError(f"definition {group['definition']} ({entry['name']}) is not in Live's catalog")
-    if not entry['launchCapacity'] and (entry['maxItems'], entry['vault']) != (int(live['maxItems']), int(live['maxNonRealEstateItems'])):
-      capacityMismatches.append(f"definition {group['definition']} ({entry['name']}): items {entry['maxItems']} / vault {entry['vault']}, Live's "
-                                f"{live['maxItems']} / {live['maxNonRealEstateItems']}")
     if group['upkeep'] and group['upkeep'] not in itemUpkeeps:
       raise ValueError(f"definition {group['definition']}: upkeep id {group['upkeep']} is not in the plan's item upkeep table")
     definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, purchase=int(live['costDefinition']),
-                            upkeep=int(live['upkeepDefinition']), houses=0, maxItems=entry['maxItems'], vault=entry['vault'], pets=entry['pets'],
+                            upkeep=int(live['upkeepDefinition']), houses=0, maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']), pets=0,
                             origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
-  if capacityMismatches:
-    raise ValueError('capacities differing from Live:\n' + '\n'.join(capacityMismatches))
   if len({d['id'] for d in definitions}) != len(definitions):
     raise ValueError('duplicate definition ids')
   corners = [footprint(region) for region in regions]
