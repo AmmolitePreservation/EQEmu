@@ -17,7 +17,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(1.2);
+PLUGIN_VERSION(1.3);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -389,7 +389,7 @@ namespace {
     }
 
     out << "[itemLists] itemList\tkey\trealEstateId\tnonRealEstateItemCount\tnpcItemCount\tupkeepItemCount\n";
-    out << "  placedItem\tkey\trealEstateId\trealEstateItemId\tplaced\tupkeepExpiredTime\tx\ty\tz\theading\tpitch\troll\townerName\townerHandle\townerNameHashKey\n";
+    out << "  placedItem\tkey\trealEstateId\trealEstateItemId\tplaced\tupkeepExpiredTime\tx\ty\tz\theading\tpitch\troll\townerName\townerHandle\townerNameHashKey\ttint\n";
     for (auto *entry = hasEntries(manager->itemLists) ? manager->itemLists.WalkFirstEntry() : nullptr; entry; entry = manager->itemLists.WalkNextEntry(entry)) {
       RealEstateItems *list = entry->value();
       if (!list) {
@@ -402,12 +402,13 @@ namespace {
         if (!placed) {
           continue;
         }
+        const ItemPtr item = placed->GetItem();
         out << "placedItem\t" << itemEntry->key() << '\t' << placed->GetRealEstateId() << '\t' << placed->GetRealEstateItemId() << '\t' << (placed->IsPlaced() ? 1 : 0) << '\t'
           << static_cast<long long>(placed->GetUpkeepExpiredTime()) << '\t' << placed->GetX() << '\t' << placed->GetY() << '\t' << placed->GetZ() << '\t'
           << placed->GetHeading() << '\t' << placed->GetPitch() << '\t' << placed->GetRoll() << '\t' << tsvText(placed->GetOwnerName().c_str()) << '\t'
-          << tsvText(placed->GetOwnerHandle().c_str()) << '\t' << placed->GetOwnerNameHashKey() << '\n';
+          << tsvText(placed->GetOwnerHandle().c_str()) << '\t' << placed->GetOwnerNameHashKey() << '\t' << (item ? fmt::format("{:08X}", item->Tint) : std::string()) << '\n';
         writeRaw(out, *placed);
-        if (ItemPtr item = placed->GetItem()) {
+        if (item) {
           writeItem(out, item.get());
         }
         ++placedItems;
