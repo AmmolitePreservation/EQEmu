@@ -4,37 +4,37 @@ Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/expo
 
 ## 1. Guild services and decorations (27)
 
-Races are Live's defaults, the race most halls show: the others seen are owners' re-skins with the Convoluted Assistant Appearance Augmentater (item 66656). Each dummy's level is likewise the one most halls show; the dummies rise from 50 (Azia) to 95 (Paza, Qela).
+Each NPC's look is the one in The Templar's Palatial Guild Hall (the owner's, never re-skinned: Bristlebane property 65484252), which has every item here but the pool and Hyredel Swiftstride; other races seen in other halls are owners' re-skins with the Convoluted Assistant Appearance Augmentater (item 66656). Live names the dummies Training Dummy: \<expansion\>, each at its expansion's level cap.
 
 | Item | Item name | Placeable in | Max per property | NO DROP | Respawn | Related NPCs | NPC to use |
 |---|---|---|---|---|---|---|---|
-| 66639 | Friendly Guild General Supply Merchant | guild hall | any | no | 750 | 345000 Yenny Werlikanin | Live's look, race 6 (Dark Elf), class 41, level 70; function in S5 |
-| 66640 | Friendly Guild Teleportation Assistant | guild hall | any | no | 750 | 345005 #Porter | Live's look, race 12 (Gnome), class 41, level 70; function in S5 |
-| 66641 | Friendly Guild Personal-Banker | guild hall | any | no | 750 | 345002 a bank broker; 344014 A Shrewd Banker; 344023 A Shrewd Banker | Live's look, race 3 (Erudite), class 40, level 99; function in S5 |
-| 66642 | Friendly Guild Guild-Banker | guild hall | any | no | 750 | 345003 a guild treasurer | Live's look, race 1 (Human), class 66, level 70; function in S5 |
-| 66643 | Friendly Guild Guild-Tribute Master | guild hall | any | no | 750 | 345001 Melody the Singer of Great Deeds | Live's look, race 522 (Drakkin), class 64, level 70; function in S5 |
-| 66644 | Friendly Guild Personal-Tribute Master | guild hall | any | no | 750 | none in the guild zones | Live's look, race 5 (High Elf), class 74, level 70; function in S5 |
+| 66639 | Friendly Guild General Supply Merchant | guild hall | any | no | 750 | 345000 Yenny Werlikanin | The Templar's: race 6 (Dark Elf), female, class 41, level 70, size 5; function in S5 |
+| 66640 | Friendly Guild Teleportation Assistant | guild hall | any | no | 750 | 345005 #Porter | The Templar's: race 12 (Gnome), male, class 41, level 70, size 3; function in S5 |
+| 66641 | Friendly Guild Personal-Banker | guild hall | any | no | 750 | 345002 a bank broker; 344014 A Shrewd Banker; 344023 A Shrewd Banker | The Templar's: race 3 (Erudite), male, class 40, level 99, size 6; function in S5 |
+| 66642 | Friendly Guild Guild-Banker | guild hall | any | no | 750 | 345003 a guild treasurer | The Templar's: race 1 (Human), female, class 66, level 70, size 6; function in S5 |
+| 66643 | Friendly Guild Guild-Tribute Master | guild hall | any | no | 750 | 345001 Melody the Singer of Great Deeds | The Templar's: race 522 (Drakkin), female, class 64, level 70, size 5.7; function in S5 |
+| 66644 | Friendly Guild Personal-Tribute Master | guild hall | any | no | 750 | none in the guild zones | The Templar's: race 5 (High Elf), male, class 74, level 70, size 6; function in S5 |
 | 66645 | Guild Regeneration Pool | guild hall | 1 | no | 38 | 345006 #Healer | none: an interactive object (`IT23628`); its aura is spell 31874 (`serverPlan.md`) |
-| 66646 | Guild Teleportation Device | guild hall | 1 | no | 750 | 345005 #Porter | Live's look, race 706, class 1, level 70; function in S5 |
-| 66647 | Friendly Guild Parcel Delivery Liaison | guild hall | any | yes | 750 |  | Live's look, race 1 (Human), class 41, level 70; function in S5 |
-| 66648 | Hyredel Swiftstride | guild hall, house | 1 | yes | 750 |  | Live's look, race 7 (Half Elf), class 41, level 70; function in S5 |
-| 66700 | Decorative Dummy: Azia | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 50 |
-| 66701 | Decorative Dummy: Beza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 60 |
-| 66702 | Decorative Dummy: Caza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 60 |
-| 66703 | Decorative Dummy: Dena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 65 |
-| 66704 | Decorative Dummy: Ena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 65 |
-| 66705 | Decorative Dummy: Fana | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66706 | Decorative Dummy: Geza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66707 | Decorative Dummy: Heda | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66708 | Decorative Dummy: Izah | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66709 | Decorative Dummy: Jaka | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66710 | Decorative Dummy: Kala | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 70 |
-| 66711 | Decorative Dummy: Lena | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 75 |
-| 66712 | Decorative Dummy: Meda | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 80 |
-| 66713 | Decorative Dummy: Neza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 85 |
-| 66714 | Decorative Dummy: Ozah | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 90 |
-| 66715 | Decorative Dummy: Paza | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 95 |
-| 66716 | Decorative Dummy: Qela | guild hall | any | yes | 750 |  | Live's look, race 608, class 1, level 95 |
+| 66646 | Guild Teleportation Device | guild hall | 1 | no | 750 | 345005 #Porter | The Templar's: race 706, neutral, class 1, level 70, size 6; function in S5 |
+| 66647 | Friendly Guild Parcel Delivery Liaison | guild hall | any | yes | 750 |  | The Templar's: race 1 (Human), female, class 41, level 70, size 6; function in S5 |
+| 66648 | Hyredel Swiftstride | guild hall, house | 1 | yes | 750 |  | Live's (not in The Templar's hall; the same in Ring of Valor's and Gathered Might Village II's): race 7 (Half Elf), male, class 41, level 70, size 5.3; function in S5 |
+| 66700 | Decorative Dummy: Azia | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 50, size 6 (Live: Training Dummy: Pre-Planes of Power) |
+| 66701 | Decorative Dummy: Beza | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 60, size 6 (Live: Training Dummy: The Planes of Power) |
+| 66702 | Decorative Dummy: Caza | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 60, size 6 (Live: Training Dummy: The Legacy of Ykesha) |
+| 66703 | Decorative Dummy: Dena | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 65, size 6 (Live: Training Dummy: Lost Dungeons of Norrath) |
+| 66704 | Decorative Dummy: Ena | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 65, size 6 (Live: Training Dummy: Gates of Discord) |
+| 66705 | Decorative Dummy: Fana | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: Omens of War) |
+| 66706 | Decorative Dummy: Geza | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: Dragons of Norrath) |
+| 66707 | Decorative Dummy: Heda | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: Depths of Darkhollow) |
+| 66708 | Decorative Dummy: Izah | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: Prophecy of Ro) |
+| 66709 | Decorative Dummy: Jaka | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: The Serpent's Spine) |
+| 66710 | Decorative Dummy: Kala | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 70, size 6 (Live: Training Dummy: The Buried Sea) |
+| 66711 | Decorative Dummy: Lena | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 75, size 6 (Live: Training Dummy: Secrets of Faydwer) |
+| 66712 | Decorative Dummy: Meda | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 80, size 6 (Live: Training Dummy: Seeds of Destruction) |
+| 66713 | Decorative Dummy: Neza | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 85, size 6 (Live: Training Dummy: Underfoot) |
+| 66714 | Decorative Dummy: Ozah | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 90, size 6 (Live: Training Dummy: House of Thule) |
+| 66715 | Decorative Dummy: Paza | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 95, size 6 (Live: Training Dummy: Veil of Alaris [Easy]) |
+| 66716 | Decorative Dummy: Qela | guild hall | any | yes | 750 |  | The Templar's: race 608, neutral, class 1, level 95, size 6 (Live: Training Dummy: Veil of Alaris [Hard]) |
 
 ## 2. House pets with no summoning spell (59)
 
