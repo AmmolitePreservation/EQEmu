@@ -190,6 +190,7 @@ body{font:13px system-ui,sans-serif;margin:0;display:flex;height:100vh;backgroun
 .noimg{width:188px;height:188px;display:flex;align-items:center;justify-content:center;background:#111;color:#777;text-align:center}
 button{background:#3a4a6a;color:#eee;border:0;border-radius:4px;padding:3px 8px;cursor:pointer;margin:2px}
 input{background:#26282e;color:#eee;border:1px solid #444;border-radius:4px;padding:4px;width:95%}h3{margin:14px 0 6px}.dim{color:#999}
+.warn{color:#e0b050}
 </style></head><body><div id="items"><label><input type="checkbox" id="missingOnly" checked style="width:auto"> missing only</label>
 <input id="itemFilter" placeholder="filter items"><div id="itemList"></div></div><div id="detail">Pick an item.</div><script>
 let data, current = null;
@@ -228,14 +229,24 @@ async function show(itemId) {
     <button onclick="needsCapture()">Needs capture</button><button onclick="clearItem()">Clear</button>
     <h3>${query ? 'Matching' : 'Suggested'} looks (${shown.length})</h3><input id="candidateFilter" placeholder="search every look by name or race, Enter to apply" value="${esc(query)}"
     onkeydown="if(event.key==='Enter')show(current)"><div class="grid">${shown.map(card).join('')}</div>`;
-  shown.forEach(async (c, index) => { variants[index] = await (await fetch(`/variants?race=${c.race}&gender=${c.gender}`)).json(); variantIndex[index] = 0; paint(index); });
+  shown.forEach(async (c, index) => {
+    const list = variants[index] = await (await fetch(`/variants?race=${c.race}&gender=${c.gender}`)).json();
+    const texture = captured(c.textureType), head = captured(c.headType);
+    let pick = list.findIndex(v => v[1] === texture && v[2] === head);
+    if (pick < 0) pick = list.findIndex(v => v[1] === texture);
+    variantIndex[index] = Math.max(pick, 0);
+    paint(index);
+  });
 }
+const captured = value => String(value ?? '').split(' | ')[0];
 function paint(index) {
   const list = variants[index] || [], box = document.getElementById('img' + index), label = document.getElementById('var' + index);
   if (!list.length) { box.outerHTML = `<div id="img${index}" class="noimg">no image for this race</div>`; label.textContent = ''; return; }
-  const [gender, texture, helm] = list[variantIndex[index]];
+  const [gender, texture, helm] = list[variantIndex[index]], wanted = captured(shown[index].textureType);
   box.outerHTML = `<img id="img${index}" src="/image?race=${shown[index].race}&gender=${gender}&texture=${texture}&helm=${helm}">`;
-  label.textContent = `image ${variantIndex[index] + 1} of ${list.length}: gender ${gender}, texture ${texture}, helm ${helm}`;
+  const hasWanted = list.some(v => v[1] === wanted);
+  label.innerHTML = `image ${variantIndex[index] + 1} of ${list.length}: gender ${gender}, texture ${texture}, helm ${helm}`
+    + (hasWanted ? '' : ` <span class="warn">no render for captured texture ${esc(wanted)}</span>`);
 }
 function step(index, delta) { const n = (variants[index] || []).length; if (n) { variantIndex[index] = (variantIndex[index] + delta + n) % n; paint(index); } }
 async function post(path, body) { const r = await fetch(path, {method: 'POST', body: JSON.stringify(body)}); if (!r.ok) alert(await r.text()); await load(); }
