@@ -457,17 +457,34 @@ def ingestZone(tables, capture):
     'placedObjects': len(capture.all('placedObject')), 'mismatchedPlacedObjects': mismatchedObjects, 'unlinkedItemSpawns': unlinkedSpawns}
 
 
-def writeNpcItems(tables):
+def readItemsTxt():
+  with (researchDirectory / 'itemsTxt' / 'itemsTxtExtract.tsv').open(encoding='latin-1', newline='') as source:
+    return {row['id']: row for row in csv.DictReader(source, delimiter='\t')}
+
+
+def itemsTxtConflicts(tables, extract):
+  conflicts = []
+  for (itemId,), row in tables['items'].rows.items():
+    captured, listed = row['stable'].get('housepetFileName'), extract.get(itemId, {}).get('placeablenpcname')
+    if 'name' in row['stable'] and listed is not None and captured != listed:
+      conflicts.append(('itemsTxt', itemId, 'housepetFileName', captured, listed, 'itemsTxtExtract.tsv'))
+  return conflicts
+
+
+def writeNpcItems(tables, extract):
   looks = tables['npcLooks'].rows
+  captured = tables['items'].rows
+  modelled = {key[0] for key, row in captured.items() if row['stable'].get('housepetFileName')}
+  modelled |= {itemId for itemId, row in extract.items() if row['placeablenpcname'] and 'name' not in captured.get((itemId,), {'stable': {}})['stable']}
   with (masterDirectory / 'npcItems.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
-    writer.writerow(['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'placeable', 'npcName', 'lookSource'] + npcLookFields + ['soldBy'])
-    for key in sorted(tables['items'].rows, key=sortKey):
-      row = tables['items'].rows[key]
+    writer.writerow(['itemId', 'name', 'housepetFileName', 'modelSource', 'npcRespawnInterval', 'placeable', 'npcName', 'lookSource'] + npcLookFields
+                    + ['soldBy'])
+    for itemId in sorted(modelled, key=int):
+      row = captured.get((itemId,), {'stable': {}, 'sets': collections.defaultdict(set)})
       stable = row['stable']
-      housepet = stable.get('housepetFileName', '')
-      if not housepet:
-        continue
+      fromCapture = bool(stable.get('housepetFileName'))
+      housepet = stable['housepetFileName'] if fromCapture else extract[itemId]['placeablenpcname']
       linked = sorted(name for name in row['sets']['npcNames'] if (name,) in looks)
       npcName, lookSource = (linked[0], 'itemList') if linked else (housepet, 'housepetName')
       look = looks.get((npcName,))
@@ -475,8 +492,9 @@ def writeNpcItems(tables):
         npcName, lookSource = '', ''
       field = lambda name: look['stable'].get(name) or ' | '.join(sorted(look['sets'].get(name, ())))
       values = [field(name) for name in npcLookFields] if look else [''] * len(npcLookFields)
-      writer.writerow([tsvText(value) for value in [key[0], stable.get('name', ''), housepet, stable.get('npcRespawnInterval', ''),
-        stable.get('placeable', ''), npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
+      writer.writerow([tsvText(value) for value in [itemId, stable.get('name') or extract[itemId]['name'], housepet,
+        'capture' if fromCapture else 'items.txt', stable.get('npcRespawnInterval', ''), stable.get('placeable') or extract[itemId]['placeablebitfield'],
+        npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
 
 
 def main():
@@ -492,11 +510,12 @@ def main():
       'zone': capture.zoneShortName, 'zoneId': capture.header['zone']['zoneId'], 'instance': capture.header['zone']['instance'],
       **{field: str(value) for field, value in counts.items()}})
   del tables['fields']
+  extract = readItemsTxt()
   masterDirectory.mkdir(exist_ok=True)
   for table in list(tables.values()) + list(fieldTables.values()):
     table.write()
-  writeNpcItems(tables)
-  conflicts = [conflict for table in tables.values() for conflict in table.conflicts]
+  writeNpcItems(tables, extract)
+  conflicts = [conflict for table in tables.values() for conflict in table.conflicts] + itemsTxtConflicts(tables, extract)
   with (masterDirectory / 'conflicts.tsv').open('w', encoding='latin-1', newline='') as out:
     writer = csv.writer(out, delimiter='\t', lineterminator='\n')
     writer.writerow(['table', 'key', 'field', 'earlierValue', 'laterValue', 'laterCapture'])
