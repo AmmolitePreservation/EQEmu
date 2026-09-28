@@ -5,7 +5,7 @@ position advanced by N (cursor = {buffer, length, position}). This prints, in ad
 load is integer or floating point, and every call (sub-readers such as the string reader), so a reader's layout comes from the
 binary, not from a document.
 
-Usage: python3 traceClientReader.py 0x7f4c90 [0x...]
+Usage: python3 traceClientReader.py eqgameRoF2.exe 0x7f4c90 [0x...]
 """
 import os, re, sys
 here = os.path.dirname(os.path.abspath(__file__))
@@ -13,7 +13,6 @@ sys.path.insert(0, os.path.join(here, '..'))
 from realEstateOpcodeScan import ClientImage
 from clientAnalysis import functionDisassembly
 
-client = ClientImage('/mnt/user-data/uploads/eqgame.exe')
 
 
 def trace(function, limit=0x3000):
@@ -42,7 +41,8 @@ def trace(function, limit=0x3000):
 
 
 if __name__ == '__main__':
-  for arg in sys.argv[1:]:
+  client = ClientImage(sys.argv[1])
+  for arg in sys.argv[2:]:
     print(f'== {arg}')
     for address, event in trace(int(arg, 16)):
       print(f'  {address:x}  {event}')
