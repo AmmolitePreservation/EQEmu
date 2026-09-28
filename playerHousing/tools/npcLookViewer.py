@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Local viewer for pairing NPC items with captured looks (content/npcItemsToAuthor.md, research/live/master).
+"""Local viewer for pairing NPC items with captured looks (content/npcItemsToAuthor.md, a livedumps clone's master/).
 
 Serves a page on 127.0.0.1 and opens it: each worksheet item beside the captured looks most like it, with model images from an
 eq-asset-preview clone (assets/npc_models/CTN_<race>_<gender>_<texture>_<helm>.png). Each assignment is written at once to
 content/npcLookAssignments.tsv.
-Usage: python npcLookViewer.py --assets <eq-asset-preview clone> [--port 8765]
+Usage: python npcLookViewer.py --live <livedumps clone> --assets <eq-asset-preview clone> [--port 8765]
 """
 import argparse, csv, json, os, re, threading, time, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 
 here = os.path.dirname(os.path.abspath(__file__))
 housing = os.path.join(here, '..')
-master = os.path.join(housing, 'research', 'live', 'master')
+master = None
 assignmentsPath = os.path.join(housing, 'content', 'npcLookAssignments.tsv')
 assignmentColumns = ['itemId', 'itemName', 'decision', 'candidate', 'race', 'gender', 'texture', 'helm', 'height', 'actorDef', 'note', 'updated']
 ownerNamed = re.compile(r"`s (familiar|mount|warder|pet)$", re.I)
@@ -276,9 +276,14 @@ document.getElementById('itemFilter').oninput = renderItems; load();
 
 def main():
   parser = argparse.ArgumentParser(description='Pair NPC items with captured looks.')
+  parser.add_argument('--live', required=True, help='a livedumps clone')
   parser.add_argument('--assets', required=True, help='an eq-asset-preview clone')
   parser.add_argument('--port', type=int, default=8765)
   arguments = parser.parse_args()
+  global master
+  master = os.path.join(arguments.live, 'master')
+  if not os.path.isdir(master):
+    raise SystemExit(f'{master} does not exist: --live must be a livedumps clone')
   Viewer.assetsRoot = os.path.join(arguments.assets, 'assets', 'npc_models')
   if not os.path.isdir(Viewer.assetsRoot):
     raise SystemExit(f'{Viewer.assetsRoot} does not exist: --assets must be an eq-asset-preview clone')

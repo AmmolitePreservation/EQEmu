@@ -3,15 +3,18 @@ tested schema; the counts; the zone loader's rules; every definition the item ex
 the plot regions under the client's own containment rule; regeneration; a refused second run; and a failure part way leaving
 the catalog empty.
 
-Usage: python3 testHousingCatalog.py
+Usage: python3 testHousingCatalog.py --live <livedumps clone>
 """
-import csv, json, math, os, subprocess, sys
+import argparse, csv, json, math, os, subprocess, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
 from regionMatrix import boxToMatrix, clientContains
 
 catalogPath = os.path.join(here, '..', 'sql', 'housingCatalog.sql')
+parser = argparse.ArgumentParser(description='Test sql/housingCatalog.sql.')
+parser.add_argument('--live', required=True, help='a livedumps clone')
+liveClone = parser.parse_args().live
 
 
 def sql(text, expectError=False):
@@ -34,7 +37,7 @@ def freshDatabase():
 
 
 catalog = open(catalogPath).read()
-generator = subprocess.run([sys.executable, os.path.join(here, 'makeHousingCatalogSql.py')], capture_output=True, text=True, check=True)
+generator = subprocess.run([sys.executable, os.path.join(here, 'makeHousingCatalogSql.py'), '--live', liveClone], capture_output=True, text=True, check=True)
 if open(catalogPath).read() != catalog:
   raise AssertionError('sql/housingCatalog.sql differs from a fresh generation')
 print('the committed catalog equals a fresh generation')
@@ -65,7 +68,7 @@ template = json.load(open(os.path.join(here, '..', 'content', 'sunriseHillsPlots
 first = template[0]
 stones = {int(r[1]): r for r in csv.reader(open(os.path.join(here, '..', 'content', 'sunriseHillsLotSquares.tsv')), delimiter='\t')}
 stone = stones[first['door']]
-live = {row['id']: row for row in csv.DictReader(open(os.path.join(here, '..', 'research', 'live', 'master', 'definitions.tsv'), encoding='latin-1'), delimiter='\t')}['171']
+live = {row['id']: row for row in csv.DictReader(open(os.path.join(liveClone, 'master', 'definitions.tsv'), encoding='latin-1'), delimiter='\t')}['171']
 check(f"plot 171 is Live's {first['address']}", "SELECT CONCAT_WS(' ', name, type, region_id, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id) FROM real_estate_definitions WHERE id = 171",
       f"{first['address']} 4 {live['areaId']} {live['maxItems']} 0 {live['maxNpcItems']} {live['costDefinition']} {live['upkeepDefinition']}")
 check('its layout origin is its border stone', "SELECT CONCAT_WS(' ', ROUND(layout_origin_x, 2), ROUND(layout_origin_y, 2), ROUND(layout_heading)) FROM real_estate_definitions WHERE id = 171",
