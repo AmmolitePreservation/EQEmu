@@ -191,19 +191,33 @@ body{font:13px system-ui,sans-serif;margin:0;display:flex;height:100vh;backgroun
 button{background:#3a4a6a;color:#eee;border:0;border-radius:4px;padding:3px 8px;cursor:pointer;margin:2px}
 input{background:#26282e;color:#eee;border:1px solid #444;border-radius:4px;padding:4px;width:95%}h3{margin:14px 0 6px}.dim{color:#999}
 .warn{color:#e0b050}
-</style></head><body><div id="items"><label><input type="checkbox" id="missingOnly" checked style="width:auto"> missing only</label>
+#filters label{display:block;margin:1px 0}#filters b{display:block;margin-top:6px}
+</style></head><body><div id="items"><div id="filters"></div>
 <input id="itemFilter" placeholder="filter items"><div id="itemList"></div></div><div id="detail">Pick an item.</div><script>
-let data, current = null;
+let data, current = null, sections = [];
+const statuses = ['missing', 'needsCapture', 'assigned', 'complete'];
+let filters = JSON.parse(localStorage.getItem('npcLookViewerFilters') || 'null') || {sections: {}, statuses: {missing: true, needsCapture: true, assigned: false, complete: false}};
+function setFilter(group, key, on) { filters[group][key] = on; localStorage.setItem('npcLookViewerFilters', JSON.stringify(filters)); renderFilters(); renderItems(); }
+function renderFilters() {
+  sections = [...new Set(data.items.map(i => i.section))];
+  sections.forEach(s => { if (!(s in filters.sections)) filters.sections[s] = true; });
+  const count = (test) => data.items.filter(test).length;
+  const box = (group, key, label, index) => `<label><input type="checkbox" style="width:auto" ${filters[group][key] ? 'checked' : ''}
+    onchange="setFilter('${group}', ${group === 'sections' ? `sections[${index}]` : `'${key}'`}, this.checked)"> ${esc(label)}</label>`;
+  document.getElementById('filters').innerHTML = '<b>Sections</b>' + sections.map((s, index) => box('sections', s,
+      `${s.split(' (')[0]} (${count(i => i.section === s && status(i) === 'missing')} missing of ${count(i => i.section === s)})`, index)).join('')
+    + '<b>Status</b>' + statuses.map(st => box('statuses', st, `${st} (${count(i => status(i) === st)})`)).join('');
+}
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function status(item) {
   const a = data.assignments[item.itemId];
   if (item.lookSource) return 'complete';
   return a ? a.decision === 'look' ? 'assigned' : 'needsCapture' : 'missing';
 }
-async function load() { data = await (await fetch('/data')).json(); renderItems(); if (current) show(current); }
+async function load() { data = await (await fetch('/data')).json(); renderFilters(); renderItems(); if (current) show(current); }
 function renderItems() {
-  const filter = document.getElementById('itemFilter').value.toLowerCase(), missing = document.getElementById('missingOnly').checked;
-  document.getElementById('itemList').innerHTML = data.items.filter(i => (!missing || status(i) === 'missing' || status(i) === 'needsCapture')
+  const filter = document.getElementById('itemFilter').value.toLowerCase();
+  document.getElementById('itemList').innerHTML = data.items.filter(i => filters.sections[i.section] && filters.statuses[status(i)]
     && (i.name + ' ' + i.itemId).toLowerCase().includes(filter)).map(i => `<div class="item ${current === i.itemId ? 'on' : ''}"
     onclick="show('${i.itemId}')">${esc(i.itemId)} ${esc(i.name)}<span class="badge ${status(i)}">${status(i)}</span>
     <div class="dim">${esc(i.section.split(' (')[0])}</div></div>`).join('');
@@ -256,7 +270,7 @@ function assign(index) {
 }
 function needsCapture() { post('/assign', {itemId: current, decision: 'needsCapture'}); }
 function clearItem() { post('/clear', {itemId: current}); }
-document.getElementById('itemFilter').oninput = renderItems; document.getElementById('missingOnly').onchange = renderItems; load();
+document.getElementById('itemFilter').oninput = renderItems; load();
 </script></body></html>'''
 
 
