@@ -24,7 +24,7 @@ The byte after `+0xdc` is 1 in all three. **Type 4 = plots by owner name** (`+0x
 
 **Go** (`REPSW_Go_Btn`): enabled only while a row is selected. It starts the client's **/find wisp to the plot**: `0x59c2c0`(rowValue, 1) sets find target **type 4** with **`+0x34` = rowValue**, and `0x59a420` sends **`OP_FindPersonRequest` (`0x5cea`)**: `{type 4, npc_id -1, rowValue, -1, player position, 0}`. **The server must answer with `OP_FindPersonReply` (`0x7e58`), a path to the plot's center.** So **`rowValue` is the find target** the server wants back (for example the plot's property id).
 
-**`0x796c` is unreachable:** Go would send `0x796c {u32 rowValue}` when window flag `+0x24c` is set, but that flag is only ever cleared (constructor, `0x74b8d0`, after the send), so **this build never sends `0x796c`**; the client doesn't receive it either.
+**`0x796c` is unreachable in this build:** Go sends `0x796c {u32 rowValue}` instead of the /find request when window flag `+0x24c` is set, then clears it (as do the constructor and `0x74b8d0`), but **nothing in this client sets the flag**: no code in the window's range, none of its 95 virtual methods, and no other code using its global (`0xd1fcc4`) or its name writes it, and no packet handler reaches it. **Live sets it from the server** (eqgame 2026-09-17, window `+0x330`): the teleflinger's message `0x8a99 {u8}` opens Plot Search and stores its byte in the flag; Go then sends `0x1708 {u32 rowValue}` once, answered with a fling, and clears it. This build has the sending half but no handler for the arming message.
 
 ## Close-out
 

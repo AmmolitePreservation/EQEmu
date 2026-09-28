@@ -17,7 +17,7 @@
 #include <vector>
 
 PreSetup("MQ2PeridotLive");
-PLUGIN_VERSION(1.3);
+PLUGIN_VERSION(1.4);
 
 namespace {
   constexpr auto linkWait = std::chrono::seconds(10);
@@ -97,6 +97,25 @@ namespace {
   // an eqgame pointer, an empty string, then a heap bucket array with 211 slots and 34 entries).
   using CostTable = HashTable<RealEstateCostSchemeData, int>;
   constexpr size_t liveCostTableOffset = 0x10;
+
+  // Live's RealEstatePlotSearchWnd keeps its fling flag at +0x330 (eqgame 2026-09-17: server message 0x8a99 sets it from its first byte,
+  // and Go sends 0x1708 {rowValue} instead of the /find request while it is set, then clears it); eqlib declares none of the class's members.
+  static_assert(__ClientDate == 20260917u, "the plot search fling flag offset was read from the 2026-09-17 client: re-read it for this build");
+  constexpr size_t plotSearchFlingFlagOffset = 0x330;
+  std::optional<int> lastFlingFlag;
+
+  void watchFlingFlag() {
+    CSidlScreenWnd *window = pRealEstatePlotSearchWnd;
+    if (!window) {
+      lastFlingFlag.reset();
+      return;
+    }
+    const int flag = *(reinterpret_cast<const uint8_t *>(window) + plotSearchFlingFlagOffset);
+    if (lastFlingFlag && *lastFlingFlag != flag) {
+      WriteChatf("\ag[PeridotLive]\ax plot search fling flag %d -> %d (window %s)", *lastFlingFlag, flag, window->IsVisible() ? "open" : "closed");
+    }
+    lastFlingFlag = flag;
+  }
 
   const CostTable &liveCostTable(const RealEstateCostManager *costs) {
     return *reinterpret_cast<const CostTable *>(reinterpret_cast<const uint8_t *>(costs) + liveCostTableOffset);
@@ -850,4 +869,5 @@ PLUGIN_API void OnPulse() {
   watchVendor();
   watchWindows();
   watchLink();
+  watchFlingFlag();
 }
