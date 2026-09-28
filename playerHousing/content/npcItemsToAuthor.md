@@ -4,7 +4,7 @@ Peridot's placeable NPC items whose NPC isn't settled by their data (`tools/expo
 
 ## 1. Guild services and decorations (27)
 
-Each NPC's look is the one in The Templar's Palatial Guild Hall (the owner's, never re-skinned: Bristlebane property 65484252), which has every item here but the pool and Hyredel Swiftstride; other races seen in other halls are owners' re-skins with the Convoluted Assistant Appearance Augmentater (item 66656). Live names the dummies Training Dummy: \<expansion\>, each at its expansion's level cap.
+Each NPC's look is the one in The Templar's Palatial Guild Hall (the owner's, never re-skinned: Bristlebane property 65484252), which has every item here but the pool and Hyredel Swiftstride; other races seen in other halls are owners' re-skins with the Convoluted Assistant Appearance Augmentater (item 66656). Live names the dummies Training Dummy: \<expansion\>, each at its expansion's level cap. Owners change each copy's armor class, body type, level and hit points from its menu (`serverPlan.md`, the interaction menu).
 
 | Item | Item name | Placeable in | Max per property | NO DROP | Respawn | Related NPCs | NPC to use |
 |---|---|---|---|---|---|---|---|
