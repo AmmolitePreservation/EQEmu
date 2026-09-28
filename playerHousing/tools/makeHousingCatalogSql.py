@@ -1,6 +1,6 @@
 """Writes sql/housingCatalog.sql: the housing catalog (serverPlan.md, the content sections).
 
-Ids and costs are Live's, read from research/live/master (tools/liveResearch.py over MQ2PeridotLive's captures). Sunrise Hills
+Ids and costs are Live's, read from a livedumps clone's master/ (tools/liveResearch.py over MQ2PeridotLive's captures). Sunrise Hills
 is definition 2 (Housing:RandomNeighborhoodDefinitions' default), its children Live's 71 player plots (101-173) and 4 guild
 plots (187-190), each matched to its plot in content/sunriseHillsPlots.json by its border stone and checked against the
 template's price. A plot keeps Live's region id, purchase and upkeep cost ids, house limit and pet cap, and the template's item
@@ -15,12 +15,12 @@ placed, a named cost or definition is missing from Live's catalog, a currency ha
 overlap or an id collides. The SQL refuses non-empty catalog tables and loads in one transaction.
 Usage: python3 makeHousingCatalogSql.py
 """
-import collections, csv, json, math, os, re
+import argparse, collections, csv, json, math, os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
 content = os.path.join(here, '..', 'content')
 
-liveMaster = os.path.join(here, '..', 'research', 'live', 'master')
+liveMaster = None
 neighborhoodDefinitionId = 2
 neighborhoodZoneId = 712
 regionBelowGround = 100.0
@@ -138,6 +138,12 @@ def overlapDepth(first, second):
 
 
 def main():
+  global liveMaster
+  parser = argparse.ArgumentParser(description='Write sql/housingCatalog.sql.')
+  parser.add_argument('--live', required=True, help='a livedumps clone')
+  liveMaster = os.path.join(parser.parse_args().live, 'master')
+  if not os.path.isdir(liveMaster):
+    raise SystemExit(f'{liveMaster} does not exist: --live must be a livedumps clone')
   template = json.load(open(os.path.join(content, 'sunriseHillsPlots.json')))
   stones = {}
   with open(os.path.join(content, 'sunriseHillsLotSquares.tsv')) as source:

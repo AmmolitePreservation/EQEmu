@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Rebuilds research/live/master/ from every MQ2PeridotLive capture in research/live/."""
+"""Rebuilds a livedumps clone's master/ from every MQ2PeridotLive capture in its captures/.
+
+Usage: python liveResearch.py --live <livedumps clone>
+"""
+import argparse
 import collections
 import csv
 import json
@@ -11,10 +15,8 @@ import struct
 from eqlibLayouts import Layouts
 from makeHousingCatalogSql import footprint
 
-researchDirectory = pathlib.Path(__file__).resolve().parent.parent / 'research' / 'live'
-masterDirectory = researchDirectory / 'master'
-# Each Live client build's frozen eqlib headers; captures made before plugin 0.4 recorded no build and all came from Sep 17 2026.
-layoutDirectories = {'Sep 17 2026 15:46:17': researchDirectory / 'eqlib' / '9efa0bc'}
+housingDirectory = pathlib.Path(__file__).resolve().parent.parent
+liveDirectory = masterDirectory = layoutDirectories = None
 buildBeforeHeaders = 'Sep 17 2026 15:46:17'
 
 itemColumns = ['itemId', 'name', 'housepetFileName', 'npcRespawnInterval', 'realEstateDefinitionId', 'realEstateUpkeepId',
@@ -114,7 +116,7 @@ class Capture:
     if layout and f'{layout["date"]} {layout["time"]}' != self.build:
       raise ValueError(f'{path.name}: plugin built for {layout["date"]} {layout["time"]} but captured on client {self.build}')
     if self.build not in layoutDirectories:
-      raise ValueError(f'{path.name}: no eqlib headers for client {self.build}; freeze them under research/live/eqlib first')
+      raise ValueError(f'{path.name}: no eqlib headers for client {self.build}; freeze them in eqlib/ of the livedumps clone first')
 
   def all(self, label):
     return [record for record in self.records if record['label'] == label]
@@ -485,7 +487,7 @@ def ingestZone(tables, capture):
 
 
 def readItemsTxt():
-  with (researchDirectory / 'itemsTxt' / 'itemsTxtExtract.tsv').open(encoding='latin-1', newline='') as source:
+  with (liveDirectory / 'itemsTxt' / 'itemsTxtExtract.tsv').open(encoding='latin-1', newline='') as source:
     return {row['id']: row for row in csv.DictReader(source, delimiter='\t')}
 
 
@@ -507,7 +509,7 @@ def insidePolygon(x, y, corners):
 
 
 def writeVisitCandidates(captures, tables, fieldTables, extract):
-  template = json.load((researchDirectory.parent.parent / 'content' / 'sunriseHillsPlots.json').open())
+  template = json.load((housingDirectory / 'content' / 'sunriseHillsPlots.json').open())
   plots = [(plot['address'], footprint(dict(x=plot['center'][0], y=plot['center'][1], sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
     heading=plot['heading']))) for plot in template]
   interiors = {key[0] for key, row in tables['definitions'].rows.items() if row['stable'].get('type') in ('2', '3')}
@@ -572,8 +574,21 @@ def writeNpcItems(tables, extract):
         npcName, lookSource] + values + [','.join(sorted(row['sets']['soldBy']))]])
 
 
+def useLiveClone(path):
+  global liveDirectory, masterDirectory, layoutDirectories
+  liveDirectory = pathlib.Path(path).resolve()
+  if not (liveDirectory / 'captures').is_dir():
+    raise SystemExit(f'{liveDirectory} has no captures/: --live must be a livedumps clone')
+  masterDirectory = liveDirectory / 'master'
+  # Each Live client build's frozen eqlib headers; captures made before plugin 0.4 recorded no build and all came from Sep 17 2026.
+  layoutDirectories = {'Sep 17 2026 15:46:17': liveDirectory / 'eqlib' / '9efa0bc'}
+
+
 def main():
-  captures = sorted((Capture(path) for path in researchDirectory.glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
+  parser = argparse.ArgumentParser(description='Rebuild the master tables from every capture.')
+  parser.add_argument('--live', required=True, help='a livedumps clone')
+  useLiveClone(parser.parse_args().live)
+  captures = sorted((Capture(path) for path in (liveDirectory / 'captures').glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
   tables = buildTables()
   fieldTables = tables['fields'] = buildFieldTables()
   ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells}
