@@ -203,7 +203,7 @@ namespace housing {
         .u32(row.type)
         .u32(row.category)
         .lengthString(row.unknown_string)
-        .u32(row.unknown_44)
+        .u32(row.icon)
         .u32(row.max_pet_items)
         .f32(row.layout_origin_x)
         .f32(row.layout_origin_y)

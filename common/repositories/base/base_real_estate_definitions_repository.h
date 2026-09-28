@@ -38,7 +38,7 @@ public:
 		uint32_t    max_houses;
 		uint32_t    unknown_34;
 		uint32_t    unknown_38;
-		uint32_t    unknown_44;
+		uint32_t    icon;
 		std::string unknown_string;
 	};
 
@@ -69,7 +69,7 @@ public:
 			"max_houses",
 			"unknown_34",
 			"unknown_38",
-			"unknown_44",
+			"icon",
 			"unknown_string",
 		};
 	}
@@ -96,7 +96,7 @@ public:
 			"max_houses",
 			"unknown_34",
 			"unknown_38",
-			"unknown_44",
+			"icon",
 			"unknown_string",
 		};
 	}
@@ -157,7 +157,7 @@ public:
 		e.max_houses                = 0;
 		e.unknown_34                = 0;
 		e.unknown_38                = 0;
-		e.unknown_44                = 336;
+		e.icon                      = 0;
 		e.unknown_string            = "";
 
 		return e;
@@ -214,7 +214,7 @@ public:
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.unknown_44                = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 336;
+			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
 			e.unknown_string            = row[20] ? row[20] : "";
 
 			return e;
@@ -268,7 +268,7 @@ public:
 		v.push_back(columns[16] + " = " + std::to_string(e.max_houses));
 		v.push_back(columns[17] + " = " + std::to_string(e.unknown_34));
 		v.push_back(columns[18] + " = " + std::to_string(e.unknown_38));
-		v.push_back(columns[19] + " = " + std::to_string(e.unknown_44));
+		v.push_back(columns[19] + " = " + std::to_string(e.icon));
 		v.push_back(columns[20] + " = '" + Strings::Escape(e.unknown_string) + "'");
 
 		auto results = db.QueryDatabase(
@@ -310,7 +310,7 @@ public:
 		v.push_back(std::to_string(e.max_houses));
 		v.push_back(std::to_string(e.unknown_34));
 		v.push_back(std::to_string(e.unknown_38));
-		v.push_back(std::to_string(e.unknown_44));
+		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
 		auto results = db.QueryDatabase(
@@ -360,7 +360,7 @@ public:
 			v.push_back(std::to_string(e.max_houses));
 			v.push_back(std::to_string(e.unknown_34));
 			v.push_back(std::to_string(e.unknown_38));
-			v.push_back(std::to_string(e.unknown_44));
+			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
@@ -414,7 +414,7 @@ public:
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.unknown_44                = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 336;
+			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
 			e.unknown_string            = row[20] ? row[20] : "";
 
 			all_entries.push_back(e);
@@ -459,7 +459,7 @@ public:
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
 			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.unknown_44                = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 336;
+			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
 			e.unknown_string            = row[20] ? row[20] : "";
 
 			all_entries.push_back(e);
@@ -554,7 +554,7 @@ public:
 		v.push_back(std::to_string(e.max_houses));
 		v.push_back(std::to_string(e.unknown_34));
 		v.push_back(std::to_string(e.unknown_38));
-		v.push_back(std::to_string(e.unknown_44));
+		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
 		auto results = db.QueryDatabase(
@@ -597,7 +597,7 @@ public:
 			v.push_back(std::to_string(e.max_houses));
 			v.push_back(std::to_string(e.unknown_34));
 			v.push_back(std::to_string(e.unknown_38));
-			v.push_back(std::to_string(e.unknown_44));
+			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
