@@ -1188,7 +1188,7 @@ RULE_INT(Housing, GuildInactivityDays, 30, "Days without any member of the guild
 RULE_INT(Housing, UnpaidUpkeepEvictionDays, 0, "Days a plot may stay unpaid before it is reclaimed. 0 = never (Live never evicted for unpaid upkeep).")
 RULE_INT(Housing, SellRefundPercent, 0, "Percent of the purchase price refunded when a plot is sold.")
 RULE_BOOL(Housing, SellRefundsEscrow, true, "Selling a plot returns its escrow balance.")
-RULE_INT(Housing, MaxPlotsPerCharacter, 2, "Plots a character may own across all neighborhoods (two at House of Thule's launch, three on Live later).")
+RULE_INT(Housing, MaxPlotsPerCharacter, 3, "Plots a character may own across all neighborhoods (Live's three).")
 RULE_INT(Housing, MaxHousesOverride, -1, "Houses and guild halls every plot and guild plot holds, replacing each plot's own max_houses (a zone's ruleset may set its own). -1 = each plot's own.")
 RULE_INT(Housing, MaxHousesAdditive, 0, "Houses and guild halls added to each plot and guild plot's own max_houses, never below 0 (a zone's ruleset may set its own); ignored while MaxHousesOverride is set.")
 RULE_INT(Housing, MaxGuildPlotsPerGuild, 1, "Guild plots a guild may own across all neighborhoods.")
