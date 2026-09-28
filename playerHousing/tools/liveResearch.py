@@ -257,7 +257,7 @@ doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 
 def buildFieldTables():
   return {name: FieldTable(name, keys) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['server', 'zone', 'name']), ('doors', ['zone', 'id']),
-    ('zoneHeaders', ['zone']), ('ground', ['server', 'zone', 'dropId']), ('placedObjects', ['server', 'propertyId', 'realEstateItemId']), ('definitions', ['id']),
+    ('zoneHeaders', ['zone']), ('ground', ['server', 'zone', 'instance', 'dropId']), ('placedObjects', ['server', 'propertyId', 'realEstateItemId']), ('definitions', ['id']),
     ('properties', ['server', 'id']), ('propertyItems', ['server', 'propertyId', 'realEstateItemId']), ('worldZones', ['id']), ('spells', ['id']))}
 
 
@@ -285,7 +285,8 @@ def buildTables():
     'spawns': Table('spawns', ['server', 'zone', 'name'], ['displayedName', 'class'], ['realEstateId', 'realEstateItemId'],
       setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'worldZones': Table('worldZones', ['id'], ['shortName', 'longName', 'expansion', 'flags', 'minLevel', 'accessLevel', 'eqstrId']),
-    'ground': Table('ground', ['server', 'zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
+    # Ground items' drop ids are numbered per zone instance.
+    'ground': Table('ground', ['server', 'zone', 'instance', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
     'windowWidgets': Table('windowWidgets', ['server', 'window', 'path'], [], ['depth', 'type', 'visible', 'text']),
     'windowRows': Table('windowRows', ['server', 'window', 'path', 'row'], [], ['cells']),
     'buffs': Table('buffs', ['zone', 'spellId'], [], ['duration', 'initialDuration', 'hitCount'], setFields=['kinds']),
@@ -501,8 +502,8 @@ def ingestZone(tables, capture):
     itemId = ground['item']['fields']['itemId'] if ground['item'] else ''
     if ground['item']:
       observeItem(tables, capture, ground['item'], 'ground')
-    tables['fields']['ground'].observe((capture.server, zone, fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
-    tables['ground'].observe((capture.server, zone, fields['dropId']), capture,
+    tables['fields']['ground'].observe((capture.server, zone, capture.header['zone']['instance'], fields['dropId']), capture, decodeRecord(capture, 'EQGroundItem', ground['raw'][0], {'DropID': fields['dropId']}))
+    tables['ground'].observe((capture.server, zone, capture.header['zone']['instance'], fields['dropId']), capture,
       stable={**pick(fields, ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight']), 'itemId': itemId})
   managers = capture.all('manager')
   manager = managers[0]['fields'] if managers else {}
