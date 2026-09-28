@@ -48,6 +48,8 @@ class Capture:
       self.kind = 'items'
     elif path.name.startswith('peridotLiveWindow_'):
       self.kind = 'window'
+    elif path.name.startswith(('peridotLiveBuffs_', 'peridotLiveSpell_')):
+      self.kind = 'spells'
     else:
       raise ValueError(f'{path.name} is not an MQ2PeridotLive capture')
     self.header = {}
@@ -223,14 +225,14 @@ doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 def buildFieldTables():
   return {name: FieldTable(name, keys) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['zone', 'name']), ('doors', ['zone', 'id']),
     ('zoneHeaders', ['zone']), ('ground', ['zone', 'dropId']), ('placedObjects', ['propertyId', 'realEstateItemId']), ('definitions', ['id']),
-    ('properties', ['id']), ('propertyItems', ['propertyId', 'realEstateItemId']), ('worldZones', ['id']))}
+    ('properties', ['id']), ('propertyItems', ['propertyId', 'realEstateItemId']), ('worldZones', ['id']), ('spells', ['id']))}
 
 
 def buildTables():
   return {
     'captures': Table('captures', ['file'], ['kind', 'client', 'plugin', 'zone', 'zoneId', 'instance', 'zoneRealEstateId', 'zoneRealEstateType',
       'definitionsManagerEntries', 'costsManagerEntries', 'spawns', 'doors', 'definitions', 'costs', 'properties', 'placedItems', 'vendorItems',
-      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows']),
+      'placedObjects', 'mismatchedPlacedObjects', 'unlinkedItemSpawns', 'worldZones', 'vendorItems', 'heldItems', 'widgets', 'listRows', 'spells']),
     'definitions': Table('definitions', ['id'], definitionFields[1:]),
     'costs': Table('costs', ['costId', 'componentId'], ['subComponents']),
     'unreadableCosts': Table('unreadableCosts', ['key'], ['costId', 'components']),
@@ -253,6 +255,10 @@ def buildTables():
     'ground': Table('ground', ['zone', 'dropId'], ['name', 'x', 'y', 'z', 'heading', 'pitch', 'roll', 'scale', 'weight', 'itemId']),
     'windowWidgets': Table('windowWidgets', ['window', 'path'], [], ['depth', 'type', 'visible', 'text']),
     'windowRows': Table('windowRows', ['window', 'path', 'row'], [], ['cells']),
+    'buffs': Table('buffs', ['zone', 'spellId'], [], ['duration', 'initialDuration', 'hitCount'], setFields=['kinds']),
+    'spells': Table('spells', ['id'], ['name', 'range', 'aeRange', 'castTime', 'recastTime', 'durationType', 'durationCap', 'spellIcon', 'category',
+      'subcategory', 'spellType', 'targetType']),
+    'spellEffects': Table('spellEffects', ['spellId', 'index'], ['slot', 'attrib', 'base', 'base2', 'max', 'calc']),
   }
 
 
@@ -365,6 +371,24 @@ def ingestWindow(tables, capture):
   for row in rows:
     tables['windowRows'].observe((window, row['fields']['path'], row['fields']['row']), capture, volatile={'cells': row['fields']['cells']})
   return {'widgets': len(widgets), 'listRows': len(rows)}
+
+
+def ingestSpells(tables, capture):
+  for buff in capture.all('buff'):
+    fields = buff['fields']
+    tables['buffs'].observe((capture.zoneShortName, fields['spellId']), capture, volatile=pick(fields, ['duration', 'initialDuration', 'hitCount']),
+      sets={'kinds': fields['kind']})
+  for spell in capture.all('spell'):
+    fields = spell['fields']
+    tables['spells'].observe((fields['id'],), capture, stable=pick(fields, tables['spells'].stableFields))
+    tables['fields']['spells'].observe((fields['id'],), capture, decodeRecord(capture, 'EQ_Spell', spell['raw'][0], {'ID': fields['id']}))
+  for effect in capture.all('effect'):
+    fields = effect['fields']
+    tables['spellEffects'].observe((fields['spellId'], fields['index']), capture, stable=pick(fields, tables['spellEffects'].stableFields))
+  missing = capture.all('missingSpell')
+  if missing:
+    raise ValueError(f"{capture.path.name}: spells the client does not know: {[m['fields']['id'] for m in missing]}")
+  return {'spells': len(capture.all('spell'))}
 
 
 def ingestZone(tables, capture):
@@ -503,7 +527,7 @@ def main():
   captures = sorted((Capture(path) for path in researchDirectory.glob('peridotLive*.txt')), key=lambda capture: (capture.stamp, capture.path.name))
   tables = buildTables()
   fieldTables = tables['fields'] = buildFieldTables()
-  ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow}
+  ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells}
   for capture in captures:
     counts = ingest[capture.kind](tables, capture)
     client = capture.header.get('client')
