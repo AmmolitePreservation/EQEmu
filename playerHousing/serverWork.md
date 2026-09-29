@@ -73,6 +73,8 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Depends on:** S3, S4, F1. **Readiness:** Specified, except the menu entries' `type` / `b` meanings (the server defines them; **Design**).
 - **Source:** `flows/placeItem.md`, `flows/editPlacedItem.md`, `placementMode.md`, `worldLayer.md`.
 
+**Deferred to polish: Walking Death's shifting.** On Live the familiar (item 52198, `a_familiar_visage_of_death`) changes form in place among 16 looks (skeletons in five textures, vampires and zombies of both sexes, two banshees, a rat and a froglok ghost) at random intervals, 6 seconds to 19 minutes apart with a median near 3.4 minutes; the server swaps its look directly, with no buff (livedumps' `visageEvents`). Peridot first spawns it as the Banshee (`content/npcItemsToAuthor.md`); the polish pass adds the shifting on a random timer.
+
 ### S6. Neighborhoods and search
 
 - **Client → server:** `0x2691` requests (types 0, 1, 2, 4, 5), `0x218c` with record id -1 (enter a neighborhood), `OP_FindPersonRequest` type 4 (plots), guild-name requests.
