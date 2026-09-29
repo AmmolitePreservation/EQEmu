@@ -210,9 +210,34 @@ def sortKey(key):
   return tuple((0, int(part), '') if part.lstrip('-').isdigit() else (1, 0, part) for part in key)
 
 
+def writeTableFiles(directory, name, keyFields, keys, header, rowFor, splitByServer):
+  """One file for the table, or with splitByServer one per server in a folder named for it."""
+  if not splitByServer:
+    groups = {None: list(keys)}
+  else:
+    if keyFields[0] != 'server':
+      raise ValueError(f'{name}: only a table keyed first by server can be written per server')
+    groups = collections.defaultdict(list)
+    for key in keys:
+      groups[key[0]].append(key)
+    folder = directory / name
+    folder.mkdir(parents=True, exist_ok=True)
+    for stale in folder.glob('*.tsv'):
+      if stale.stem not in groups:
+        stale.unlink()
+  for server, groupKeys in groups.items():
+    path = directory / f'{name}.tsv' if server is None else directory / name / f'{server}.tsv'
+    with path.open('w', encoding='latin-1', newline='') as out:
+      writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+      writer.writerow(header)
+      for key in sorted(groupKeys, key=sortKey):
+        writer.writerow(rowFor(key))
+
+
 class Table:
-  def __init__(self, name, keyFields, stableFields, volatileFields=(), setFields=()):
+  def __init__(self, name, keyFields, stableFields, volatileFields=(), setFields=(), splitByServer=False):
     self.name = name
+    self.splitByServer = splitByServer
     self.keyFields = list(keyFields)
     self.stableFields = list(stableFields)
     self.volatileFields = list(volatileFields)
@@ -237,20 +262,20 @@ class Table:
     row['captures'].add(capture.path.name)
 
   def write(self):
-    with (masterDirectory / f'{self.name}.tsv').open('w', encoding='latin-1', newline='') as out:
-      writer = csv.writer(out, delimiter='\t', lineterminator='\n')
-      writer.writerow(self.keyFields + self.stableFields + self.volatileFields + self.setFields + ['firstSeen', 'lastSeen', 'captureCount'])
-      for key in sorted(self.rows, key=sortKey):
-        row = self.rows[key]
-        writer.writerow([tsvText(value) for value in list(key) + [row['stable'].get(field, '') for field in self.stableFields]
-          + [row['volatile'].get(field, '') for field in self.volatileFields]
-          + [' | '.join(sorted(row['sets'][field], key=lambda value: sortKey((value,)))) for field in self.setFields]
-          + [row['firstSeen'], row['lastSeen'], len(row['captures'])]])
+    def rowFor(key):
+      row = self.rows[key]
+      return [tsvText(value) for value in list(key) + [row['stable'].get(field, '') for field in self.stableFields]
+        + [row['volatile'].get(field, '') for field in self.volatileFields]
+        + [' | '.join(sorted(row['sets'][field], key=lambda value: sortKey((value,)))) for field in self.setFields]
+        + [row['firstSeen'], row['lastSeen'], len(row['captures'])]]
+    writeTableFiles(masterDirectory, self.name, self.keyFields, self.rows,
+      self.keyFields + self.stableFields + self.volatileFields + self.setFields + ['firstSeen', 'lastSeen', 'captureCount'], rowFor, self.splitByServer)
 
 
 class FieldTable:
-  def __init__(self, name, keyFields):
+  def __init__(self, name, keyFields, splitByServer=False):
     self.name = name
+    self.splitByServer = splitByServer
     self.keyFields = list(keyFields)
     self.rows = {}
     self.columns = {}
@@ -263,12 +288,11 @@ class FieldTable:
   def write(self):
     directory = masterDirectory / 'fields'
     directory.mkdir(exist_ok=True)
-    with (directory / f'{self.name}.tsv').open('w', encoding='latin-1', newline='') as out:
-      writer = csv.writer(out, delimiter='\t', lineterminator='\n')
-      writer.writerow(self.keyFields + list(self.columns) + ['capture'])
-      for key in sorted(self.rows, key=sortKey):
-        captureName, values = self.rows[key]
-        writer.writerow([tsvText(value) for value in list(key) + [values.get(column, '') for column in self.columns] + [captureName]])
+
+    def rowFor(key):
+      captureName, values = self.rows[key]
+      return [tsvText(value) for value in list(key) + [values.get(column, '') for column in self.columns] + [captureName]]
+    writeTableFiles(directory, self.name, self.keyFields, self.rows, self.keyFields + list(self.columns) + ['capture'], rowFor, self.splitByServer)
 
 
 layoutCache = {}
@@ -329,7 +353,8 @@ doorVolatileFields = ['state', 'script', 'x', 'y', 'z', 'heading']
 
 
 def buildFieldTables():
-  return {name: FieldTable(name, keys) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['server', 'zone', 'name']), ('doors', ['zone', 'id']),
+  # The largest tables go one file per server: a whole server's rows stay far under GitHub's 100 MB file limit.
+  return {name: FieldTable(name, keys, splitByServer=name in ('placedObjects', 'spawns')) for name, keys in (('itemDefinitions', ['itemId']), ('spawns', ['server', 'zone', 'name']), ('doors', ['zone', 'id']),
     ('zoneHeaders', ['zone']), ('ground', ['server', 'zone', 'instance', 'dropId']), ('placedObjects', ['server', 'propertyId', 'realEstateItemId']), ('definitions', ['id']),
     ('properties', ['server', 'id']), ('propertyItems', ['server', 'propertyId', 'realEstateItemId']), ('worldZones', ['id']), ('spells', ['id']))}
 
@@ -352,7 +377,7 @@ def buildTables():
     'npcLooks': Table('npcLooks', ['npcName'], ['displayedName', 'class'], setFields=[f for f in npcLookFields if f not in ('displayedName', 'class')]
       + appearanceFields + ['zones']),
     'placedObjects': Table('placedObjects', ['server', 'propertyId', 'realEstateItemId'], ['itemId', 'actorTag'],
-      ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones']),
+      ['x', 'y', 'z', 'heading', 'angle', 'roll', 'scale'], setFields=['zones'], splitByServer=True),
     'vendors': Table('vendors', ['zone', 'name'], ['displayedName', 'class'], ['itemCount'], setFields=spawnVariantFields + ['positions'] + appearanceFields),
     'vendorItems': Table('vendorItems', ['zone', 'vendor', 'itemId'], ['itemName'], ['index', 'price', 'merchantQuantity', 'merchantSlot']),
     'doors': Table('doors', ['zone', 'id'], doorStableFields, doorVolatileFields),
