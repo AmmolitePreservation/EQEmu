@@ -106,6 +106,8 @@ Their look travels in the item's house-pet model string, which Peridot's data la
 
 Their spell names a mount or pet Peridot's database doesn't have, so EQEmu can't summon them either.
 
+Walking Death (52198) changes form on Live among 16 looks at random intervals (livedumps' `visageEvents`), so Live has no single look for it: Peridot spawns it as one of them, a Banshee (race 487, female, texture 0, size 3), and its shifting is a polish pass (`serverWork.md`, S5).
+
 | Item | Item name | Spell | Names | Missing |
 |---|---|---|---|---|
 | 17572 | Collar of the Cursed Lupine | 20745 Familiar: Red Werewolf Cub | `FamiliarRedWerewolfCub` | `pets` row |
