@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `dz_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `icon` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `unknown_string` VARCHAR(600) NOT NULL DEFAULT '',
+  `address` VARCHAR(600) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
   CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)

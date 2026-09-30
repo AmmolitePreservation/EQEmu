@@ -855,7 +855,7 @@
  },
  {
   "kind": "plot",
-  "address": "106 Terminus Heights",
+  "address": "101 Terminus Heights",
   "door": 31,
   "center": [
    -681.241,
@@ -897,7 +897,7 @@
  },
  {
   "kind": "plot",
-  "address": "Betwixt Avenue",
+  "address": "104 Betwixt Avenue",
   "door": 29,
   "center": [
    -204.074,
@@ -911,7 +911,7 @@
  },
  {
   "kind": "plot",
-  "address": "104 Betwixt Avenue",
+  "address": "103 Betwixt Avenue",
   "door": 27,
   "center": [
    -90.654,
@@ -1011,8 +1011,7 @@
   "sizeAcross": 351.2,
   "sizeAlong": 699.8,
   "address": "200 Guild Way",
-  "pricePlatinum": 21,
-  "vault": 0
+  "pricePlatinum": 21
  },
  {
   "kind": "guild plot",
@@ -1032,8 +1031,7 @@
   "sizeAcross": 351.2,
   "sizeAlong": 699.8,
   "address": "200 Terminus Heights",
-  "pricePlatinum": 21,
-  "vault": 0
+  "pricePlatinum": 21
  },
  {
   "kind": "guild plot",
@@ -1053,8 +1051,7 @@
   "sizeAcross": 351.2,
   "sizeAlong": 699.8,
   "address": "200 Brimming Way",
-  "pricePlatinum": 21,
-  "vault": 0
+  "pricePlatinum": 21
  },
  {
   "kind": "guild plot",
@@ -1074,7 +1071,6 @@
   "sizeAcross": 351.2,
   "sizeAlong": 699.8,
   "address": "200 Vanward Heights",
-  "pricePlatinum": 21,
-  "vault": 0
+  "pricePlatinum": 21
  }
 ]

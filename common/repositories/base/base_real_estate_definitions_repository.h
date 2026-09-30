@@ -39,7 +39,7 @@ public:
 		uint32_t    zone_id;
 		uint32_t    dz_id;
 		uint32_t    icon;
-		std::string unknown_string;
+		std::string address;
 	};
 
 	static std::string PrimaryKey()
@@ -70,7 +70,7 @@ public:
 			"zone_id",
 			"dz_id",
 			"icon",
-			"unknown_string",
+			"address",
 		};
 	}
 
@@ -97,7 +97,7 @@ public:
 			"zone_id",
 			"dz_id",
 			"icon",
-			"unknown_string",
+			"address",
 		};
 	}
 
@@ -158,7 +158,7 @@ public:
 		e.zone_id                   = 0;
 		e.dz_id                     = 0;
 		e.icon                      = 0;
-		e.unknown_string            = "";
+		e.address                   = "";
 
 		return e;
 	}
@@ -215,7 +215,7 @@ public:
 			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
 			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.address                   = row[20] ? row[20] : "";
 
 			return e;
 		}
@@ -269,7 +269,7 @@ public:
 		v.push_back(columns[17] + " = " + std::to_string(e.zone_id));
 		v.push_back(columns[18] + " = " + std::to_string(e.dz_id));
 		v.push_back(columns[19] + " = " + std::to_string(e.icon));
-		v.push_back(columns[20] + " = '" + Strings::Escape(e.unknown_string) + "'");
+		v.push_back(columns[20] + " = '" + Strings::Escape(e.address) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -311,7 +311,7 @@ public:
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
-		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
+		v.push_back("'" + Strings::Escape(e.address) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -361,7 +361,7 @@ public:
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
-			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
+			v.push_back("'" + Strings::Escape(e.address) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -415,7 +415,7 @@ public:
 			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
 			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.address                   = row[20] ? row[20] : "";
 
 			all_entries.push_back(e);
 		}
@@ -460,7 +460,7 @@ public:
 			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
 			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
 			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.address                   = row[20] ? row[20] : "";
 
 			all_entries.push_back(e);
 		}
@@ -555,7 +555,7 @@ public:
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
-		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
+		v.push_back("'" + Strings::Escape(e.address) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -598,7 +598,7 @@ public:
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
-			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
+			v.push_back("'" + Strings::Escape(e.address) + "'");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

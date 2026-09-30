@@ -81,6 +81,7 @@ check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CON
       '5:714:500:75:0:17,18:715:300:60:0:21,34:717:500:300:0:0')
 check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, instance_zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
       '38:345:1000:0:0,39:738:1500:0:0,40:737:2000:0:0,41:751:1500:0:0')
+check('every plot and guild plot sends its street address, and no other definition any', "SELECT CONCAT_WS(' ', (SELECT address FROM real_estate_definitions WHERE id = 101), (SELECT COUNT(*) FROM real_estate_definitions WHERE type IN (4, 8) AND address = ''), (SELECT COUNT(*) FROM real_estate_definitions WHERE type NOT IN (4, 8) AND address <> ''))", '108 Brimming Way 0 0')
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",
       '31:0:0:0,174:50:0:0,183:500:0:0,184:100:0:0')
 check('item upkeep: station, three-room Domicile, Estate crate', "SELECT GROUP_CONCAT(CONCAT(cost_id, ':', amount) ORDER BY cost_id) FROM real_estate_cost_items WHERE cost_id IN (6, 20, 35) AND currency = 0", '6:100,20:7350,35:220')

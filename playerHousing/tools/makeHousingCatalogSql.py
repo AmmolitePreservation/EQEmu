@@ -3,12 +3,12 @@
 Ids and costs are Live's, read from a livedumps clone's master/ (mqperidotlive's tools/liveResearch.py over MQ2PeridotLive's captures). Sunrise Hills
 is definition 2 (Housing:RandomNeighborhoodDefinitions' default), its children Live's 71 player plots (101-173) and 4 guild
 plots (187-190), each matched to its plot in content/sunriseHillsPlots.json by its border stone and checked against the
-template's price. A plot keeps Live's region id, purchase and upkeep cost ids, house limit and pet cap, and the template's item
-capacity and border stone as layout origin. Every definition an item names comes from content/itemDefinitions.txt
+template's price. A plot keeps Live's region id, purchase and upkeep cost ids, house limit, item caps and pet cap, and the template's
+border stone as layout origin. Every definition an item names comes from content/itemDefinitions.txt
 (tools/exportItemDefinitions.sql), with Live's cost ids. Costs are Live's, copied for every id a definition names or the plan's
 item upkeep table lists (the ids Peridot's placeable items carry, its amounts checked against Live's): each option a way to pay,
 coin always, and each alternate currency gated by the expansion it arrived in. A pet cap of 0 is no
-separate pet cap. Every definition keeps Live's icon, zone id and dz id.
+separate pet cap. Every definition keeps Live's address, icon, zone id and dz id.
 
 Refuses to write when a plot has no single matching template plot, a price or kind disagrees, an item's definition can't be
 placed, a named cost or definition is missing from Live's catalog, a currency has no known expansion, two plot footprints
@@ -163,7 +163,7 @@ def main():
 
   definitions, regions = [], []
   definitions.append(dict(id=neighborhoodDefinitionId, name='Sunrise Hills', type=typeNeighborhood, region=0, purchase=0, upkeep=0, houses=0,
-                          maxItems=0, vault=0, pets=0, icon=int(neighborhood['icon']), liveZone=int(neighborhood['zoneId']), dz=int(neighborhood['dzId']), origin=(0.0, 0.0, 0.0, 0.0),
+                          maxItems=0, vault=0, pets=0, icon=int(neighborhood['icon']), liveZone=int(neighborhood['zoneId']), dz=int(neighborhood['dzId']), address=neighborhood['address'], origin=(0.0, 0.0, 0.0, 0.0),
                           zone=neighborhoodZoneId))
   for liveId in children:
     live, plot = livePlots[liveId], matches[liveId]
@@ -171,6 +171,8 @@ def main():
     purchase, upkeep = int(live['costDefinition']), int(live['upkeepDefinition'])
     if coin(purchase) != plot['pricePlatinum'] * 1000:
       raise ValueError(f"Live plot {liveId} ({plot['address']}): Live price {coin(purchase)} copper, template {plot['pricePlatinum']}pp")
+    if live['address'] != plot['address']:
+      raise ValueError(f"Live plot {liveId}: Live's address {live['address']!r}, the template's {plot['address']!r}")
     regionId = int(live['areaId'])
     ground = plot['center'][2]
     regions.append(dict(id=regionId, name=plot['address'], x=plot['center'][0], y=plot['center'][1],
@@ -179,7 +181,7 @@ def main():
     origin = (*plot['doorPosition'], plot['heading']) if guild else stones[plot['door']]
     definitions.append(dict(id=liveId, name=plot['address'], type=typeGuildPlot if guild else typePlot, region=regionId, purchase=purchase,
                             upkeep=upkeep, houses=int(live['maxChildren']), maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']),
-                            pets=int(live['maxNpcItems']), icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), origin=origin, zone=0))
+                            pets=int(live['maxNpcItems']), icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), address=live['address'], origin=origin, zone=0))
   itemUpkeeps = readPlanItemUpkeeps()
   for costId, amount in sorted(itemUpkeeps.items()):
     if costId not in liveCosts or coin(costId) != amount:
@@ -193,7 +195,8 @@ def main():
       raise ValueError(f"definition {group['definition']}: upkeep id {group['upkeep']} is not in the plan's item upkeep table")
     definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, purchase=int(live['costDefinition']),
                             upkeep=int(live['upkeepDefinition']), houses=0, maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']), pets=0,
-                            icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
+                            icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), address=live['address'], origin=(0.0, 0.0, 0.0, 0.0),
+                            zone=entry['zone']))
   if len({d['id'] for d in definitions}) != len(definitions):
     raise ValueError('duplicate definition ids')
   corners = [footprint(region) for region in regions]
@@ -229,7 +232,7 @@ def main():
   number = lambda value: repr(round(float(value), 3))
   values = lambda rows: ',\n'.join('    (' + ', '.join(row) + ')' for row in rows) + ';\n'
   definitionRows = [(str(d['id']), quoted(d['name']), str(d['type']), '0', str(d['region']), str(d['purchase']), str(d['upkeep']), str(d['houses']),
-                     str(d['maxItems']), str(d['vault']), str(d['pets']), str(d['icon']), str(d['liveZone']), str(d['dz']), *[number(v) for v in d['origin']], str(d['zone']), '0')
+                     str(d['maxItems']), str(d['vault']), str(d['pets']), str(d['icon']), str(d['liveZone']), str(d['dz']), quoted(d['address']), *[number(v) for v in d['origin']], str(d['zone']), '0')
                     for d in sorted(definitions, key=lambda d: d['id'])]
   catalogTables = ['real_estate_definitions', 'real_estate_definition_children', 'real_estate_costs', 'real_estate_cost_options',
                    'real_estate_cost_items', 'real_estate_regions', 'real_estate_neighborhood_words']
@@ -238,7 +241,7 @@ def main():
          f"  IF {' OR '.join(f'EXISTS (SELECT 1 FROM {t})' for t in catalogTables)} THEN\n"
          "    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the housing catalog tables are not empty';\n  END IF;\n  START TRANSACTION;\n"
          '  INSERT INTO real_estate_definitions (id, name, type, category, region_id, purchase_cost_id, upkeep_cost_id, max_houses, max_items,\n'
-         '    max_non_real_estate_items, max_pet_items, icon, zone_id, dz_id, layout_origin_x, layout_origin_y, layout_origin_z, layout_heading, instance_zone_id, instance_zone_version) VALUES\n'
+         '    max_non_real_estate_items, max_pet_items, icon, zone_id, dz_id, address, layout_origin_x, layout_origin_y, layout_origin_z, layout_heading, instance_zone_id, instance_zone_version) VALUES\n'
          + values(definitionRows)
          + '  INSERT INTO real_estate_definition_children (parent_id, child_id) VALUES\n' + values([(str(neighborhoodDefinitionId), str(i)) for i in children])
          + '  INSERT INTO real_estate_costs (id, name) VALUES\n' + values([(str(c), quoted(costNames[c])) for c in sorted(costNames)])

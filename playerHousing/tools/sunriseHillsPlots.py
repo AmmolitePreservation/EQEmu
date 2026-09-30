@@ -1,12 +1,9 @@
 """Derives the Sunrise Hills plot template from the neighborhood map's plot layer (content/neighborhood_2.txt).
 
-The layer draws each of the 71 player plots as four line segments and labels it with its street address. Each plot's box
+The layer draws each of the 71 player plots as four line segments and labels it with its street address; three of the map's labels disagreed with Live's catalog, which names each plot by its border stone, and carry Live's addresses here (103 and 104 Betwixt Avenue, labeled 104 and "Betwixt Avenue", and 101 Terminus Heights, labeled 106). Each plot's box
 (center, size, orientation) is fitted to its four sides, and its purchase price comes from Live's plot table (Allakhazam,
 "EQ:Player Housing in EverQuest"; its daily upkeep, checked to be 10% of the price, is Live's (its cost table's upkeep tiers),
-since the catalog derives upkeep), except Park Circle's capacity, 120 in Live's purchase window where the table
-says 105. Its item capacity is House of Thule's launch value for its tier (40, 50, 60 where Live's table later has 90, 105,
-120, and Live today 120 on every plot): Peridot's defaults are each feature's values at its own launch. No launch pet cap is
-known, so every player plot takes Live's current one, 6.
+since the catalog derives upkeep). Capacities and pet caps are Live's, which the catalog takes from Live's definitions.
 
 World coordinates: the map stores (-x, -y) (verified: every plot center lands within 1.2 units of one of Live's plot border
 stones, the OBP_LOTSQUARE doors in content/sunriseHillsLotSquares.tsv, exported from PEQ's doors table). EQ headings (512 per
@@ -20,36 +17,33 @@ fits the border (obp_guildsquare.mod: 699.8 x 351.2, its center 4.89, -1.30 from
 orientations; the entrance picks one. A border's entrance faces opposite its heading (107 Vanward Street's, heading 128,
 opens east), and a model point (a, b) lands at (-b cos t - a sin t, b sin t - a cos t) from the door, t the angle of the
 heading plus a half turn. The guild plots have no border stone in PEQ's doors, so each gives the position for a new one.
-Every guild plot has the same terms, as Live's purchase windows show them (upkeep is daily, a tenth of the price, as for
-player plots; no launch values are known); each is 200 on a street of its section.
+Every guild plot has the same price, as Live's purchase windows show it (upkeep is daily, a tenth of the price, as for
+player plots); each is 200 on a street of its section.
 
 Usage: python3 sunriseHillsPlots.py > sunriseHillsPlots.json
 """
 import collections, json, math, os, re, sys
 
 # Live's plot table: (street, the house numbers the row covers or None for the rest of the street) ->
-# (price in platinum, daily upkeep in copper, item capacity, plot count).
+# (price in platinum, daily upkeep in copper, plot count).
 liveGroups = [
-  ('Betwixt Avenue', None, 84, 8400, 105, 7),
-  ('Brimming Heights', None, 126, 12600, 120, 8),
-  ('Brimming Way', {101, 102, 107}, 168, 16800, 120, 3),
-  ('Brimming Way', {113}, 42, 4200, 90, 1),
-  ('Brimming Way', None, 84, 8400, 105, 9),
-  ('Guild Way', None, 84, 8400, 105, 5),
-  ('Market Street', {101, 102}, 42, 4200, 90, 2),
-  ('Market Street', {103, 104}, 21, 2100, 90, 2),
-  ('Market Heights', None, 168, 16800, 120, 3),
-  ('Park Circle', None, 126, 12600, 120, 8),
-  ('Terminus Street', {107}, 126, 12600, 120, 1),
-  ('Terminus Street', None, 84, 8400, 105, 5),
-  ('Terminus Heights', None, 168, 16800, 120, 1),
-  ('Vanward Street', {105, 116}, 21, 2100, 90, 2),
-  ('Vanward Street', None, 84, 8400, 105, 13),
-  ('Vanward Heights', None, 168, 16800, 120, 1),
+  ('Betwixt Avenue', None, 84, 8400, 7),
+  ('Brimming Heights', None, 126, 12600, 8),
+  ('Brimming Way', {101, 102, 107}, 168, 16800, 3),
+  ('Brimming Way', {113}, 42, 4200, 1),
+  ('Brimming Way', None, 84, 8400, 9),
+  ('Guild Way', None, 84, 8400, 5),
+  ('Market Street', {101, 102}, 42, 4200, 2),
+  ('Market Street', {103, 104}, 21, 2100, 2),
+  ('Market Heights', None, 168, 16800, 3),
+  ('Park Circle', None, 126, 12600, 8),
+  ('Terminus Street', {107}, 126, 12600, 1),
+  ('Terminus Street', None, 84, 8400, 5),
+  ('Terminus Heights', None, 168, 16800, 1),
+  ('Vanward Street', {105, 116}, 21, 2100, 2),
+  ('Vanward Street', None, 84, 8400, 13),
+  ('Vanward Heights', None, 168, 16800, 1),
 ]
-
-launchPlotCapacity = {90: 40, 105: 50, 120: 60}
-livePlotPets = 6
 
 # (section, /loc readings in opposite-corner pairs, the entrance's side, the pad's ground height, the address)
 liveGuildPlots = [
@@ -58,7 +52,7 @@ liveGuildPlots = [
   ('Brimming', [(-1872.99, 732.14, 4.86), (-2583.03, 409.50, 48.46)], 'north', 0, '200 Brimming Way'),
   ('Vanward', [(-602.29, 2672.69, 4.46), (-908.07, 3390.33, 5.69)], 'east', 0, '200 Vanward Heights'),
 ]
-liveGuildPlotTerms = dict(pricePlatinum=21, capacity=210, vault=0, pets=12)
+liveGuildPlotTerms = dict(pricePlatinum=21)
 liveGuildPlotUpkeepCopperPerDay = 2100
 livePlotUpkeepPercent = 10
 
@@ -213,11 +207,11 @@ if __name__ == '__main__':
     requireLiveUpkeepRule(group[2], group[3], plot['address'])
     rows.append(dict(kind='plot', address=plot['address'], door=stone['door'], center=[round(worldX, 3), round(worldY, 3), stone['position'][2]],
                      heading=stone['heading'], sizeAcross=round(box['sizeAcross'], 2), sizeAlong=round(box['sizeAlong'], 2),
-                     pricePlatinum=group[2], capacity=launchPlotCapacity[group[4]], pets=livePlotPets))
+                     pricePlatinum=group[2]))
   for group in liveGroups:
     key = group[:2] if group[1] is None else (group[0], tuple(sorted(group[1])))
-    if counts[key] != group[5]:
-      raise ValueError(f'{group[0]} {group[1] or ""}: {counts[key]} plots on the map, {group[5]} in Live\'s table')
+    if counts[key] != group[4]:
+      raise ValueError(f'{group[0]} {group[1] or ""}: {counts[key]} plots on the map, {group[4]} in Live\'s table')
   claimed = {row['door'] for row in rows}
   if len(claimed) != len(rows):
     raise ValueError('two plots claimed one border stone')

@@ -52,7 +52,7 @@ Wire order is **not** in-memory order. "Mem" is the client struct offset, for cr
 | 9 | u32 | +0x38 | **dz id** (`dz_id`): Live's `RealEstateDefinition::dzId`, set only where a property has its own instanced zone: each guild hall its own (35633, 35634, 35635, 35642), houses one of six shared among them (23000-23005), Sunrise Hills 20504, and 0 for plots, guild plots and crates; the catalog carries Live's | read at `0x5b46e0` |
 | 10 | u32 | +0x3c | **definition type** (enum below) | accessor `0x7f4fa0` (50 callers); name table `0xb616a0` |
 | 11 | u32 | +0x40 | **category**: a dbstr category 27 string id shown as `REPW_Category_Label` | `0x74e084` → `0x4866c0(id, 0x1b)` |
-| 12 | string | +0x0c | unknown string (≤ 600 chars in the file format) | |
+| 12 | string | +0x0c | **address** (`address`): Live's `RealEstateDefinition::address`, the street address of each plot and guild plot ("101 Market Street", "200 Brimming Way"), empty for every other definition; the record's other two strings on Live, `name` and `description`, are empty on all 135 definitions (≤ 600 chars in the file format) | |
 | 13 | u32 | +0x44 | **icon**: Live's `RealEstateDefinition::icon`, in the same place in Live's field order (between the category and the pet cap). Live gives each plot and guild plot its street's icon (3668-3674) and every other definition 0; its plot search list carries the icon in the first column, where RoF2 prints the row's first number (`opcode2691PropertySearch.md`). **RoF2 never reads it.** | the constructor's default 336 (`0x7f520c`); no accessor (those at `0x7f4fa0`-`0x7f51b0` cover the type, the caps, max houses, the origin and the heading); none of the 7 callers of `0x7f4f70` reads it; no icon control in any `EQUI_RealEstate*.xml` |
 | 14 | u32 | +0x48 | **max pet (yard NPC) items** (must be ≤ max items) | accessor `0x7f50c0`; validation clamps to +0x28 |
 | 15–17 | f32 ×3 | +0x4c..+0x54 | **layout origin (x, y, z)**: saved layout positions are relative to it (verified: the layout writer subtracts it, the loader adds it back) | accessor `0x7f5140`; `0x5ae900`, `0x5b0380`, `0x5b0680` |
@@ -115,5 +115,4 @@ On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstat
 
 ## Still open
 
-- The meaning of the string at +0x0c; +0x30 is max houses. (+0x1c = region id, +0x20 = purchase cost id, +0x40 = category label, +0x44 = icon are resolved.)
 - When the server should send `0x2698`: on zone-in, or on the first real-estate window open. Decide once the request flows are decoded.
