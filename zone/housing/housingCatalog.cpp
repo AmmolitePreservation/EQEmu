@@ -202,7 +202,7 @@ namespace housing {
         .u32(row.dz_id)
         .u32(row.type)
         .u32(row.category)
-        .lengthString(row.unknown_string)
+        .lengthString(row.address)
         .u32(row.icon)
         .u32(row.max_pet_items)
         .f32(row.layout_origin_x)
