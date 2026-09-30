@@ -5,7 +5,8 @@ Each capture's parse is cached in the clone's .cache/liveResearch/ (keyed by the
 headers), so a rebuild parses only new or changed captures; the tables are always folded from every capture, in order.
 
 With --import, the new files in a MacroQuest Logs folder are brought in first (the tour's progress files stay), and after the rebuild the
-clone's captures/ and master/ are committed and pushed to claude before the imported files are removed from Logs.
+clone's captures/ and master/ are committed and pushed to claude before the imported files are removed from Logs. A file still being
+written, or a visage watch or menu scan still recording, stays in Logs for a later batch.
 
 Usage: python liveResearch.py --live <livedumps clone> [--full] [--import <MacroQuest Logs folder>]
 """
@@ -968,8 +969,10 @@ def useLiveClone(path):
 
 
 toolRepository = pathlib.Path(__file__).resolve().parents[2]
-# A file written this recently may belong to a menu scan or visage watch still recording, whose remainder would start without a header.
-recordingGrace = 60
+# A one-shot capture is complete once written; a few seconds keep one the plugin is still writing out of the batch.
+writingGrace = 5
+# A menu scan writes several times a second, so an unended scan quiet this long was cut short rather than still running.
+scanQuiet = 60
 
 
 def git(repository, *arguments):
@@ -983,6 +986,22 @@ def requireBranch(repository, branch):
   current = git(repository, 'rev-parse', '--abbrev-ref', 'HEAD')
   if current != branch:
     raise RuntimeError(f'{repository} is on {current}, not {branch}')
+
+
+def notReady(path):
+  """Why a file in Logs must wait for a later batch, or None. The plugin appends to a visage log or a menu scan while it records, and
+  would carry on in a new file without the session's header if the file were moved."""
+  age = time.time() - path.stat().st_mtime
+  if age < writingGrace:
+    return 'being written'
+  if path.name.startswith('peridotLiveVisage_'):
+    events = [line.split('\t')[1].strip() for line in path.open(encoding='latin-1') if line.startswith('session\t')]
+    if events and events[-1] == 'start':
+      return 'its visage watch is running'
+  if path.name.startswith('peridotLiveMenuScan_') and age < scanQuiet:
+    if not any(line.startswith('scanEnd\t') for line in path.open(encoding='latin-1')):
+      return 'its menu scan is running'
+  return None
 
 
 def importName(name, stamp):
@@ -1001,13 +1020,16 @@ def importLogs(logs, full):
   if git(liveDirectory, 'status', '--porcelain'):
     raise RuntimeError(f'{liveDirectory} has uncommitted changes: commit or discard them first')
   git(liveDirectory, 'pull', '--ff-only', 'origin', 'claude')
-  sources = sorted(path for path in logs.glob('peridotLive*.txt') if not path.name.startswith('peridotLiveTour_'))
+  sources = []
+  for path in sorted(path for path in logs.glob('peridotLive*.txt') if not path.name.startswith('peridotLiveTour_')):
+    reason = notReady(path)
+    if reason:
+      print(f'left in Logs for a later batch: {path.name} ({reason})')
+    else:
+      sources.append(path)
   if not sources:
     print(f'nothing to import from {logs}')
     return
-  recent = [path.name for path in sources if time.time() - path.stat().st_mtime < recordingGrace]
-  if recent:
-    raise RuntimeError(f'written within the last {recordingGrace} seconds, so perhaps still recording: {recent}')
   stamp = time.strftime('%Y%m%d-%H%M%S')
   plan = []
   for source in sources:
