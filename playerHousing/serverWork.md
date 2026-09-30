@@ -75,6 +75,8 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 
 **The Augmentater** (the plan's chunk 5): Live's nine modes, their lines and each race's and gender's options as captured, and Peridot's HELMET, PRIMARY and SECONDARY modes. Where each copy's look is kept is **Design**; the list of held models is content.
 
+**Deferred to the last of the polish pass: Help.** Live gives every item Help (type `0xe`, eqstr 13300), which opens the client's own player-housing help window; RoF2's `0xe` asks for text instead (`0x3c8b`), so Peridot's menus leave Help out until then, when whether RoF2 can show housing help gets looked at. No research before that.
+
 **Deferred to polish: Walking Death's shifting.** On Live the familiar (item 52198, `a_familiar_visage_of_death`) changes form in place among 16 looks (skeletons in five textures, vampires and zombies of both sexes, two banshees, a rat and a froglok ghost) at random intervals, 6 seconds to 19 minutes apart with a median near 3.4 minutes; the server swaps its look directly, with no buff (livedumps' `visageEvents`). Peridot first spawns it as the Banshee (`content/npcItemsToAuthor.md`); the polish pass adds the shifting on a random timer.
 
 ### S6. Neighborhoods and search
@@ -166,4 +168,4 @@ Choices the client leaves to us, to settle in phase 2 before code: the catalog a
 
 ## To verify by test or Live comparison
 
-Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin); what Live's type `0xe` Help does, which RoF2 answers with a text prompt.
+Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin).
