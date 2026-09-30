@@ -198,8 +198,7 @@ namespace housing {
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
         .u32(entry.maxHouses)
-        // Live's zoneId, 0 on every definition, so no column holds it.
-        .u32(0)
+        .u32(row.unknown_34)
         .u32(row.dz_id)
         .u32(row.type)
         .u32(row.category)
