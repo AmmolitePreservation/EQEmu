@@ -83,14 +83,14 @@ All three deserialize the same class (vtable `0xa1052c`, reader `0x7fdf00`).
 
 ```
 u32 id                 client +0x14
-u32                    +0x18
+u32                    +0x18  (Live: staticId, -1)
 u32 parentID           +0x1c  (parent property id; walked by 0x4d6790)
 u32 definitionID       +0x20  (0x6fd0 looks up its type)
 u32 guildID            +0x24  (owning guild, -1 = none; see the Purchase window checks)
 u32                    +0x28
 string                 +0x30
 string                 +0x2c  (owner name: compared against the local character's name at player +0xa4)
-u32                    +0x34
+u32                    +0x34  (Live: primaryHandle, the owner's handle; 0 with no owner)
 u32 idCount            (count comes before the next string)
 string                 +0x38
 u32 × idCount          list at +0x48/+0x4c
