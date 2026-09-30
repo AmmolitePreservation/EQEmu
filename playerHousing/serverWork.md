@@ -115,7 +115,7 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Client → server:** `0x21ba` (house swap), `0x6917` (store all), `0x613d` (pack / unpack), `0x5b41` (load a layout), `0x1da9` (leave real estate), `0x7bb1` (accept an anchor teleport).
 - **Server → client:** entry updates and result codes; `0x7bb1` (anchor teleport offer); inside a house, the whole S1–S4 sequence again (an interior is an ordinary zone to the client).
 - **Server rules:** bulk actions follow the individual-move rules per item; the crate is a child of its plot; layouts are validated record by record.
-- **Depends on:** S4, S5, F3. **Readiness:** Specified (wire); what `/leaverealestate` does outside an interior is **Verify** (Live comparison); how interiors are instanced per house is **Design**.
+- **Depends on:** S4, S5, F3. **Readiness:** Specified (wire); how interiors are instanced per house is **Design**.
 - **Source:** `flows/movingCrate.md`, `flows/layouts.md`, `commandsAndKeybindings.md`, `worldLayer.md`.
 
 ### S11. Polls
@@ -156,10 +156,12 @@ F5 zone-in sequence (grows with S1-S5)  +--> S7 purchase --> S8 escrow, upkeep
                                         S4 + F1 --> S12 trophies
 ```
 
+**Last, once the system is shaken out: the guild hall's teleport services.** The Teleportation Assistant sells 37 zone keys (items with no click spell) and the Teleportation Device, whose menu offers members Transact, takes them; Live keeps which key goes where and each landing spot on the server (door records carry no destinations either), so a way to capture them is worked out then.
+
 ## Open design decisions
 
 Choices the client leaves to us, to settle in phase 2 before code: the catalog and neighborhoods to ship; region volume authoring; upkeep costs, schedule and expiry handling; where each access permission is enforced; house interior instancing; the `0x21ec` menu entries (types and submenus); the transfer-offer policy; the minimum guild size for guild plots; poll administration; what an empty neighborhood name search returns.
 
 ## To verify by test or Live comparison
 
-Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; `/leaverealestate` outside an interior (Live); what the Guild Teleportation Device does with the Teleportation Assistant's 37 zone keys (items with no click spell, so the key-to-destination mapping and landing spots are the server's; Live: Transact with the device holding a key, then dump on arrival); the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin); what Live's type `0xe` Help does, which RoF2 answers with a text prompt.
+Q11 (the interior-zone crash); Q25 (window clicks during placement); a plot sign click sending `0x218c`; the guild tribute names arriving one character short (an EQEmu packet quirk seen by the plugin); what Live's type `0xe` Help does, which RoF2 answers with a text prompt.
