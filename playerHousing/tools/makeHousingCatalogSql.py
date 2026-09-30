@@ -1,6 +1,6 @@
 """Writes sql/housingCatalog.sql: the housing catalog (serverPlan.md, the content sections).
 
-Ids and costs are Live's, read from a livedumps clone's master/ (tools/liveResearch.py over MQ2PeridotLive's captures). Sunrise Hills
+Ids and costs are Live's, read from a livedumps clone's master/ (mqperidotlive's tools/liveResearch.py over MQ2PeridotLive's captures). Sunrise Hills
 is definition 2 (Housing:RandomNeighborhoodDefinitions' default), its children Live's 71 player plots (101-173) and 4 guild
 plots (187-190), each matched to its plot in content/sunriseHillsPlots.json by its border stone and checked against the
 template's price. A plot keeps Live's region id, purchase and upkeep cost ids, house limit and pet cap, and the template's item
