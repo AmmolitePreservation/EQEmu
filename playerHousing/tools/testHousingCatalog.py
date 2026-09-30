@@ -62,7 +62,7 @@ check('every item-named definition exists', f"SELECT COUNT(*) FROM real_estate_d
 check('every item upkeep id is a cost', f"SELECT COUNT(*) FROM real_estate_costs WHERE id IN ({', '.join(map(str, upkeepIds))})", str(len(upkeepIds)))
 check('item definition types (houses, halls, crates)', "SELECT CONCAT_WS(' ', SUM(type = 3), SUM(type = 2), SUM(type = 7)) FROM real_estate_definitions WHERE type IN (2, 3, 7)", '27 4 12')
 
-check('Sunrise Hills is definition 2', "SELECT CONCAT_WS(' ', name, type, zone_id, max_items) FROM real_estate_definitions WHERE id = 2", 'Sunrise Hills 5 712 0')
+check('Sunrise Hills is definition 2', "SELECT CONCAT_WS(' ', name, type, instance_zone_id, max_items) FROM real_estate_definitions WHERE id = 2", 'Sunrise Hills 5 712 0')
 check('its children are the 75 plots', "SELECT CONCAT(COUNT(*), ' ', MIN(child_id), '-', MAX(child_id)) FROM real_estate_definition_children WHERE parent_id = 2", '75 101-190')
 template = json.load(open(os.path.join(here, '..', 'content', 'sunriseHillsPlots.json')))
 first = template[0]
@@ -77,9 +77,9 @@ check('its region is its box, 100 below its ground to 900 above', "SELECT CONCAT
       f"{first['center'][0]:.2f} {first['center'][1]:.2f} {first['center'][2] + 400:.2f} {first['sizeAcross']:.2f} {first['sizeAlong']:.2f} 1000 {first['heading']:g}")
 check('guild plot 200 Guild Way', "SELECT CONCAT_WS(' ', id BETWEEN 187 AND 190, type, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id, ROUND(layout_origin_x, 1), ROUND(layout_origin_y, 1), layout_heading) FROM real_estate_definitions WHERE name = '200 Guild Way'",
       '1 8 210 0 12 16 11 2689.8 2633.5 123')
-check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items, upkeep_cost_id) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
+check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, instance_zone_id, max_items, max_non_real_estate_items, max_pet_items, upkeep_cost_id) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
       '5:714:500:75:0:17,18:715:300:60:0:21,34:717:500:300:0:0')
-check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
+check('halls: Standard, Grand, Palatial, Modest', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, instance_zone_id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE type = 2",
       '38:345:1000:0:0,39:738:1500:0:0,40:737:2000:0:0,41:751:1500:0:0')
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_pet_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",
       '31:0:0:0,174:50:0:0,183:500:0:0,184:100:0:0')

@@ -26,7 +26,7 @@ namespace housing {
     constexpr float regionBelowFeet = 100.0f;
     constexpr float regionAboveFeet = 900.0f;
     const std::set<std::string> numericDefinitionFields = {"purchase_cost_id", "upkeep_cost_id", "max_items", "max_non_real_estate_items",
-                                                           "max_pet_items", "max_houses", "region_id", "zone_id", "zone_version", "type", "category"};
+                                                           "max_pet_items", "max_houses", "region_id", "instance_zone_id", "instance_zone_version", "type", "category"};
 
     void say(Client *client, const std::string &text) {
       client->Message(Chat::White, "%s", text.c_str());
@@ -217,8 +217,8 @@ namespace housing {
       for (uint32 child : entry.children) {
         children.push_back(std::to_string(child));
       }
-      say(client, fmt::format("Definition {} '{}': type {} ({}), category {}, region {}, zone {} version {}",
-        row.id, row.name, row.type, typeName(row.type), row.category, row.region_id, row.zone_id, row.zone_version));
+      say(client, fmt::format("Definition {} '{}': type {} ({}), category {}, region {}, instance zone {} version {}",
+        row.id, row.name, row.type, typeName(row.type), row.category, row.region_id, row.instance_zone_id, row.instance_zone_version));
       say(client, fmt::format("  items {}, vault {}, pets {}, houses {} (effective {})",
         row.max_items, row.max_non_real_estate_items, row.max_pet_items, row.max_houses, entry.maxHouses));
       say(client, fmt::format("  purchase cost {} ({} copper), upkeep cost {} ({} copper a day)",

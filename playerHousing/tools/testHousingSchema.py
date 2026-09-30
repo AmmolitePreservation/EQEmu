@@ -23,10 +23,10 @@ print(f'created {len(tables)} tables; re-running the schema is safe')
 
 sql("""
 INSERT INTO real_estate_regions (id, name, x, y, z, size_x, size_y, size_z, heading) VALUES (1, 'plot 1', 100, 200, 0, 60, 40, 30, 128);
-INSERT INTO real_estate_definitions (id, name, type, zone_id) VALUES (900, 'Sunrise Hills neighborhood', 5, 712);
+INSERT INTO real_estate_definitions (id, name, type, instance_zone_id) VALUES (900, 'Sunrise Hills neighborhood', 5, 712);
 INSERT INTO real_estate_definitions (id, name, type, region_id, purchase_cost_id, upkeep_cost_id, max_items, max_non_real_estate_items, max_pet_items)
   VALUES (901, 'player plot 1', 4, 1, 1, 2, 200, 150, 20), (902, 'guild plot 1', 8, 0, 1, 2, 200, 150, 20);
-INSERT INTO real_estate_definitions (id, name, type, zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
+INSERT INTO real_estate_definitions (id, name, type, instance_zone_id, max_items) VALUES (5, 'House, Stucco interior', 3, 714, 100), (31, 'Crate of Eviction', 7, 0, 500);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (901, 5), (901, 31);
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep'), (3, 'upkeep reduction');
 INSERT INTO real_estate_cost_options (cost_id, option_key) VALUES (1, 0), (2, 0), (3, 0);
