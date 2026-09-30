@@ -48,8 +48,8 @@ Wire order is **not** in-memory order. "Mem" is the client struct offset, for cr
 | 5 | u32 | +0x28 | **max items** | accessor `0x7f5040`; validation strings |
 | 6 | u32 | +0x2c | **max non-real-estate items** (must be ≤ max items) | accessor `0x7f5080`; validation clamps to +0x28 |
 | 7 | u32 | +0x30 | **max houses**: the houses and guild halls a yard holds. Placement rule 9 (`0x5b48b0`) counts the yard's children that aren't moving crates (`0x7f61b0`) and refuses once the count reaches this (`0x7f5100` on the yard's definition), with `0x0f` for a house or `0x44` for a guild hall | accessor `0x7f5100` |
-| 8 | u32 | +0x34 | unknown | |
-| 9 | u32 | +0x38 | unknown | read at `0x5b46e0` |
+| 8 | u32 | +0x34 | **zone id**: Live's `RealEstateDefinition::zoneId`, 0 on every one of Live's 135 definitions; Peridot sends 0 too, with no column for it | |
+| 9 | u32 | +0x38 | **dz id** (`dz_id`): Live's `RealEstateDefinition::dzId`, set only where a property has its own instanced zone: each guild hall its own (35633, 35634, 35635, 35642), houses one of six shared among them (23000-23005), Sunrise Hills 20504, and 0 for plots, guild plots and crates; the catalog carries Live's | read at `0x5b46e0` |
 | 10 | u32 | +0x3c | **definition type** (enum below) | accessor `0x7f4fa0` (50 callers); name table `0xb616a0` |
 | 11 | u32 | +0x40 | **category**: a dbstr category 27 string id shown as `REPW_Category_Label` | `0x74e084` → `0x4866c0(id, 0x1b)` |
 | 12 | string | +0x0c | unknown string (≤ 600 chars in the file format) | |
@@ -115,5 +115,5 @@ On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstat
 
 ## Still open
 
-- Meanings of the unknown definition fields (+0x34, +0x38, the string at +0x0c); +0x30 is max houses. (+0x1c = region id, +0x20 = purchase cost id, +0x40 = category label, +0x44 = icon are resolved.)
+- The meaning of the string at +0x0c; +0x30 is max houses. (+0x1c = region id, +0x20 = purchase cost id, +0x40 = category label, +0x44 = icon are resolved.)
 - When the server should send `0x2698`: on zone-in, or on the first real-estate window open. Decide once the request flows are decoded.

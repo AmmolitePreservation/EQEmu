@@ -36,8 +36,7 @@ public:
 		uint32_t    zone_id;
 		uint8_t     zone_version;
 		uint32_t    max_houses;
-		uint32_t    unknown_34;
-		uint32_t    unknown_38;
+		uint32_t    dz_id;
 		uint32_t    icon;
 		std::string unknown_string;
 	};
@@ -67,8 +66,7 @@ public:
 			"zone_id",
 			"zone_version",
 			"max_houses",
-			"unknown_34",
-			"unknown_38",
+			"dz_id",
 			"icon",
 			"unknown_string",
 		};
@@ -94,8 +92,7 @@ public:
 			"zone_id",
 			"zone_version",
 			"max_houses",
-			"unknown_34",
-			"unknown_38",
+			"dz_id",
 			"icon",
 			"unknown_string",
 		};
@@ -155,8 +152,7 @@ public:
 		e.zone_id                   = 0;
 		e.zone_version              = 0;
 		e.max_houses                = 0;
-		e.unknown_34                = 0;
-		e.unknown_38                = 0;
+		e.dz_id                     = 0;
 		e.icon                      = 0;
 		e.unknown_string            = "";
 
@@ -212,10 +208,9 @@ public:
 			e.zone_id                   = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.zone_version              = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.unknown_string            = row[19] ? row[19] : "";
 
 			return e;
 		}
@@ -266,10 +261,9 @@ public:
 		v.push_back(columns[14] + " = " + std::to_string(e.zone_id));
 		v.push_back(columns[15] + " = " + std::to_string(e.zone_version));
 		v.push_back(columns[16] + " = " + std::to_string(e.max_houses));
-		v.push_back(columns[17] + " = " + std::to_string(e.unknown_34));
-		v.push_back(columns[18] + " = " + std::to_string(e.unknown_38));
-		v.push_back(columns[19] + " = " + std::to_string(e.icon));
-		v.push_back(columns[20] + " = '" + Strings::Escape(e.unknown_string) + "'");
+		v.push_back(columns[17] + " = " + std::to_string(e.dz_id));
+		v.push_back(columns[18] + " = " + std::to_string(e.icon));
+		v.push_back(columns[19] + " = '" + Strings::Escape(e.unknown_string) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -308,8 +302,7 @@ public:
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.zone_version));
 		v.push_back(std::to_string(e.max_houses));
-		v.push_back(std::to_string(e.unknown_34));
-		v.push_back(std::to_string(e.unknown_38));
+		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
@@ -358,8 +351,7 @@ public:
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.zone_version));
 			v.push_back(std::to_string(e.max_houses));
-			v.push_back(std::to_string(e.unknown_34));
-			v.push_back(std::to_string(e.unknown_38));
+			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
@@ -412,10 +404,9 @@ public:
 			e.zone_id                   = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.zone_version              = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.unknown_string            = row[19] ? row[19] : "";
 
 			all_entries.push_back(e);
 		}
@@ -457,10 +448,9 @@ public:
 			e.zone_id                   = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.zone_version              = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
 			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.unknown_34                = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.unknown_38                = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.unknown_string            = row[20] ? row[20] : "";
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.unknown_string            = row[19] ? row[19] : "";
 
 			all_entries.push_back(e);
 		}
@@ -552,8 +542,7 @@ public:
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.zone_version));
 		v.push_back(std::to_string(e.max_houses));
-		v.push_back(std::to_string(e.unknown_34));
-		v.push_back(std::to_string(e.unknown_38));
+		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
@@ -595,8 +584,7 @@ public:
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.zone_version));
 			v.push_back(std::to_string(e.max_houses));
-			v.push_back(std::to_string(e.unknown_34));
-			v.push_back(std::to_string(e.unknown_38));
+			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.unknown_string) + "'");
 
