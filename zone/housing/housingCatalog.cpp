@@ -198,7 +198,7 @@ namespace housing {
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
         .u32(entry.maxHouses)
-        .u32(row.unknown_34)
+        .u32(row.zone_id)
         .u32(row.dz_id)
         .u32(row.type)
         .u32(row.category)

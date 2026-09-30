@@ -8,7 +8,7 @@ capacity and border stone as layout origin. Every definition an item names comes
 (tools/exportItemDefinitions.sql), with Live's cost ids. Costs are Live's, copied for every id a definition names or the plan's
 item upkeep table lists (the ids Peridot's placeable items carry, its amounts checked against Live's): each option a way to pay,
 coin always, and each alternate currency gated by the expansion it arrived in. A pet cap of 0 is no
-separate pet cap. Every definition keeps Live's icon and dz id.
+separate pet cap. Every definition keeps Live's icon, zone id and dz id.
 
 Refuses to write when a plot has no single matching template plot, a price or kind disagrees, an item's definition can't be
 placed, a named cost or definition is missing from Live's catalog, a currency has no known expansion, two plot footprints
@@ -163,7 +163,7 @@ def main():
 
   definitions, regions = [], []
   definitions.append(dict(id=neighborhoodDefinitionId, name='Sunrise Hills', type=typeNeighborhood, region=0, purchase=0, upkeep=0, houses=0,
-                          maxItems=0, vault=0, pets=0, icon=int(neighborhood['icon']), dz=int(neighborhood['dzId']), origin=(0.0, 0.0, 0.0, 0.0),
+                          maxItems=0, vault=0, pets=0, icon=int(neighborhood['icon']), liveZone=int(neighborhood['zoneId']), dz=int(neighborhood['dzId']), origin=(0.0, 0.0, 0.0, 0.0),
                           zone=neighborhoodZoneId))
   for liveId in children:
     live, plot = livePlots[liveId], matches[liveId]
@@ -179,7 +179,7 @@ def main():
     origin = (*plot['doorPosition'], plot['heading']) if guild else stones[plot['door']]
     definitions.append(dict(id=liveId, name=plot['address'], type=typeGuildPlot if guild else typePlot, region=regionId, purchase=purchase,
                             upkeep=upkeep, houses=int(live['maxChildren']), maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']),
-                            pets=int(live['maxNpcItems']), icon=int(live['icon']), dz=int(live['dzId']), origin=origin, zone=0))
+                            pets=int(live['maxNpcItems']), icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), origin=origin, zone=0))
   itemUpkeeps = readPlanItemUpkeeps()
   for costId, amount in sorted(itemUpkeeps.items()):
     if costId not in liveCosts or coin(costId) != amount:
@@ -193,7 +193,7 @@ def main():
       raise ValueError(f"definition {group['definition']}: upkeep id {group['upkeep']} is not in the plan's item upkeep table")
     definitions.append(dict(id=group['definition'], name=entry['name'], type=entry['type'], region=0, purchase=int(live['costDefinition']),
                             upkeep=int(live['upkeepDefinition']), houses=0, maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']), pets=0,
-                            icon=int(live['icon']), dz=int(live['dzId']), origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
+                            icon=int(live['icon']), liveZone=int(live['zoneId']), dz=int(live['dzId']), origin=(0.0, 0.0, 0.0, 0.0), zone=entry['zone']))
   if len({d['id'] for d in definitions}) != len(definitions):
     raise ValueError('duplicate definition ids')
   corners = [footprint(region) for region in regions]
@@ -229,7 +229,7 @@ def main():
   number = lambda value: repr(round(float(value), 3))
   values = lambda rows: ',\n'.join('    (' + ', '.join(row) + ')' for row in rows) + ';\n'
   definitionRows = [(str(d['id']), quoted(d['name']), str(d['type']), '0', str(d['region']), str(d['purchase']), str(d['upkeep']), str(d['houses']),
-                     str(d['maxItems']), str(d['vault']), str(d['pets']), str(d['icon']), str(d['dz']), *[number(v) for v in d['origin']], str(d['zone']), '0')
+                     str(d['maxItems']), str(d['vault']), str(d['pets']), str(d['icon']), str(d['liveZone']), str(d['dz']), *[number(v) for v in d['origin']], str(d['zone']), '0')
                     for d in sorted(definitions, key=lambda d: d['id'])]
   catalogTables = ['real_estate_definitions', 'real_estate_definition_children', 'real_estate_costs', 'real_estate_cost_options',
                    'real_estate_cost_items', 'real_estate_regions', 'real_estate_neighborhood_words']
@@ -238,7 +238,7 @@ def main():
          f"  IF {' OR '.join(f'EXISTS (SELECT 1 FROM {t})' for t in catalogTables)} THEN\n"
          "    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the housing catalog tables are not empty';\n  END IF;\n  START TRANSACTION;\n"
          '  INSERT INTO real_estate_definitions (id, name, type, category, region_id, purchase_cost_id, upkeep_cost_id, max_houses, max_items,\n'
-         '    max_non_real_estate_items, max_pet_items, icon, dz_id, layout_origin_x, layout_origin_y, layout_origin_z, layout_heading, zone_id, zone_version) VALUES\n'
+         '    max_non_real_estate_items, max_pet_items, icon, zone_id, dz_id, layout_origin_x, layout_origin_y, layout_origin_z, layout_heading, instance_zone_id, instance_zone_version) VALUES\n'
          + values(definitionRows)
          + '  INSERT INTO real_estate_definition_children (parent_id, child_id) VALUES\n' + values([(str(neighborhoodDefinitionId), str(i)) for i in children])
          + '  INSERT INTO real_estate_costs (id, name) VALUES\n' + values([(str(c), quoted(costNames[c])) for c in sorted(costNames)])
