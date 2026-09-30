@@ -4,7 +4,10 @@
 Each capture's parse is cached in the clone's .cache/liveResearch/ (keyed by the capture's content and this tool's own code and
 headers), so a rebuild parses only new or changed captures; the tables are always folded from every capture, in order.
 
-Usage: python liveResearch.py --live <livedumps clone> [--full]
+With --import, the new files in a MacroQuest Logs folder are brought in first (the tour's progress files stay), and after the rebuild the
+clone's captures/ and master/ are committed and pushed to claude before the imported files are removed from Logs.
+
+Usage: python liveResearch.py --live <livedumps clone> [--full] [--import <MacroQuest Logs folder>]
 """
 import argparse
 import collections
@@ -14,8 +17,11 @@ import json
 import pathlib
 import pickle
 import re
+import shutil
 import statistics
 import struct
+import subprocess
+import time
 
 from eqlibLayouts import Layouts
 from makeHousingCatalogSql import footprint
@@ -961,17 +967,99 @@ def useLiveClone(path):
   layoutDirectories = {'Sep 17 2026 15:46:17': liveDirectory / 'eqlib' / '9efa0bc'}
 
 
+toolRepository = pathlib.Path(__file__).resolve().parents[2]
+# A file written this recently may belong to a menu scan or visage watch still recording, whose remainder would start without a header.
+recordingGrace = 60
+
+
+def git(repository, *arguments):
+  result = subprocess.run(['git', '-C', str(repository), *arguments], capture_output=True, text=True)
+  if result.returncode != 0:
+    raise RuntimeError(f"git {' '.join(arguments)} in {repository} failed: {(result.stderr or result.stdout).strip()}")
+  return result.stdout.strip()
+
+
+def requireBranch(repository, branch):
+  current = git(repository, 'rev-parse', '--abbrev-ref', 'HEAD')
+  if current != branch:
+    raise RuntimeError(f'{repository} is on {current}, not {branch}')
+
+
+def importName(name, stamp):
+  # The per-server menus and visage logs start over under the same name once moved, so each import is stamped.
+  match = re.fullmatch(r'(peridotLive(?:Menus|Visage))_([^_]+)\.txt', name)
+  return f'{match.group(1)}_{match.group(2)}_{stamp}.txt' if match else name
+
+
+def importLogs(logs, full):
+  requireBranch(toolRepository, 'claude')
+  git(toolRepository, 'fetch', 'origin')
+  behind = int(git(toolRepository, 'rev-list', '--count', 'HEAD..origin/claude'))
+  if behind:
+    raise RuntimeError(f'{toolRepository} is {behind} commits behind origin/claude: pull it, then run again')
+  requireBranch(liveDirectory, 'claude')
+  if git(liveDirectory, 'status', '--porcelain'):
+    raise RuntimeError(f'{liveDirectory} has uncommitted changes: commit or discard them first')
+  git(liveDirectory, 'pull', '--ff-only', 'origin', 'claude')
+  sources = sorted(path for path in logs.glob('peridotLive*.txt') if not path.name.startswith('peridotLiveTour_'))
+  if not sources:
+    print(f'nothing to import from {logs}')
+    return
+  recent = [path.name for path in sources if time.time() - path.stat().st_mtime < recordingGrace]
+  if recent:
+    raise RuntimeError(f'written within the last {recordingGrace} seconds, so perhaps still recording: {recent}')
+  stamp = time.strftime('%Y%m%d-%H%M%S')
+  plan = []
+  for source in sources:
+    target = liveDirectory / 'captures' / importName(source.name, stamp)
+    if target.exists() and target.read_bytes() != source.read_bytes():
+      raise RuntimeError(f'{target.name} is already in captures with different content')
+    plan.append((source, None if target.exists() else target))
+  copies = []
+  try:
+    for source, target in plan:
+      if target:
+        shutil.copyfile(source, target)
+        copies.append(target)
+    conflicts = rebuild(full)
+  except BaseException:
+    for copy in copies:
+      copy.unlink()
+    git(liveDirectory, 'checkout', '--', 'master')
+    git(liveDirectory, 'clean', '-fdq', '--', 'master')
+    raise
+  for conflict in conflicts:
+    print('conflict: ' + ' | '.join(str(value) for value in conflict[:3]))
+  git(liveDirectory, 'add', 'captures', 'master')
+  if git(liveDirectory, 'status', '--porcelain'):
+    kinds = collections.Counter(re.match(r'peridotLive([A-Za-z]+)_', copy.name).group(1) for copy in copies)
+    summary = ', '.join(f'{count} {kind}' for kind, count in sorted(kinds.items()))
+    git(liveDirectory, 'commit', '-m', f"Captures: {len(copies)} files imported from MacroQuest's Logs at {stamp} ({summary}); master rebuilt")
+    git(liveDirectory, 'push', 'origin', 'claude')
+  for source, _ in plan:
+    source.unlink()
+  print(f'imported {len(copies)} files ({len(plan) - len(copies)} already in captures), committed, pushed, and removed them from {logs}')
+
+
 def main():
   parser = argparse.ArgumentParser(description='Rebuild the master tables from every capture.')
   parser.add_argument('--live', required=True, help='a livedumps clone')
   parser.add_argument('--full', action='store_true', help='parse every capture again instead of reusing the cache')
+  parser.add_argument('--import', dest='logs', type=pathlib.Path, help='a MacroQuest Logs folder to import from, then commit and push')
   arguments = parser.parse_args()
   useLiveClone(arguments.live)
+  if arguments.logs:
+    importLogs(arguments.logs, arguments.full)
+  else:
+    rebuild(arguments.full)
+
+
+def rebuild(full):
   paths = sorted((liveDirectory / 'captures').glob('peridotLive*.txt'), key=lambda path: (captureStamp(path), path.name))
   tables = buildTables()
   fieldTables = tables['fields'] = buildFieldTables()
   visits = []
-  for parse in parsedCaptures(paths, arguments.full):
+  for parse in parsedCaptures(paths, full):
     observed = {}
     for target, key, observeArguments, observeKeywords, stamp in parse['observations']:
       capture = observed.get(stamp) or observed.setdefault(stamp, ObservedCapture(parse['name'], stamp))
@@ -995,6 +1083,7 @@ def main():
     writer.writerows([[tsvText(value) for value in conflict] for conflict in conflicts])
   print(f'{len(paths)} captures -> ' + ', '.join(f'{name} {len(table.rows)}' for name, table in tables.items()) + f', conflicts {len(conflicts)}')
   print('fields: ' + ', '.join(f'{name} {len(table.rows)}x{len(table.columns)}' for name, table in fieldTables.items()))
+  return conflicts
 
 
 ingest = {'vendor': ingestVendor, 'zone': ingestZone, 'world': ingestWorld, 'items': ingestItems, 'window': ingestWindow, 'spells': ingestSpells,
