@@ -119,7 +119,7 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 20
 - **Client → server:** `0x21ba` (house swap), `0x6917` (store all), `0x613d` (pack / unpack), `0x5b41` (load a layout), `0x1da9` (leave real estate), `0x7bb1` (accept an anchor teleport).
 - **Server → client:** entry updates and result codes; `0x7bb1` (anchor teleport offer); inside a house, the whole S1–S4 sequence again (an interior is an ordinary zone to the client).
 - **Server rules:** bulk actions follow the individual-move rules per item; the crate is a child of its plot; layouts are validated record by record.
-- **Depends on:** S4, S5, F3. **Readiness:** Specified (wire); how interiors are instanced per house is **Design**.
+- **Depends on:** S4, S5, F3. **Readiness:** Specified (wire); how interiors are instanced per house is **Design** (EQEmu's dynamic zone templates, one per `dz_id`, lead).
 - **Source:** `flows/movingCrate.md`, `flows/layouts.md`, `commandsAndKeybindings.md`, `worldLayer.md`.
 
 ### S11. Polls
