@@ -108,7 +108,7 @@ Their spell names a mount or pet Peridot's database doesn't have, so EQEmu can't
 
 Walking Death (52198) changes form on Live among 16 looks at random intervals (livedumps' `visageEvents`), so Live has no single look for it: Peridot spawns it as one of them, a Banshee (race 487, female, texture 0, size 3), and its shifting is a polish pass (`serverWork.md`, S5).
 
-Stone Companion (47088) shows material 0 and variation 0 on four copies across three servers (Erollisi Marr, Povar, Xegony); two copies on one Tunare property show 101/100 and 32/75, that owner's customization, so Peridot uses the plain look.
+The Stone Companion's golem (47088) has material 0 and variation 0, as four copies on three servers show it (Erollisi Marr, Povar, Xegony); two copies on one Tunare property carry that owner's changes (101/100 and 32/75).
 
 | Item | Item name | Spell | Names | Missing |
 |---|---|---|---|---|
