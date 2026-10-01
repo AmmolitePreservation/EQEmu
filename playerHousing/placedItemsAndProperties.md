@@ -34,7 +34,7 @@ The container is cleared (`0x5ab3a0`) before reading. **If any entry fails, the 
 | 4 | u32 | +0x04 | **not read by any client code** found; Live's field here is `upkeepExpiredTime`, the item's upkeep expiry (0 while paid) | `0x7fc9a0` |
 | 5–11 | f32 ×7 | +0x08..+0x20 | **placement transform: heading, pitch, roll, scale, x, y, z** (verified: the layout writer `0x5ae900` reads them in this order to save layouts, heading and position relative to the yard). The same order is used by the layout file and `0x5b41`. **The placement object (`0x626e`, `0x711a`, `0x1045`) uses a different order: scale, heading, pitch, roll, position** (`worldLayer.md`); the server must convert between them. | `0x7fc9e0`; `0x5ae900` |
 | 12 | string | +0x24 | **owner name** (verified: shown in the Items list's Owner Name column; the Owned/Unowned filters compare it with the player's name). The client stores `CRC32(string)` at `+0x2c` for fast lookups, and `0x1967` removes every entry with a given owner | `0x7fc960`; CRC32 `0x808cb0`; `0x735a60`, `0x736bc0` |
-| 13 | string | +0x28 | **not read by any client code**; Live's field here is `ownerHandle`, the owner's handle as text (only assigned at entry creation, `0x5acb40`) | `0x7fc960` |
+| 13 | string | +0x28 | **not read by any client code**; Live's field here is `ownerHandle`, the owner's per-account handle as text (only assigned at entry creation, `0x5acb40`) | `0x7fc960` |
 | 14 | Item | +0x30 | **the full item, in the standard RoF2 serialized form**: exactly the bytes `OP_ItemPacket` carries after its leading `u32` packet type (*verified*: same deserializer `0x5559a0`, same cursor, no prefix) | `0x5ac0b0` → `0x5aad80` → `0x5559a0` |
 
 **For the server:** EQEmu already emits the item portion for RoF2 `OP_ItemPacket`. Reuse its item serializer and leave off the leading packet type.
@@ -90,7 +90,7 @@ u32 guildID            +0x24  (owning guild, -1 = none; see the Purchase window 
 u32                    +0x28
 string                 +0x30
 string                 +0x2c  (owner name: compared against the local character's name at player +0xa4)
-u32                    +0x34  (Live: primaryHandle, the owner's handle; 0 with no owner)
+u32                    +0x34  (Live: primaryHandle, the owner's per-account handle; 0 with no owner)
 u32 idCount            (count comes before the next string)
 string                 +0x38
 u32 × idCount          list at +0x48/+0x4c
