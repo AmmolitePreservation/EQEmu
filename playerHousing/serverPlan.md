@@ -617,7 +617,7 @@ The code itself is verified by reading it against Peridot's source and the resea
 
 ### Validating in game, in dependency order
 
-Each stage needs the ones before it; the diagnostics plugin's sections and findings show what the client holds, and a Lua suite (the harness in `mqperidotprobe`) asserts it and records the evidence on a failure. **Stop at the first stage that fails**: everything after it depends on it.
+Each stage needs the ones before it; the diagnostics plugin's sections and findings show what the client holds, and a Lua suite (the harness in `mqperidotemu`) asserts it and records the evidence on a failure. **Stop at the first stage that fails**: everything after it depends on it.
 
 | Stage | Checks | Probe | Lua suite |
 |---|---|---|---|
