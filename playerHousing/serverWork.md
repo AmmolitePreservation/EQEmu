@@ -10,7 +10,7 @@ Every piece of server-side work the client research specifies, grouped into subs
 
 ## Already satisfied by Peridot
 
-Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotprobe`), 2026-09-25, on EQEmu 23.8.1:
+Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotemu`), 2026-09-25, on EQEmu 23.8.1:
 
 | Requirement | State |
 |---|---|
