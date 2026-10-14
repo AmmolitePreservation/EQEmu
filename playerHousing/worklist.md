@@ -1,0 +1,1162 @@
+# Player housing worklist
+
+**The owner's rule.** Live's data and client dictate the implementation: where Live shows how something works, Peridot does it that way and there is no question. The exceptions are the owner's extra features (serverPlan.md X1-X3 and D12): **X1** a regular zone as a house or guild-hall interior, **X2** a regular zone map as a neighborhood, **X3** plots in a public zone at instance 0, and from the custom-zones discussion **X4** apartments and per-template neighborhood writs. Questions remain only for those extras, for things RoF2 lacks, and for server-internal choices Live can't show.
+
+**Inputs merged:** the chunks 1-5 audit (audits/chunks1to5Audit.md and audits/chunks1to5AuditDetail.json), the plan and docs pass, and the verified X1-X3 client analysis (four lenses, each a finder plus an adversarial verifier; the verifier's correction wins).
+
+**Source tags.** Plain keys (G1-01, C3-25, report:..., serverPlan:NNN, summary:...) are the two item files' keys and sources. `XA:<id>` is a verified X1-X3 analysis finding: Z = zone gates, A = assets, PM = property model, DZ = doors and zone-in; a `v` suffix (PMv1, Av2, DZv3, Zv1) is a verifier's added finding. `check:` is a code fact re-read for this merge at HEAD 56e2ac4d9.
+
+**Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
+
+**Counts.** fix 146, liveCheck 52, clientAnalysis 25, peridotTest 36, question 28, done 14; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+
+## Owner decisions
+
+- **Server-internal choices follow Live too:** where the evidence shows how Live is built (not only what the client sees), Peridot mirrors it. Q2 was settled this way.
+- **Client workarounds are marked:** any server-side stand-in for something RoF2 lacks carries a one-line code comment naming the client limitation.
+- **Phasing.** The standard system runs natively on the RoF2 client with EQEmu code, at parity with Live. Client modification is undesired until the custom features (X1-X3), and acceptable only then. Client tools in the style of clearcoat/scarab are a late-term last resort, decided as late as possible. Each client data file Live parity needs is its own question (Q21-Q26).
+- **Q1, build:** one build at the end, with no stubs or temporary code written to make it compile. The system lands holistic and complete; BLD-1 and BLD-2 close only through the full implementation.
+- **Q5, guild bank outside the four flagged hall zones:** an early polish item, after the standard system. Standard halls (345, 737, 738, 751) carry the flag, so Live parity works there natively.
+- **Q8, border, pad and portal models outside the neighborhood:** an early polish item, after the custom zones exist. The standard neighborhood loads them through its own asset list, so they must work there natively (DOR checks).
+- **Housing scenarios (custom-zones discussion):** (1) Live's neighborhood; (2) custom neighborhood templates (X2), each either in the random pool or created by a one-shot writ, for example a raid reward (EXT-33); (3) fixed, persistent plots in regular zones (X3), from slums to gated premium spots; (4) apartments (X4). Any plot's house may lead to a standard interior, a reused zone or a new zone (X1). Only (1) and (2) are listed in the Neighborhood window and Plot Search; the rest are found by exploring and quests. Their records still reach every client in the zone, so MQ can see them; accepted.
+- **Brand-new zones:** client patches that add to RoF2's zone table, through a minimal client toolset or a MacroQuest plugin (EXT-34). Reused zones need none.
+- **Gating:** buying or keeping a special property can require custom alternate currencies, through the per-currency cost items (EXT-31).
+- **Configuration over code:** a housing zone's forage, fishing, weather, zone lines and doors are data per housing version, authored like any zone (Q6, Q7).
+- **Remaining extras questions:** content (Q9-Q11) in the implementation testing phase, after the build compiles and standard housing works; Q12 with the final polish item.
+- **Client data files:** a model RoF2 already ships is made to work, and a text-file change through the patcher is acceptable for that (Q21, and by the same rule Q22 and Q23). The first pass makes only RoF2's own content work. Models from Live are added at the very end of polish, as the final item (Q13, and Live's files in Q12).
+- **Live research method:** every Live check, timed or not, runs through a Live build of claudelink driving a copy of the Live client, on the owner's non-GM test accounts (MacroQuest for movement, screenshots and purchases). Building it is PRC-6.
+
+## Questions to work through
+
+In order: process and foundational first, then the extras (structure before content), then what RoF2 lacks, then server-internal choices.
+
+### Q1. Build once, or build and validate per stage (decided)
+
+- **Decided:** (a) one build at the end, with no stubs or temporary code to make it compile.
+
+- **Question:** Build once after everything is written (serverPlan.md:9, :609-616), or build and validate after each of chunk 8's stages (:620-634)? Neither zone nor world links today (BLD-1, BLD-2).
+- **Options:** (a) one build at the end; (b) build and validate after each stage.
+- **Recommendation:** (b), starting with BLD-1/BLD-2 and the other BLOCKING items, so each stage's checks run on code that links.
+- **Why Live can't dictate it:** A process choice with no client-visible effect.
+- <sub>Sources: pending:build-once · summary:s6-owner-decisions-build · serverPlan:9 · serverPlan:609</sub>
+
+### Q2. Interiors: instance rows or dynamic-zone templates (settled by Live)
+
+- **Settled by Live:** neither option as written. Live never keeps an instance per property: entering a property with no running copy starts a fresh copy of the template zone its definition's dz_id names; everyone permitted shares it while anyone is inside; it is discarded some time after it empties and the next entry gets a new id; placed items belong to the property (captures.tsv: house 117754115 661 -> 718 -> 1411, hall 65484252 five ids, hall 63846974 one copy with 51 players over 32 h; the 2010 launch notes: 'If any neighborhoods empty out completely, they will be shut down'). The client never treats these as dynamic zones. Peridot mirrors it with plain EQEmu instances on Live's lifecycle (INT-12 to INT-15), not EQEmu dynamic zones (members-only entry, expiry and kick timers, safe return: none of which Live's housing shows).
+
+- **Question:** How does the server host house and hall interiors (and X1 interiors)?
+- **Options:** (a) plain instance_list rows per house, never expiring (D3 as written); (b) dynamic_zone_templates keyed by Live's dz_id (houses 23000-23005/23015-23021, halls 35633-35642, neighborhood 20504) with never_expires.
+- **Recommendation:** (a): entry points already live in entryPoints and T21, and DZ adds expedition semantics housing doesn't need. Then align D3 (:137), consequence 2, the schema, S10 (:563), serverWork S10 (:124) and summary section 6.
+- **Why Live can't dictate it:** Internal to the server: the client receives dz_id either way.
+- <sub>Sources: G1-17 · C1-41 · report:question-5 · report:crosschunk-11 · report:planfix-serverWorkS10 · report:planfix-instanceCeiling</sub>
+
+### Q3. X1 parenting: real plots only, or virtual plot parents too (decided)
+
+- **Decided:** (a) for every plot scenario: Live's neighborhood, custom templates (X2) and fixed plots in regular zones (X3). Standalone estates become apartments (X4): plots with a fixed house, reached through doors or plaques in regular zones, with anything from no yard to a normal one.
+
+- **Question:** Must every X1 interior be a house or hall item placed on a real Plot or Guild Plot (Live's model, the plan's), or may there also be standalone estates with a "virtual" Plot/Guild Plot record (no region, maybe no host zone)?
+- **Options:** (a) real plots only; (b) also virtual parents.
+- **Recommendation:** (a). The client needs a Plot or Guild Plot ancestor for owner (0x4d6b10), permissions (0x4ff613), Manage (0x747e50) and upkeep (0x5b4780); (a) needs no new record kind.
+- **Why Live can't dictate it:** X1 is the owner's extension; Live has no regular-zone interiors.
+- <sub>Sources: XA:PM17 · XA:PM4 · XA:Z18</sub>
+
+### Q4. X3 zone root, 0x6fd0 and plot groups per zone (decided)
+
+- **Decided:** (b), type 1. Housing is switched on in the normal zone itself (instance 0) by data: a Regular Zone (type 1) definition naming the zone at version 0, and one root property row on it, whose name the server takes from the zone's long name when it sends the record (the row's name stays empty). The zone's plots and apartments are children of the root through the existing parent_id; no new column. At zone-in the root goes out with its children and as 0x6fd0. Camera and entry line stay the zone's own, Locate works, Plot Search refuses there (found by exploring). The server refuses placement outside a plot, including the two Regular Zone items (Candy Dish, String of Bones). EXT-14.
+
+- **Question:** What is the public zone's current property, and may one zone (X3, or one X2 map) hold several neighborhoods or plot groups?
+- **Options:** (a) the world neighborhood (type 5) as 0x6fd0: Plot Search and Locate work, but every player in the zone gets the 212 camera instead of 53 and possibly the neighborhood's name in the entry line (0x518a70, 0x53d2a8); one group per zone, or re-send 0x6fd0 as players cross areas (safe: 0x6fd0 replaces the record and keeps its access list and items); (b) a Regular Zone (type 1) or Town (type 6) root named after the zone, neighborhoods or plots under it (neighborhood dz 0): camera 53, entry line unchanged, several groups per zone, Locate works, Plot Search refuses (eqstr 8078); (c) no 0x6fd0 (Live's -1/10 in public zones): world-plot region ids must be unique across every neighborhood a client may hold (first match wins, 0x4b3149); Plot Search, Locate and the placement fallback are lost.
+- **Recommendation:** (b) with type 1 (the client already names its placeable bit "certain open zones", eqstr 6415; placing outside plots stays refused for all but 2 items, as in a Live neighborhood). Use type 1 for nothing else.
+- **Why Live can't dictate it:** No Live precedent: Live sends no current property in public zones (bazaar, PoK, guildlobby, guildhall all -1/10) and has no type-1 or type-6 records.
+- <sub>Sources: XA:PM10 · XA:PM11 · XA:PM12 · XA:PM13 · XA:PM15 · XA:PM22 · XA:PM23 · XA:Z8 · XA:DZ18 · XA:Zv1</sub>
+
+### Q5. X1 guild halls in regular zones: the guild bank (decided)
+
+- **Decided:** early polish. Extend the guild banker to the housing host zones after the standard system; standard halls work natively.
+
+- **Question:** A class-66 Guild Banker opens the guild bank only in a zone whose compiled-in zone-table flags carry bit 31 (345, 737, 738, 751); elsewhere the click silently does nothing (0x67e5d0 -> 0x7dc710), and /outputfile guildbank refuses. No server data can set the flag. What do X1 halls do?
+- **Options:** (a) patch eqgame.exe: set bit 31 in each host zone's flags immediate (4 bytes; every instance and version of that zone becomes a guild-hall zone, inert in public copies with no class-66 NPC); (b) host X1 guild halls only on 345/737/738/751 and use regular zones for houses only; (c) X1 halls without a guild banker.
+- **Recommendation:** (a) if the patcher will ship eqgame.exe anyway; otherwise (b). Houses are unaffected either way.
+- **Why Live can't dictate it:** X1 is the owner's extension, and RoF2 has no runtime writer for the flag (Live's 0x1406b2ac0 sets only flagsHigh bit 0).
+- <sub>Sources: XA:Z4 · XA:Z6 · XA:Zv5 · XA:A16 · XA:DZ12 · XA:PMv3</sub>
+
+### Q6. X1/X2 housing-version zone data: header flags and zone lines (decided)
+
+- **Decided (1):** Live's housing values for bind and the rest; weather is the housing zone row's own (the source zone's by default, any custom weather kept); forage and fishing are per housing zone, authored as data, none unless authored (EXT-24, EXT-25). Configuration, not code.
+- **Decided (2):** configurable like any zone, through EQEmu's zone_points (EXT-8). The owner's default is (c), each line's normal destination; an author may send a line to the property's exit (a) instead, if that design stays simple.
+
+- **Question:** Geometry fields always come from the source zone. For the rest: (1) which non-geometric header flags (ZoneType, bNoBind, forage and fishing tables, weather)? (2) what does a zone line inside a private copy do?
+- **Options:** (1a) Live's housing values (ZoneType 1, bNoBind 1, forage and fishing -1; neighborhood weather for X2); (1b) the source zone's values; (2a) send the player to the house's yard (X1) or the neighborhood exit (X2); (2b) cancel quietly; (2c) map each line to its normal destination.
+- **Recommendation:** (1a) and (2a): a private copy then behaves like Live's interiors and neighborhood, and (2a) matches /leaverealestate.
+- **Why Live can't dictate it:** Live has no regular-zone interiors or neighborhoods.
+- <sub>Sources: XA:DZ14 · XA:DZ20 · XA:DZv8</sub>
+
+### Q7. X1 exit: door row and its model (decided)
+
+- **Decided:** (b), on the condition that a client text file is all it takes. It is: a door's actor lookup (0x510960 -> 0x48b710 -> EQGraphicsDX9 0x10059e70) falls back on a miss to the on-demand map built from Resources/OnDemandResources.txt (0x1005a8f0, 0x1005a5d0), loads that EQG synchronously and retries (workflow wf_7e94dda4-f51, DZ4 verifier). Door rows are data per housing version like any zone; authors may also use models the zone loads (a). EXT-12 confirms it in testing.
+
+- **Question:** How does a player leave a private-zone interior, and with which door model? Standard front-door models exist only inside their interiors' archives, and a door with no loadable model is dropped and unclickable.
+- **Options:** (a) a type-161 door at the housing version using a model the host zone already loads, or an on-demand IT model; (b) the same with on-demand lines for the standard door models (e.g. 'phinterior1a1.eqg^OBJ_DOOR_PLHA.MOD^OBJ_DOOR_PLHA_ACTORDEF^EQGM'; Live uses this form for dragonhouseinta's doors); (c) no door: /leaverealestate only.
+- **Recommendation:** (b): Live's look, and right-click Manage works on any type-161 door (0x53826b); (a) where a fitting host-zone door exists.
+- **Why Live can't dictate it:** Regular zones have no house front door; Live has no precedent.
+- <sub>Sources: serverPlan:201-exit · XA:A17 · XA:Av1 · XA:Av2 · XA:Av3 · XA:Z11 · XA:DZ3</sub>
+
+### Q8. X2/X3 border, pad and portal models (decided)
+
+- **Decided:** early polish, delivered when the custom zones are built; option (a) stays the recommendation. They must work natively in the standard neighborhood.
+
+- **Question:** OBP_LOTSQUARE/OBP_GUILDSQUARE (stonesquare.eqg), the pads and teleflinger (phteleporting.eqg) and OBJ_VOIDPORTAL (voidportal.eqg) are in no on-demand list; only neighborhood and katta load stonesquare, 15 zones load voidportal. Without the model the plot sign is gone and can't be clicked. How are they delivered?
+- **Options:** (a) global OnDemandResources.txt lines for those models: one client file covering every host zone (Live's form for door models in dragonhouseinta); (b) a <zone>_assets.txt per host zone (Live's form for stonesquare in neighborhood and katta); (c) only host zones that already load them (katta for borders; the 15 for the portal), or models the zone has (e.g. ecommons POST, MONU1); (d) plots without border doors (no sign to click).
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** Live never hosts plots outside its neighborhood zone.
+- <sub>Sources: serverPlan:489-assets · serverPlan:211-borders · XA:Z13 · XA:A9 · XA:DZ4 · XA:Av1 · XA:Av3 · XA:DZv1 · XA:DZv2</sub>
+
+### Q9. X1 content: which zones become interiors (deferred: testing phase)
+
+- **Deferred:** the owner will author a number of custom plots, decided in the implementation testing phase, after the build compiles and standard housing works.
+
+- **Question:** Per X1 interior: host zone (one of RoF2's 522 registered ids with its files installed) and housing version; property type (3 house, 2 hall); deed item (name, exterior IT model, placeable bit 0x08 for houses or 0x80 for halls, definition, upkeep id); caps and upkeep; display segment; entry point and heading.
+- **Options:** the owner lists them.
+- **Recommendation:** Start with the priority example, a Plane of Hate house (hateplane 76: S3D, no assets file, flags 0xd00804), to prove the path.
+- **Why Live can't dictate it:** X1 is the owner's extension.
+- <sub>Sources: serverPlan:201 · serverPlan:190 · serverPlan:197 · serverPlan:207 · XA:Z2 · XA:Z15</sub>
+
+### Q10. X2 content: which maps become neighborhoods (deferred: testing phase)
+
+- **Deferred:** content, decided with Q9 in the implementation testing phase.
+
+- **Question:** Per custom map (e.g. East Commons): zone and housing version; plots (boxes via #realestate region); plot definitions; prices, upkeep, caps; names; whether it joins Housing:RandomNeighborhoodDefinitions; the Guild Lobby gate and map sign (their models exist only in neighborhood.eqg); an optional maps/<zone>_N.txt plot layer.
+- **Options:** plot definitions: (a) new ids per map, clear of 1-47 and 101-192; (b) reuse 101-190 (only for copies of 712: one region box per id); gate and sign: (c) omit; (d) on-demand lines into neighborhood.eqg.
+- **Recommendation:** (a) and (c); the map layer is optional cosmetics.
+- **Why Live can't dictate it:** X2 is the owner's extension.
+- <sub>Sources: serverPlan:202 · serverPlan:208 · XA:A18 · XA:DZv5 · XA:PM3</sub>
+
+### Q11. X3 content and public-zone policy (deferred: testing phase)
+
+- **Deferred:** content and public-zone policy, decided with Q9 in the implementation testing phase.
+
+- **Question:** Which public zones host world neighborhoods (Housing:WorldNeighborhoodDefinitions), their plots and terms; how to handle open-yard griefing (only interiors enforce Enter), NPCs walking through placed objects, abandonment, per-zone tuning (EXT-1); and what dormant border doors do.
+- **Options:** dormant doors: (a) hidden with content flags at zone-in; (b) also removed mid-session with 0x51df (OPC-9) or 0x700c plus a full 0x7291; (c) left visible, clicks refused.
+- **Recommendation:** Dormant doors (b). The rest is the owner's content call.
+- **Why Live can't dictate it:** X3 and D12 are the owner's extension.
+- <sub>Sources: serverPlan:203 · serverPlan:172-173 · serverPlan:473 · XA:DZ6 · XA:DZv4</sub>
+
+### Q12. Special houses RoF2 can't load (deferred: final polish)
+
+- **Deferred:** by the Live-models rule (Q13), these wait for the final polish item.
+
+- **Question:** Hive of the Bixie (def 43, deed 85369, IT60022, plhbixieint 774), The Wayward Lady (44, 72299, IT60153, plhpirateshipint 786) and Aureate Chalet (47, 174145, IT102717, dragonhouseinta 877): RoF2 has neither the exteriors nor a zone-table entry for the interiors (the real bound is the zone table, not 'ids 1-767', which is the ZoneGuide table).
+- **Options:** (a) X1 substitute interior (a regular zone or an unused RoF2 interior: phinterior1b1-1b3, 1c1, 6a1-6a3, phinteriortree3br, plhogr*, plhdke*) with Live's exterior archive plus an on-demand line, or an RoF2 exterior; (b) ship Live's interior files under an existing zone id's short name, or patch eqgame.exe's zone table; (c) drop the three.
+- **Recommendation:** (c) for now; revisit (a) once Q13's test shows RoF2 loads a Live EQG.
+- **Why Live can't dictate it:** RoF2 lacks the zones and models Live uses.
+- <sub>Sources: G1-21 · C1-60 · report:question-19 · report:planfix-specialHouses · serverPlan:517-special-houses · overlap: audit G1-21 · XA:A6 · XA:Z2 · XA:Z17</sub>
+
+### Q13. Live models RoF2 lacks (decided)
+
+- **Decided:** no Live models in the first pass; adding them is the final polish item.
+
+- **Question:** 2,193 of Live's 5,020 placed-object tags (221,021 placements) have no model in RoF2's files; such items render as IT63 in every zone (0x48b7da). What happens to the Peridot items among them?
+- **Options:** (a) ship Live archives with on-demand lines (RoF2's DLL compatibility with newer EQG files is unverified: test one first); (b) accept IT63 for them; (c) keep them out of sale and placement; (d) remap to RoF2 models.
+- **Recommendation:** Count Peridot's affected items after ITM-2 and test one Live EQG in RoF2; then decide.
+- **Why Live can't dictate it:** RoF2 lacks the files Live uses.
+- <sub>Sources: XA:A5 · XA:A6 · XA:A2</sub>
+
+### Q14. Content for the interiors Live never sold (decided)
+
+- **Decided:** (b). The first pass matches Live's catalog; these 13 interiors are added in the polish pass as content.
+
+- **Question:** Per never-sold interior (phinterior1b1, plhogrinteriors1a1/1a2/3a1/3a2/3b1/3b2, plhdkeinteriors1a1-1a3/3a1-3a3): deed (name, price, merchant), definition id and type, caps, upkeep, display segment. Their exteriors (IT23377-IT23388, it20161, it23512-23517) are in RoF2 but not on demand (only IT20160 is). phinterior1d1 and phinteriortree are Live's (defs 30, 42; DOC-5, CAT-4).
+- **Options:** exteriors: (a) on-demand lines through the patcher; (b) reuse exteriors already on demand.
+- **Recommendation:** Author with Live's values for the matching room count and tier; (a) for exteriors (Live's form).
+- **Why Live can't dictate it:** Live never shipped these interiors.
+- <sub>Sources: serverWork:143 · serverPlan:564 · overlap: audit G1-21 (1d1 correction) · serverWork:148</sub>
+
+### Q15. Guild-village 30-day rule (polish)
+
+- **Deferred:** a polish question; not core to a working housing system. Checked: Live's switch is GT_AutoEviction_Btn in EQUI_GuildManagementWnd.xml with string 11035; neither the control name nor the string appears in RoF2's UI files or eqgame.exe. Until it lands, the patched 13333 (Q24) leaves out the guild-membership clause.
+
+- **Question:** Live reclaims a guild-village plot 30 days after its owner's guild membership changes (village of 10+), applied at the next upkeep, behind a guild-leader auto-eviction option (eqstr 11035) that RoF2 has no string or UI for.
+- **Options:** (a) a rule such as Housing:GuildVillageLeaveDays, default off; (b) a per-guild setting set by a GM; (c) omit.
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** RoF2 lacks the UI Live uses.
+- <sub>Sources: chunk1-missed-3 · G1-06 · report:question-2</sub>
+
+### Q16. Trophy Collector AA (decided)
+
+- **Decided:** (a). Base slots only (TRO-4 sets the count); the AA is a polish item needing AA data, dbstr 30195^1/^4 and a stand-in for Live's collection achievements (RoF2 ships an achievements window; EQEmu has no achievement system).
+
+- **Question:** Live adds personal trophy slots with AA 30195 'Trophy Collector'; RoF2's dbstr has 30195 only as category 6 (a spell description), no AA.
+- **Options:** (a) an equivalent AA (AA data plus patched dbstr 30195^1/^4); (b) base slots only.
+- **Recommendation:** (b) until TRO-4 sets the base; then (a) if the owner wants AA progression.
+- **Why Live can't dictate it:** RoF2 lacks the AA Live uses.
+- <sub>Sources: chunk1-missed-2 · C1-58</sub>
+
+### Q17. Teleflinger fling (polish) (decided)
+
+- **Decided:** (a), in the polish pass. The code carries a one-line comment that the server-held armed flag stands in for Live's 0x8a99, which RoF2 has no handler for.
+
+- **Question:** Live arms Plot Search with 0x8a99 {u8} and Go sends 0x1708; RoF2 has the sending half only (0x796c, flag +0x24c) and no arming handler, so Go always sends OP_FindPersonRequest type 4.
+- **Options:** (a) a server-side armed flag set by clicking the spring (OBJ_PH_TELEFLINGER, type 57), consumed by the next plot Go with Client::Fling, cleared beyond about 50 units; (b) no fling.
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** RoF2 lacks the arming message Live uses.
+- <sub>Sources: serverWork:88 · summary:s5-teleflinger · summary:s6-polish-teleflinger</sub>
+
+### Q18a. Augmentater: Peridot's added modes, first pass or polish (decided)
+
+- **Decided:** (a), polish pass; the held-model list is drafted then.
+
+- **Question:** Live's Augmentater (the guild assistants' look changer) has nine modes. The plan adds three of Peridot's own before RESET: HELMET (head slot: none, then 23 materials), PRIMARY and SECONDARY (each hand: none, then a drafted list of held models from Live NPCs' held models, npcLooks.tsv). Do they ship in the first pass or the polish pass?
+- **Options:** (a) polish pass; the held-model list is drafted then; (b) first pass.
+- **Recommendation:** (a): the first pass is Live parity.
+- **Why Live can't dictate it:** Peridot's own additions.
+- <sub>Sources: C5-52 · pending:augmentater-held-models · summary:s6-owner-decisions-held-models · summary:s5-augmentater-additions · serverPlan:404 · serverWork:76-content · overlap: audit C5-52 · pending:augmentater-look · summary:s6-owner-decisions-augment-storage · serverPlan:403 · serverWork:76</sub>
+
+### Q18b. Augmentater: where each placed copy's look is stored (settled by Live, after NPC-18)
+
+- **Settled by Live:** not data buckets (no scope fits a placed item: the NPC scope is the NPC type, shared by every copy, zone/mob.cpp:8457; values are untyped TEXT that quests and GMs can write; SetData discards write failures, common/data_bucket.cpp:89-96, 114-119, 141-162; nothing deletes a bucket with its item). Where the look lives follows NPC-18: kept through pickup on Live means it travels on the item (custom data, after ITM-10); lost at pickup means a table keyed by the placed row (NPC-19).
+
+- **Question:** Live's nine modes already give each placed copy its own look (race, gender, face, hair, beard, hair color, armor material and tint, plus head material and held models if Q18a adds them), kept until RESET and re-applied on every respawn through the spawn binding (NPC-3). Where is it stored?
+- **Options:** (a) a table keyed by real_estate_items.id, holding rows only for re-skinned copies; (b) columns on real_estate_items.
+- **Recommendation:** (a): only guild assistants that were changed have a look, so the placed-item rows stay narrow.
+- **Why Live can't dictate it:** internal to the server; the client sees only the spawn.
+- <sub>Sources: C5-52 · pending:augmentater-held-models · summary:s6-owner-decisions-held-models · summary:s5-augmentater-additions · serverPlan:404 · serverWork:76-content · overlap: audit C5-52 · pending:augmentater-look · summary:s6-owner-decisions-augment-storage · serverPlan:403 · serverWork:76</sub>
+
+### Q19. Character deletion and housing rows (settled by Live, after RCL-3)
+
+- **Settled by Live:** follow what Live does when an owner is deleted (RCL-3).
+
+- **Question:** What do a deleted owner's properties, placed items, transfer offers and poll votes become? database_schema.h's character map (lines 70, 77, 78) covers only anchors and the two trophy tables.
+- **Options:** (a) hard delete = reclaim (pack, release the plot); soft delete keeps everything; (b) other.
+- **Recommendation:** (a), with a delete-hook test.
+- **Why Live can't dictate it:** No Live evidence exists or can be captured.
+- <sub>Sources: G3-15 · C3-37 · report:question-22</sub>
+
+### Q20. Column naming rule (decided)
+
+- **Decided:** (b), rename to Live's names, checking for collisions: one with ours is fixed on our side, one with EQEmu's is surfaced. Result: seven renames are clear (SCH-4); category -> group_id collides with EQEmu's player-group naming and is Q20a.
+
+- **Question:** serverPlan.md:313 says columns take Live's names; eight don't.
+- **Options:** (a) narrow the rule to fields unknown before Live's names were known; (b) rename region_id, purchase_cost_id, upkeep_cost_id, max_houses, category, max_pet_items, layout_origin_*/layout_heading.
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** Column names have no client-visible effect.
+- <sub>Sources: G3-08 · C3-03 · report:question-23</sub>
+
+### Q20a. Live's groupId collides with EQEmu's group_id (decided)
+
+- **Decided:** (a) placement_group_id (SCH-4). No housing or upstream EQEmu name uses it (git grep of peridot).
+
+- **What the field is:** RoF2 (definition +0x40, wire field 11) treats it as a dbstr category-27 string id and only displays it, in the Purchase window's REPW_Category_Label (0x74e084 -> CDBStr::GetString 0x4866c0 with category 0x1b). RoF2's only other category-27 lookup names the groups in an item's placement text, 'This item is placeable in houses (of type: X, Y)' (0x69e9e3; the ids are the item's group list at +0x88). RoF2 links RealEstateItemGroups.txt {item, group, placeable} but never queries it, and no RoF2 code compares the definition's field with an item's groups. Stock RoF2 dbstr has one empty category-27 row, so the label is always blank. Live stores the field (+0x50, eqlib groupId) and never reads it, sends 0 on all 135 definitions, has no category label, and its dbstr category 27 is spell line names.
+- **Question:** The column's name. housing_category_id is only partly accurate: 'category' is the RoF2 widget's name, not the value's; the plan already uses 'category' for the type-derived class (house 2, plot 3, crate 6); and the field is on every definition type, not only housing ones.
+- **Options:** (a) placement_group_id: the group that items' placement lists name (the link is the shared string table, not a client check); (b) real_estate_group_id: Live's name made unambiguous; (c) housing_category_id.
+- **Recommendation:** (a). Peridot sends 0, as Live does.
+- **Why Live can't dictate it:** Live's name collides with an upstream EQEmu name.
+- <sub>Sources: Q20 · workflow wf_67bb2be5-81c · eqlib 9efa0bc game/RealEstate.h:342, :365-381 · opcode2698DefinitionsAndCosts.md:54</sub>
+
+### Q21. On-demand lines for 20 furniture models (PAT-4) (decided)
+
+- **Decided:** (a). The models are in RoF2's own archives, so the lines ship through the patcher.
+
+- **Question:** RoF2 ships the furniture19, furnitureiksar and lon16 archives but lists 20 of their models nowhere, so items using them show IT63 in every zone, standard ones included (6,084 Live placements). Ship the 56 lines Live's Resources/OnDemandResources.txt has for them?
+- **Options:** (a) ship the lines through the patcher; (b) stock RoF2: those items show IT63.
+- **Recommendation:** (a): the archives are on every RoF2 install already; the lines only register them.
+- **Why Live can't dictate it:** Live's client has the lines; stock RoF2's doesn't, and the owner's phasing prefers stock RoF2 files.
+- <sub>Sources: PAT-4 · XA:A5</sub>
+
+### Q22. On-demand lines for 16 race archives (PAT-5) (decided)
+
+- **Decided:** (a), by Q21's rule: every archive is already in RoF2.
+
+- **Question:** NPC items using 16 races (ans, dke, dma, dvs, fie, gfo, i11, i23, lsp, mph, orb, pg3, psc, rdg, smd, t01) load only where a zone's chr list names them, so in the standard neighborhood and interiors they fall back to a human model. Live loads them on demand. Ship the 255 lines from Live's OnDemandResources.txt?
+- **Options:** (a) ship the lines through the patcher; (b) stock RoF2: those NPC items look human outside zones that list the race.
+- **Recommendation:** (a): every line resolves to an archive RoF2 already ships.
+- **Why Live can't dictate it:** Live's client has the lines; stock RoF2's doesn't.
+- <sub>Sources: PAT-5 · XA:A11</sub>
+
+### Q23. Global chr lines for 55 housepet races (PAT-6) (decided)
+
+- **Decided:** (a), by Q21's rule: every archive is already in RoF2. PAT-7 still measures the load cost.
+
+- **Question:** 55 more NPC-item races exist in RoF2 only inside specific zones' chr archives. Live loads them globally (GlobalLoad.txt and GlobalLoad_chr.txt). Add 'tag,archive' lines to RoF2's GlobalLoad_chr.txt, pointing at archives RoF2 already ships, so they load everywhere?
+- **Options:** (a) ship the GlobalLoad_chr.txt lines through the patcher (with PAT-7's load-cost test); (b) stock RoF2: those NPC items look human outside their home zones.
+- **Recommendation:** (a), subject to PAT-7 showing an acceptable start time and memory cost.
+- **Why Live can't dictate it:** Live's client loads them globally; stock RoF2's doesn't.
+- <sub>Sources: PAT-6 · PAT-7 · XA:A11 · XA:Av4 · XA:Av5 · XA:Av6</sub>
+
+### Q24. Reclaim warning text, eqstr 13333/13334 (RCL-1) (decided)
+
+- **Decided:** (a), Live's text. The guild-membership clause in 13333 waits for Q15 (polish).
+
+- **Question:** RoF2's eqstr 13333/13334 (the Purchase and Manage windows' eviction labels) describe a login-based rule (90 days without the owner's login, 30 without any member's). Live's text and Peridot's rule are escrow-based (90 days after escrow expires; a guild plot below 10 members). Patch the two strings to Live's text?
+- **Options:** (a) ship Live's text through the patcher; (b) stock RoF2: the windows describe a rule the server doesn't run.
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** Live's client has the new text; stock RoF2's has the old.
+- <sub>Sources: RCL-1 · report:contradiction-7 · report:question-2</sub>
+
+### Q25. Training dummy labels, dbstr category 28 (PAT-1) (decided)
+
+- **Decided:** (a). Ship Live's rows when Peridot's item table has the dummies, or when the dummies were released by the Rain of Fear era (RoF2's own content); otherwise they wait for the final polish item with the Live models. Peridot holds 66700-66716, so the rows ship (PRC-7).
+
+- **Question:** The training dummy's menus use dbstr category-28 rows 100-106, 200-205, 300, 400-407 and 500-504, which RoF2's dbstr_us.txt lacks entirely (45 Live dummy menus use them). Ship Live's rows?
+- **Options:** (a) ship the rows through the patcher; (b) relabel the actions with strings RoF2 has; (c) leave the dummy's actions out.
+- **Recommendation:** (a).
+- **Why Live can't dictate it:** Live's client has the rows; stock RoF2's doesn't.
+- <sub>Sources: PAT-1 · G5-05 · C5-36 · C5-37 · report:question-15</sub>
+
+### Q26. Neighborhood window filter defaults (PAT-2, after a Live check) (decided)
+
+- **Decided:** (a): follow Live. PAT-2 runs with the other Live checks through PRC-6.
+
+- **Question:** RoF2's stock Neighborhood window hides every row until the player ticks the six Show filters. If PAT-2's Live check finds them ticked on a fresh login, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml?
+- **Options:** (a) ship the XML change through the patcher; (b) stock RoF2: players tick the filters themselves.
+- **Recommendation:** Settle PAT-2 first; then (a) if Live starts them ticked.
+- **Why Live can't dictate it:** Depends on Live's behaviour, and changes a stock RoF2 UI file.
+- <sub>Sources: PAT-2 · README:48</sub>
+
+## Extras X1-X4
+
+**Verdict.** The owner is right for houses and neighborhoods: the RoF2 client has no housing zone gate, and with the right messages and data a regular zone works as an interior (X1), a neighborhood (X2) or a public plot host (X3). Three client-side limits remain: the guild bank is tied to a zone-table flag compiled into eqgame.exe (X1 halls only), the neighborhood's door models load only where a client text file lists them (X2/X3), and the client can load only zone ids its built-in table registers. Two Live-dictated fixes matter most for all three: records must go out as 0x63fd, since 0x4f09 removes them (REC-1), and every zone-in in every zone must clear regions (REG-2).
+
+### X1. A regular zone as a house or guild-hall interior
+
+- **Client support:** Yes with data for houses. Guild halls need a 4-byte eqgame.exe zone-table patch for the guild bank, or hosting on the four flagged hall zones.
+- **Why:** Housing code reads no zone id, zone flag or instance (Z1, Z15; Live the same, Z16), so a regular zone is a house interior with data only: standing-in falls back to the current property (PM2), placement to the {house id, 0} pair (PM8), furniture, exteriors, the pool and NPC items load on demand in any zone (A1, A3, A10). Limits: the guild banker needs zone-table flag bit 31 (Z4), and front-door models live only in their own interiors' archives (A17).
+- **The server must send:**
+  - Host: one of RoF2's 522 registered zone ids with its files installed (Z2), at a housing version whose geometry header fields come from that zone; zone lines per Q6 (EXT-8).
+  - Catalog: house or hall definition type 3 or 2 (never 1), dz_id != 0, region_id 0 (CAT-6).
+  - Records as 0x63fd (REC-1): the house or hall parented to its Plot or Guild Plot, that plot and its neighborhood; then 0x6fd0 = the house or hall (EXT-9).
+  - Regions: the empty 0x49df (REG-2); no interior region (EXT-2).
+  - Placement: every 0x626e ends with {house id, 0}; the server bounds 0x711a positions (PLC-13).
+  - Then lists A/B/C, 0x1cef item lists, the plot's access list, and after load 0x1045 and NPC spawns with their binding (ZIN-3, NPC-3).
+  - Doors: a type-161 exit with a loadable uppercase model (Q7, EXT-12, DOR-10); /leaverealestate from any zone (INT-10).
+  - Halls: server-side guild-bank ownership (ACC-6); the hall descends from its Guild Plot, which also makes trophy opt-in work (EXT-16).
+- **Client file patches (patcher):** None for houses. Optional: on-demand lines for the standard front-door models (Q7 b). For halls on unflagged zones: the eqgame.exe flags immediate (Q5 a, EXT-13).
+- **Blockers:**
+  - The class-66 Guild Banker and /outputfile guildbank do nothing outside 345/737/738/751 without an eqgame.exe zone-table patch; no server data can set the flag (Q5).
+  - Standard front-door models load only inside their own interiors; a door without a model is dropped and can't be clicked (Q7).
+  - Live-only interiors 774/786/850/877 are not in RoF2's zone table (Q12).
+- **Open questions:** none; Q9 in the testing phase, Q12 in final polish.
+
+### X2. A regular zone map as a neighborhood
+
+- **Client support:** Yes with data plus one client text file for the border, pad and portal models. No eqgame.exe change.
+- **Why:** Plots exist wherever the server sends regions and plot records (PM3, Z18); a type-5 current property gives the 212 camera, Plot Search and Locate (Z8, PM12). The neighborhood's own door models are on no on-demand list, so outside the neighborhood (and katta for borders) they need a client text file (Z13, A9, DZ4).
+- **The server must send:**
+  - Template zone registered and installed; a zone row per housing version (EXT-8).
+  - Neighborhood definition type 5, dz_id != 0, region 0; plot and guild-plot definitions (types 4, 8) with region ids unique in the instance (EXT-10, CAT-6).
+  - Every zone-in: records as 0x63fd, 0x6fd0 = the neighborhood, 0x49df boxes for the plot region ids.
+  - 0x626e lists: per-region codes plus a final {neighborhood id, nonzero}.
+  - Doors: type-160 borders, 159 portal, 57 pads with loadable uppercase models, state 0, at most 256 ids and 500 doors per version, mapped by (zone, version, door id) (DOR-3, DOR-10, EXT-11).
+  - OP_ClickDoor 159/160/57, the 0x218c Go and 0x2691 routed by the property's host (EXT-22).
+  - chr list lines for zone-only race spawns (EXT-15).
+- **Client file patches (patcher):** Border, pad and portal models per Q8 (recommended: OnDemandResources.txt lines). Optional maps/<zone>_N.txt plot layer (Q10).
+- **Blockers:**
+  - Border, pad and portal models load only in the neighborhood (borders also in katta): without the Q8 file the plot sign is missing and unclickable.
+  - Collision of EQG actors in an S3D map is untested (EXT-4).
+- **Acquisition:** in the random pool by listing its definition in Housing:RandomNeighborhoodDefinitions, or created by a per-template writ (EXT-33).
+- **Open questions:** none; Q10 in the testing phase.
+
+### X3. Housing plots in a public zone at instance 0
+
+- **Client support:** Yes with data plus the same client text file as X2. No eqgame.exe change.
+- **Why:** The client never reads the instance (Z15) and picks zone files by id only (A7), so X3 is X2's data at instance 0. What is new is which current property a public zone sends: Live sends none there (DZ18, PM23). Regions and records outlive zoning (Z10, PMv2), so every other zone must clear regions.
+- **The server must send:**
+  - The same plot data as X2 at instance 0; door rows at version 0 within the limits shared with the zone's own doors (DOR-10).
+  - One Regular Zone (type 1) root per housing-enabled zone, sent as 0x6fd0, with the zone's plots and apartments under it (Q4, EXT-14).
+  - The empty 0x49df in every other zone and while dormant (REG-2, EXT-21).
+  - The header stays the public zone's; upkeep tuned by the zone's ruleset (EXT-1).
+- **Client file patches (patcher):** As X2 (Q8); every visitor to the zone loads them.
+- **Blockers:**
+  - The same client text file as X2 (Q8).
+  - Public-zone side effects (camera, entry line, Plot Search, dormant doors) are owner choices (Q4, Q11).
+- **Gating:** custom alternate currencies in the plot's prices and upkeep (EXT-31).
+- **Open questions:** none; Q11 in the testing phase.
+
+### X4. Apartments
+
+- **What it is (owner):** a door, object or portal on a building in a regular zone leads to a house the player bought there. The interior may be a standard interior, a reused zone or a new zone. An apartment is a plot with a fixed, pre-built house or guild hall that is never picked up and never joined by another. Its placement caps run from none to a normal plot's, items and NPC items (pets) alike: no placement at all, a few items on the building's wall or a small yard, or a normal yard around an existing building, such as the empty farmhouses with yards in some cities. A quest script on the door may drive it, and a plaque on a wall may open the housing menu. Not listed in the Neighborhood window or Plot Search.
+- **Client support:** Yes with data and server code. No client file or eqgame.exe change.
+- **Why:** A door click carries only the door id, and the server decides the property (OP_ClickDoor 0x3a8f; the client reads no region, model name or current property, 0x511d70). Any door whose model loads is clickable, a wall plaque included. The server can open the Purchase window for any vacant plot from anywhere; nothing in the client checks position (0x5b1890, 0x74d4e0). Manage needs the player to be on the plot: inside the interior that is Live's own state (0x6fd0 = the house plus the plot record), and outside it takes a small plot region at the plaque. The fixed house needs no placed item: owner, permission and upkeep checks climb the parent chain, and entering never needs 0x218c.
+- **The server must send:**
+  - A Plot or Guild Plot definition per apartment (types 4 and 8 are the only ones the client's plot paths accept) with its own region id, and a fixed house record under it with no placed item (EXT-26).
+  - Records in full (0x63fd); the zone-in 0x6fd0 names the zone's root (Q4).
+  - Doors and plaques as type-161 doors keyed by door id, the plaque with a small region for native Manage (EXT-27).
+  - Purchase: 0x2691 kind 4/8 with openPurchase on the click; the purchase reply must not open Manage on the wrong plot (EXT-29).
+  - Nothing about apartments in the 0x2691 search and Neighborhood lists.
+- **Server rules:** caps, no yard placement on a no-yard apartment, and no pickup, storage or move of the fixed house; the client leaves Place enabled (0x72fc60), so the server refuses (EXT-26).
+- **Missing:** housing entry points quests can call (EXT-28).
+- **Open questions:** none; the tests are EXT-30.
+- <sub>Sources: owner (Q3) · workflow wf_9124c95d-1b1</sub>
+
+### Extras work items
+
+- **EXT-1** `fix` **X3: Housing:UpkeepPercent from the host zone's ruleset.** Add Housing:UpkeepPercent (int, default 100) to the rule table and ruletypes.h; world's charge pass reads it from the host zone's ruleset row (zone.ruleset for host_zone_id; world loads only 'default', world_boot.cpp:318-332). Fix S8 (:444), X3 (:203), consequence 4 (:209); drop 'smaller plots' from X3's tuning (content).
+  <sub>Sources: G1-10 · C1-64 · C1-43 · report:crosschunk-18 · report:planfix-reclaimRules</sub>
+- **EXT-2** `fix` **Rewrite the X section's client claims.** serverPlan.md:193 'Nothing in the client is tied to the housing zones' -> housing code reads no zone id (Z1, Live Z16), but zone files load by RoF2 zone-table id (522 ids; 721/722 and Live's 774/786/850/877 absent), the guild-hall flag (bit 31: 345/737/738/751) gates the guild banker, /outputfile guildbank and a char-select line, and door models come only from zone asset lists or OnDemandResources.txt. :201: X1 needs no region (standing-in falls back to +0x8c, 0x4b2fca; :351 already says so) and enters on 0x218c type 1 (MNU-2). :211: the render test per EXT-3.
+  <sub>Sources: report:contradiction-15 · report:crosschunk-12 · report:planfix-x1NoRegion · C4-21 · serverPlan:192-195 · XA:Z1 · XA:Z2 · XA:Z3 · XA:Z16 · XA:A16 · XA:PM2</sub>
+- **EXT-3** `peridotTest` **Placed objects render outside the housing zones.** Place IT20025 (a house), IT23628 (the pool), furniture and a tradeskill station in ecommons and hateplane (S3D) at a housing version: each actor's definition is IT<n>_ACTORDEF, not IT63_ACTORDEF (a missing model falls back, it never leaves the body 0). Static: all load on demand synchronously (EQGraphicsDX9 0x10059e70 -> 0x1005a8f0).
+  <sub>Sources: C1-66 · C1-65 · serverPlan:211-render · serverPlan:640-render · XA:A1 · XA:A2 · XA:A3 · XA:DZ19 · XA:Zv6</sub>
+- **EXT-4** `peridotTest` **Collision and placement on EQG actors in an S3D zone.** In ecommons, walk into and stand on a placed house; use Collision and Wall placement modes. Filters take no zone input (0x475ac0, 0x476280), but whether dynamic EQG actors join an S3D zone's collision is untraced.
+  <sub>Sources: XA:A14 · XA:A15</sub>
+- **EXT-5** `peridotTest` **Zone-in traffic in a busy public zone (X3).** Measure zone-in time and bytes for a public zone hosting a world neighborhood with many placed objects (Live's peak 6,819 in one neighborhood capture, 1,884 in a Palatial), plus the on-demand pool counters.
+  <sub>Sources: serverPlan:211-traffic · overlap: audit C1-65 · C1-66 · C1-65 · XA:A7</sub>
+- **EXT-6** `peridotTest` **Plot authoring accuracy on a regular map.** Author a plot with #realestate region create on an X2/X3 map; the probe's containment matches the client's standing-in at the box edges. The client accepts several boxes per region id (0x4b2ab0 prepends) but real_estate_regions' PRIMARY KEY id allows one; widen only if authoring needs it.
+  <sub>Sources: serverPlan:211-authoring · XA:PM20</sub>
+- **EXT-7** `peridotTest` **Validation stage 10: concrete X1-X3 checks.** Replace 'as stages 2-6': X1 enter a private interior, leave by door or /leaverealestate, place with no regions, entry line per ZIN-8, hall trophy opt-in; X2 Go into the map's instance, Plot Search opens (type 5), borders render, purchase; X3 instance 0, dormant when disabled, door limits (DOR-10), traffic (EXT-5). *After:* Q9, Q10, Q11.
+  <sub>Sources: serverPlan:634</sub>
+- **EXT-8** `fix` **X1/X2 housing zone versions.** A zone row per housing version: geometry header fields (safe x/y/z, max_z, underworld, clip, underworld teleport index; read at 0x50707a, 0x5073f9, 0x507117) from the source zone, never Live's interior values; bind and the rest Live's housing values, weather the row's own (Q6); zone_points rows for the housing version like any zone (zone.cpp:2137-2139 loads a version's rows and the version -1 rows), by default the source zone's lines with their normal destinations, with a simple way for an author to send a line to the property's exit instead (Q6); a line with no row cancels and flags cheating (zoning.cpp:103-149); host ids from RoF2's zone table. *After:* Q6.
+  <sub>Sources: XA:DZ20 · XA:DZv8 · XA:DZv9 · XA:A7</sub>
+- **EXT-9** `fix` **X1 interiors: the property chain.** House/hall definitions type 3/2, never 1 (only 2 Live items carry bit 0x01); the record parented to a Plot or Guild Plot record, since owner (0x4d6b10), permissions (0x4ff613 denies without one), Manage (0x747e50), upkeep (0x5b4780), Trophy opt-in data branch (0x788f91) and /outputfile guildhall (0x4fedf4) climb to it; 0x6fd0 = the house or hall; final 0x626e pair {house id, 0}. The standard interior path, no X1-only code. *After:* Q3, REC-1.
+  <sub>Sources: XA:Z18 · XA:PM4 · XA:PM9 · XA:PM17 · XA:Zv2</sub>
+- **EXT-10** `fix` **X2/X3 plot data.** Plot definitions with region ids unique within the hosting zone instance (X2 may reuse one map's definitions across its instances, as Live's 7,808 neighborhoods share 101-190, because the 0x6fd0 context filters); non-overlapping plot regions; 0x49df boxes per region id; type-160 border doors mapped in DOR-3's data; neighborhood guild -1 unless a village (0x5b5130). *After:* Q4, Q10, CAT-6.
+  <sub>Sources: XA:PM3 · XA:Zv1 · XA:PMv4 · XA:PM17</sub>
+- **EXT-11** `fix` **X2/X3 door models, per Q8.** Without a loadable model a border door is dropped at spawn (0x4ca3e9) and can't be clicked (0x5106e0 matches the actor). Ship the chosen patch: OnDemandResources.txt lines (e.g. 'stonesquare.eqg^OBP_LOTSQUARE.MOD^OBP_LOTSQUARE_ACTORDEF^EQGM', OBP_GUILDSQUARE, OBJ_VOIDPORTAL, OBJ_TPBASE/OBJ_TELEPAD*/OBJ_PH_TELEFLINGER) or <zone>_assets.txt. katta already loads stonesquare; 15 zones load voidportal. *After:* Q8.
+  <sub>Sources: XA:Z13 · XA:A9 · XA:DZ4 · XA:Av1 · XA:Av3 · XA:DZv1 · XA:DZv2</sub>
+- **EXT-12** `fix` **X1 exit door, per Q7.** Standard front-door models (OBJ_DOOR_PLHA, OBJ_PH1D1_DOOR, OBJ_EVANTIL_PLYRHOUSE_DOOR, OBJ_FRONTENTRANCE, OBJ_GUILDHALL_SML_DOOR, GUILDHALL_DOOR_SWITCH) exist only in their interiors' archives with no on-demand line. The X1 door is type 161 (right-click Manage once +0x98 resolves; left-click to the yard, DOR-3). Per Q7 (b): ship OnDemandResources.txt lines for these models in the form Live uses for dragonhouseinta's doors (e.g. 'phinterior1a1.eqg^OBJ_DOOR_PLHA.MOD^OBJ_DOOR_PLHA_ACTORDEF^EQGM'; OBJ_GUILD_DOOR is not in RoF2), and confirm on Peridot that a type-161 door using one spawns in hateplane and can be clicked.
+  <sub>Sources: XA:A17 · XA:Av2 · XA:Av3 · XA:Z11</sub>
+- **EXT-13** `fix` **X1 guild hall bank, per Q5.** For an eqgame.exe patch: the 4-byte flags immediate in the host zone's AddZone push (e.g. hateplane 0xd00804 -> 0x80d00804 at 0x7de0f6); every instance and version of that zone then becomes a guild-hall zone (banker, /outputfile guildbank, 'Guild Hall is loading' at 0x53b02b). RoF2 has no runtime writer for the flag. *After:* Q5.
+  <sub>Sources: XA:Z4 · XA:Zv5 · XA:A16 · XA:DZ12 · XA:PMv3</sub>
+- **EXT-14** `fix` **X3 zone root and 0x6fd0, per Q4 (b).** A housing-enabled public zone has a Regular Zone (type 1) definition naming the zone at version 0, and one root property on it (world creates it at boot per D12); its name is derived from the zone's long name at send time, never stored. Plots and apartments in the zone have it as parent_id. Send the root and its children at zone-in and the root as 0x6fd0 to every RoF2 visitor. Plot Search refuses there (eqstr 8078); the server refuses placement outside a plot, including the two items carrying the Regular Zone bit. Replaces the plan's 'world neighborhood' (a type-5 definition on a public zone, serverPlan.md:203, :207, Housing:WorldNeighborhoodDefinitions): rename the rule and the docs to zone roots. Root records keep +0x40 = 0. *After:* ZIN-10.
+  <sub>Sources: XA:PM12 · XA:PM13 · XA:PM15 · XA:Z8 · XA:DZ18 · XA:Zv1</sub>
+- **EXT-15** `fix` **X2 host chr lists.** Neighborhood spawns of zone-only races (Kal`ture Ashan: ALA, race 695, only in neighborhood_chr.txt) need '<tag>,<archive>' lines in the host zone's _chr.txt with line 1's count raised; the host's own _chr.s3d adds its races (ecommons BET, ZOF; hateplane DRU). *After:* Q10.
+  <sub>Sources: XA:A12 · XA:Av5 · XA:Av6</sub>
+- **EXT-16** `done` **X1 hall trophy opt-in works through the yard.** 0x7dc760 (bit 31 set, bit 15 clear) holds only in 345/737/738/751; the other branch, 0x67f860(manager +0x98) == the player's guild (0x788f91), passes in an X1 hall whose record descends from the guild's Guild Plot (EXT-9).
+  <sub>Sources: trophyTribute.md:82 · serverPlan:581-optin · XA:Z5 · XA:Z3</sub>
+- **EXT-17** `liveCheck` **Regular zones on Live that load housing archives.** Dump doors and objects in katta (katta_assets.txt loads stonesquare and 8 furniture archives), dragonscale (phexterior1a/1c1/1d1) and the voidportal zones (commonlands, fieldofbone, discord, oceangreenhills, potimea): a type-159 OBJ_VOIDPORTAL with RealEstateDoorID 1 there (click it: does the Neighborhood window open?) is Live precedent for X2/X3, like the Guild Lobby's gate (DZ17).
+  <sub>Sources: XA:DZ17 · XA:A8 · XA:DZv2</sub>
+- **EXT-18** `clientAnalysis` **Zone lines in candidate X1/X2 zones.** Enumerate the zone-line regions in each chosen zone's files (s3d WLD region names, EQG zone lines) so each housing version gets matching zone_points or intercepts (EXT-8). *After:* Q9, Q10.
+  <sub>Sources: XA:DZ20</sub>
+- **EXT-19** `clientAnalysis` **Door runtime details for X2/X3.** Click reach for a large OBP_LOTSQUARE (0x511f46-0x511ffe, actor +0x60 radius against player +0x13c) from inside its plot; whether 0x51df/0x7b22 rebuild the actor (0x510960) on a name or type change, before using them for dormancy (EXT-21).
+  <sub>Sources: XA:DZ6 · XA:DZ5</sub>
+- **EXT-20** `clientAnalysis` **Region loader scaling for large X3 zones.** 0x8d2d10 at the top of the region loader 0x4b2ab0: whether it touches the permission map or the hash size; the hash never grows (no rehash), so measure lookups with many regions.
+  <sub>Sources: XA:PM20</sub>
+- **EXT-21** `fix` **X3 dormancy, per Q11.** A dormant world neighborhood's zone sends the empty 0x49df (REG-2) and no other housing data, refuses housing requests, pauses upkeep; its border doors follow Q11 (omit at zone-in, and remove live with 0x51df, OPC-9). *After:* Q11, REG-2, OPC-9.
+  <sub>Sources: XA:DZ6 · XA:DZv4 · XA:Z10</sub>
+- **EXT-22** `fix` **Go and searches route by the property's host.** The Neighborhood Go (0x218c {id, -1, 0}; Live 0xc7e9), the house left-click (0x218c {obj +0x24, +0x28, 0}) and 0x2691 rows carry no zone (0x74a7b9, 0x5390db, 0x5b0f80): the server moves the player to the property's host (zone, instance) at the definition's zone-in point, X2/X3 included.
+  <sub>Sources: XA:DZ16 · XA:DZv12</sub>
+- **EXT-23** `done` **Several guild plots per guild break no client lookup.** Manager +0x44 (guild plots by guild) is written (0x5b5b45, 0x5b7d81) but never read, so a guild with plots in several X2/X3 neighborhoods is fine client-side.
+  <sub>Sources: XA:PMv5</sub>
+- **EXT-24** `fix` **Forage and fishing lists per housing zone version.** EQEmu keys doors, spawn2, zone_points and ground_spawns by version but forage and fishing by zoneid alone (base_forage_repository.h, base_fishing_repository.h; zone/forage.cpp:61, :126 also take zoneid 0 rows everywhere), so a housing copy would get its source zone's lists. Add version to both tables; a housing version reads only its own rows, never the source zone's or the zoneid-0 global rows, so a housing zone has nothing to forage or fish unless its author lists it (Live sends -1). Authored with the housing zone's data. *After:* Q6.
+  <sub>Sources: owner (Q6) · common/repositories/base/base_forage_repository.h:23 · base_fishing_repository.h:23</sub>
+- **EXT-25** `clientAnalysis` **What RoF2 does with the header's forage and fishing fields.** NewZone ForageLow/Medium/High and FishingLow/Medium/High (rof2_structs.h:596-601) and fishing_related (:653); Live sends -1 in housing. Does a value block the Forage or Fishing ability or change its text? Decides what a housing zone with an authored list sends.
+  <sub>Sources: owner (Q6) · common/patches/rof2_structs.h:596-601 · livedumps master/fields/zoneHeaders.tsv</sub>
+- **EXT-26** `fix` **X4 apartments: definitions, records and server rules.** An apartment is a Plot (type 4) or Guild Plot (type 8) definition: the region lookup (0x4b2fca), the +0x98 walk (mask 0x88, 0x4d6790), the occupied test (0x5b41d0), 0x2691 kinds 4/8 and the purchase gate (0x5b191c) accept only those. What makes it an apartment is data and server rules: its own definition whose region id (+0x1c) no other definition in the zone carries (the first record with a region id wins, and the region is dropped if that record isn't a plot, 0x4b30f0); max houses 1 holding a fixed house (type 3) or hall (type 2) record with no placed item; maxItems (+0x28), vault (+0x2c) and NPC (+0x48) caps per apartment, anywhere from 0 to a normal plot's; the region covers whatever may hold items: a wall, a small yard, or a full yard around an existing building (an irregular yard may need several boxes per region id, EXT-6). Records go out in full (0x63fd) so the plot's child list holds the house; the zone-in 0x6fd0 names the zone's root (Q4), since regions match only records at or below +0x8c (0x4b3090). An existing zone door can be the entrance (EXT-27). Left out of the 0x2691 list replies (0x5b101d, 0x5b1045). The server enforces the caps, refuses placement on an apartment whose caps are 0, and refuses pickup, storage or move of the fixed house (the client leaves Place enabled, 0x72fc60). *After:* REC-1.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (regionlessPlot)</sub>
+- **EXT-27** `fix` **X4 doors and plaques.** Any door whose <name>_ACTORDEF loads is clickable (0x510960; a door without an actor is deleted, 0x4ca3e9), with wire unknown0081 and unknown0083 = 1 (0x511d98) and state 0. A left-click sends OP_ClickDoor 0x3a8f with only the u8 door id (0x51206f, 0x5120b0), shared with the zone's own doors, so the server maps (zone, version, door id) to the apartment. Plaques are type 161: right-click opens Manage client-side for the plot the player stands on (0x53826b -> 0x747e50; eqstr 727 on none). Give each plaque a small region with the apartment's region id, so Manage and the Purchase window's Manage button work natively outside. The alternative, 0x6fd0 = the apartment plot mid-visit, retargets +0x8c/+0x90 zone-wide until the next 0x6fd0 and needs a one-second wait before 0x45be (location tick 0x5b0a10); use it only where a region can't fit. Server: doors.cpp:547-548 hands only types 57/58 to housing; route apartment door ids to housing from data. A quest's EVENT_CLICK_DOOR (within 100 units, client_packet.cpp:4743-4752) skips Doors::HandleClick on a non-zero return, so a script returns non-zero only for its own door ids. *After:* EXT-26, DOR-3.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (doorClicks)</sub>
+- **EXT-28** `fix` **Housing entry points for quests.** No housing quest API exists or is planned. Add Lua and Perl bindings that apply housing's rules: open the Purchase window for a property (after 0x2698 and its record); enter a property (Enter permission, upkeep lockout, and Q2's Live-style instance lifecycle, INT-12, so a quest never makes its own interior instance); leave as /leaverealestate does. Quests' raw SQL (lua_database.cpp:187-211) is not a substitute. *After:* INT-12.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (serverSide)</sub>
+- **EXT-29** `fix` **A purchase made away from the plot.** A plaque or quest can open Purchase anywhere, but the server's 0x45be {1} opens Manage for whatever plot the player stands on (a neighbour's, or eqstr 727 on none), and 0x63fd refreshes an open Purchase window only when that is the bought plot (0x5b2f52). When the player isn't on the bought plot, reply so Manage doesn't open and refresh with 0x2691; EXT-30 checks the reply prints no refusal.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (regionlessPlot)</sub>
+- **EXT-30** `peridotTest` **X4 apartments on Peridot.** In a regular zone with a type-161 wall-plaque door: left-click opens Purchase; buy (EXT-29: no stray Manage, no refusal text); right-click Manage with the plaque region, and without it (eqstr 727); a mid-visit 0x6fd0 then 0x45be at once (expect 727) and after one second; enter the interior and use Manage there; Place refused on a no-yard apartment and caps enforced; the fixed house can't be picked up, and whether the menu or Items window still offers it.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1</sub>
+- **EXT-31** `fix` **Custom currencies in prices and upkeep.** Server side is data: an alternate_currency row plus its item (deposits come from the item on the cursor; reclaim creates it). EQEmu sends every row at zone-in with subKey 1 (client.cpp:7296-7329), before housing's zone-in, which meets U5. Cost items carry currency and sub_key (housingSchema.sql:58-66), and the loader accepts any alternate currency (housingCatalog.cpp:93-95). Add: each new currency's name as a dbstr_us.txt category-18 line through the patcher (otherwise the client shows 'Unknown DB String', 0x5aa540 -> 0x4866c0; stock has 10-29, 16981 and 999999); the loader refuses an alternate-currency cost item whose sub_key isn't 1 (0x7f7e70 matches both); the generator and #realestate cost set handle alternate currencies (today: Live's 10-15, and coin only).
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (serverSide)</sub>
+- **EXT-32** `peridotTest` **A price of coin plus a token.** RoF2's cost option holds several items (opcode2698DefinitionsAndCosts.md:107), but the loader requires exactly one per option. Show a two-item option in the Purchase window and Manage's upkeep list and charge it; if both work, relax the loader rule.
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (serverSide)</sub>
+- **EXT-33** `fix` **Per-template neighborhood writs.** Live's Guild Writ of the Sunrise (52656): No Trade, one charge, 'Consuming this item will bind a neighborhood to your guild', click 'Claim Neighborhood' on the do-nothing spell 7652, so creation is server-side; sold on the Marketplace only, no vendor value. Live has no other neighborhood item, and all 7,808 captured neighborhoods use definition 2. Peridot: a server map from writ item to the definition it creates (whether RoF2 uses an item's RealEstateDefID +0x5b8 on a non-placeable item is untraced); 'village create' takes a definition (serverPlan.md:374, :459); tradability, rarity and vendor value are item data. A writ's neighborhood is a village, listed like Live's, and joins the random pool only if its definition is listed. Send 0x1d3c (eqstr 5320; it only prints) to the guild's members only; nothing sends it yet. A holder-only (non-guild) neighborhood can't use the client's purchase gate, which knows only guild ids (0x5b5130): a server-only refusal with a client-workaround comment. Who may use a writ: Live's rule is unknown and costs Daybreak Cash to observe; Peridot's choice (nearest permission GPT_GuildPlotBuy, 27).
+  <sub>Sources: owner (custom-zones discussion) · workflow wf_9124c95d-1b1 (liveWrit)</sub>
+- **EXT-34** `fix` **Brand-new zones (late).** A zone absent from RoF2's built-in table (522 ids) needs a client patch that adds it, through a minimal client toolset or a MacroQuest plugin (owner). Reused zones need none. Both routes exist: EQEmu's eq-core-dll (dinput8.dll) detours RoF2's EQWorldData::AddZone (0x7dc430) and appends ZoneEntry rows after interiorwalltest (767), and MQClaudeLink's claudelinkZones.json registers the same nine fields through the client's own AddZone (claudelink README, zoneRegistration.*).
+  <sub>Sources: owner (custom-zones discussion) · XA:Z2</sub>
+
+## Work items by area
+
+Questions are in their own section above, the extras items in the section before this one. Ids are stable: an area prefix and a number.
+
+### build (BLD)
+
+- **BLD-1** `fix` **BLOCKING** **Zone does not link: six housing.h functions have no body.** Define handlePacket (called client_packet.cpp:17409; dispatch the 34 client-to-server opcodes registered at :444-477), process (zone.cpp:1543), handleFindRequest (client_packet.cpp:6508), handleDoorClick (doors.cpp:548), handleAnchorEffect (spell_effects.cpp:506) and trophyBenefitItems (bonuses.cpp:202). Closed only by the complete implementation, never by stubs (Q1). All six are declared at zone/housing/housing.h:17-25 with no definition in zone/housing (grep at HEAD 56e2ac4d9); zone/CMakeLists.txt:47-56 compiles housing/*.cpp, so the zone fails at link.
+  <sub>Sources: chunk2-missed-2 · C2-34 · report:contradiction-30 · XA:DZ11</sub>
+- **BLD-2** `fix` **BLOCKING** **World does not link: chargeDueUpkeep() has no body.** Define chargeDueUpkeep() (declared world/housingUpkeep.cpp:12, called :31 and :38) as the per-property charge (UPK-1) and the expiring pass (UPK-2), never as a stub (Q1). *After:* UPK-1, UPK-2.
+  <sub>Sources: C1-67 · G1-16 · report:contradiction-30</sub>
+
+### schema (SCH)
+
+Questions: Q19, Q20.
+
+- **SCH-1** `fix` **BLOCKING** **Pet cap: signed, -1 = no cap, Live's values.** housingSchema.sql:18 max_pet_items INT NOT NULL DEFAULT -1, :32 CHECK (-1 or 0..max_items) (edit v2 in place, regenerate the repository); makeHousingCatalogSql.py:166/:197 copy Live's maxNpcItems (-1 on halls, houses, crates and def 2; plots 4/5/6; guild plots 12; 44 rows); housingCatalog.cpp:207 sends it signed; 'definition set' accepts -1; testHousingCatalog.py:80-86. Declare Housing:MaxPetsPerHouse/MaxPetsPerGuildHall (-1 = none, default -1). Server refuses with 0x26 only when cap >= 0 and count >= cap (RoF2 0x5abc60). Fix serverPlan.md:507, :509, opcode2698 field 14, the summary.
+  <sub>Sources: G1-01 · C1-53 · C1-68 · G1-11 · G3-01 · C3-15 · G02 · C4-49 · C4-45 · chunk3-missed-5 · report:contradiction-2 · report:crosschunk-1 · report:question-3 · report:planfix-maxPetItemsSigned · report:planfix-catalogMaxNpcItems · report:planfix-maxPetsRules · report:settled-petCaps</sub>
+- **SCH-2** `fix` **Drop columns no message or rule reads.** Drop real_estate_poll_options.unknown_value, real_estate_properties.created_at, real_estate_transfer_offers.created_at, real_estate_poll_votes.voted_at; remove 'poll labels' from housingSchema.sql:3's content list. Regenerate v3, the repositories and tests.
+  <sub>Sources: G3-09 · C3-04 · chunk3-missed-1 · C3-28 · report:planfix-dropUnreadColumns</sub>
+- **SCH-3** `fix` **Property ids disjoint from region ids.** RoF2 keys the placement permission map by region id and falls back to the current property id (+0x8c) in the same map (0x4b2bf0, 0x4b2ec1-0x4b2efe; inserts prepend, 0x8d6c50), so a property id equal to a hosted region id overrides that plot's code. Start real_estate_properties AUTO_INCREMENT (housingSchema.sql:104) above every region id (Live: properties from 2,273, regions 101-177) and refuse a region id at or above that floor in the catalog loader and #realestate region create.
+  <sub>Sources: XA:PM7</sub>
+- **SCH-4** `fix` **Definition columns take Live's names.** In real_estate_definitions: region_id -> area_id, purchase_cost_id -> cost_definition_id, upkeep_cost_id -> upkeep_definition_id, max_houses -> max_children, max_pet_items -> max_npc_items, layout_origin_x/y/z -> switch_x/y/z, layout_heading -> switch_heading (eqlib RealEstateDefinition and master/definitions.tsv headers), category -> placement_group_id (Q20a). None of the new names exists in any housing table or upstream EQEmu table (git grep of common/repositories, the manifests and playerHousing/sql). Edit the migration in place, the CHECK constraint, housingCatalog.sql and makeHousingCatalogSql.py, regenerate base_real_estate_definitions_repository.h, and update zone/housing (housing.cpp, housingCatalog.cpp, housingCommand.cpp), the tests and the docs. Other items in this list still use the old names; read them as the new ones.
+  <sub>Sources: Q20 · G3-08 · C3-03 · report:question-23</sub>
+
+### catalog (CAT)
+
+- **CAT-1** `fix` **Neighborhood definition 2: max_houses 1711.** makeHousingCatalogSql.py def 2: max_houses (client +0x30) 1711 (Live maxChildren), max_pet_items -1 (SCH-1); regenerate housingCatalog.sql. Inert in RoF2 (rule 9 reads only the yard), but Live's. *After:* SCH-1.
+  <sub>Sources: chunk1-missed-6 · C3-08 · C4-45 · chunk3-missed-5 · G19</sub>
+- **CAT-2** `done` **Cost option keys stay 0-based positions.** Keep option_key = position (makeHousingCatalogSql.py componentId - 1; housingCatalog.cpp:57): RoF2 Manage 0x743c45 indexes by position and Purchase 0x74d2ec selects by key, so only key == position satisfies both.
+  <sub>Sources: G16 · C4-14 · C3-17 · report:crosschunk-6 · report:settled-optionNumbering</sub>
+- **CAT-3** `fix` **Axis order: layout origin and positions go y first.** Catalog::message() (housingCatalog.cpp:208-210) and item entries (housingItems.cpp:76-77) write y before x, as do 0x1045, the 0x626e begin object and 0x711a; columns stay EQEmu x/y with a schema comment. Generate origins from Live's switchCoords (template stones are up to 0.31 xy / 1.2 z off on guild plots). Test: def 101 origin (-219.06, 332.21, 0.127); 200 Guild Way (2633.2, 2689.73, 108.872). Fix serverPlan.md:347, :353, :570.
+  <sub>Sources: G3-04 · C3-50 · G09 · C4-24 · C4-02 · report:contradiction-9 · report:crosschunk-3 · report:planfix-originYFirst · report:planfix-positionsYFirst</sub>
+- **CAT-4** `fix` **Adopt the Live-only catalog entries RoF2 can use.** Add Live's definitions 1 (Town, type 6, maxChildren 300, child 2; RealEstateDoorID 1's target), 6, 35-37, 185/186, 191/192, special houses 30 (Hermit's Hideaway, phinterior1d1 723) and 42 (phinteriortree); costs 5 and 999997-999999. Their items must exist in Peridot (deeds 54999, 77407): unverified until ITM-2. Defs 43/44/47 are Q12. *After:* ITM-2.
+  <sub>Sources: report:question-19 · G19 · chunk4-missed-5 · C3-40</sub>
+- **CAT-5** `liveCheck` **106 Brimming Way's upkeep.** Definition 102 buys at cost 12 but pays upkeep 9 (16.8 pp a day; every other plot pairs n with n-5). Read Manage's Daily Cost after STT-3's purchase (or a vacant one's Purchase window). Keep 12/9 if Live charges 16.8 pp; else upkeep 7 and fix the schema comment. *After:* STT-3.
+  <sub>Sources: G15 · G3-13 · C3-13 · C4-30 · report:question-17 · report:liveresearch-2</sub>
+- **CAT-6** `fix` **Catalog loader enforces the client's definition rules.** Fail the load loudly unless: every definition that can be a zone's current property (halls, houses, neighborhoods, an X3 root) has dz_id != 0 (Live: 35633-35642, 23000-23005/23015-23021, def 2 20504), except a neighborhood under an X3 root (0, Q4); plots, guild plots, crates and Live's Town def 1 have 0 (0x5b46e0 stops at the first nonzero, gating Locate 0x5b0cc0); region_id is nonzero only on types 4 and 8 (a non-plot definition reusing a plot's region id shadows it, 0x4b30f0/0x4b2fd4); plot region ids are unique among the plots hosted in one zone instance. Fix windows/RealEstateItemsWnd.md:138 (dz ancestor, not top-level ancestor).
+  <sub>Sources: XA:Z7 · XA:PM6 · XA:DZ10 · XA:PMv4 · XA:PM3</sub>
+- **CAT-7** `clientAnalysis` **World 0x2698 at character select.** Zoning keeps definitions and costs (teardown 0x5aff20 clears only +0x8c/+0x90 and item lists; XA:Z9), so the zone-in send (ZIN-4) stands. Left: what character select uses the catalog for (OnRoutePacket 0x5629c0 passes 0x2698 to the manager at 0x562d03), to decide whether world also sends it.
+  <sub>Sources: report:clientanalysis-7 · chunk2-missed-4 · pending:0x2698-timing · summary:s6-owner-decisions-0x2698 · opcode2698DefinitionsAndCosts.md:118 · serverPlan:347-timing · overlap: audit G21 and client analysis 7 · XA:Z9</sub>
+
+### itemTail (ITM)
+
+- **ITM-1** `fix` **BLOCKING** **Adopt Live's item values in a new migration.** New manifest entry after 2026_09_26_items_housing_tail, generated from fields/itemDefinitions.tsv plus itemsTxt/itemsTxtExtract.tsv (17,371 ids): for every Live id with Placeable <> 0, UPDATE placeable, scale min, default heading/pitch/roll, disable_placement_rotation, max_per_real_estate and housepet_file_name WHERE placeable <> 0 (485 masks, 56 scale minimums, 46 orientations incl. 67906 and 66865-66868, 4 limits; all 113 listed NPC items get names; 93435 'aquatic_mephit'). itemHousingTail.sql:14 writes '' today, so no item is an NPC item (RoF2 0x7b1640). testItemHousingTail.py asserts per-field counts; fix serverPlan.md:102. *After:* ITM-2.
+  <sub>Sources: G2-01 · G1-07 · C1-38 · C2-24 · C1-33 · C1-35 · C1-37 · C2-18 · C2-19 · C2-20 · C2-23 · chunk2-missed-1 · report:contradiction-3 · report:planfix-itemTailAdoptionMigration · report:planfix-itemTailTest · report:settled-secondItemSource</sub>
+- **ITM-2** `peridotTest` **Peridot items export and the D1 recount.** Owner runs tools/exportPlaceableItems.sql and exportItemDefinitions.sql; commit content/placeableItemsCapture.tsv; add tools/compareItemTailWithLive.py (per-field identical/different counts, adopted ids) and recompute the plan's D1 counts (117,944 items; 5,577 placeable; 485/56/46; 275 NPC items; 88 trophies; the 7 off-grid orientations).
+  <sub>Sources: G1-08 · G2-05 · C1-24 · C1-26 · C1-27 · C1-28 · C1-30 · C1-34 · C2-17 · C5-54 · C4-63 · chunk1-missed-5 · report:peridottest-1</sub>
+- **ITM-3** `peridotTest` **Stage 1 holds an NPC item.** Add to stage 1 (serverPlan.md:625): 66639 Friendly Guild General Supply Merchant (housepet NGH_Merchant_General, respawn 750) and one captured familiar; the Items window's Type column shows 'P' for both (0x7b1640). *After:* ITM-1.
+  <sub>Sources: G2-11 · report:peridottest-4</sub>
+- **ITM-4** `fix` **Default tail MaxPerRealEstate -1.** common/itemHousingTail.h maxPerRealEstate = -1 (today 0); testItemTailSerializer.py maxPer=-1; serverPlan.md:226 agrees with :99. Live: -1 on 4,524/4,524 non-placeable items.
+  <sub>Sources: G2-07 · C2-13 · report:contradiction-23 · report:question-12 · report:planfix-maxPerRealEstateDefault</sub>
+- **ITM-5** `fix` **Tail load failure fails zone boot; provider in every zone.** housing.cpp:282 onZoneBoot fails boot when loadItemHousingTails() fails; load tails and register the provider before the EnableHousing early return (:276-283). State both in F1 / serverPlan.md:226.
+  <sub>Sources: G2-12 · C2-15 · chunk2-missed-3 · report:crosschunk-22 · report:question-11 · report:planfix-tailLoadResult</sub>
+- **ITM-6** `peridotTest` **Tail failure stops the zone.** Rename the tail column on a scratch DB copy: the zone refuses to boot, loudly. *After:* ITM-5.
+  <sub>Sources: report:peridottest-15</sub>
+- **ITM-7** `done` **T6 trailer verified.** The 5 bytes after 0x7f6bf0 are a u32 count into [ebx+0x88] (0x5557d4) and a u8 into +0x74 (0x555845); the MSVC build of testItemTailSerializer.py passes (171/168/175 bytes).
+  <sub>Sources: C2-11</sub>
+- **ITM-8** `peridotTest` **Item previews and the housing tail.** Find the action that sends OP_ItemPreviewRequest (log in Handle_OP_ItemPreviewRequest, client_packet.cpp:9444); preview 54997 and a house item. If no housing lines show, check Live (unverified) and ITM-9 before extending T6 to ItemPacketInvalid.
+  <sub>Sources: G2-10 · report:peridottest-17</sub>
+- **ITM-9** `clientAnalysis` **RoF2 reader of the ItemPacketInvalid variant.** Trace how RoF2 reads an item sent as ItemPacketInvalid (unknowna29 = 0xff): whether a housing tail would be read. Only if ITM-8 needs it. *After:* ITM-8.
+  <sub>Sources: report:clientanalysis-8</sub>
+- **ITM-10** `fix` **EQEmu's custom_data serializer drops every second key.** GetCustomDataString (common/item_instance.cpp:816-833) writes 'a^1^^b^2^', and Strings::Split keeps the empty token, so SetCustomDataString reads (a,1), ('',b), (2,'') after a reload: any item with two or more keys corrupts. Write 'k^v^k^v' and parse it strictly (an odd count raises). housing::carriedPropertyId (common/housingPropertyItem.h:20) must use the same parser and raise on a non-number instead of returning 0. Test: a two-key item survives save and load.
+  <sub>Sources: workflow wf_db6d408e-d91 (verified at item_instance.cpp:816-846)</sub>
+
+### opcodes (OPC)
+
+- **OPC-1** `fix` **0x06c8 is OP_OpenContainer.** patch_RoF2.conf:366 OP_OpenContainer=0x06c8; delete OP_RealEstateContainerOpen (emu_oplist.h, conf, client_packet.cpp:449): 73 new opcodes, 3 reused. Handle_OP_OpenContainer (client_packet.cpp:11030) gets a RoF2 12-byte branch handing only location type 4 to housing while a housing container is open. Fix serverPlan.md:272, :230, worldLayer.md:130/:188, COVERAGE.md:163.
+  <sub>Sources: G2-02 · C2-33 · C2-39 · report:contradiction-10 · report:planfix-openContainer</sub>
+- **OPC-2** `peridotTest` **Bag opens don't reach housing.** Open an inventory bag and a bank bag: no Housing log line. *After:* OPC-1.
+  <sub>Sources: report:peridottest-7</sub>
+- **OPC-3** `clientAnalysis` **Confirm 0x65c7 and 0xcadf are not housing.** Trace 0x65c7 (0x476676, 0x506ea8, 0x53f375) and 0xcadf (0x50657e) to confirm they are movement reports; the other exclusions hold.
+  <sub>Sources: C2-41</sub>
+- **OPC-4** `clientAnalysis` **Guild-name cache miss reply.** Find which message answers a guild-name cache miss in RoF2 (serverPlan.md:432 S6, :640). Live resolves it within seconds ('Unknown Guild' 20260927-165138, named at 165142).
+  <sub>Sources: report:clientanalysis-5</sub>
+- **OPC-5** `fix` **0x2691 single-property: the four skipped u32s.** RoF2 reads and skips them; Live's 2018 capture labels them Capacity, Vault, Pets: send max items, max non-real-estate items, max pet items, then 0.
+  <sub>Sources: opcode2691PropertySearch.md:126</sub>
+- **OPC-6** `clientAnalysis` **Identify 0x4290 and 0x378d.** Name the senders (0x378d at 0x7856e7/0x785861 in 0x785530; 0x4290 in 0x485786/0x485f94); if trophy tribute, add to F2 and S12, else record as ordinary tribute.
+  <sub>Sources: README:125</sub>
+- **OPC-7** `fix` **Map 0x6213, the server's placement cancel.** Server-to-client, no payload: the client cancels any placement without committing (case 0x4d0a4f: 0x558540, 0x557b60). Add OP_RealEstatePlaceCancel=0x6213 to patch_RoF2.conf and serverPlan's opcode table (77 opcodes); correct placementMode.md's '0x4d0a30 ... cancel (inferred: zone/asset change)' (0x4d0a30 is the location update). Send it where Live does (OPC-8).
+  <sub>Sources: XA:Z14</sub>
+- **OPC-8** `clientAnalysis` **Live's equivalent of 0x6213.** Find a no-payload placement-cancel case in Live's x64 dispatcher (0x1401f33d0) and what triggers it, so OPC-7 is sent at Live's moments. *After:* OPC-7.
+  <sub>Sources: XA:Z14</sub>
+- **OPC-9** `fix` **Map the three single-door opcodes.** None is in patch_RoF2.conf: 0x7b22 appends one Door_Struct (case 0x4ca23c, no dedupe); 0x51df adds, updates, or removes (bVisible 0) one door (0x4ca469, gated on ReceivedWorldObjects); 0x6d20 {u32 id, u32 value} sets switch +0x78 (0x4cb993). Without them a mid-session door change is 0x700c then a full 0x7291 (0x7291 alone duplicates doors: 0x4ca32c appends). Used by X3 dormancy (Q11) and GM authoring.
+  <sub>Sources: XA:DZ6 · XA:DZv4</sub>
+
+### records (REC)
+
+- **REC-1** `fix` **BLOCKING** **Records go out as 0x63fd: 0x4f09 removes a property.** housing.cpp:174 sends every zone-in record as OP_RealEstateProperty (0x4f09), whose RoF2 case (0x5b2d18-0x5b2dd1) reads the record and removes it (vtable +0x28 = 0x5b7c70); Live the same (0x14033dfa6). The client holds only the 0x6fd0 record: no plot parent, yard, owner or Manage. Send records as OP_RealEstatePropertyUpdate (0x63fd; inserts via vtable +0x24 at 0x5b2f19, unknown ids included); 0x4f09 only for a property that is gone. Fix serverPlan.md:238 ('add or refresh'), :239 (0x63fd also inserts unknown ids, 0x5b2e64), placedItemsAndProperties.md:105, flows/purchase.md:16.
+  <sub>Sources: XA:PMv1 · XA:PM1 · XA:PM22</sub>
+- **REC-2** `fix` **BLOCKING** **Record +0x40 is upkeepExpiredTime (non-zero = expired).** housingSchema.sql:115: upkeep_current TINYINT DEFAULT 1 -> upkeep_expired_time INT UNSIGNED NOT NULL DEFAULT 0 (the second the charge pass found escrow empty; 0 while paid; a refunding deposit resets it); edit v3 in place; housingMessages.cpp:27 writes it at +0x40. As coded every paid plot refuses placement (RoF2 0x5b4780 -> 0x18/0x19). Docs: serverPlan.md:349, :447, :627; serverWork.md:47; placedItemsAndProperties.md:100; placementMode.md:308; flows/escrowAndUpkeep.md:14, :49; flows/placeItem.md:18; RealEstateItemsWnd.md:110, :120.
+  <sub>Sources: G01 · C4-15 · C3-20 · report:contradiction-1 · report:crosschunk-4 · report:planfix-upkeepExpiredTimeColumn · report:planfix-serverWorkS2 · report:planfix-polarityDocs</sub>
+- **REC-3** `fix` **BLOCKING** **Stable GUID per placed row.** Derive one GUID per real_estate_items row from its id (16 hex chars, a leading hex letter plus 15 hex digits, never equal to an EQEmu '{:016}' serial); use it in every item-list entry (housingItems.cpp:61-82), 0x1045, 0x2a9e, the 0x626e begin object, the spawn binding (NPC-3) and 0x21ec; accept it in 0x626e and 0x711a. Today each send builds a new ItemInstance with a new serial, and RoF2 matches world objects (0x5060c0), Items window (0x730ef9) and spawns (0x54ed00) by GUID. Fix serverPlan.md:385, :388.
+  <sub>Sources: G5-03 · C5-12 · C4-17 · C3-25 · chunk5-missed-3 · report:contradiction-4 · report:crosschunk-2 · report:planfix-stableGUID</sub>
+- **REC-4** `peridotTest` **GUID stable across zoning.** Zone out and back: the same placed item keeps its GUID in 0x1cef, 0x1045 and 0x21ec. *After:* REC-3.
+  <sub>Sources: report:peridottest-11</sub>
+- **REC-5** `fix` **Property names composed when sent, as Live shows them.** Store only a neighborhood's generated name; compose record +0x38 when sent as '<parent composed name>, <segment>': a plot's address; for interiors and crates a per-definition segment with Live's strings ('Three Room House' defs 5-17, 32-34; 'One Room House' 18-29; item name for halls 38-41 and crates 174-184; 'Bixie Hive House'). Add the segment column (or Live's strings in definitions.name); add it to serverPlan.md:313 and S2; schema test for a 3-level name. Live: 230/230 records; 50 exceed 64 chars (max 99).
+  <sub>Sources: G3-02 · C3-21 · G17 · C4-12 · report:question-6 · report:planfix-composedRecordName</sub>
+- **REC-6** `fix` **Handle fields: +0x30 text handle, +0x34 = 0, entry field 13.** Record's first string (+0x30, Live primaryHandle) carries the owner's account id as text, empty with no owner; u32 +0x34 (defaultPermissionLevel) is 0; item-list entry field 13 carries the placer's account id (housingItems.cpp:79/:85 send ''). Docs: serverPlan.md:349, :353; placedItemsAndProperties.md:91-93; the summary section 4.
+  <sub>Sources: G03 · C4-08 · C4-09 · C4-10 · C4-22 · chunk3-missed-3 · report:contradiction-14 · report:planfix-recordHandleAt30 · report:planfix-placedItemsDoc · report:settled-handlePerAccount</sub>
+- **REC-7** `fix` **Record +0x18 staticId: -1, or 0 on a vacant player plot.** housingMessages.cpp:9 sends -1 (today 0), 0 on an unowned player plot, as Live (8,033 / 5 records). Inert (0x5b5ac6 skips <= 0). Fix serverPlan.md:349 and placedItemsAndProperties.md:86.
+  <sub>Sources: G12 · C4-05 · C4-11 · chunk4-missed-4 · report:planfix-staticIdMinusOne · report:planfix-placedItemsDoc</sub>
+- **REC-8** `clientAnalysis` **Full scan for reads of record +0x30/+0x34.** Scan every RoF2 function that walks the property hash or calls 0x7f4fa0 for [prop+0x30]/[prop+0x34]; the heuristic found none. Low value: REC-6/REC-7 hold either way.
+  <sub>Sources: G22 · report:clientanalysis-10</sub>
+- **REC-9** `fix` **Record +0x24 guild: owner's current guild on player plots, -1 for none.** A player plot sends its owner's current guild, derived at send time; a guild plot its guild; none goes out as -1 (Live sends 0, but RoF2 0x5b4215 treats a guild plot as occupied unless -1). State in S2; wire test for a vacant guild plot. *After:* REC-10.
+  <sub>Sources: G3-12 · C3-22 · report:question-16 · report:planfix-guildMinusOne</sub>
+- **REC-10** `clientAnalysis` **Purchase window reads of record +0x24 on player plots.** Trace the Purchase window paths reading +0x24 for a type-4 plot, confirming a guild id there changes nothing (occupancy is 0x5b41d0 on the owner name +0x2c).
+  <sub>Sources: report:clientanalysis-6</sub>
+- **REC-11** `fix` **Stored items: Live's all-zero transform when never placed.** An item stored without being placed carries an all-zero transform (scale 0), so real_estate_items.scale must not default to 1 for those rows; storing a placed item keeps its last transform. Live: 7,239 of 8,629 stored entries are all-zero. Row ids serve as record ids.
+  <sub>Sources: C3-25</sub>
+- **REC-12** `fix` **Zone-in fails loudly on bad property data.** housing.cpp:64 (a missing parent), :155 (unknown definition) and :163 (currency the cost doesn't offer) log an error and send the record anyway with option key 0. Refuse such rows where they are written and at catalog load, and fail loudly instead of sending them.
+  <sub>Sources: check:housing.cpp:64,155,163</sub>
+- **REC-13** `clientAnalysis` **When Live's client clears property records.** RoF2 never calls its full reset (0x5b1cf0 has no callers), so records outlive zoning and logout; Live's 0x140340e50 has callers 0x140236832, 0x1403353b7 and 0x14035f3f0. Identify them; if Live clears at zone change or logout, send 0x4f09 removals at the same points.
+  <sub>Sources: XA:PMv2</sub>
+
+### regions (REG)
+
+- **REG-1** `liveCheck` **Region extents.** On 104 Market Street (44730591), /peridotlive dump just inside and outside each side, then levitating about 100 and 500 above; compare currentYardId with yardCheck.py. Settles '100 below, 900 above' (size_z 1000, z = ground + 400).
+  <sub>Sources: G20 · C4-19 · C4-43 · C3-19 · report:liveresearch-7</sub>
+- **REG-2** `fix` **Empty 0x49df at every RoF2 zone-in, in every zone.** The region list survives zoning (created once at 0x53629c; cleared only by the 0x49df case, 0x4ca7c7) and records never clear (REC-13), so with +0x8c = -1 a remembered plot matches by coordinates (0x4b3149) and brings Sell, Transfer and Manage for an unrelated plot. Peridot sends 0x49df only when housingActive() (housing.cpp:27-29, :287): send count 0 in housing-off, catalog-less and dormant zones too.
+  <sub>Sources: XA:Z10 · XA:PM14 · XA:DZ9 · XA:Zv1</sub>
+- **REG-3** `liveCheck` **Live clears regions outside housing zones.** After Sunrise Hills -> PoK, read manager +0x107c/+0x1084 and the region count (MQ2PeridotLive must dump the region object loaded at 0x14033ca1c). Confirms REG-2 is Live's behavior.
+  <sub>Sources: XA:Z10 · XA:PM14</sub>
+
+### zoneIn (ZIN)
+
+- **ZIN-1** `fix` **Zone-in scope as Live: related properties only.** Zone-in steps 3 and 7 (serverPlan.md:355-365): records and item lists only for the character's own, guild, ancestor/descendant and access-granted properties; 0x1045 for every placed item in the zone; a record on demand where a window needs it (border click, search). Evidence: 5,026 zone captures; item lists for 118 and records for 137 of 53,261 pairs; 4,847 of 4,879 neighborhood captures held no child record. *After:* ZIN-2.
+  <sub>Sources: G13 · C4-25 · chunk4-missed-8 · report:question-7</sub>
+- **ZIN-2** `peridotTest` **RoF2 with the narrower zone-in.** As a visitor on a stranger's plot: what standing-in shows (0x4b30f0 needs the plot's record); a vacant plot's Purchase still opens from the border click; a visitor with Add permission gets that plot's record and list.
+  <sub>Sources: G13:rof2Check · report:question-7 · G13</sub>
+- **ZIN-3** `done` **What RoF2 keeps across zoning (settled statically).** Kept: records, definitions and costs, access lists, owned lists, regions. Reset: +0x8c = -1, +0x90 = 10, item lists, placement, doors, world objects (0x5aff20, 0x5585f0, 0x4939b0 -> 0x510bd0). So everything is re-sent at each zone-in, and REG-2 clears stale regions.
+  <sub>Sources: G14 · C4-27 · C5-30 · report:peridottest-14 · XA:Z9 · XA:DZ8 · XA:PM14</sub>
+- **ZIN-4** `done` **Catalog sent at every zone-in and after a GM change.** Keep the plan's rule (about 135 definitions, 34 costs); Live holds the full catalog in 5,018 of 5,026 captures.
+  <sub>Sources: G21 · C4-04</sub>
+- **ZIN-5** `peridotTest` **Neighborhood arrival point against Live.** Compare zone 712's safe point with Live's header (SafeY -2940, SafeX 2035, SafeZ 6, heading 0) and Go arrivals (verify4/arrivals.py); adopt Live's for S6's Go, the void portal and the Guild Lobby gate.
+  <sub>Sources: serverPlan:432-go</sub>
+- **ZIN-6** `clientAnalysis` **/who inside a hall or house.** Is RoF2's who-all zone column an id or a server string? If a string, send the property name as Live's /who shows (serverPlan.md:513); if an id, leave RoF2's zone name.
+  <sub>Sources: serverPlan:513-who</sub>
+- **ZIN-7** `peridotTest` **Q11: interior zone-in with housing messages one at a time.** Zone level already proven (phinterior3a3 loads with no housing messages). Add catalog, records, 0x6fd0, lists, item lists and world objects one at a time; on a crash take the address from the crash log. Update stage 6 (serverPlan.md:630) and F3.
+  <sub>Sources: COVERAGE:82 · robustness.md:55 · worldLayer.md:202 · serverWork:29 · serverWork:173-q11 · serverPlan:590-q11 · serverPlan:630 · serverPlan:640-q11 · summary:s6-peridot-tests-q11 · report:peridottest-17</sub>
+- **ZIN-8** `liveCheck` **Zone-entry line, then the send order.** On Live, zone into the neighborhood, a house and a hall: chat says 'You have entered <property>.' (eqstr 12357 with the 0x6fd0 name) or the zone's long name? RoF2 prints it once before ClientReady (0x53d2a8-0x53d317, 0x53d481); Peridot sends housing after ClientReady (client_packet.cpp:1061), so RoF2 shows the zone name. If Live shows the property, queue 0x2698, 0x63fd records and 0x6fd0 before OP_WorldObjectsSent (client_packet.cpp:1131-1157); 0x1045 stays after (world objects need the display, 0x4cd5e0).
+  <sub>Sources: XA:DZ7 · XA:PM13 · XA:DZv6</sub>
+- **ZIN-9** `fix` **Housing zone headers from Live.** rof2.cpp:2439 hardcodes bNoBind 0 (and FilterID 2008 :2435, bDisallowManaStone 1 :2438); RoF2 reads bNoBind (0x43b18f, 0x43f7ea) and Live sets 1 in all 15 housing zones and guildhall. Encode from the zone row and give the housing zones Live's values from fields/zoneHeaders.tsv (ZoneType 1, guildhall_int 2; houses ceiling/floor 100..300 / -25..-60, halls 1000/-1000; MaxClip 1200, guildhall_int 2200; fog). Zone ids stay RoF2's (<= 1000; 0x7dc43a refuses Live's 2935-2943).
+  <sub>Sources: XA:DZ14 · XA:DZ15 · XA:DZv9</sub>
+- **ZIN-10** `fix` **One zone-level root per zone, failing loudly.** currentPropertyFor (housing.cpp:92-109) returns the first parentless neighborhood/town/regular-zone root and silently ignores the rest; refuse a second root in one zone instance at load and on create, unless Q4 adopts several. *After:* Q4.
+  <sub>Sources: XA:PM15</sub>
+- **ZIN-11** `clientAnalysis` **PcClient.RealEstateZoneID and OP_NewZone UnknownFlag.** Live's PcClient +0x196c RealEstateZoneID (eqlib PcClient.h:1486): who sets and reads it, and whether RoF2's profile has a field to fill for interiors. RoF2 OP_NewZone +692 UnknownFlag (readers 0x5888a0, 0x59ef50, 0x5a3f40), which Live sets in neighborhoods.
+  <sub>Sources: XA:PM24 · XA:DZ14</sub>
+
+### placement (PLC)
+
+- **PLC-1** `peridotTest` **Pet cap in game.** Place a familiar in a house and Personal-Banker 66641 in a Palatial hall: cap -1 succeeds; cap 0 is refused with 0x26; the count isn't red. *After:* SCH-1, ITM-1.
+  <sub>Sources: report:peridottest-6</sub>
+- **PLC-2** `clientAnalysis` **Layout writer and loaders combine y first.** Trace 0x5ae900, 0x5b0380, 0x5b0680: origin (+0x4c/+0x50) subtracted from position floats 1/2 in the same order; how Rotate Yard rotates. Optional (CAT-3 is settled from Live data).
+  <sub>Sources: report:clientanalysis-2</sub>
+- **PLC-3** `peridotTest` **Layouts across plots.** Save a layout on one plot, load it on a plot with another heading and with Rotate Yard: nothing mirrored (serverPlan.md:630). *After:* CAT-3.
+  <sub>Sources: report:peridottest-12</sub>
+- **PLC-4** `fix` **NO DROP and LORE rules as the client states them.** Replace serverPlan.md:383 and :461: removing a NO DROP item needs its owner, the placer (0x40, eqstr 0x2db); removing a LORE item is refused if the taker has one (0x41, 0x2dc); adding needs only the add permission. Live: 1,331 NO DROP items placed by other accounts.
+  <sub>Sources: G5-09 · C5-05 · report:contradiction-21 · report:planfix-noDropLoreRules</sub>
+- **PLC-5** `fix` **Commit enforces the rotation and free-placement locks.** 0x711a rejects pitch/roll off the item's defaults when disable_placement_rotation is set (heading stays free) and free placement when disable_free_placement is set. Live: 7 of 59,800 locked objects off their tilts.
+  <sub>Sources: G5-16 · C5-59 · report:question-14</sub>
+- **PLC-6** `clientAnalysis` **Pick-up limit: one each or one in total.** Trace 0x57ef90 (from 0x5af500/0x57ae80; inventory ranges +0x1ea0, +0x1ed8, +0x1f10): one non-empty house and one non-empty crate, or one in total (eqstr 0x1926).
+  <sub>Sources: report:clientanalysis-3 · C5-15</sub>
+- **PLC-7** `clientAnalysis` **Placement rules after 0x0f in 0x5b69b0.** Trace the remaining rules (moving-crate, capacity, container, upkeep, permission codes); the first nine are confirmed in order.
+  <sub>Sources: report:clientanalysis-9 · C5-03</sub>
+- **PLC-8** `clientAnalysis` **Retrace the begin-placement reply.** Retrace the 0x626e reader (A = 1 editing, B = 1, C = 0, D/E echo the click, F = NPC spawn id, per-region codes plus a final {current property, code} pair) taken from placementMode.md. The map is cleared on each 0x626e (0x4d0670).
+  <sub>Sources: C5-09</sub>
+- **PLC-9** `liveCheck` **Does the begin-placement object carry the tilts.** Place a fresh unaugmented shield from a bag with one click, no rotation, then /peridotlive dump: Angle/Roll 128/256 confirms. Optional: Inspect antonius 134051344 record 77 and drinal 64195792 record 29 for augments.
+  <sub>Sources: G5-14 · C5-07 · report:liveresearch-11</sub>
+- **PLC-10** `peridotTest` **Placement behaviours only RoF2 shows.** The type-0 Manage entry opens the right property's window; the server's position check agrees with the client's 8-corner box check at plot edges (serverPlan.md:411).
+  <sub>Sources: G5-19 · C5-60 · C5-10 · report:peridottest-17</sub>
+- **PLC-11** `peridotTest` **Q25: windows get no clicks while placing.** During placement, click Purchase, Items and Manage: no clicks reach them (placementMode.md:284, :301); with ItemPlacementHideUI on, they hide.
+  <sub>Sources: COVERAGE:95 · placementMode.md:284 · placementMode.md:301 · windows/RealEstatePurchaseWnd.md:253 · serverWork:173-q25 · summary:s6-peridot-tests-q25 · report:peridottest-17</sub>
+- **PLC-12** `fix` **Rule 7 (code 0x1e) is a cycle check.** Refuse placing an item that carries a property into that property or any descendant (0x5b6b1e-0x5b6bab: item +0x7c against the destination and its parents via 0x4b3090). Fix windows/RealEstateItemsWnd.md rule 7 and serverPlan.md:383 ('destination inside the current context').
+  <sub>Sources: XA:PM19</sub>
+- **PLC-13** `fix` **Server bounds placement where the client doesn't.** With no containing region the final 0x626e pair {house id, 0} makes the whole zone placeable (0x4b2ec1-0x4b2efe; Live 0x1401ed5cc), so the client checks no position in an interior. Validate 0x711a positions against a per-(zone, version) interior bound; Live's own bound is unverified.
+  <sub>Sources: XA:PM8 · XA:DZv7</sub>
+- **PLC-14** `liveCheck` **Live's begin-placement permission list.** Capture Live's begin-placement reply in a yard and in a house (packet capture, or a plugin dump of the region object's map): is the final pair keyed by zoneRealEstateId, and what code does it carry at a neighborhood? Confirms SCH-3 and PLC-13.
+  <sub>Sources: XA:PM7 · XA:PM8</sub>
+
+### worldObjects (WOB)
+
+- **WOB-1** `fix` **Held-item turn from effective equip slots per placed row.** Effective slots = items.slots AND every augment's slots (0 for non-common types); pitch = default + 128 when they include primary, secondary or range (0x2000|0x4000|0x800); roll = default + 256 when secondary and not primary; no wrapping (105582 goes out as 512).
+  <sub>Sources: chunk5-missed-2 · C5-23 · C5-24 · report:settled-worldObjects</sub>
+- **WOB-2** `fix` **No world object for an NPC item whose spawn exists.** Send no 0x1045 for an NPC item with a spawn: only the spawn and binding; keep the NPC preview model on the 0x626e begin object. Update serverPlan.md:385, :388, worldLayer.md step 6, :93, :184, zone-in step 9. Live: 54,509 bound spawns, none with an object.
+  <sub>Sources: G5-01 · C5-13 · report:contradiction-12 · report:crosschunk-7 · report:planfix-noWorldObjectForNpcItem · report:planfix-serverWorkS5 · report:planfix-worldObjectFields · report:settled-worldObjects</sub>
+- **WOB-3** `fix` **Placement object +0x98 is bIgnoreCollisions.** +0x98 = NPC item OR items.placeable_ignore_collisions (UNK225) in 0x1045 and the begin object (Live: 891,440/891,440). Fix worldLayer.md:51, placementMode.md row 9, serverPlan.md:388.
+  <sub>Sources: G5-02 · C5-20 · report:contradiction-11 · report:planfix-ignoreCollisions · report:planfix-worldObjectFields · report:settled-worldObjects</sub>
+- **WOB-4** `fix` **Model name with ornament, _ACTORDEF, uppercase.** Model = 'IT' + (ornament_idfile if non-zero, else items.idfile) + '_ACTORDEF', uppercase: the actor lookup is case-sensitive (EQGraphicsDX9 hashes 0x100c7360/0x100c7660) and names of 10+ characters get no suffix (0x48b760). Live: 890,377 objects; 1,063 ornamented.
+  <sub>Sources: G5-06 · C5-16 · report:planfix-modelName · report:planfix-worldObjectFields · report:settled-worldObjects · XA:A2</sub>
+- **WOB-5** `fix` **Placement object +0x0c carries the item id.** Send items.id at +0x0c (Live RecordNum; 21,730 checked objects match); RoF2 reads it (0x505400) and never uses it. Fix serverPlan.md:388.
+  <sub>Sources: G5-07 · C5-19 · chunk5-missed-6 · report:planfix-recordNumItemId · report:planfix-worldObjectFields</sub>
+- **WOB-6** `peridotTest` **World objects render and collide as Live.** An 'IT<n>_ACTORDEF' object's actor definition is that tag, not the IT63/RED_BLOB fallback (0x48b7da, 0x48b820; a body is always built); +0x98 = 1 makes a Primary Anchor 52584 walk-through; an ornamented weapon shows the ornament. *After:* WOB-3, WOB-4.
+  <sub>Sources: report:peridottest-9 · G5-19 · XA:A2</sub>
+- **WOB-7** `clientAnalysis` **Animated furniture in any zone.** Trace actor creation to the animation lookups (EQGraphicsDX9 0x10061e70 with types 0x100a/0x100b and the on-demand flag, 0x100418d7, 0x10041f9f) to confirm animated items (IT23629-23631) animate outside the neighborhood. Low value.
+  <sub>Sources: XA:A13</sub>
+
+### npcItems (NPC)
+
+Questions: Q18.
+
+- **NPC-1** `fix` **Classify NPC items by the client's rule.** An NPC item has a non-empty housepet_file_name and is not interactive (0x7b1640), not 'has a respawn interval'; migration guard that every respawn-bearing NPC item has a name; fix serverPlan.md:408. Live: 12 respawn-4500 items without a name are ordinary objects.
+  <sub>Sources: G5-20 · C5-56 · C5-55 · report:planfix-npcItemClassification</sub>
+- **NPC-2** `fix` **An NPC item without an NPC row fails loudly.** Refuse placement of an NPC item (per 0x7b1640) with no real_estate_npc_items row, and fail the catalog/content load when one exists (Live shows an invisible IT63 object for 61009; RoF2 builds no body, 0x504b60).
+  <sub>Sources: report:question-10 · C5-18 · chunk5-missed-4 · G5-01</sub>
+- **NPC-3** `fix` **Spawn binding through RoF2's spawn fields.** Fill RoF2's spawn RealEstateItemGuid, RealEstateID and RealEstateItemID (rof2.cpp:4935-4937, now '0000000000000000', -1, -1) for every NPC-item spawn; keep 0x21ea only for the item being placed. Correct worldLayer.md:98: 0x590dd0 reads the binding (0x591d58), 0x5a0000 resets it. *After:* REC-3.
+  <sub>Sources: G5-04 · C5-31 · report:question-9 · report:planfix-spawnBindingReader · report:planfix-worldObjectFields</sub>
+- **NPC-4** `peridotTest` **NPC item edit, locate and respawn.** Edit and Locate an NPC item with no world object (0x730de0 resolves through the spawn GUID, 0x54ed00); after a respawn, right-clicking still sends 0x21ec. *After:* WOB-2, NPC-3.
+  <sub>Sources: report:peridottest-10</sub>
+- **NPC-5** `fix` **Guild Regeneration Pool is a world object (IT23628).** 66645 is interactive (+0x608 set), not an NPC item: drop it from serverPlan.md:390's respawn sentence and :408; set its idfile to IT23628 (it23628.mod, ghall_furniture01.eqg, on demand); :408's 'fallback to NPC names' goes (113 of 113 have Live names). Respawn 38's meaning waits on NPC-6. *After:* PRC-1, NPC-6.
+  <sub>Sources: G5-11 · C5-33 · report:contradiction-18 · report:crosschunk-14 · report:planfix-poolRespawn · report:planfix-poolDescription · report:planfix-poolIdfile</sub>
+- **NPC-6** `liveCheck` **The pool's aura radius and application.** In Bristlebane's Palatial 65484252 with the aura on, stand on the pool, /peridotlive buffs and /loc; step out 5 units at a time until 31874 drops; record duration over two dumps; Deactivate (b 2), Activate (b 1), repeat.
+  <sub>Sources: G5-12 · C5-49 · report:liveresearch-9</sub>
+- **NPC-7** `liveCheck` **A visitor using another guild's services.** Pariator enters Palatial 63846974 (Fu World Order Village III) and right-clicks Friendly Guild General Supply Merchant 66639 within 20 units, then the Personal-Banker; note the chat if nothing opens. Settles :394's 'open to everyone'.
+  <sub>Sources: G5-13 · C5-43 · report:liveresearch-10</sub>
+- **NPC-8** `fix` **Write the NPC item content generator.** tools/makeNpcItemsSql.py emits npc_types and real_estate_npc_items for all 275 NPC items: the 113 in npcItemsToAuthor.md from npcItems.tsv joined to npcLooks.tsv (race, gender, texture, size, held models) with section 1's class and level; the 162 summonable through their click spell's pets/horses row; Emperor Ganak's two spawns. Fail on an item left without a row (NPC-2); add to deploy (PRC-4). *After:* NPC-2.
+  <sub>Sources: content/npcItemsToAuthor.md:3 · content/npcItemsToAuthor.md:105 · summary:s5-npc-items · serverPlan:616-npc-types · overlap: audit owner question 10, C5-54</sub>
+- **NPC-9** `fix` **Guild service functions and merchant lists from Live.** General Supply Merchant 66639: the 24-item list; Teleportation Assistant 66640: the 37 crystals (vendors.tsv, vendorItems.tsv); Personal-Banker class 40, Guild-Banker 66, Guild-Tribute Master 64, Personal-Tribute Master 74; Parcel Delivery Liaison through EQEmu parcels.
+  <sub>Sources: content/npcItemsToAuthor.md:7</sub>
+- **NPC-10** `liveCheck` **Hyredel Swiftstride's function.** 66648 (class 41 on Live) has no captured function: right-click one (Ring of Valor's or Gathered Might Village II's hall) to capture its vendor window or dialog.
+  <sub>Sources: content/npcItemsToAuthor.md:7</sub>
+- **NPC-11** `fix` **Walking Death changes form in place (polish).** 52198 spawns as the Banshee (race 487, female, texture 0, size 3) and swaps among Live's 16 looks (visageEvents.tsv) at random 6 s to 19 min intervals (median about 3.4 min), with no buff.
+  <sub>Sources: serverWork:80 · summary:s5-walking-death · summary:s6-polish-walking-death</sub>
+- **NPC-12** `liveCheck` **Gebsle Nogflop's roaming route (polish).** From more behavior recordings (243 positions over 3,159 sightings, mostly near (2000, -2800), trips through the portal), build his roaming as an EQEmu grid or script. *After:* NPC-14.
+  <sub>Sources: summary:s3-gebsle · summary:s3-observations-routes · serverWork:91-gebsle</sub>
+- **NPC-13** `peridotTest` **Garik Nogflop, Ragthar and Varlad Rahnta positions (polish).** Compare Peridot's spawn2 positions in 712 with Live's single positions (spawns.tsv, behavior captures); move any that differ.
+  <sub>Sources: summary:s3-static</sub>
+- **NPC-14** `liveCheck` **The Sunrise Hills stage show, per instance (polish).** Record whole-zone behavior for days in several instances (/peridotlive behavior start; keep the frame rate normal and chat filters on); 2 recordings exist (bristle 1634, 2026-09-30/10-01). Then build each instance's show on its own timer.
+  <sub>Sources: summary:s3-shows · summary:s3-recorder · summary:s3-longruns · summary:s3-limits · summary:s3-observations-instances · summary:s5-shows · summary:s6-polish-npc-behavior · serverWork:91</sub>
+- **NPC-15** `liveCheck` **Guild Teleportation Device destinations (last phase).** Capture where each of the Teleportation Assistant's 37 keys sends a member (zone and landing point), then author them.
+  <sub>Sources: serverWork:165 · summary:s6-teleport-device</sub>
+- **NPC-16** `clientAnalysis` **Finish RoF2's race table and check NPC-item races.** raceTable.py misses races pushed from a register (e.g. 1, 3, 27); finish it and check every Peridot NPC item's race against its tag (all 41 NGH_ items already resolve: XA:A10).
+  <sub>Sources: XA:A10 · XA:A11</sub>
+- **NPC-17** `fix` **Live's later dummies and names.** Live renamed 66700-66716 'Training Dummy: <expansion>' and added 66717-66730 after Rain of Fear (PRC-7). Adopt the names and items with the D1 item pass when their race model is one RoF2 ships; any that need a Live model wait for the final polish item (Q13).
+  <sub>Sources: PRC-7</sub>
+- **NPC-18** `liveCheck` **Does a re-skinned assistant keep its look through pickup?** Use the Augmentater on a guild assistant, Move to Inventory, place it again: same look or the standard one? Settles Q18b.
+  <sub>Sources: Q18b · workflow wf_db6d408e-d91</sub>
+- **NPC-19** `fix` **Per-copy look storage and the spawn overlay.** If NPC-18 shows the look is lost at pickup: real_estate_item_looks (real_estate_item_id primary key, FOREIGN KEY to real_estate_items(id) ON DELETE CASCADE as character_parcels_containers does; race SMALLINT UNSIGNED, gender, face, hair_style, beard, hair_color, body_material TINYINT UNSIGNED, body_tint INT UNSIGNED, all NOT NULL; polish adds head_material, primary_model, secondary_model), a row only once the Augmentater is used (the full look, unowned fields 0), RESET deletes it. Either way: CHECKs for the plain ranges plus a C++ check of hair, beard and hair colour against the Augmentater's per-race option table on every write and load (EQEmu's IsValidHair/IsValidBeard follow character creation, not Live's lists); at every spawn overlay a private NPCType copy (pets' pattern, zone/pets.cpp:129-131; GiveNPCTypeData): race, gender, luclinface, hairstyle, beard, haircolor, beardcolor 0, texture = material with the per-slot textures 0, armor_tint chest..feet = tint, use_model 0. Store, sale, reclaim and transfer paths UPDATE the placed row rather than delete and re-insert, so the look and the row-derived GUID (SCH) survive. Exclude housing NPC items from Zone:StateSavingOnShutdown (zone/zone_save_state.cpp:735-757), which would restore them without look or binding.
+  <sub>Sources: Q18b · workflow wf_db6d408e-d91 · INT-13</sub>
+
+### upkeep (UPK)
+
+- **UPK-1** `fix` **Upkeep cadence: Live's per-property prorated clock.** Replace the hourly 1/24 tick: charge each property when its next_upkeep_at is due, prorated (daily cost x elapsed / 86,400 s), and advance it by the measured interval (about 12.5 h, provisional until UPK-22). Remove 'hourly' at serverPlan.md:139, :151, :321, :447, :627, ruletypes.h:1184, housingSchema.sql:129, testHousingSchema.py:92, flows/escrowAndUpkeep.md:45. An out-of-range tick rule stops world boot instead of logging once and skipping (housingUpkeep.cpp:19-25). *After:* UPK-22.
+  <sub>Sources: G1-05 · C1-44 · G3-16 · C3-23 · report:contradiction-6 · report:question-1 · report:planfix-removeHourly · report:settled-upkeepShape · summary:s1-charging · summary:s1-cadence-decision · summary:s6-owner-decisions-cadence · pending:upkeep-cadence · serverPlan:139 · serverPlan:151 · serverPlan:447 · serverPlan:627 · serverWork:106 · flows/escrowAndUpkeep.md:45 · overlap: audit contradiction 6, G1-05, G3-16, owner question 1 · check:housingUpkeep.cpp:19-25</sub>
+- **UPK-2** `fix` **Expiry lifecycle: stamp and store in the same second; refund clears.** Add real_estate_items.upkeep_expired_at (sent as entry field 4; housingItems.cpp:71 sends 0). When escrow is found empty: stamp the property and every placed item with an upkeep id with that second, store the stamped non-house items (crates too), houses stay placed but stamped. A refund resets placed stamps to 0; stored items keep theirs. Rewrite S8 (:447), S4 (:353). *After:* REC-2.
+  <sub>Sources: G23 · C4-23 · C4-22 · G3-03 · C3-25 · chunk1-missed-7 · C1-71 · report:crosschunk-4 · report:crosschunk-5 · report:planfix-itemUpkeepExpiredAt · report:planfix-expiryStampSemantics · report:settled-expiredItemsPlaced</sub>
+- **UPK-3** `peridotTest` **Upkeep flag polarity.** On a funded plot Place is not refused with 0x18; after expiry it is, and a house on it gets 0x19. *After:* REC-2.
+  <sub>Sources: report:peridottest-5</sub>
+- **UPK-4** `fix` **D9: a plot bought with empty escrow is not expired.** Purchase sets upkeep_expired_time 0; a property expires only when a charge finds escrow empty (Clerictrader's 65484241, 2026-09-30: no escrow, stamp 0 for 28 min, house and chair placed). Fix D9, S7 purchase (serverPlan.md:436), stage 3 (:627); UpkeepGraceHours (:152) from the experiment. *After:* UPK-16.
+  <sub>Sources: serverPlan:470 · serverPlan:436 · serverPlan:152 · serverPlan:627-purchase · summary:s6-chunk6-purchase-flow</sub>
+- **UPK-5** `fix` **Expiry notice mail at the expiring second.** When a charge finds escrow empty, mail the owner through ucs with Live's subject 'Escrow expired on personal plot - First Notice' (guild plots: Live's guild-plot subject; recipient unverified), later notices once captured. Replace serverPlan.md:447's 0x191f warning (eqstr 6431 is the 2013 per-item warning). *After:* UPK-6.
+  <sub>Sources: summary:s1-mail-notice · summary:s6-chunk6-notice-bodies · serverPlan:447-warning · eqstr 6431 (RoF2 eqstr_us.txt) · overlap: audit live research 4 (captures the bodies only)</sub>
+- **UPK-6** `liveCheck` **Expiry notice bodies and the notice sequence.** While chat is up, open each 'Escrow expired' mail, find the reader with /windows open, /peridotlive window <name>. Keep 44730591 unfunded (expired 2026-09-29 07:29:48 UTC) to collect the later notices before its reclaim. Also whether Live still prints eqstr 6431. **Time-bound:** keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC).
+  <sub>Sources: report:liveresearch-4 · G1-04 · summary:s1-mail-notice</sub>
+- **UPK-7** `liveCheck` **Mail date stamping (polish).** Peridot: read a ucs mail's date in RoF2 (ucs stamps UTC). Live: set Windows to UTC and reopen the mailbox (23:39 Sep 27 = Pacific stamping; 06:39 Sep 28 = double conversion). Then stamp Peridot's notices to show what Live shows. *After:* UPK-5.
+  <sub>Sources: summary:s1-mail-dates · summary:s6-polish-mail-date · overlap: audit peridot tests 'already listed elsewhere' · report:peridottest-17</sub>
+- **UPK-8** `liveCheck` **Who may deposit into a property's escrow.** During the experiment, as a trustee and as a stranger, drop coin on a test plot's balance list (0x2aa6 type 0); record success or refusal and whether it changes which balances the depositor receives. Then fix serverPlan.md:448. *After:* UPK-16.
+  <sub>Sources: summary:s1-contribute · serverPlan:448</sub>
+- **UPK-9** `liveCheck` **Does Live push new balances to an idle client.** From the experiment: A2C1 (never zones) shows push, A3C1 (hopping) refresh-only. Set D2's 'property changed' for charges accordingly (serverPlan.md:124): re-send 0x63fd only if Live pushes. *After:* UPK-17, UPK-20.
+  <sub>Sources: summary:s2-idle-push · serverPlan:124</sub>
+- **UPK-10** `liveCheck` **Add Day / Add Week (0x2aa6 types 3-6).** Pariator on 65484207: Add Day, Add Week, a row's Add Day; record coin before/after, the escrow change and any text. Keep serverPlan.md:442 if it moves exactly the daily/weekly cost; else follow Live.
+  <sub>Sources: serverPlan:442 · flows/escrowAndUpkeep.md:27 · opcode2aa6PropertyAccount.md:58 · windows/RealEstateManageWnd.md:81 · windows/RealEstateManageWnd.md:158</sub>
+- **UPK-11** `liveCheck` **Reductions (special houses) as Live charges them.** With the owner of a special-house plot (e.g. bristle 76451750 on 29661411), read Daily Cost and Time Left and watch a charge; cost 25 is -42,000 copper. Then set serverPlan.md:446's clamp and serverWork.md:147's catalog bound (which would refuse Live's own cost 25) to Live's behavior.
+  <sub>Sources: serverPlan:446 · serverWork:147 · flows/escrowAndUpkeep.md:49 · overlap: audit owner question 18 (cost set bound)</sub>
+- **UPK-12** `liveCheck` **Experiment: accounts, characters and neighborhoods.** N0 warm public neighborhood (A1C1 parked); N1 cold The Templar Village II (65484207, 65484244 as controls). Observers A1C1-A3C1; owners A4C1, A7C1 (T0), A5C1, A4C2 (T0+1h), A6C1, A8C1 (T0+2h), each on its own account except A4C1/A4C2; N1 owners in The Templar.
+  <sub>Sources: summary:s2-roster</sub>
+- **UPK-13** `done` **Upkeep and hop recorders built.** mqperidotlive 71f0296 (2.7 upkeep recorder), 9e59906 (auto mode, owned/released), 63b8e10 (2.9 hop). Remaining: the smoke run in UPK-17.
+  <sub>Sources: summary:s2-upkeep-recorder · summary:s2-hop</sub>
+- **UPK-14** `liveCheck` **Experiment step 1: recording on everywhere.** MQ2PeridotLive 2.9 on every client; '/peridotlive upkeep auto on' once per install; '/peridotlive behavior start' on A1C1. *After:* UPK-13.
+  <sub>Sources: summary:s2-step1</sub>
+- **UPK-15** `liveCheck` **Experiment step 2: park the observers.** A1C1 in N0; A2C1 in the Guild Lobby, never zoning; A3C1 on '/peridotlive hop start'. *After:* UPK-14.
+  <sub>Sources: summary:s2-step2</sub>
+- **UPK-16** `liveCheck` **Experiment step 3: buy the plots in pairs.** At T0, T0+1h, T0+2h: buy, /peridotlive dump before funding (upkeepExpiredTime at purchase), fund about a day, add A1C1-A3C1 as trustees, log the owner out. *After:* UPK-15.
+  <sub>Sources: summary:s2-step3 · overlap: audit live research 1 (dump before funding)</sub>
+- **UPK-17** `liveCheck` **Experiment step 4: setup check.** '/peridotlive upkeep status' on A2C1 and A3C1: properties held grow, and a test plot's balance is seen changing on an observer-trustee. If not, stop. *After:* UPK-16.
+  <sub>Sources: summary:s2-step4 · overlap: audit live research 1 (balance must change)</sub>
+- **UPK-18** `liveCheck` **Experiment, optional: an open Manage window across a charge.** Keep one test property's Manage window open across a charge and another closed; compare whether the open one gets the new balance. *After:* UPK-17.
+  <sub>Sources: summary:s2-step4-optional</sub>
+- **UPK-19** `liveCheck` **Experiment step 5: hands off about 36 hours.** Owners offline and nobody in N1 for about three 12.5 h cycles. *After:* UPK-17.
+  <sub>Sources: summary:s2-step5</sub>
+- **UPK-20** `liveCheck` **Experiment step 6: import.** 'python tools\liveResearch.py --live <livedumps> --import <Logs>' fills master/upkeepRecordings.tsv (header only today). *After:* UPK-19.
+  <sub>Sources: summary:s2-step6</sub>
+- **UPK-21** `liveCheck` **Experiment probes if a window comes up empty.** Only if no charge lands: log A4C1 in without going to N1 (a charge on A4C2's plot = owner activity, per account); then walk someone into N1 (a charge on arrival = zone startup). *After:* UPK-20.
+  <sub>Sources: summary:s2-probes</sub>
+- **UPK-22** `liveCheck` **Experiment: read the outcome.** Read each plot's charge times against the table (global clock; per property from purchase or last charge; per neighborhood; lazy on zone startup; lazy on owner activity; per account), the proration (amount / elapsed) and the expiry stamps. Settles interval, anchor, proration and D9's first charge. *After:* UPK-12, UPK-20.
+  <sub>Sources: summary:s2-hypotheses · summary:s2-outcomes · report:liveresearch-1 · C1-45 · chunk1-missed-4</sub>
+
+### reclaim (RCL)
+
+Questions: Q15.
+
+- **RCL-1** `fix` **Reclaim rules: Live's.** Player plot reclaimed (items packed, plot released) 90 days after escrow expired (UnpaidUpkeepEvictionDays 90, from upkeep_expired_time); guild plot when its guild has under GuildPlotMinimumMembers (10) or 90 days after expiry; an expired house on a paid plot never (it stays locked). Drop InactivityDays/GuildInactivityDays and :449's last_login; patch eqstr 13333/13334 to Live's text (13333's village clause per Q15). Fix D7 (:155, :468), :153-155, ruletypes.h:1186-1188, :513. *After:* RCL-2, Q15.
+  <sub>Sources: G1-03 · C1-46 · C1-47 · C1-48 · G1-06 · chunk1-missed-8 · report:contradiction-7 · report:question-2 · report:planfix-reclaimRules · report:settled-expiredHouseOnPaidPlot</sub>
+- **RCL-2** `liveCheck` **Observe the 90-day reclaim.** Bristlebane after 2026-11-11 19:00 UTC: Neighborhood window, 'Fu World Order Village III', Go, /peridotlive dump; realEstateId 29661343 absent = reclaimed (if present, right-click his Monel domicile). Quizp's 133141067 after 2026-12-10 20:00 UTC. Optionally 44730591 after 2026-12-28 07:30 UTC. **Time-bound:** after 2026-11-11 19:00 UTC; 2026-12-10 20:00 UTC; optionally 2026-12-28 07:30 UTC.
+  <sub>Sources: G1-04 · report:liveresearch-3</sub>
+- **RCL-3** `liveCheck` **What Live does when a plot owner is deleted.** On any of the owner's accounts, a new level-1 character buys a cheap vacant plot (21-168 pp; if level 1 is refused, note the message and level up until it isn't), places one item, then deletes itself (note any refusal at character select). Another character then looks the plot up in the Neighborhood window, dumps it and checks the account's other characters' mail and inventory. Settles Q19: refused, reclaimed, packed, or left in place.
+  <sub>Sources: Q19 · G3-15 · C3-37 · report:question-22</sub>
+
+### access (ACC)
+
+- **ACC-1** `fix` **Default access masks: Live's.** ruletypes.h:1208-1214: 3, 3, 2051, 3587, 8071, 8191, Owner 0 (the evaluator passes the owner, :416). Rewrite serverPlan.md:177-183 and :462 with permissions.md:87-97's names. Live: 7,962 of 7,993 lists; RoF2 0x5b3d50/0x5b5830.
+  <sub>Sources: G1-02 · C1-59 · chunk3-missed-4 · report:contradiction-8 · report:crosschunk-10 · report:question-4 · report:planfix-defaultAccessMasks · report:settled-defaultAccessMasks</sub>
+- **ACC-2** `done` **Access-name sizing.** VARCHAR(64) suffices (_Guild1-_Guild8 at most 11 chars; names at most 116 per list; character names up to 15). RoF2 has 8 guild ranks for _Guild1-8. Optional: dump playersToGroups (MQ2PeridotLive.cpp:481).
+  <sub>Sources: G3-17 · report:settled-accessNameSizing</sub>
+- **ACC-3** `liveCheck` **Permissions pass: which bit gates which menu entry.** The designed automated test in The Templar's Palatial (two viewers, 15 iterations each over EQBC; needs per-iteration records, playersToGroups, a 'permissions' kind in liveResearch.py). Also: bit 0's meaning, Beavus's empty menu, a neighborhood's own list, a world-click scan, Transact's gate (:394), losing Enter inside (:453). Then fix serverPlan.md:418-424 and S9.
+  <sub>Sources: serverWork:117 · serverWork:114 · summary:s1-bit0 · summary:s6-polish-permissions · serverPlan:394-transact · serverPlan:453 · overlap: audit owner question 4 (default masks), G3-17 (member names)</sub>
+- **ACC-4** `fix` **Receive Buffs and Mail Item do have sources.** serverPlan.md:424 is wrong: the pool aura 31874 (:396) and Mail to Owner (type 5, eqstr 742, 0x7ad1; 35 Live menus) exist. Enforce bit 0 where the aura applies and bit 7 on Mail to Owner, mapping per ACC-3. *After:* ACC-3.
+  <sub>Sources: serverPlan:424</sub>
+- **ACC-5** `liveCheck` **Default guild rank permissions for real estate.** Open Guild Management rank permissions for a default-ranked guild; record which ranks hold 24, 25, 27, 28, 29; set Peridot's new-guild defaults to match (today 27/28 = 128, 24/25/29 = 224).
+  <sub>Sources: serverPlan:426</sub>
+- **ACC-6** `fix` **Server enforces guild-bank ownership in halls.** In 345/737/738/751 RoF2 opens the guild bank for any guilded player because EQEmu's zone id never has bit 15 (rof2.cpp:2965-2966; 0x67e560 -> 0x7dc760). Live's refusal text is eqstr 5427 (0x7dc7b0 branch). Refuse guild-bank requests in a hall instance from anyone outside the hall's guild, with 5427.
+  <sub>Sources: XA:Z4 · XA:A16 · XA:DZ12 · XA:PMv3 · XA:DZv10</sub>
+- **ACC-7** `liveCheck` **Live's hall zone id: is bit 15 set.** In a Live guild hall (737/738/751) read the raw EverQuestinfo.ZoneID at 0x140EBC44C (not the plugin's masked id). Set = Live's client enforces hall ownership (0x1403fc35c); then Peridot also sends 0x8000|zone for hall instances (rof2.cpp:2965), after ACC-8.
+  <sub>Sources: XA:Z4 · XA:A16 · XA:DZ12</sub>
+- **ACC-8** `peridotTest` **Side effects of a bit-15 zone id in RoF2.** Only if ACC-7 finds bit 15: with 0x8000|zone for a hall instance, test zoning, /who, the zone name and every id the client echoes back (lookups mask > 1000 with 0x7fff: 0x7dc51d, 0x49b23c). *After:* ACC-7.
+  <sub>Sources: XA:Z4</sub>
+
+### sellTransferTrade (STT)
+
+- **STT-1** `fix` **Selling packs the placed crate; Crate of Eviction only for reclaims.** S7 (:437) and D6 (:467): selling packs the plot's placed moving crate (holding the plot's items) into the seller's inventory and withdraws all escrow (eqstr 7634), after the client's sell gate (0x66bf codes 3, 4, 5, 6, 10, 11, 12). Crate of Eviction (def 31) only for reclaims, filled regardless of its 0/0 caps; fix :543. *After:* STT-9.
+  <sub>Sources: report:contradiction-5 · report:crosschunk-8 · G1-20 · C1-49 · chunk4-missed-3 · report:planfix-sellPlacedCrate · report:planfix-serverWorkS7 · report:settled-sellReturnsEscrow</sub>
+- **STT-2** `fix` **Name the plot-limit refusals; check the target on transfer.** Purchase refuses with eqstr 728 (%1 = MaxPlotsPerCharacter) and 750 (%1 = MaxGuildPlotsPerGuild); transfer acceptance checks the target's count and refuses with 761 as a plain message. Add to S7 (:436, :438) and :383. *After:* STT-3.
+  <sub>Sources: G1-19 · chunk1-missed-1 · C1-54 · report:planfix-noDropLoreRules</sub>
+- **STT-3** `liveCheck` **Plot limit and its scope.** Bristlebane: Pariator (65484207, 44730591) buys a vacant 106 Brimming Way (84 pp; also CAT-5), then tries a 4th (screenshot 728's %1). Clerictrader buys a 2nd plot (account 633393165 to 3); Anastrianaa (same account) tries one. Optional: a second guild plot (750). Sets MaxPlotsPerCharacter and character vs account scope.
+  <sub>Sources: G1-18 · C1-50 · report:question-24 · report:liveresearch-2</sub>
+- **STT-4** `fix` **Houses and crates tradeable per Live's flags.** Adopt Live's IsDroppable: house deeds (defs 5-29) and storage crates (174-184) tradeable; manors 32-34, halls 38-41, special houses, 31, 191/192 NO TRADE (Peridot's values unverified until ITM-2). Block parcels and bazaar for an instance carrying real_estate_property_id; mirror 7637 only for NO TRADE contents. Rewrite serverPlan.md:449, S7 (:438). *After:* STT-5, STT-6, ITM-2.
+  <sub>Sources: report:question-8 · report:contradiction-16 · report:crosschunk-9 · report:planfix-tradeability</sub>
+- **STT-5** `peridotTest` **Trade keeps custom data.** Trade a crate item carrying real_estate_property_id between two characters: custom data survives EQEmu's trade path.
+  <sub>Sources: report:peridottest-16</sub>
+- **STT-6** `liveCheck` **Trade and parcel a house holding items.** Pariator tries to trade, then parcel, a picked-up house holding items (Clerictrader's hut 117754115 holds 11) to Anastrianaa; note refusals.
+  <sub>Sources: report:liveresearch-15</sub>
+- **STT-7** `fix` **Transfer: escrow and items stay with the plot; the client's refusal texts.** Rewrite S7 Transfer (:438) from eqstr 7635 (escrow, items, houses and crates move with the plot). Refusals: 5279 not owner (0x68ba code 2), 7637 NO TRADE contents (code 3), 761 target at limit, 782 offline, 5316 target lacks House of Thule (0x10000), 5318 guild neighborhood non-member, 8081 NO TRADE currency in escrow, else 5280; non-2/3 codes go out as message plus 'other'. *After:* STT-8.
+  <sub>Sources: serverPlan:438 · serverWork:98 · resultCodes.md:86 · eqstr 782/5316/5318/7635/8081 · overlap: audit G1-19 (761), owner question 8 (7637)</sub>
+- **STT-8** `liveCheck` **Transfer on Live: offline targets and the moved items' owners.** (1) Transfer to a logged-out character: immediate refusal or a waiting offer (D10 waits 300 s)? (2) After a transfer between accounts (e.g. 65484241 to Pariator), dump items' ownerName/ownerHandle, access list, houses' and crate's owners, defaultUpkeepId, escrow. Set D10 and S7 to Live.
+  <sub>Sources: serverPlan:471</sub>
+- **STT-9** `clientAnalysis` **Sell gate codes 11 and 12.** Disassemble the sell gate (0x5b3430, local check 0x5b7fa0) for codes 11 and 12 ('active-crate conditions') so the server replays the same gate.
+  <sub>Sources: COVERAGE:90 · overlap: audit plan fix for serverPlan.md:437</sub>
+- **STT-10** `fix` **Server checks location on purchase, sell and transfer.** The client sends Purchase (0x45be) from wherever the window opened (0x2691 replies open it anywhere) and Sell (0x792c) / Transfer (0x507f) for +0x94 (0x5b3450, 0x5b139b). The server checks the player is in the plot's zone instance; Live's exact rule is unverified.
+  <sub>Sources: XA:PM18</sub>
+
+### interiors (INT)
+
+Questions: Q2, Q14.
+
+- **INT-1** `fix` **Standard hall: zone 345 version 2.** makeHousingZonesSql.py adds 345 v2 (copied from v0, bypass_expansion_check=1, no spawn2; PEQ uses 0 and 1); its door is Live's OBJ_GUILD_DOOR (DOR-1); makeHousingCatalogSql.py:235 writes a version per hall (2 for def 38); testHousingCatalog.py:82 expects (345, 2); points per INT-2.
+  <sub>Sources: G3-05 · G06 · C4-55 · C3-14 · report:contradiction-27 · report:question-20 · report:planfix-standardHallVersion2</sub>
+- **INT-2** `fix` **Safe and entry points from Live.** makeHousingZonesSql.py and housingZoneSettings.sql: phinterior3a1/3a2/3a3/1a1/1a3/1d1 (0, -12, 5), arrival heading 0 (header 128); guildhall3 and guildhallsml (255, 2, -10) heading 386; guildhalllrg header (0, -12, 5, 128), entry (71, -1) heading 386; 345 v2 header (71, -1, 4, 386), arrival (-1, -1, 3.40, 0); phinteriortree (0, 0, 3). Derive only for zones never captured (INT-3, INT-5); Live's points for 774/786/877 (plhbixieint, plhpirateshipint (0, 1, -8), dragonhouseinta (0, -6, 7)) wait on Q12. Fix serverPlan.md:511, :513.
+  <sub>Sources: G08 · C4-52 · chunk4-missed-6 · report:contradiction-26 · report:planfix-safePoints · report:planfix-modestDoorText · report:settled-interiorMappings</sub>
+- **INT-3** `liveCheck` **Uncaptured interiors' safe and arrival points.** Anastrianaa enters One Room House 117754208 (def 25, Wood, 101 Market Street) and dumps before moving: settles phinterior1a2 (718) and 1a2 = Wood. Optional: re-capture a Standard hall arrival.
+  <sub>Sources: report:liveresearch-8 · C4-51</sub>
+- **INT-4** `fix` **Instance id ceiling, failing loudly.** D3 (:137): instance ids are uint16, max 32,000 with 100 reserved (database_instances.cpp:159-162): 31,900 usable, shared with expeditions; creating a house, hall or neighborhood instance fails loudly at exhaustion.
+  <sub>Sources: G1-22 · report:planfix-instanceCeiling</sub>
+- **INT-5** `peridotTest` **Entry points for interiors Live never had.** For phinterior1b1, the six plhogrinteriors and six plhdkeinteriors, set entry and safe points with #loc as each is first entered and record them in makeHousingZonesSql.py entryPoints. Polish pass (Q14).
+  <sub>Sources: serverPlan:565 · serverPlan:565-headings · serverPlan:590-safe-points · overlap: audit G08 and plan fix 'Safe and entry points'</sub>
+- **INT-6** `fix` **Anchors are placed anchor items.** Spells name items (27749/27750 -> 52584 Primary Anchor, 27753 -> 52585, 33099 -> 50874 Guild Hall Anchor; spells.tsv) that are placed objects (7,620/6,658/302 sightings), and no Live menu sets an anchor (menus.tsv, 6,248). 437 moves the caster to their placed anchor (50874: their guild's); 438 offers the target a move to their 52584. Drop character_real_estate_anchors (housingSchema.sql:242, database_schema.h:70, :148, repository, testHousingSchema.py:46, :83); derive from real_estate_items. Fix serverPlan.md:571, :556, :328. Confirm the spells exist in spells_new. *After:* INT-7.
+  <sub>Sources: serverPlan:571 · serverPlan:556-anchors · serverPlan:328 · summary:s5-anchors</sub>
+- **INT-7** `liveCheck` **Which anchor when several are placed; how the gate spells are cast.** Pariator has 2 placed Primary Anchors; halls hold up to 52 Guild Hall Anchors (bristle 63846974): cast Primary Anchor Gate and Teleport Guild Hall Anchor, note where each lands; record how 27749 and 27753 are obtained.
+  <sub>Sources: serverPlan:571-multiple</sub>
+- **INT-8** `fix` **Pack and Unpack are told apart by 0x613d's byte.** S10 (serverPlan.md:569): 0x613d carries one byte, 1 = pack (dialog 0x65), 0 = unpack (0x66) (COVERAGE.md Q18); correct README.md:205.
+  <sub>Sources: serverPlan:569 · README:205</sub>
+- **INT-9** `liveCheck` **How Live reports Store All and Pack/Unpack results.** Use Store All (0x6917) and Pack/Unpack where some items can't move (a non-empty house, a full crate); record the chat lines and codes; mirror them in S10.
+  <sub>Sources: serverPlan:569-report</sub>
+- **INT-10** `fix` **/leaverealestate from any zone.** 0x1da9 is a bare request in both clients (RoF2 0x4df640, Live 0x140238060) whose 4 body bytes are stale send-buffer content. handlePacket (BLD-1) ignores the body: in an interior instance (standard or X1) it leaves as the front door does; elsewhere eqstr 6866, as Live (serverPlan.md:567). *After:* BLD-1.
+  <sub>Sources: XA:DZ11 · XA:Zv7 · XA:DZv11</sub>
+- **INT-11** `liveCheck` **Front-door clicks in a house and a hall.** Right-click the front door (expect Manage: client-side, 0x53826b / Live 0x140299150), then left-click (note the destination and any text). Repeat in a guild hall.
+  <sub>Sources: XA:DZ3 · XA:Z11</sub>
+- **INT-12** `fix` **Interiors and neighborhoods follow Live's copy lifecycle.** Rewrite D3 (:137), consequence 2, S10 (:563), serverWork S10 (:124) and summary section 6: housing keeps a dz_id-keyed template table (zone, version, zone-in x/y/z/h; ids 20504, 23000-23005, 23015-23021, 35633/35634/35635/35642) in place of instance_zone_id/instance_zone_version per definition; on entry to a property with no running copy it takes GetUnusedInstanceID and inserts instance_list (never_expires=1, is_global=0), keeping property -> instance only in a runtime table; it admits by real-estate permission and AddClientToInstance before MovePC; on EQEmu's empty-zone shutdown it deletes the instance and its instance_list row (DeleteInstance leaves the row, database_instances.cpp:496-510) and clears the mapping; world sweeps housing instances with no running zone. Neighborhood creation and pruning (D11) use the same path. No dynamic_zones rows.
+  <sub>Sources: Q2 · workflow wf_b79489ff-740 · G1-17 · C1-41 · report:question-5 · report:crosschunk-11</sub>
+- **INT-13** `fix` **EQEmu instance pitfalls for housing copies.** Never is_global=1 with never_expires=1 (world_content_service.cpp:253-263 reroutes instance 0 to it); no finite durations as 'permanent' (uint32 ms timer wraps at 49.7 days); move occupants out yourself on a revoked Enter, a pickup or a swap (removing instance_list_player kicks nobody); a per-zone shutdowndelay on the housing zones, not the global Zone:AutoShutdownDelay; check Zone:StateSavingOnShutdown can't duplicate housing-spawned NPC items. Replaces INT-4's per-property id ceiling: copies hold ids only while running (32,000 minus 100 reserved; RoF2's field is u16).
+  <sub>Sources: workflow wf_b79489ff-740 · INT-4</sub>
+- **INT-14** `liveCheck` **Copy lifecycle details.** In a private house and a neighborhood: dump pDynamicZone, CurrentDynamicZones, DynamicZoneSafeReturnLocation and the DZ window (empty means no client-visible DZ); run an expedition straight after and note whether its instance id continues the housing sequence; re-enter after 5, 15, 30, 45, 60 and 90 minutes empty to measure the discard delay (sets shutdowndelay); owner and permitted visitor enter one house together (same id?); camp in a house past the delay and log back in (where does the character land?); enter halls 35634 and guildhall_int to re-pair design ids 2935/2936/2937/2943 with world zones 737/738/345/751; reach 23004, 23019 and 23021 if possible.
+  <sub>Sources: workflow wf_b79489ff-740</sub>
+- **INT-15** `fix` **Id lists and the Locate rule.** opcode2698DefinitionsAndCosts.md:52 and S10's 'the houses share six': 23000-23005 are shared (five definitions each), 23015-23021 belong to one definition each (30, 42-47); halls use only 35633, 35634, 35635 and 35642; the interior zones are 714/715/716/717/719/723, not 717-723. RealEstateItemsWnd.md:138: Locate uses the nearest ancestor (self included, up to 10) whose definition has a non-zero dz_id (RoF2 0x5b46e0, Live 0x14033f1a0), so every zone-owning definition sends Live's dz_id. How the hall design ids map to RoF2 zone and version is INT-14's check.
+  <sub>Sources: workflow wf_b79489ff-740</sub>
+
+### doors (DOR)
+
+- **DOR-1** `fix` **Interior and hall front doors from Live.** Generate type-161 rows from doors.tsv: phinterior1a1/1a3 OBJ_DOOR_PLHA (0, -19.3599, 0) h128; 3a1/3a2/3a3 OBJ_DOOR_PLHA (0, -19.2559, 0) h128; 1d1 OBJ_PH1D1_DOOR (0, -19.3599, 0); phinteriortree OBJ_EVANTIL_PLYRHOUSE_DOOR (-0.003, -5.4219, -0.1734); guildhall3 GUILDHALL_DOOR_SWITCH (265.698, 1.952, -0.683) h384; guildhallsml OBJ_GUILDHALL_SML_DOOR; guildhalllrg OBJ_FRONTENTRANCE plus 26 OBJ_INTDOOR type 27; 345 v2 OBJ_GUILD_DOOR (-3.4, -162.899, 6.9) h128. Never-sold zones take their .zon placements; 718 waits on INT-3. Fix serverPlan.md:513 ('the Modest's none').
+  <sub>Sources: G07 · C4-56 · chunk4-missed-7 · report:contradiction-25 · report:planfix-hallDoors · report:planfix-modestDoorText · report:settled-hallDoors · serverPlan:566 · serverPlan:590-front-doors · overlap: audit plan fix 'Optionally do the same for the captured house interiors' front doors'</sub>
+- **DOR-2** `fix` **Guild border door positions from Live.** makeGuildBorderDoorsSql.py and sunriseHillsPlots.json take doors 226-229 from doors.tsv: z 108.87, 108.80, -0.72, -0.42; headings 123/385/253/123.
+  <sub>Sources: G11 · C4-36 · report:planfix-guildBorderPositions</sub>
+- **DOR-3** `fix` **Border, portal and front-door clicks reach housing.** handleDoorClick (BLD-1) for type 159 (0x2691 neighborhood list, showWindow), 160 (0x2691 single property; Purchase when vacant per DOR-4), 161 (leave to the yard), from data keyed by (zone, version, door id) so X2/X3 doors use it: lot square = door id + 100 (101-173), guild squares 226-229 -> 187-190, portal 130 and Guild Lobby gate 38 -> 1. Widen doors.cpp:547-548 (57-58 only). Correct the evidence: 0x50f540 is not the only type compare (type-161 right-click opens Manage client-side, 0x53826b). Docs: serverPlan.md:59, :486-501; serverWork To verify; flows/purchase.md:30, :104; worldLayer.md:224. *After:* BLD-1, DOR-4.
+  <sub>Sources: G10 · chunk4-missed-1 · chunk4-missed-2 · C4-33 · report:crosschunk-16 · report:planfix-doorDefinitionMapping · report:planfix-t21DoorTypes · report:planfix-serverWorkToVerify · report:planfix-flowsPurchaseSign · report:settled-plotSign · XA:DZ2 · XA:DZ3 · XA:Z11</sub>
+- **DOR-4** `liveCheck` **Click a vacant plot's border plaque and a guild square.** Click each; the Purchase window is auto-captured if it opens, else note the chat. Settles the reply to a type-160 OP_ClickDoor.
+  <sub>Sources: report:liveresearch-6</sub>
+- **DOR-5** `done` **RoF2 door spawn reader and type 159-161 click path.** Answered: wire +0x4c (Door_Struct unknown0076) -> EQSwitch +0xdc RealEstateDoorID (0x511a2d), read by nothing reachable; a click on 159/160/161 sends a plain OP_ClickDoor 0x3a8f {doorId, pick, key, spawnId} (0x51204c); ChangeState 0x50f540 skips 57/58/159-161; type-161 right-click opens Manage (0x53826b). Live the same.
+  <sub>Sources: report:clientanalysis-1 · XA:DZ1 · XA:DZ2 · XA:DZ3</sub>
+- **DOR-6** `peridotTest` **Border and portal clicks.** Click a plot border (160) and the void portal (159): each reaches housing. *After:* DOR-3.
+  <sub>Sources: report:peridottest-13</sub>
+- **DOR-7** `peridotTest` **Diff Peridot's neighborhood doors against Live's.** Export zone 712's door rows and diff against doors.tsv (242 Live rows vs the plan's 202): positions, open types, RealEstateDoorID mapping.
+  <sub>Sources: C4-34</sub>
+- **DOR-8** `peridotTest` **Borders open as on Live.** In RoF2, a border's open side faces opposite its heading and nothing is mirrored (serverPlan.md:499); the Terminus guild border opens west with its plaque at the gap's south end, the others east, north, east.
+  <sub>Sources: C4-37 · serverPlan:501 · serverPlan:640-guild-borders</sub>
+- **DOR-9** `fix` **RealEstateDoorID in OP_SpawnDoor.** Put Live's value in Door_Struct unknown0076 (u32 at wire +0x4c; rof2_structs.h:3012; today 0): 101-173 lot squares, 187-190 guild squares, 1 void portal and Guild Lobby gate, 0 or -1 front doors (fields/doors.tsv). Inert in RoF2, so the server keeps its own map (DOR-3).
+  <sub>Sources: XA:DZ1</sub>
+- **DOR-10** `fix` **Door data rules, enforced loudly.** Generators and #realestate refuse: more than 256 door ids per zone version (u8: rof2_structs.h:3005, 0x510767, doors.h:89) or 500 doors (entity.cpp:959 then sends none); names of 3 characters or fewer (:953) or with lowercase (case-sensitive lookup; Live's 144 names are uppercase; fix serverPlan.md:511 'OBJ_door_plhA'); housing doors with state other than 0 or unknown0082 set (state 2/3 or remainOpen stops the click, 0x511ea7-0x511ed1); a model the zone can't load (dropped at spawn, 0x4ca3e9; unclickable).
+  <sub>Sources: serverPlan:203-doors · XA:DZ4 · XA:DZ5 · XA:DZv3 · XA:Av1 · XA:Av7</sub>
+- **DOR-11** `clientAnalysis` **Live reads of EQSwitch +0xf8 outside the switch code.** A full Live x64 scan for reads of RealEstateDoorID (+0xf8); the finder and verifier scanned only 0x14026a000-0x140282000. Low value (DOR-9 is fidelity only).
+  <sub>Sources: XA:DZ1</sub>
+
+### neighborhoods (NBH)
+
+Questions: Q17.
+
+- **NBH-1** `fix` **World observes ownership changes for D11.** Amend T12 (:50): world forwards ServerOP_Housing and hands owner-changing 'property changed' events to its housing component for D11 (:458, :472); list the source under T16.
+  <sub>Sources: G1-09 · report:crosschunk-17 · report:planfix-worldObservesOwnerChange</sub>
+- **NBH-2** `fix` **Neighborhood names as Live.** Public names from neighborhoodWords.json's tree/middle/place patterns (822 names, 30 words); guild villages '<guild name> Village[ N]' (max 44 chars), keeping the name when the guild is gone (about 820 Live records). The compound-prefix names (181 records on 6 servers) are not a generator.
+  <sub>Sources: G3-14 · C3-30 · C4-68 · report:question-21</sub>
+- **NBH-3** `done` **D8: an empty name search lists every neighborhood.** Matches Live: 115 of 229 captures with an empty search list 741 rows (21 list 740, 11 list 1,309). Keep NeighborhoodSearchLimit 0; mark D8 and serverWork.md:87 as Live's.
+  <sub>Sources: serverPlan:469 · serverPlan:166 · serverWork:87</sub>
+- **NBH-4** `liveCheck` **D11 against Live: growth matches, pruning may not.** Owned share of public plots peaks at 30% (NeighborhoodGrowthOccupancyPercent 30 fits), but empty public neighborhoods persist (vox 16 of 117; aradune, erollisi 3). Repeat an empty search on vox and aradune: if the same empties remain, remove D11's pruning (NeighborhoodPruneMargin, :458); if gone, keep it. **Time-bound:** due now: vox last captured 2026-09-28 21:48, aradune 2026-09-29 16:24; two weeks later is 2026-10-12/13.
+  <sub>Sources: serverPlan:472 · serverPlan:458-d11 · serverPlan:167-171</sub>
+- **NBH-5** `done` **A public neighborhood's guild plot window has no Guild row.** RoF2 shows REPW_Guild_Screen only when the nearest neighborhood has a guild; Live hides it on public Maple Country Creek (6 captures). Send guild -1 on public neighborhoods; drop the 'is to compare' sentence.
+  <sub>Sources: serverPlan:541</sub>
+- **NBH-6** `peridotTest` **Guild Writ of the Sunrise.** SELECT id, name, clickeffect, clicktype FROM items WHERE name LIKE '%Writ of the Sunrise%'. Live has no record of it. If present, trace its RoF2 click and route it to 'village create'; else villages come only from the GM command and :459 says so.
+  <sub>Sources: serverPlan:459</sub>
+
+### trophies (TRO)
+
+Questions: Q16.
+
+- **TRO-1** `fix` **0x02bc: two more senders; server enforces who may opt out whom.** Document GuildManagementWnd TrophyTributeOptOutButton (+0x284; sends the selected member, flag 0, 0x68776a) and TributeBenefitWnd TrophyOptOutButton (+0x2c8; own name, 0x784f5e), both via 0x424120, in serverPlan.md:309 and trophyTribute.md:62, :88. No client gate; the server enforces TRO-2's rule (EQEmu's 0x727 handler, client_packet.cpp:16970, checks no rank). *After:* TRO-2.
+  <sub>Sources: G2-04 · C2-40 · report:contradiction-20 · report:planfix-trophyOptOutSenders</sub>
+- **TRO-2** `liveCheck` **Trophy opt-out of other members.** As an officer: Guild Management Members, select another member, /peridotlive window GuildManagementWnd, press Trophy Tribute Opt Out, capture again with TributeBenefitWnd; repeat as an ordinary member, noting by eye whether it is greyed. Fallback: self always, others for officers with rank permission 25.
+  <sub>Sources: report:liveresearch-12 · report:question-25</sub>
+- **TRO-3** `clientAnalysis` **Guild Management trophy opt-in column source.** Which member-list field feeds the opt-in column (GuildMemberEntry unknown01, after tribute_enable, is the candidate).
+  <sub>Sources: report:clientanalysis-4</sub>
+- **TRO-4** `liveCheck` **Base personal trophy slots.** Check Pariator's AA window for Trophy Collector, then try to activate a 5th trophy (eqstr 5254 = full). Sets PersonalTrophySlots (4 today, unproven).
+  <sub>Sources: report:liveresearch-14 · C1-58 · chunk1-missed-2</sub>
+- **TRO-5** `liveCheck` **Trophy benefit definitions from Live.** Add a MQ2PeridotLive dump of Live's trophy benefit table (id, name, personal/guild, tiers with cost and benefit, timer) and capture it; then generate tributes and tribute_levels for every trophy id Peridot's items name (88 items) and the timer charging (0x51ae).
+  <sub>Sources: serverPlan:579 · serverPlan:580 · serverPlan:616-trophies · serverWork:140 · flows/trophies.md:16 · overlap: audit C3-38 (id ranges)</sub>
+- **TRO-6** `peridotTest` **Guild tribute names arrive one character short.** Open the guild tribute and trophy windows, compare names with tributes rows, find the truncating EQEmu packet and fix the encoder.
+  <sub>Sources: serverWork:173-tribute · summary:s6-peridot-tests-tribute · report:peridottest-17</sub>
+- **TRO-7** `liveCheck` **Live's trophy opt-in rule now.** Live's trophy window no longer calls the guild-hall-zone accessor (0x1406b27a0's only caller is the guild bank). Read the opt-in button's enabled state in a hall and standing on the guild's plot, so the server accepts opt-ins exactly where Live does.
+  <sub>Sources: XA:Z5</sub>
+
+### polls (POL)
+
+- **POL-1** `fix` **0x15e2 is also a client request.** Mark 0x15e2 'both' (serverPlan.md:292), register OP_PollList to Handle_OP_Housing; S11 answers the bare request with 0x15e2, 0x6860, 0x7497, 0x52b5, 0x593a. Fix polls.md:5 and flows/polls.md. RoF2 sends it after ReloadUI (0x49d990).
+  <sub>Sources: G2-03 · C2-38 · report:contradiction-19 · report:planfix-pollListBoth</sub>
+- **POL-2** `peridotTest` **Poll request after a UI reload.** /loadskin default 1 in a housing zone: Vote and Polls windows repopulate; no unhandled 0x15e2. *After:* POL-1.
+  <sub>Sources: report:peridottest-8</sub>
+- **POL-3** `liveCheck` **Does Live run polls; administration follows Live.** On two or more servers open the Polls window and press Open Polls (both auto-captured). If Live runs polls, copy kinds, schedule and voters; if none, Peridot runs none by default (keep #realestate poll; EnablePolls stays a switch). Update serverWork.md:132 and serverPlan.md:575.
+  <sub>Sources: G3-18 · report:liveresearch-13 · serverWork:132 · serverPlan:575 · serverPlan:174 · overlap: audit live research 13, G3-18</sub>
+
+### menus (MNU)
+
+- **MNU-1** `fix` **Menu builder details from Live.** Manage (type 0, eqstr 722) after Inspect (order 1, 2(b0), 2(b1), [3], 4, 7, 0, 11, 14); Move to Storage on a house or hall only while empty; Enter only with Enter permission, for a viewer in the item's zone, while upkeep is current, never on storage crates; pool aura entries guild-only (8:1:5324 Activate, 8:2:5340 Deactivate); 18 guild member menus.
+  <sub>Sources: G5-10 · C5-39 · C5-42 · chunk5-missed-5 · report:planfix-menus · report:planfix-menuManage · report:planfix-menuMoveToStorage · report:planfix-menuEnter · report:planfix-menuAura · report:planfix-menuGuildCount · report:settled-menus</sub>
+- **MNU-2** `fix` **Enter is menu type 1 on 0x218c.** Build Enter as 1:-1:723 handled on 0x218c (Live: all 31 menus offering it). Rename 0x050c at serverPlan.md:266, :565 and X1 (:201) to the generic use/proximity click: type 8 (Use 5236, the aura toggles) and the near-miss left click within 20 units; never Enter.
+  <sub>Sources: G5-18 · report:contradiction-13 · report:crosschunk-15 · report:planfix-enterType1 · report:settled-menus</sub>
+- **MNU-3** `liveCheck` **Interactions on an expired plot.** While 44730591 is expired, Pariator clicks Take a Nap on the bed (record 188) and notes the result; adopt Live's behaviour and fix serverPlan.md:394's owner-menu sentence either way. **Time-bound:** while 44730591 stays expired: from 2026-09-29 07:29:48 UTC until a refund or its reclaim (2026-12-28 07:29 UTC).
+  <sub>Sources: G5-08 · C5-44 · report:contradiction-22 · report:question-13 · report:liveresearch-5 · report:planfix-menuExpiredSentence</sub>
+- **MNU-4** `done` **Menu reply's npcSpawnId.** Keep the NPC item's spawn id at +0x2fc; RoF2 reads it only for types 0xc/0xd.
+  <sub>Sources: C5-32</sub>
+- **MNU-5** `clientAnalysis` **Help (menu type 0xe): can RoF2 open its housing help.** Keybind 433 shows TipWindow topic 0x51 through 0x776ef0 (TipWindow's show-tip, suppressed in tutorial-flagged zones; not TextEntryWnd), while RoF2's menu type 0xe opens TextEntryWnd and answers 0x3c8b. Find a server-reachable path to the tip; if one exists, map Live's Help (type 0xe, eqstr 13300) to it; if not, the owner decides whether menus omit Help.
+  <sub>Sources: serverWork:78 · serverPlan:394-help · summary:s6-help · commandsAndKeybindings.md:35 · XA:Z12 · XA:Z17</sub>
+
+### gmCommands (GMC)
+
+- **GMC-1** `fix` **#realestate cost set: any cost, any non-zero amount.** Edit any cost (plot costs 7-16 included), any non-zero amount, negatives being reductions (Live's cost 25 is -42,000; 999997-999999 negative); the catalog validator enforces the reduction bound UPK-11 settles. Align serverPlan.md:372 and housingCommand.cpp:316's help (the code, :296-299, already accepts negatives). *After:* UPK-11.
+  <sub>Sources: report:question-18 · C4-28 · G04 · report:planfix-costSetScope</sub>
+
+### patcher (PAT)
+
+Questions: Q13.
+
+- **PAT-1** `fix` **Training dummy labels: ship Live's dbstr rows.** Ship dbstr_us.txt category-28 rows 100-106, 200-205, 300, 400-407, 500-504 with Live's text in a patched RoF2 dbstr_us.txt (RoF2 has none of 100-504; 45 Live dummy menus use them).
+  <sub>Sources: G5-05 · C5-36 · C5-37 · report:question-15</sub>
+- **PAT-2** `liveCheck` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked.
+  <sub>Sources: README:48</sub>
+- **PAT-3** `done` **Neighborhood map labels: Live ships the same file.** Live's maps/neighborhood_2.txt is byte-identical to RoF2's; ship no corrected map.
+  <sub>Sources: summary:s5-client-maps</sub>
+- **PAT-4** `fix` **Live's on-demand lines for three furniture archives.** Append the 56 lines of content/onDemandAdditionsFromLive.txt to Resources/OnDemandResources.txt (CRLF): furniture19 IT35120-35126, furnitureiksar IT23591, lon16 IT20185-20193/IT12610-12614 (20 tags, 6,084 Live placements). RoF2 ships the archives but lists them nowhere, so these items show IT63 in every zone today.
+  <sub>Sources: XA:A5</sub>
+- **PAT-5** `fix` **Live's on-demand lines for 16 race archives.** Append the 255 lines of content/onDemandRaceAdditionsFromLive.txt (ans, dke, dma, dvs, fie, gfo, i11, i23, lsp, mph, orb, pg3, psc, rdg, smd, t01; all resolve in RoF2's copies) so those NPC items render outside zones whose chr list names them.
+  <sub>Sources: XA:A11</sub>
+- **PAT-6** `fix` **The 55 S3D housepet races, global as on Live.** Live loads them globally (GlobalLoad.txt phase 4 and GlobalLoad_chr.txt); RoF2 has them only in zone archives (content/zoneOnlyPetModels.tsv). Add 'tag,archive' lines to RoF2's GlobalLoad_chr.txt (mismatched prefix -> loader 0x4899c0 at 0x493658, as poknowledge_chr.txt's 'frt,innothule_chr') and raise line 1's count (parser 0x48cb80 drops lines past it). *After:* PAT-7.
+  <sub>Sources: XA:A11 · XA:Av4 · XA:Av5 · XA:Av6</sub>
+- **PAT-7** `peridotTest` **Load cost of the client file additions.** With PAT-4 to PAT-6 applied: client start time and memory, and the DLL's on-demand pool counters (format at 0x10138dd8, used at 0x1005ab89) in a busy zone.
+  <sub>Sources: XA:A11</sub>
+
+### docs (DOC)
+
+- **DOC-1** `fix` **Plan status lines are stale.** serverPlan.md:3, :11, :609: code exists on the claude branch and is under audit (zone/housing 21 files, world/housingUpkeep.cpp, Housing rules ruletypes.h:1181-1215, custom manifest versions 1-3); name the link gaps (BLD-1, BLD-2).
+  <sub>Sources: G1-16 · C1-67 · report:contradiction-30 · report:planfix-status</sub>
+- **DOC-2** `fix` **Item display line 5289/5288.** serverPlan.md:341: nothing prints unless the property and its item list are loaded; then 5289 when the record name is non-empty, 5288 (count only) when empty (RoF2 0x6a06b0). *After:* REC-5.
+  <sub>Sources: G3-10 · C3-43 · report:planfix-itemDisplayLine</sub>
+- **DOC-3** `fix` **Schema counts and migration descriptions.** serverPlan.md:313 23 tables, drop 'the real inventory definition'; :333 8 catalog tables, 22 repositories; :600 23; :615 three custom migrations, custom database version 3, 23 tables.
+  <sub>Sources: G3-06 · C3-01 · C3-06 · C3-28 · C3-34 · C3-35 · report:planfix-schemaCounts · report:contradiction-31</sub>
+- **DOC-4** `fix` **Schema conventions sentence.** serverPlan.md:313: name the deliberate columns (owner_character_id; host_zone_id/host_instance_id) and that item ids are INT(11) UNSIGNED.
+  <sub>Sources: C3-02</sub>
+- **DOC-5** `fix` **phinterior1d1 is Hermit's Hideaway, sold on Live.** serverWork.md:145 (S13) and serverPlan.md:564: phinterior1d1 (723) hosts def 30, Hermit's Hideaway (deed 54999), sold on Live (bristle 133160781, 264 placed objects); recount S13.
+  <sub>Sources: C1-72 · report:contradiction-28 · report:planfix-specialHouses · report:planfix-serverWorkS13 · G1-21</sub>
+- **DOC-6** `fix` **Tilt rule citations.** serverPlan.md:388, worldLayer.md:55, the summary:251-252: cite Live 0x140679af0/0x140679b80 and RoF2 0x7bac00/0x7bac70; world objects carry the server's tilts (readers RoF2 0x505400, Live 0x14026a4a0 copy them verbatim).
+  <sub>Sources: chunk5-missed-1 · C5-26 · C5-29 · report:contradiction-17 · report:planfix-tiltCountsAndCitations</sub>
+- **DOC-7** `fix` **Stale placement and menu counts.** serverPlan.md:384, :388, :394, worldLayer.md:55, the summary: 98,095 objects / 3,679 items on Bristlebane (891,440 / 4,377 all servers), 3,419 items, 75.6% / 75.9%, 18 guild member menus, no wrapping (105582 = 512); state each population and cite the livedumps commit.
+  <sub>Sources: G5-15 · C5-07 · report:planfix-tiltCountsAndCitations · report:planfix-menuGuildCount · report:contradiction-31</sub>
+- **DOC-8** `fix` **Provider wording in common/.** serverPlan.md:226: itemHousingTail.cpp also holds the provider pointer, static default and getter.
+  <sub>Sources: C2-14</sub>
+- **DOC-9** `fix` **'Today' bytes and stale references.** serverPlan.md:217 and RealEstateItemsWnd.md:166 in the past tense (before T6 the 3 extra bytes made MaxPerRealEstate read 0xFF000000); cite rof2.cpp:6915-6950 (T6, 4f27f0b67); :224 likewise; :230 'all 74 mapped since f151f36ec'.
+  <sub>Sources: G2-06 · C2-08 · C2-09 · C2-10 · C2-31 · report:contradiction-24 · report:planfix-todayBytes · report:planfix-opcodesMapped</sub>
+- **DOC-10** `fix` **Name SocketSubClassCount / SocketSubClass[10].** serverPlan.md:215 and RealEstateItemsWnd.md:164: +0x609/+0x60c; the server sends 0 and never more than 10 (0x7f7da0 has no bound). Live sends count 1 on 706 items; 59407 has 9.
+  <sub>Sources: G2-08 · C2-04 · report:planfix-todayBytes</sub>
+- **DOC-11** `fix` **Housepet name has no wire length limit.** RealEstateItemsWnd.md:155: the client keeps 31 characters plus NUL and skips the rest (0x4048d0); VARCHAR(31) keeps the server inside it.
+  <sub>Sources: chunk2-missed-5 · report:planfix-todayBytes</sub>
+- **DOC-12** `fix` **T9/T10: the bazaar is a second ItemsRepository user.** serverPlan.md:48, :97: common/bazaar.cpp:277 also uses ItemsRepository (explicit columns), unaffected by the rename.
+  <sub>Sources: C1-08</sub>
+- **DOC-13** `fix` **T19: 'untranslated' holds for Titanium only.** serverPlan.md:57: sof/sod/uf decode OP_FindPersonRequest and only rof/rof2 encode OP_ClickObjectAction; the conclusion holds.
+  <sub>Sources: C1-15</sub>
+- **DOC-14** `fix` **SPA 437/438 wording.** serverPlan.md:60, :556, :571: documented upstream only as commented-out #defines (spdat.h:1499-1500); housing defines them.
+  <sub>Sources: G1-15 · C1-17 · report:contradiction-29 · report:planfix-spa437</sub>
+- **DOC-15** `fix` **Definition id lists.** serverPlan.md:78, :103: houses 5 and 7-29; manors 32-34 (upkeep 0); Crate of Eviction 31; halls 38-41; storage crates 174-184 (upkeep 26-35); upkeep ids 17-24 for 5-29; special houses 30 and 42-47 Live-only (upkeep 25).
+  <sub>Sources: G1-14 · C1-23 · C2-46 · report:planfix-definitionLists · report:contradiction-31</sub>
+- **DOC-16** `fix` **Respawn list includes 38.** serverPlan.md:101: 'respawn intervals 4500, 750, 38 (the Guild Regeneration Pool) or 0'.
+  <sub>Sources: G1-13 · C1-29 · C2-27 · G2-09 · report:planfix-respawnList · report:contradiction-31</sub>
+- **DOC-17** `fix` **Tile - Shadow and the orientation examples.** serverPlan.md:102: Tile - Shadow's definition has roll 384; its 2,053 placed copies sit at 768 orientations; name Painting: Meleen Estarim (67906, heading 128 / roll 128) with the other Estarim paintings and tiles 66865-66868.
+  <sub>Sources: C2-21 · G2-09 · C1-35 · C2-20 · report:planfix-tileShadow · report:contradiction-31</sub>
+- **DOC-18** `fix` **Sunrise Hills is definition 2.** serverPlan.md:458 and :505 (:167 is right).
+  <sub>Sources: G1-12 · C1-70 · report:planfix-sunriseHillsDefinition2 · report:crosschunk-13 · report:contradiction-31</sub>
+- **DOC-19** `fix` **Content paragraphs :505, :509, :533.** :505 from makeHousingCatalogSql.py's docstring (def 2; plots 101-173, 130/170 off-terrain; guild plots 187-190; regions 101-177; costs 6-35, plot costs 7-16 with 6 options); :509 tiers 120/6 on 25 plots, 105/5 on 39, 90/4 on 7, guild 210/0/12, pets per SCH-1; :533 Live's items name upkeep 2 and 4, which its cost table lacks.
+  <sub>Sources: G3-07 · C3-48 · C3-49 · C4-41 · C4-42 · C4-47 · G04 · G05 · G1-23 · G18 · C4-64 · report:planfix-contentParagraphs · report:settled-plotTiers · report:settled-carvedTablesTrophies · report:crosschunk-13 · report:contradiction-31</sub>
+- **DOC-20** `fix` **dz_id and exterior style wording.** serverPlan.md:317: dz_id is the id Live gives each instanced template (interiors and the neighborhood, 20504); :337: six styles for three-room tiers and manors, four for one-room.
+  <sub>Sources: G3-11 · C3-11 · C3-40 · report:planfix-dzIdAndStyles</sub>
+- **DOC-21** `fix` **Record Live's hall interior zones and the house mapping.** Beside instance_zone_id: Live runs halls as guildhall_int 2937 on 345, guildhall3_int 2943 on 751, guildhallsml_int 2936 on 738 (ids RoF2 can't use); finishes: 3a1 def 32, 3a2 7/16/33, 3a3 17/34, 1a1 24.
+  <sub>Sources: chunk3-missed-2 · C3-14 · report:settled-interiorMappings</sub>
+- **DOC-22** `fix` **Validation stage counts.** serverPlan.md:626: '75 property records (71 plots, 4 guild plots)'; stage 3's charges and flag follow UPK-1 and REC-2.
+  <sub>Sources: report:planfix-stage3Count · report:settled-seventyFiveChildren · report:contradiction-31</sub>
+- **DOC-23** `fix` **Verification list: drop settled items.** serverPlan.md:640: drop the inferred world-object fields and the NPC respawn interval's unit.
+  <sub>Sources: report:crosschunk-19 · report:planfix-verificationList</sub>
+- **DOC-24** `fix` **serverWork 'Open design decisions'.** Remove upkeep schedule, access enforcement and interior instancing (D4, D7, D3; interiors per Q2); list 0x2aa6 types as the plan does (1 and 7), not only 0-2 (serverWork.md:103-104).
+  <sub>Sources: report:crosschunk-20 · report:planfix-serverWorkOpenDecisions</sub>
+- **DOC-25** `fix` **Fold the audit into the owner's summary.** liveResearchSummary.md section 4: handle at +0x30, MaxPets -1, current counts; section 1: strangers' balances never refresh, expired items settled (UPK-2); add a chunk 2 entry (tail wire order, opcode map, 0x06c8/0x15e2/0x02bc).
+  <sub>Sources: report:crosschunk-21 · chunk2-missed-6 · report:planfix-summaryFold</sub>
+- **DOC-26** `fix` **Flows: world objects for ordinary items.** flows/placeItem.md (:33, steps 7-8), editPlacedItem.md (:16, :28-29, :46-47, E2, steps 4-7), movingCrate.md section 3: ordinary items get 0x1045 after commit and 0x2a9e on store or pick-up; NPC items their spawn plus binding. *After:* WOB-2, REC-3.
+  <sub>Sources: G5-17 · report:planfix-flowsWorldObject</sub>
+- **DOC-27** `fix` **D2 names SendPacketToBootedZones.** serverPlan.md:108: world forwards with SendPacketToBootedZones (world/zoneserver.cpp:1676-1678).
+  <sub>Sources: chunk1-missed-9 · C1-12 · report:planfix-sendPacketToBootedZones · report:crosschunk-17</sub>
+- **DOC-28** `fix` **Refresh flows/purchase.md from Live's 22 Purchase captures.** Purchase visible only on a vacant plot; Sell and Transfer for the owner; the voting opt-out hidden on vacant plots; the Guild row only in guild neighborhoods; REPW_Eviction_Label eqstr 13333; a purchase opens Manage (Clerictrader 20260930-210021). Step 3 is the border click (DOR-3). *After:* UPK-4.
+  <sub>Sources: COVERAGE:29 · summary:s6-chunk6-purchase-flow-doc · overlap: audit G10 (step 3)</sub>
+- **DOC-29** `fix` **Fold the summary's sections 1-3 into the plan.** Upkeep findings into S8 (with the audit's corrections), the experiment into testingNotes.md or serverWork.md S8, the behavior notes into serverWork.md's polish entry.
+  <sub>Sources: summary:fold</sub>
+- **DOC-30** `fix` **README.md stale statements.** :121 0x7eb9 is a weather request (sender 0x5a9490 prints eqstr 13187/13195/13196); :105 the conf now maps the opcodes; :130 and :153 are decoded (placementMode.md:78-86); :205 per INT-8; :236 is chunk 8; :9 points at this list's clientAnalysis items.
+  <sub>Sources: README:121 · README:105 · README:130 · README:153 · README:236 · README:9</sub>
+- **DOC-31** `fix` **COVERAGE.md stale entries.** :40 0x626e decoded (placementMode.md:50-52); :59-64 resolved, leaving Q25; :79 answered in polls.md; :187 done; :202 +0x22d is canManageVoting; :213 answered by Q1.
+  <sub>Sources: COVERAGE:40 · COVERAGE:59 · COVERAGE:79 · COVERAGE:187 · COVERAGE:202 · COVERAGE:213</sub>
+- **DOC-32** `fix` **Other stale client-doc statements.** placedItemsAndProperties.md:76 (0x58c7 decoded at :229), :58 (counters mapped by Q15), :248 (decoded); RealEstateManageWnd.md:18; permissions.md:3; RealEstatePurchaseWnd.md:213 (profileType), :160, :257 and RealEstateItemsWnd.md:334 (+0x9c/+0xa0 = currentHouseId/currentMovingCrateId per Live's eqlib); commandsAndKeybindings.md:21 settled (eqstr 6866); testingNotes.md:60-65 empty table.
+  <sub>Sources: placedItemsAndProperties.md:76 · placedItemsAndProperties.md:58 · placedItemsAndProperties.md:248 · windows/RealEstateManageWnd.md:18 · permissions.md:3 · windows/RealEstatePurchaseWnd.md:213 · windows/RealEstatePurchaseWnd.md:160 · windows/RealEstatePurchaseWnd.md:257 · windows/RealEstateItemsWnd.md:334 · commandsAndKeybindings.md:21 · summary:s5-leaverealestate · testingNotes.md:60</sub>
+- **DOC-33** `fix` **Binary citations the X1-X3 analysis found wrong.** COVERAGE.md 'Known client-side gates': eqstr 0x2d7 is shown only at 0x747e9a (0x7e3535 is zone 727; 0x50ee55, 0x939051 are other constants) and 0x14c3 at 0x5f7fc8 is an outgoing opcode; placedItemsAndProperties.md:217: 0x776ef0 is TipWindow's show-tip; robustness.md:37: the 'ids 1-767' compare is the ZoneGuide table (0x7fe300) and the guild-hall flag is a zone gate; worldLayer.md:79: 0x532640 is game teardown; worldLayer.md:232: 0x67e560 is guild-bank access.
+  <sub>Sources: XA:Z17 · XA:Z3 · XA:Z4 · XA:DZ8 · XA:PMv3</sub>
+- **DOC-34** `fix` **Corrections from the groupId trace.** opcode2698DefinitionsAndCosts.md:54: field 11 is the definition's placement group (Q20a), a dbstr category-27 id shown in REPW_Category_Label. :111: RealEstateErrors.txt is referenced only in the RealEstateItemGroups.txt missing-file path (0x7fcfa2), not the loaders' row validation. README.md:89: the logger 0x5f8a80 ignores its first two arguments, so a missing file doesn't log 'Could not open file to RealEstateErrors.txt'. Rename the plan's type-derived 'category' (house 2, plot 3, crate 6) nowhere: it stays, now that the column no longer uses the word.
+  <sub>Sources: workflow wf_67bb2be5-81c</sub>
+- **DOC-35** `fix` **Corrections from the apartments trace.** serverPlan.md:458 and :505 say Sunrise Hills is definition 1; it is 2 (ruletypes.h:1198, housingCatalog.sql:11). flows/purchase.md:3, :30, :104 and S10: the location fields update once a second (0x5b0a10), not every frame, and a door click sends OP_ClickDoor, never 0x218c; worldLayer.md:146 and :152 likewise. RealEstatePurchaseWnd.md's REPW_Manage_Button row and RealEstateManageWnd.md:11: Manage also opens from a type-161 right-click and the server's 0x45be {1}. RealEstateItemsWnd.md rule 7 (code 0x1e) is the check that stops a house or crate item going into its own property.
+  <sub>Sources: workflow wf_9124c95d-1b1</sub>
+
+### process (PRC)
+
+Questions: Q1.
+
+- **PRC-1** `peridotTest` **Read-only Peridot database queries.** custom_database_version; SHOW TABLES LIKE 'new_table'; zone rows 700-770 and 345; guild_permissions for 24, 25, 27, 28, 29 (plan: 224/128); tribute ids (plan 0-59, 60-82; Live trophies 100-376); idfile of 66645 (expect IT63; Live IT23628).
+  <sub>Sources: report:peridottest-2 · C1-07 · G1-24 · C3-38 · C3-39 · C3-41 · C4-57</sub>
+- **PRC-2** `fix` **Review chunks 7 and 8, then the code audit.** Chunks 6-8 were never reviewed against Live (this list carries chunk 6's open items); review 7 and 8, then audit zone/housing and world/housingUpkeep against the corrected plan.
+  <sub>Sources: summary:s4-review-status · summary:s6-after-chunk6</sub>
+- **PRC-3** `peridotTest` **Re-prove the pre-build tools, with new negatives.** Add negatives to testHousingSchema.py (vault > max items, poll kind 3, selection_type 4, access group 7; max_pet_items -1 accepted), then re-run every tool in serverPlan.md's 'Proven before the build' table on a scratch MariaDB after the schema, catalog and migration fixes and update its claims (the plan says 22 checks; 19 by reading). *After:* SCH-1, REC-2, REC-3, ITM-1, INT-6.
+  <sub>Sources: G3-19 · C3-07 · report:peridottest-3 · serverPlan:598 · overlap: audit peridot test 3</sub>
+- **PRC-4** `fix` **Deploy step 4 lists content that has no SQL yet.** serverPlan.md:616 loads NPC item types and trophy benefits (no generator) and omits guildBorderDoors.sql, housingZoneSettings.sql, hall and interior door rows and 345 v2. List the exact files in load order, each from a tool; fail the deploy if one is missing. *After:* NPC-8, TRO-5, DOR-1.
+  <sub>Sources: serverPlan:616</sub>
+- **PRC-5** `fix` **Probe cursorItem section and the housing Lua suites.** Write the cursorItem section and the seven suites (itemTail, neighborhoodZoneIn, purchaseAndEscrow, placement, houses, searchTransferSell, pollsAndTrophies); none is in the local MQPeridotEmu copy; the mqperidotprobe repo isn't on disk (unverified there).
+  <sub>Sources: serverPlan:636 · serverPlan:620-suites</sub>
+
+- **PRC-6** `fix` **A Live build of claudelink for Live checks.** Every `liveCheck` item runs through it: MQClaudeLink built against the mqLive tree (C:/Users/<user>/LocalProjects/mqLive), a second MCP registration pointed at a copy of the Live client, and the owner's non-GM test accounts (credentials in Windows Credential Manager). The plugin keeps to MacroQuest movement, screenshots, window and state dumps, and ordinary in-game actions such as purchasing plots. NBH-4 is overdue and RCL-2 falls after 2026-11-11, so this comes before those checks.
+  <sub>Sources: owner:live-research-method</sub>
+
+- **PRC-7** `done` **Training dummies predate RoF2; their menus don't.** Items 66700-66716 were sold by Brent Harnak as 'Decorative Dummy: Azia'..'Qela' by 2011-11-19 (Veil of Alaris; Allakhazam NPC 38576, prices equal Live's vendorItems.tsv to the copper), and Peridot's data holds them under those names. The menus came later: Modify Level, Armor Class and Body Type plus house placement and ranks 66717-66719 on 2015-02-25 (ZAM patch notes); the 'Training Dummy: <expansion>' names, Modify HP, larger level steps and 66720-66730 on 2026-04-15 (everquest.com update notes). RoF2 eqgame.exe is 2013-05-10. Per Q25 the dbstr rows ship, and the menus are Live's (MNU).
+  <sub>Sources: owner:Q25 · workflow wf_4ade3261-801</sub>
+
+## Indexes
+
+### Live checks
+
+- CAT-5 106 Brimming Way's upkeep
+- REG-1 Region extents
+- REG-3 Live clears regions outside housing zones
+- ZIN-8 Zone-entry line, then the send order
+- PLC-9 Does the begin-placement object carry the tilts
+- PLC-14 Live's begin-placement permission list
+- NPC-6 The pool's aura radius and application
+- NPC-7 A visitor using another guild's services
+- NPC-10 Hyredel Swiftstride's function
+- NPC-12 Gebsle Nogflop's roaming route (polish)
+- NPC-14 The Sunrise Hills stage show, per instance (polish)
+- NPC-15 Guild Teleportation Device destinations (last phase)
+- UPK-6 Expiry notice bodies and the notice sequence **(time-bound: keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC))**
+- UPK-7 Mail date stamping (polish)
+- UPK-8 Who may deposit into a property's escrow
+- UPK-9 Does Live push new balances to an idle client
+- UPK-10 Add Day / Add Week (0x2aa6 types 3-6)
+- UPK-11 Reductions (special houses) as Live charges them
+- UPK-12 Experiment: accounts, characters and neighborhoods
+- UPK-14 Experiment step 1: recording on everywhere
+- UPK-15 Experiment step 2: park the observers
+- UPK-16 Experiment step 3: buy the plots in pairs
+- UPK-17 Experiment step 4: setup check
+- UPK-18 Experiment, optional: an open Manage window across a charge
+- UPK-19 Experiment step 5: hands off about 36 hours
+- UPK-20 Experiment step 6: import
+- UPK-21 Experiment probes if a window comes up empty
+- UPK-22 Experiment: read the outcome
+- RCL-2 Observe the 90-day reclaim **(time-bound: after 2026-11-11 19:00 UTC; 2026-12-10 20:00 UTC; optionally 2026-12-28 07:30 UTC)**
+- ACC-3 Permissions pass: which bit gates which menu entry
+- ACC-5 Default guild rank permissions for real estate
+- ACC-7 Live's hall zone id: is bit 15 set
+- STT-3 Plot limit and its scope
+- STT-6 Trade and parcel a house holding items
+- STT-8 Transfer on Live: offline targets and the moved items' owners
+- INT-3 Uncaptured interiors' safe and arrival points
+- INT-7 Which anchor when several are placed; how the gate spells are cast
+- INT-9 How Live reports Store All and Pack/Unpack results
+- INT-11 Front-door clicks in a house and a hall
+- DOR-4 Click a vacant plot's border plaque and a guild square
+- NBH-4 D11 against Live: growth matches, pruning may not **(time-bound: due now: vox last captured 2026-09-28 21:48, aradune 2026-09-29 16:24; two weeks later is 2026-10-12/13)**
+- TRO-2 Trophy opt-out of other members
+- TRO-4 Base personal trophy slots
+- TRO-5 Trophy benefit definitions from Live
+- TRO-7 Live's trophy opt-in rule now
+- POL-3 Does Live run polls; administration follows Live
+- MNU-3 Interactions on an expired plot **(time-bound: while 44730591 stays expired: from 2026-09-29 07:29:48 UTC until a refund or its reclaim (2026-12-28 07:29 UTC))**
+- PAT-2 Neighborhood window filters: checked on Live?
+- EXT-17 Regular zones on Live that load housing archives
+
+Time-bound ones: UPK-6, RCL-2, NBH-4, MNU-3. The upkeep experiment (UPK-12 to UPK-22) needs an unbroken 36-48 h window but no calendar date.
+
+### Client analysis
+
+CAT-7, ITM-9, OPC-3, OPC-4, OPC-6, OPC-8, REC-8, REC-10, REC-13, ZIN-6, ZIN-11, PLC-2, PLC-6, PLC-7, PLC-8, WOB-7, NPC-16, STT-9, DOR-11, TRO-3, MNU-5, EXT-18, EXT-19, EXT-20, EXT-25.
+
+### Peridot tests
+
+ITM-2, ITM-3, ITM-6, ITM-8, OPC-2, REC-4, ZIN-2, ZIN-5, ZIN-7, PLC-1, PLC-3, PLC-10, PLC-11, WOB-6, NPC-4, NPC-13, UPK-3, ACC-8, STT-5, INT-5, DOR-6, DOR-7, DOR-8, NBH-6, TRO-6, POL-2, PAT-7, PRC-1, PRC-3, EXT-3, EXT-4, EXT-5, EXT-6, EXT-7, EXT-30, EXT-32.
+
+## No action
+
+Source keys from the two item files that need no work item, with the extractors' reasons.
+
+- **Confirmed by the audit, nothing to change:** C1-22 · C4-06 · C4-62 · C3-09 · C1-52 · C5-14 · C5-57 · C1-01 · C1-02 · C1-03 · C1-04 · C1-05 · C1-06 · C1-09 · C1-10 · C1-11 · C1-14 · C1-16 · C1-18 · C1-19 · C1-20 · C1-21 · C1-31 · C1-32 · C1-36 · C1-40 · C1-42 · C1-51 · C1-55 · C1-57 · C1-61 · C1-62 · C1-63 · C1-69 · C2-01 · C2-02 · C2-03 · C2-05 · C2-06 · C2-07 · C2-12 · C2-16 · C2-22 · C2-25 · C2-26 · C2-28 · C2-29 · C2-30 · C2-32 · C2-35 · C2-36 · C2-37 · C2-42 · C2-45 · C3-10 · C3-12 · C3-16 · C3-18 · C3-24 · C3-32 · C3-33 · C3-36 · C3-42 · C3-44 · C3-45 · C3-46 · C3-51 · C3-52 · C4-03 · C4-07 · C4-13 · C4-20 · C4-26 · C4-29 · C4-31 · C4-35 · C4-38 · C4-39 · C4-40 · C4-46 · C4-48 · C4-50 · C4-59 · C4-60 · C4-61 · C4-66 · C4-67 · C4-69 · C4-70 · C5-08 · C5-17 · C5-21 · C5-22 · C5-25 · C5-27 · C5-28 · C5-34 · C5-35 · C5-38 · C5-40 · C5-41 · C5-45 · C5-46 · C5-48 · C5-50 · C5-53.
+- **C1-25:** owner decision recorded (Spire breakage accepted); nothing to check or change.
+- **C1-39:** owner design decision; the mechanisms exist (dbcore.h:34-36, servertalk.h:118); nothing to change.
+- **C1-56:** consistent with Live (empty search lists 740-1,308 rows); D8 stands.
+- **C2-43:** not observable on Live; Peridot targets RoF2's opcode values.
+- **C2-44:** owner design decision; code matches (common/itemHousingTail.*, housingItemTail.cpp).
+- **C3-05:** owner design decision upheld; Live supports deriving these; fellowship 0 as decided (C4-07).
+- **C3-27:** owner design decision (one pending offer per property); not observable on Live.
+- **C3-29:** Peridot's own design (Live has no NPC-item table).
+- **C3-31:** owner design decision (anchor table); not observable on Live.
+- **C3-47:** the opcodes it left unverified are verified by C2-35's walker (0x49df -> 0x4ca7a5).
+- **C4-01:** confirmed (including the 0x1967 exception).
+- **C4-16:** design decision; Live's lists aren't dumped; nothing to change.
+- **C4-18:** confirmed (verifier traced 0x4b2ab0).
+- **C4-32:** confirmed (stonesquare.eqg meshes parsed).
+- **C4-44:** confirmed (heuristic: no reader of def +0x5c/+0x60).
+- **C4-58:** confirmed (EQEmu source).
+- **C5-01:** owner design decision (server-side placement session).
+- **C5-02:** confirmed (send sites push 62 bytes).
+- **C5-04:** owner design decision (D14 overrides); Live's per-yard limit of 1 is confirmed (C1-51).
+- **C5-06:** confirmed (0x5b1da0 rank permission 29).
+- **C5-11:** confirmed with exceptions (6 of 945,585 outliers that predate definition changes).
+- **C5-47:** consistent (152 of 152 identical entry lists); not separable further; nothing to change.
+- **C5-51:** confirmed (counts are cycle steps).
+- **C5-58:** confirmed; the quarter turn is the item's default heading, which the server already sends.
+- **C4-53:** confirmed (mesh sizes not re-measured; not needed).
+- **C4-54:** confirmed (the no-regen-buff part isn't separable in buffs.tsv; nothing to change).
+- **C4-65:** confirmed (expansion gates are history, not checkable on Live).
+- **C3-26:** confirmed (names sizing settled in G3-17).
+- **C1-13:** confirmed (parcel gate wording only).
+- **report:settled-currencies:** settled: Peridot's alternate_currency ids 10, 11, 12, 14, 15 equal Live's; nothing to change.
+- **Plan and doc lines covered by an audit item above:** summary:s1-expiry-stamp · summary:s1-item-expiry · summary:s6-chunk6-expired-items · summary:s1-d7 · summary:s1-balances-held · summary:s4-chunk1 · summary:s4-chunk3 · summary:s4-chunk4 · summary:s4-chunk5 · summary:s4-chunk6 · summary:s5-augmentater-live · summary:s5-halls · summary:s5-caps · summary:s5-schema-names · summary:s5-map-labels · summary:s6-interiors · summary:s6-after-chunk6-stale-decisions · summary:s6-peridot-tests-plot-sign · serverPlan:3 · serverPlan:11 · serverPlan:153-155 · serverPlan:158 · serverPlan:161-162 · serverPlan:164 · serverPlan:176 · serverPlan:177-183 · serverPlan:205-209 · serverPlan:367 · serverPlan:408 · serverPlan:410 · serverPlan:432-guild-names · opcode2691PropertySearch.md:122 · serverPlan:437 · serverPlan:443 · serverPlan:444 · serverPlan:449 · serverPlan:458-def1 · serverPlan:459-names · serverPlan:460 · serverPlan:461-462 · serverPlan:463 · serverPlan:467 · serverPlan:468 · serverPlan:479-499 · serverPlan:505-511 · serverPlan:513-halls · serverPlan:533 · serverPlan:543 · serverPlan:563 · serverPlan:570 · serverPlan:613-615 · serverWork:73 · serverWork:124 · serverWork:169 · serverWork:173-plot-sign · COVERAGE:87 · flows/purchase.md:30 · flows/purchase.md:104 · opcode2698DefinitionsAndCosts.md:65.
+- **Client-internal 'inferred' details with no effect on what the server sends or accepts:** worldLayer.md:22 · worldLayer.md:24 · worldLayer.md:80 · worldLayer.md:137 · worldLayer.md:211 · worldLayer.md:220 · placementMode.md:19 · placementMode.md:39 · placementMode.md:48 · placementMode.md:63 · placementMode.md:68 · placementMode.md:115 · placementMode.md:146 · placementMode.md:150 · placementMode.md:154 · placementMode.md:220 · placementMode.md:263 · windows/RealEstateItemsWnd.md:275 · windows/RealEstateItemsWnd.md:338 · windows/RealEstateLayoutDetailsWnd.md:14 · windows/RealEstateManageWnd.md:121 · windows/RealEstatePlotSearchWnd.md:23 · windows/RealEstatePlotSearchWnd.md:58 · windows/RealEstatePurchaseWnd.md:56 · windows/RealEstatePurchaseWnd.md:142 · windows/RealEstatePurchaseWnd.md:183.
+- **summary:s5-tempus:** Information only (a look made from building pieces); no work.
+- **summary:s5-public-halls:** Reference list of decorated Live halls for later captures; no work.
+- **summary:s5-tours:** Reference: which servers are dumped; no work.
+- **summary:s6-rule:** Already a standing rule in serverPlan.md:333 ('nothing is applied to Peridot's database piecemeal').
+- **summary:s7-tools:** Tool reference (repos, import, plugin commands, client analysis); no open item.
+- **summary:s5-npc-ganak:** Already in serverPlan.md:390 (rider bound, mount unbound); carried into the NPC generator item.
+- **serverPlan:416:** Evaluator read from the binary (0x4ff570); no open point.
+- **serverPlan:445:** Live-checked by the owner (everything placed, pets included, draws on the plot's escrow); no open point.
+- **serverPlan:474:** D13 is Live's cost model with expansion gating of options; the audit verified Live's costs (C4-63); no open point.
+- **serverPlan:475:** D14 is the owner's tuning on Live's default max_houses 1; decided, no open point.
+- **serverPlan:545-557:** Moving players through EQEmu's own mechanisms; no open point (anchors are a separate item).
+- **serverPlan:567:** Matches Live (/leaverealestate as the front door, else eqstr 6866, summary line 311).
+- **serverPlan:568:** Moving and swapping houses: Live-backed (picked-up Palatial kept its id and 100 items) and binary-backed (0x5b3170, 0x14d3-0x14da); no open point.
+- **serverPlan:584:** T23 zone timer is implementation, no open point.
+- **serverPlan:620-633:** Stages mapped into their items (stage 3: cadence and D9; stage 6: Q11; stage 1: audit G2-11).
+- **serverPlan:640:** Verification list: settled items dropped per the audit (cross-chunk 19); the rest are items here (Q11, render, guild borders) or in the audit (state across zoning G14, position check, guild-name miss).
+- **serverPlan:644-645:** Housing log category exists (common/eqemu_logsys.h:155, eqemu_logsys_log_aliases.h:940); no open point.
+- **serverWork:13-21:** Already satisfied by Peridot, verified with the diagnostics plugin; no open point.
+- **COVERAGE:21:** Layout Details load-option labels are client-only text with no server effect.
+- **COVERAGE:72:** Q1's key/value path is moot: Peridot's expansion bits are verified sent (0x0007ffff, serverWork.md:17).
+- **windows/RealEstatePurchaseWnd.md:204:** Same as COVERAGE:72: verified by the diagnostics plugin (serverWork.md:17).
+- **COVERAGE:185:** 0x483b10's other callers gate on the same HoT bit and profileType 0, both satisfied on Peridot; nothing to trace.
+- **COVERAGE:226:** F6 rule already met: EQEmu sends ranks 1-8 and permissions 1-30 (README.md CF17).
+- **flows/placeItem.md:65:** Order of 0x2cf7/spawn/inventory after a commit: the client handles each independently; serverPlan.md:385 fixes an order; no client-visible effect.
+- **opcode2691PropertySearch.md:127:** Category values 1, 2, 5, 6, 8, 9: the client dispatches on mode; the server sends only the kinds the plan uses.
+- **permissions.md:51:** Peridot sends both 0x10000 and 0x20000 (0x0007ffff), so the inferred VoA bit can't block anything.

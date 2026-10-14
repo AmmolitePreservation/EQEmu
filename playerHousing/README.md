@@ -8,10 +8,12 @@ Approach: derive the wire protocol **statically from the client**. The client's 
 
 **Status:** the RoF2 client side of player housing is fully analyzed (every real-estate, vote and trophy window, every housing message in both directions, the world layer, commands and key bindings, a robustness review, and the prior-research cross-check). **Nothing client-side is open** (`COVERAGE.md`). What remains is server implementation and testing: test items are in `COVERAGE.md` (Q11, Q25) and `testingNotes.md` (including *Live comparisons*).
 
-**Reading order for a new session:** this README's *Critical findings* → `serverWork.md` (every piece of server work, its readiness and the build order) → the `flows/` for the feature at hand → the message specs and window pages they link → `testingNotes.md` before any live test.
+**Reading order for a new session:** this README's *Critical findings* → `worklist.md` (the owner's decisions, the open questions and every work item) → `serverWork.md` (every piece of server work, its readiness and the build order) → the `flows/` for the feature at hand → the message specs and window pages they link → `testingNotes.md` before any live test.
 
 | Document | What it covers |
 |---|---|
+| `worklist.md` | the working list: the owner's standing decisions, the questions and their outcomes, the extras X1-X4, every fix, Live check, client analysis and Peridot test by area |
+| `audits/` | the chunks 1-5 audit the worklist was built from, with its per-finding detail |
 | `COVERAGE.md` | the register: every question (Q1–Q26) with its answer, receive / send tables, gates, the GUI and command reviews |
 | `serverWork.md` | the server work inventory: foundations and subsystems, their messages, rules, dependencies and readiness; the build order |
 | `serverPlan.md` | the implementation plan against Peridot's EQEmu source: architecture, touch points in existing code, persistence, decisions |
