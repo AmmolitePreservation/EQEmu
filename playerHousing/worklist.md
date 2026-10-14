@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 146, liveCheck 52, clientAnalysis 25, peridotTest 36, question 28, done 14; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 148, liveCheck 50, clientAnalysis 25, peridotTest 36, question 28, done 14; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -709,7 +709,7 @@ Questions: Q18.
   <sub>Sources: serverPlan:470 · serverPlan:436 · serverPlan:152 · serverPlan:627-purchase · summary:s6-chunk6-purchase-flow</sub>
 - **UPK-5** `fix` **Expiry notice mail at the expiring second.** When a charge finds escrow empty, mail the owner through ucs with Live's subject 'Escrow expired on personal plot - First Notice' (guild plots: Live's guild-plot subject; recipient unverified), later notices once captured. Replace serverPlan.md:447's 0x191f warning (eqstr 6431 is the 2013 per-item warning). *After:* UPK-6.
   <sub>Sources: summary:s1-mail-notice · summary:s6-chunk6-notice-bodies · serverPlan:447-warning · eqstr 6431 (RoF2 eqstr_us.txt) · overlap: audit live research 4 (captures the bodies only)</sub>
-- **UPK-6** `liveCheck` **Expiry notice bodies and the notice sequence.** While chat is up, open each 'Escrow expired' mail, find the reader with /windows open, /peridotlive window <name>. Keep 44730591 unfunded (expired 2026-09-29 07:29:48 UTC) to collect the later notices before its reclaim. Also whether Live still prints eqstr 6431. **Time-bound:** keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC).
+- **UPK-6** `liveCheck` **Expiry notice bodies and the notice sequence.** While chat is up, open each 'Escrow expired' mail, find the reader with /windows open, /peridotlive window <name>. Keep 44730591 unfunded (expired 2026-09-29 07:29:48 UTC) to collect the later notices before its reclaim. Also whether Live still prints eqstr 6431. **Time-bound:** keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC). **Partial (2026-10-14):** the Universal Chat service was down all session ('temporarily unavailable'), so no body could be opened. The cached inbox lists two 'Escrow expired on personal plot - First Notice' mails (from 'Bristle.@bristle@', Mon Sep 28 17:29:48 2026; from 'Bristle.Pariator', Sun Sep 27 16:39:15 2026) and an older 'Escrow expired on guild plot' (2016); no second notice is listed, but the list may be stale while chat is down. Retry with chat up.
   <sub>Sources: report:liveresearch-4 · G1-04 · summary:s1-mail-notice</sub>
 - **UPK-7** `liveCheck` **Mail date stamping (polish).** Peridot: read a ucs mail's date in RoF2 (ucs stamps UTC). Live: set Windows to UTC and reopen the mailbox (23:39 Sep 27 = Pacific stamping; 06:39 Sep 28 = double conversion). Then stamp Peridot's notices to show what Live shows. *After:* UPK-5.
   <sub>Sources: summary:s1-mail-dates · summary:s6-polish-mail-date · overlap: audit peridot tests 'already listed elsewhere' · report:peridottest-17</sub>
@@ -867,7 +867,7 @@ Questions: Q17.
   <sub>Sources: G3-14 · C3-30 · C4-68 · report:question-21</sub>
 - **NBH-3** `done` **D8: an empty name search lists every neighborhood.** Matches Live: 115 of 229 captures with an empty search list 741 rows (21 list 740, 11 list 1,309). Keep NeighborhoodSearchLimit 0; mark D8 and serverWork.md:87 as Live's.
   <sub>Sources: serverPlan:469 · serverPlan:166 · serverWork:87</sub>
-- **NBH-4** `liveCheck` **D11 against Live: growth matches, pruning may not.** Owned share of public plots peaks at 30% (NeighborhoodGrowthOccupancyPercent 30 fits), but empty public neighborhoods persist (vox 16 of 117; aradune, erollisi 3). Repeat an empty search on vox and aradune: if the same empties remain, remove D11's pruning (NeighborhoodPruneMargin, :458); if gone, keep it. **Time-bound:** due now: vox last captured 2026-09-28 21:48, aradune 2026-09-29 16:24; two weeks later is 2026-10-12/13.
+- **NBH-4** `liveCheck` **D11 against Live: growth matches, pruning may not.** Owned share of public plots peaks at 30% (NeighborhoodGrowthOccupancyPercent 30 fits), but empty public neighborhoods persist (vox 16 of 117; aradune, erollisi 3). Repeat an empty search on vox and aradune: if the same empties remain, remove D11's pruning (NeighborhoodPruneMargin, :458); if gone, keep it. **Time-bound:** due now: vox last captured 2026-09-28 21:48, aradune 2026-09-29 16:24; two weeks later is 2026-10-12/13. **Bristlebane result (2026-10-14):** against the 2026-09-27..30 captures (739 neighborhoods, 104 public, 1 empty public), the fresh list has 742 (3 new, none empty, none gone), and the one empty public neighborhood is still listed and still empty after 14 days: no pruning seen. Vox (16 empty) and Aradune remain for the stronger test; the research characters Zebraeku (vox) and Sitrthtas (aradune) exist in the client's files, on an account not yet named.
   <sub>Sources: serverPlan:472 · serverPlan:458-d11 · serverPlan:167-171</sub>
 - **NBH-5** `done` **A public neighborhood's guild plot window has no Guild row.** RoF2 shows REPW_Guild_Screen only when the nearest neighborhood has a guild; Live hides it on public Maple Country Creek (6 captures). Send guild -1 on public neighborhoods; drop the 'is to compare' sentence.
   <sub>Sources: serverPlan:541</sub>
@@ -908,7 +908,7 @@ Questions: Q16.
   <sub>Sources: G5-10 · C5-39 · C5-42 · chunk5-missed-5 · report:planfix-menus · report:planfix-menuManage · report:planfix-menuMoveToStorage · report:planfix-menuEnter · report:planfix-menuAura · report:planfix-menuGuildCount · report:settled-menus</sub>
 - **MNU-2** `fix` **Enter is menu type 1 on 0x218c.** Build Enter as 1:-1:723 handled on 0x218c (Live: all 31 menus offering it). Rename 0x050c at serverPlan.md:266, :565 and X1 (:201) to the generic use/proximity click: type 8 (Use 5236, the aura toggles) and the near-miss left click within 20 units; never Enter.
   <sub>Sources: G5-18 · report:contradiction-13 · report:crosschunk-15 · report:planfix-enterType1 · report:settled-menus</sub>
-- **MNU-3** `liveCheck` **Interactions on an expired plot.** While 44730591 is expired, Pariator clicks Take a Nap on the bed (record 188) and notes the result; adopt Live's behaviour and fix serverPlan.md:394's owner-menu sentence either way. **Time-bound:** while 44730591 stays expired: from 2026-09-29 07:29:48 UTC until a refund or its reclaim (2026-12-28 07:29 UTC).
+- **MNU-3** `fix` **Interactions on an expired plot.** While 44730591 is expired, Pariator clicks Take a Nap on the bed (record 188) and notes the result; adopt Live's behaviour and fix serverPlan.md:394's owner-menu sentence either way. **Time-bound:** while 44730591 stays expired: from 2026-09-29 07:29:48 UTC until a refund or its reclaim (2026-12-28 07:29 UTC). **Result (2026-10-14, Live claudelink):** with 44730591 still expired (upkeepExpiredTime 1790666988), Pariator opened the bed's menu (record 188: 'Take a Nap', 'Inspect') from the Items window and chose Take a Nap: 'Pariator has fallen to the ground.' 'You lay down to take a nap.' and he lay down (state FEIGN). Live lets the owner use interactions on an expired plot; fix serverPlan.md:394's owner-menu sentence to allow them.
   <sub>Sources: G5-08 · C5-44 · report:contradiction-22 · report:question-13 · report:liveresearch-5 · report:planfix-menuExpiredSentence</sub>
 - **MNU-4** `done` **Menu reply's npcSpawnId.** Keep the NPC item's spawn id at +0x2fc; RoF2 reads it only for types 0xc/0xd.
   <sub>Sources: C5-32</sub>
@@ -926,7 +926,7 @@ Questions: Q13.
 
 - **PAT-1** `fix` **Training dummy labels: ship Live's dbstr rows.** Ship dbstr_us.txt category-28 rows 100-106, 200-205, 300, 400-407, 500-504 with Live's text in a patched RoF2 dbstr_us.txt (RoF2 has none of 100-504; 45 Live dummy menus use them).
   <sub>Sources: G5-05 · C5-36 · C5-37 · report:question-15</sub>
-- **PAT-2** `liveCheck` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked.
+- **PAT-2** `fix` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked. **Result (2026-10-14):** on Live the six RENW_Show*_Btn are checked when the window first opens after login (${Window[RealEstateNeighborhoodWnd].Child[...].Checked} TRUE for all six, none touched), and the character's UI ini stores no filter state, so it is the client's default. Ship <Checked>true</Checked> on the six buttons in RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher.
   <sub>Sources: README:48</sub>
 - **PAT-3** `done` **Neighborhood map labels: Live ships the same file.** Live's maps/neighborhood_2.txt is byte-identical to RoF2's; ship no corrected map.
   <sub>Sources: summary:s5-client-maps</sub>
@@ -1083,11 +1083,9 @@ Questions: Q1.
 - TRO-5 Trophy benefit definitions from Live
 - TRO-7 Live's trophy opt-in rule now
 - POL-3 Does Live run polls; administration follows Live
-- MNU-3 Interactions on an expired plot **(time-bound: while 44730591 stays expired: from 2026-09-29 07:29:48 UTC until a refund or its reclaim (2026-12-28 07:29 UTC))**
-- PAT-2 Neighborhood window filters: checked on Live?
 - EXT-17 Regular zones on Live that load housing archives
 
-Time-bound ones: UPK-6, RCL-2, NBH-4, MNU-3. The upkeep experiment (UPK-12 to UPK-22) needs an unbroken 36-48 h window but no calendar date.
+Time-bound ones: UPK-6, RCL-2, NBH-4. The upkeep experiment (UPK-12 to UPK-22) needs an unbroken 36-48 h window but no calendar date.
 
 ### Client analysis
 
