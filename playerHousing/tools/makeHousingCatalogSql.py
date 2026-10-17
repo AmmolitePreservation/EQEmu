@@ -23,8 +23,10 @@ content = os.path.join(here, '..', 'content')
 liveMaster = None
 neighborhoodDefinitionId = 2
 neighborhoodZoneId = 712
-regionBelowGround = 100.0
-regionAboveGround = 900.0
+# Live's yard regions are boxes centered on the plot's ground, reaching this far above and below it: the client's containment test
+# (eqgame 2026-09-17, 0x14066ef20) takes |local| <= 1 on each axis of a region's matrix, whose vertical axis reads 350 or 450.
+plotRegionHalfHeight = 350.0
+guildPlotRegionHalfHeight = 450.0
 stoneMatchUnits = 6.0
 # Live's alternate currency ids (eqlib's ALTCURRENCY) and the EQEmu expansion (Expansion::ExpansionNumber) each arrived in.
 currencyExpansions = {10: 13, 11: 13, 12: 13, 13: 13, 14: 14, 15: 15}
@@ -176,8 +178,8 @@ def main():
     regionId = int(live['areaId'])
     ground = plot['center'][2]
     regions.append(dict(id=regionId, name=plot['address'], x=plot['center'][0], y=plot['center'][1],
-                        z=ground + (regionAboveGround - regionBelowGround) / 2, sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
-                        sizeZ=regionBelowGround + regionAboveGround, heading=plot['heading']))
+                        z=ground, sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
+                        sizeZ=2 * (guildPlotRegionHalfHeight if guild else plotRegionHalfHeight), heading=plot['heading']))
     origin = (*plot['doorPosition'], plot['heading']) if guild else stones[plot['door']]
     definitions.append(dict(id=liveId, name=plot['address'], type=typeGuildPlot if guild else typePlot, region=regionId, purchase=purchase,
                             upkeep=upkeep, houses=int(live['maxChildren']), maxItems=int(live['maxItems']), vault=int(live['maxNonRealEstateItems']),
