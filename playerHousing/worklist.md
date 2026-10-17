@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 166, liveCheck 11, clientAnalysis 25, peridotTest 36, question 28, done 35; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 167, liveCheck 10, clientAnalysis 25, peridotTest 36, question 28, done 35; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -686,7 +686,7 @@ Questions: Q18.
   <sub>Sources: summary:s3-static</sub>
 - **NPC-14** `liveCheck` **The Sunrise Hills stage show, per instance (polish).** Record whole-zone behavior for days in several instances (/peridotlive behavior start; keep the frame rate normal and chat filters on); 2 recordings exist (bristle 1634, 2026-09-30/10-01). Then build each instance's show on its own timer.
   <sub>Sources: summary:s3-shows · summary:s3-recorder · summary:s3-longruns · summary:s3-limits · summary:s3-observations-instances · summary:s5-shows · summary:s6-polish-npc-behavior · serverWork:91</sub>
-- **NPC-15** `liveCheck` **Guild Teleportation Device destinations (last phase).** Capture where each of the Teleportation Assistant's 37 keys sends a member (zone and landing point), then author them.
+- **NPC-15** `fix` **Guild Teleportation Device destinations (last phase).** Capture where each of the Teleportation Assistant's 37 keys sends a member (zone and landing point), then author them. **Captured (Live, 2026-10-16, Pariator in The Templar's Palatial hall; content/guildGeodeDestinations.tsv):** the Teleportation Assistant sells 37 keys (the file keeps his list order, item ids and values, 10 pp to 550 pp); he charged value x 1.05 for every key but Cloudy Stone of Veeshan and Fuligan Soulstone of Innoruuk (10094, 10092), which cost value x 2.1. Handed one, he aligns the portal about 8 s later ('The Guildhall Portal has been aligned to X.') and greets later visitors with the alignment, which lasts until the next key; he consumes every crystal he's handed, a whole stack included. Stepping onto the Device's platform at (107.25, -154.75) opens a LargeDialogWindow, 'The Crystal Geode': 'The crystal geode is set to go to X.  Would you like to travel there now?'; Yes zones the character to a fixed point and heading per key. Headings are MQ's degrees clockwise from north; Peridot's 0-512 heading is (360 - degrees) x 512 / 360 mod 512, so 360.00 is heading 0. 34 keys landed. The Guild Standard splinter's Yes moved nobody and said nothing (The Templar has no standard planted). Scarred Grove and Hodstock Hills were refused after about 35 s ('part of an expansion that you do not yet own'), leaving the character at the hall's entrance. The Plane of Sky refuses every teleport (the anchor spell, Throne of Heroes, Gate); falling off an island zones into East Freeport's bay. **Fix:** author the Assistant's list and the landings. Still unknown: the two refused keys' landing points and where the splinter goes with a standard planted. Which destinations Peridot offers depends on the zones RoF2 can load; that is the owner's call.
   <sub>Sources: serverWork:165 · summary:s6-teleport-device</sub>
 - **NPC-16** `clientAnalysis` **Finish RoF2's race table and check NPC-item races.** raceTable.py misses races pushed from a register (e.g. 1, 3, 27); finish it and check every Peridot NPC item's race against its tag (all 41 NGH_ items already resolve: XA:A10).
   <sub>Sources: XA:A10 · XA:A11</sub>
@@ -1037,55 +1037,18 @@ Questions: Q1.
 
 ### Live checks
 
-- CAT-5 106 Brimming Way's upkeep
 - REG-1 Region extents
-- REG-3 Live clears regions outside housing zones
-- ZIN-8 Zone-entry line, then the send order
-- PLC-9 Does the begin-placement object carry the tilts
-- PLC-14 Live's begin-placement permission list
-- NPC-6 The pool's aura radius and application
-- NPC-7 A visitor using another guild's services
-- NPC-10 Hyredel Swiftstride's function
 - NPC-12 Gebsle Nogflop's roaming route (polish)
 - NPC-14 The Sunrise Hills stage show, per instance (polish)
-- NPC-15 Guild Teleportation Device destinations (last phase)
 - UPK-6 Expiry notice bodies and the notice sequence **(time-bound: keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC))**
-- UPK-7 Mail date stamping (polish)
-- UPK-8 Who may deposit into a property's escrow
-- UPK-9 Does Live push new balances to an idle client
-- UPK-10 Add Day / Add Week (0x2aa6 types 3-6)
-- UPK-11 Reductions (special houses) as Live charges them
-- UPK-12 Experiment: accounts, characters and neighborhoods
-- UPK-14 Experiment step 1: recording on everywhere
-- UPK-15 Experiment step 2: park the observers
-- UPK-16 Experiment step 3: buy the plots in pairs
-- UPK-17 Experiment step 4: setup check
-- UPK-18 Experiment, optional: an open Manage window across a charge
-- UPK-19 Experiment step 5: hands off about 36 hours
-- UPK-20 Experiment step 6: import
-- UPK-21 Experiment probes if a window comes up empty
-- UPK-22 Experiment: read the outcome
 - RCL-2 Observe the 90-day reclaim **(time-bound: after 2026-11-11 19:00 UTC; 2026-12-10 20:00 UTC; optionally 2026-12-28 07:30 UTC)**
+- RCL-3 What Live does when a plot owner is deleted
 - ACC-3 Permissions pass: which bit gates which menu entry
 - ACC-5 Default guild rank permissions for real estate
-- ACC-7 Live's hall zone id: is bit 15 set
-- STT-3 Plot limit and its scope
-- STT-6 Trade and parcel a house holding items
-- STT-8 Transfer on Live: offline targets and the moved items' owners
-- INT-3 Uncaptured interiors' safe and arrival points
-- INT-7 Which anchor when several are placed; how the gate spells are cast
-- INT-9 How Live reports Store All and Pack/Unpack results
-- INT-11 Front-door clicks in a house and a hall
-- DOR-4 Click a vacant plot's border plaque and a guild square
-- NBH-4 D11 against Live: growth matches, pruning may not **(time-bound: due now: vox last captured 2026-09-28 21:48, aradune 2026-09-29 16:24; two weeks later is 2026-10-12/13)**
-- TRO-2 Trophy opt-out of other members
-- TRO-4 Base personal trophy slots
-- TRO-5 Trophy benefit definitions from Live
-- TRO-7 Live's trophy opt-in rule now
-- POL-3 Does Live run polls; administration follows Live
+- INT-14 Copy lifecycle details
 - EXT-17 Regular zones on Live that load housing archives
 
-Time-bound ones: UPK-6, RCL-2, NBH-4. The upkeep experiment (UPK-12 to UPK-22) needs an unbroken 36-48 h window but no calendar date.
+Time-bound ones: UPK-6, RCL-2.
 
 ### Client analysis
 
