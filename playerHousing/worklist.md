@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 167, liveCheck 7, clientAnalysis 25, peridotTest 36, question 28, done 38; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 167, liveCheck 6, clientAnalysis 25, peridotTest 36, question 28, done 39; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -574,7 +574,7 @@ Questions: Q19, Q20.
 
 ### regions (REG)
 
-- **REG-1** `liveCheck` **Region extents.** On 104 Market Street (44730591), /peridotlive dump just inside and outside each side, then levitating about 100 and 500 above; compare currentYardId with yardCheck.py. Settles '100 below, 900 above' (size_z 1000, z = ground + 400). **Horizontal result (2026-10-14):** on Maple Country Creek's 105 Vanward Street (44730582; catalog region 163: center at its marker, 168.16 x 170.0, heading 185), Pariator dumped 8 units inside and 8 units outside the middle of each side: all four inside points report currentYardId 44730582, all four outside points -1 with currentRealEstateId the neighborhood (44730520). The catalog's footprint matches Live. The vertical reach (100 below, 900 above) can't be tested without flying, which the Live accounts don't do; it stays the plan's convention.
+- **REG-1** `done` **Region extents.** On 104 Market Street (44730591), /peridotlive dump just inside and outside each side, then levitating about 100 and 500 above; compare currentYardId with yardCheck.py. Settles '100 below, 900 above' (size_z 1000, z = ground + 400). **Horizontal result (2026-10-14):** on Maple Country Creek's 105 Vanward Street (44730582; catalog region 163: center at its marker, 168.16 x 170.0, heading 185), Pariator dumped 8 units inside and 8 units outside the middle of each side: all four inside points report currentYardId 44730582, all four outside points -1 with currentRealEstateId the neighborhood (44730520). The catalog's footprint matches Live. **Vertical reach (Live client, 2026-10-17):** the region object MQ2PeridotLive 2.11 dumps holds each region as a 4x4 matrix from +0x0c: three half-axis vectors (+0x0c, +0x1c, +0x2c) and the center (+0x3c). The client's containment test (eqgame 2026-09-17: the region walk 0x1401ed750 calls 0x14066dc60, which inverts the matrix in 0x140269b60 and tests the point in 0x14066ef20) transforms the point into the box's space and requires |local| <= 1.0 on all three axes, so a region is symmetric about its center. In The Templar Village II (instance 4181) the 71 player plots' vertical half-axis is 350 and the four guild plots' (regions 174-177) 450; the centers sit at the plot's ground (region 101: z 0.127, sunriseHillsLotSquares' value), and the horizontal half-axes match the catalog's footprints (guild plots 175.5 by 350, the catalog's 351.2 by 699.8). **Done:** makeHousingCatalogSql.py centers each region on its plot's ground with size_z 700 (guild plots 900), sql/housingCatalog.sql regenerated, testHousingCatalog.py checks both, and serverPlan.md's GM region tool uses 350 each way. The guild plots' template ground differs from Live's region centers by up to 4.6 (174: 110 against 114.57), well inside the 450.
   <sub>Sources: G20 · C4-19 · C4-43 · C3-19 · report:liveresearch-7</sub>
 - **REG-2** `fix` **Empty 0x49df at every RoF2 zone-in, in every zone.** The region list survives zoning (created once at 0x53629c; cleared only by the 0x49df case, 0x4ca7c7) and records never clear (REC-13), so with +0x8c = -1 a remembered plot matches by coordinates (0x4b3149) and brings Sell, Transfer and Manage for an unrelated plot. Peridot sends 0x49df only when housingActive() (housing.cpp:27-29, :287): send count 0 in housing-off, catalog-less and dormant zones too.
   <sub>Sources: XA:Z10 · XA:PM14 · XA:DZ9 · XA:Zv1</sub>
@@ -1037,7 +1037,6 @@ Questions: Q1.
 
 ### Live checks
 
-- REG-1 Region extents
 - NPC-12 Gebsle Nogflop's roaming route (polish)
 - NPC-14 The Sunrise Hills stage show, per instance (polish)
 - UPK-6 Expiry notice bodies and the notice sequence **(time-bound: keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC))**

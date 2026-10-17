@@ -73,8 +73,11 @@ check(f"plot 171 is Live's {first['address']}", "SELECT CONCAT_WS(' ', name, typ
       f"{first['address']} 4 {live['areaId']} {live['maxItems']} 0 {live['maxNpcItems']} {live['costDefinition']} {live['upkeepDefinition']}")
 check('its layout origin is its border stone', "SELECT CONCAT_WS(' ', ROUND(layout_origin_x, 2), ROUND(layout_origin_y, 2), ROUND(layout_heading)) FROM real_estate_definitions WHERE id = 171",
       f'{float(stone[2]):.2f} {float(stone[3]):.2f} {round(float(stone[5]))}')
-check('its region is its box, 100 below its ground to 900 above', "SELECT CONCAT_WS(' ', ROUND(x, 2), ROUND(y, 2), ROUND(z, 2), ROUND(size_x, 2), ROUND(size_y, 2), size_z, heading) FROM real_estate_regions WHERE id = 171",
-      f"{first['center'][0]:.2f} {first['center'][1]:.2f} {first['center'][2] + 400:.2f} {first['sizeAcross']:.2f} {first['sizeAlong']:.2f} 1000 {first['heading']:g}")
+check('its region is its box, 350 below its ground to 350 above', "SELECT CONCAT_WS(' ', ROUND(x, 2), ROUND(y, 2), ROUND(z, 2), ROUND(size_x, 2), ROUND(size_y, 2), size_z, heading) FROM real_estate_regions WHERE id = 171",
+      f"{first['center'][0]:.2f} {first['center'][1]:.2f} {first['center'][2]:.2f} {first['sizeAcross']:.2f} {first['sizeAlong']:.2f} 700 {first['heading']:g}")
+guildPlot = next(plot for plot in template if plot['address'] == '200 Guild Way')
+check("a guild plot's region reaches 450 below and above its ground", "SELECT CONCAT_WS(' ', ROUND(r.z, 2), r.size_z) FROM real_estate_regions r JOIN real_estate_definitions d ON d.region_id = r.id WHERE d.name = '200 Guild Way'",
+      f"{guildPlot['center'][2]:.2f} 900")
 check('guild plot 200 Guild Way', "SELECT CONCAT_WS(' ', id BETWEEN 187 AND 190, type, max_items, max_non_real_estate_items, max_pet_items, purchase_cost_id, upkeep_cost_id, ROUND(layout_origin_x, 1), ROUND(layout_origin_y, 1), layout_heading) FROM real_estate_definitions WHERE name = '200 Guild Way'",
       '1 8 210 0 12 16 11 2689.8 2633.5 123')
 check('houses: three-room House, one-room House, Stone Manor', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, instance_zone_id, max_items, max_non_real_estate_items, max_pet_items, upkeep_cost_id) ORDER BY id) FROM real_estate_definitions WHERE id IN (5, 18, 34)",
