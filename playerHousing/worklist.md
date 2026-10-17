@@ -221,9 +221,9 @@ In order: process and foundational first, then the extras (structure before cont
 - **Why Live can't dictate it:** internal to the server; the client sees only the spawn.
 - <sub>Sources: C5-52 · pending:augmentater-held-models · summary:s6-owner-decisions-held-models · summary:s5-augmentater-additions · serverPlan:404 · serverWork:76-content · overlap: audit C5-52 · pending:augmentater-look · summary:s6-owner-decisions-augment-storage · serverPlan:403 · serverWork:76</sub>
 
-### Q19. Character deletion and housing rows (settled by Live, after RCL-3)
+### Q19. Character deletion and housing rows (settled by Live)
 
-- **Settled by Live:** follow what Live does when an owner is deleted (RCL-3).
+- **Settled by Live (RCL-3):** deleting an owner is never refused; the plot keeps its own upkeep clock, expires and is reclaimed (within about 30.5 hours of the deletion, its escrow already empty), and its placed items are lost: no mail, parcel or item reaches the account's other characters.
 
 - **Question:** What do a deleted owner's properties, placed items, transfer offers and poll votes become? database_schema.h's character map (lines 70, 77, 78) covers only anchors and the two trophy tables.
 - **Options:** (a) hard delete = reclaim (pack, release the plot); soft delete keeps everything; (b) other.
