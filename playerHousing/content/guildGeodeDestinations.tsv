@@ -1,0 +1,38 @@
+listRow	itemId	name	valueCopper	paidCopper	destination	zone	y	x	z	headingDegrees	note
+1	76005	Shattered Bone of the Dreadlands	30000	31499	the Dreadlands	dreadlands	3049.00	9658.00	1049.28	184.92	
+2	64191	Dragonscale Faycite	125000	131249	Dragonscale Hills	dragonscale	1440.00	1679.00	210.86	43.59	
+3	88746	Fragment of the Combine Spire	325000	341249	Lceanium	lceanium	-956.00	750.00	-44.32	270.00	
+4	76010	Moss Agate of Stonebrunt	30000	31499	the Stonebrunt Mountains	stonebrunt	-4531.00	673.00	-10.62	326.95	
+5	76006	Frozen Shard of Iceclad	30000	31499	the Iceclad Ocean	iceclad	-630.00	4925.00	112.79	61.17	
+6	88737	Splinter from a Guild Standard	125000	131249	your Guild Standard						no zone change: The Templar has no guild standard planted
+7	88992	Tri-Spirit Embossed Token	475000	498749	Shar Vahl, Divided	sharvahltwo	0.00	-279.00	-189.04	270.00	
+8	76000	Karana Plains Pebble	10000	10499	North Karana	northkarana	-3685.00	1205.00	-7.87	180.00	
+9	10094	Cloudy Stone of Veeshan	35000	73499	the Plane of Sky	airplane	1415.00	614.00	-662.93	164.53	
+10	76002	Lavastorm Magma	20000	20999	the Lavastorm Mountains	lavastorm	460.00	460.00	-84.82	40.78	
+11	88991	Gem of the Maiden's Tempest	450000	472499	Maiden's Eye	maidentwo	-971.00	-1273.00	-107.58	323.43	
+12	88735	Arcstone Spirit Sapphire	75000	78749	Arcstone, Isle of Spirits	arcstone	-242.00	1644.00	5.42	358.59	
+13	76003	Opal of Toxxulia	10000	10499	Toxxulia	toxxulia	-1508.00	-1657.00	71.48	268.59	
+14	88736	Goru'kar Mesa Sandstone	75000	78749	the Goru'Kar Mesa	mesa	-2050.00	-85.00	8.15	360.00	
+15	10092	Fuligan Soulstone of Innoruuk	25000	52499	the Plane of Hate	hateplaneb	656.00	-393.00	3.81	98.43	
+16	88995	Charred Rune-Etched Stone	550000	577499	the Scarred Grove						refused: the account does not own the expansion
+17	88988	Miniature Worker's Sledge Mallet	350000	367499	Overthere	overtheretwo	2664.00	1873.00	-20.04	180.00	
+18	88742	Chunk of Argathian Steel	225000	236249	Argath	argath	288.00	516.00	13.70	45.00	
+19	76001	Grassy Pebble of The Commonlands	10000	10499	the Commonlands	commonlands	223.00	1783.00	38.23	135.00	
+20	88989	Burning Lamp	375000	393749	Stratos	stratos	151.00	152.00	54.69	228.51	
+21	88739	Broken Timestone	100000	104999	Plane of Time	potimea	-123.00	0.00	7.81	182.10	
+22	88740	Unrefined Brellium Ore	150000	157499	Brell's Rest	brellsrest	-619.00	-23.00	35.27	357.89	
+23	88745	Drowned Katta Castrum Powerstone	300000	314999	Katta Castrum: Deluge	kattacastrumb	-29.00	2.00	8.96	4.92	
+24	88741	Crystallized Dream of the Feerrott	200000	209999	the Feerrott	feerrott2	1253.00	1222.00	8.54	180.00	
+25	88993	Medal of Heroes	500000	524999	Laurion Inn	laurioninn	-357.00	-1270.00	-11.63	264.37	
+26	88994	Broken Auretite Chain	525000	551249	Hodstock Hills						refused: the account does not own the expansion
+27	88990	Brilliant Frigid Gemstone	400000	419999	Eastern Wastes	eastwastestwo	-2449.00	-2323.00	-2.80	360.00	
+28	88744	Stormstone of the West	275000	288749	Ethernere Tainted West Karana	ethernere	-1208.00	351.00	-317.32	360.00	
+29	76011	Chipped Shard of Slaughter	50000	52499	the Wall of Slaughter	wallofslaughter	13.00	-943.00	129.30	270.70	
+30	88743	Stone of the Shard's Fall	250000	262499	Shard's Landing	shardslanding	211.00	-110.00	2.95	9.14	
+31	76012	Etched Marble of Barindu	50000	52499	the Gardens of Barindu	barindu	-515.00	209.00	-117.43	1.40	
+32	76004	Forest Emerald of Faydark	10000	10499	Greater Faydark	gfaydark	-2015.75	-437.50	0.36	23.90	
+33	76009	Shadowed Sand of the Twilight Sea	40000	41999	the Twilight Sea	twilight	-656.00	-125.00	-21.97	292.50	
+34	76070	Undershore Coral	35000	36749	Undershore	eastkorlach	-1002.00	-750.00	44.63	187.73	
+35	76007	Velium Shard of Cobalt Scar	50000	52499	Cobalt Scar	cobaltscar	-1065.00	-1634.00	297.67	278.43	
+36	88738	Katta Castrum Powerstone	90000	94499	Katta Castrum	kattacastrum	39.00	3.00	11.59	179.29	
+37	89000	Othmir Clamshell	425000	446249	Cobalt Scar	cobaltscartwo	-864.00	-456.00	79.71	355.07	
