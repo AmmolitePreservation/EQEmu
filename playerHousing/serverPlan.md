@@ -451,7 +451,7 @@ Requests (224 bytes): **type 0** name search (neighborhood, player or guild name
 
 ### S9, access (`0x3146`, `0x485d`, `0x3968`)
 
-The client sends a property's whole list (every 3 s while it's being edited). The server checks **may edit** (GM, owner, or Manage) and **the client's grid rule** (a viewer only edits groups below their own), validates the names (existing characters, or the club keys), replaces the list in a transaction, sends `0x485d` to everyone who knows the property, and raises the access event; **a player inside an interior who loses Enter is moved out to the plot**.
+The client sends a property's whole list (every 3 s while it's being edited). The server checks **may edit** (GM, owner, or Manage) and **the client's grid rule** (a viewer only edits groups below their own), validates the names (existing characters, or the club keys), replaces the list in a transaction, sends `0x485d` to everyone who knows the property, and raises the access event; **a player inside an interior who loses Enter is moved out, with no message, to the property's exit point (where its front door lets out)**.
 
 ### Live's behavior (checked)
 
