@@ -194,7 +194,6 @@ SET(repositories
     repositories/base/base_character_pet_info_repository.h
     repositories/base/base_character_pet_inventory_repository.h
     repositories/base/base_character_potionbelt_repository.h
-    repositories/base/base_character_real_estate_anchors_repository.h
     repositories/base/base_character_skills_repository.h
     repositories/base/base_character_spells_repository.h
     repositories/base/base_character_tasks_repository.h
@@ -312,6 +311,7 @@ SET(repositories
     repositories/base/base_real_estate_costs_repository.h
     repositories/base/base_real_estate_definition_children_repository.h
     repositories/base/base_real_estate_definitions_repository.h
+    repositories/base/base_real_estate_item_looks_repository.h
     repositories/base/base_real_estate_items_repository.h
     repositories/base/base_real_estate_neighborhood_words_repository.h
     repositories/base/base_real_estate_npc_items_repository.h
@@ -321,7 +321,7 @@ SET(repositories
     repositories/base/base_real_estate_polls_repository.h
     repositories/base/base_real_estate_properties_repository.h
     repositories/base/base_real_estate_regions_repository.h
-    repositories/base/base_real_estate_transfer_offers_repository.h
+    repositories/base/base_real_estate_zone_templates_repository.h
     repositories/base/base_reports_repository.h
     repositories/base/base_respawn_times_repository.h
     repositories/base/base_rule_sets_repository.h
@@ -412,7 +412,6 @@ SET(repositories
     repositories/character_pet_info_repository.h
     repositories/character_pet_inventory_repository.h
     repositories/character_potionbelt_repository.h
-    repositories/character_real_estate_anchors_repository.h
     repositories/character_skills_repository.h
     repositories/character_spells_repository.h
     repositories/character_tasks_repository.h
@@ -530,6 +529,7 @@ SET(repositories
     repositories/real_estate_costs_repository.h
     repositories/real_estate_definition_children_repository.h
     repositories/real_estate_definitions_repository.h
+    repositories/real_estate_item_looks_repository.h
     repositories/real_estate_items_repository.h
     repositories/real_estate_neighborhood_words_repository.h
     repositories/real_estate_npc_items_repository.h
@@ -539,7 +539,7 @@ SET(repositories
     repositories/real_estate_polls_repository.h
     repositories/real_estate_properties_repository.h
     repositories/real_estate_regions_repository.h
-    repositories/real_estate_transfer_offers_repository.h
+    repositories/real_estate_zone_templates_repository.h
     repositories/reports_repository.h
     repositories/respawn_times_repository.h
     repositories/rule_sets_repository.h

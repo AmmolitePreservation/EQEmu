@@ -1,11 +1,11 @@
-#ifndef EQEMU_CHARACTER_REAL_ESTATE_ANCHORS_REPOSITORY_H
-#define EQEMU_CHARACTER_REAL_ESTATE_ANCHORS_REPOSITORY_H
+#ifndef EQEMU_REAL_ESTATE_ITEM_LOOKS_REPOSITORY_H
+#define EQEMU_REAL_ESTATE_ITEM_LOOKS_REPOSITORY_H
 
 #include "../database.h"
 #include "../strings.h"
-#include "base/base_character_real_estate_anchors_repository.h"
+#include "base/base_real_estate_item_looks_repository.h"
 
-class CharacterRealEstateAnchorsRepository: public BaseCharacterRealEstateAnchorsRepository {
+class RealEstateItemLooksRepository: public BaseRealEstateItemLooksRepository {
 public:
 
     /**
@@ -32,10 +32,10 @@ public:
      *
      * Example custom methods in a repository
      *
-     * CharacterRealEstateAnchorsRepository::GetByZoneAndVersion(int zone_id, int zone_version)
-     * CharacterRealEstateAnchorsRepository::GetWhereNeverExpires()
-     * CharacterRealEstateAnchorsRepository::GetWhereXAndY()
-     * CharacterRealEstateAnchorsRepository::DeleteWhereXAndY()
+     * RealEstateItemLooksRepository::GetByZoneAndVersion(int zone_id, int zone_version)
+     * RealEstateItemLooksRepository::GetWhereNeverExpires()
+     * RealEstateItemLooksRepository::GetWhereXAndY()
+     * RealEstateItemLooksRepository::DeleteWhereXAndY()
      *
      * Most of the above could be covered by base methods, but if you as a developer
      * find yourself re-using logic for other parts of the code, its best to just make a
@@ -47,4 +47,4 @@ public:
 
 };
 
-#endif //EQEMU_CHARACTER_REAL_ESTATE_ANCHORS_REPOSITORY_H
+#endif //EQEMU_REAL_ESTATE_ITEM_LOOKS_REPOSITORY_H

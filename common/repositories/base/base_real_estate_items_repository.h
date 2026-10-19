@@ -23,6 +23,7 @@ public:
 		uint32_t    property_id;
 		uint32_t    owner_character_id;
 		uint8_t     placed;
+		uint32_t    upkeep_expired_at;
 		float       heading;
 		float       pitch;
 		float       roll;
@@ -58,6 +59,7 @@ public:
 			"property_id",
 			"owner_character_id",
 			"placed",
+			"upkeep_expired_at",
 			"heading",
 			"pitch",
 			"roll",
@@ -89,6 +91,7 @@ public:
 			"property_id",
 			"owner_character_id",
 			"placed",
+			"upkeep_expired_at",
 			"heading",
 			"pitch",
 			"roll",
@@ -154,10 +157,11 @@ public:
 		e.property_id         = 0;
 		e.owner_character_id  = 0;
 		e.placed              = 0;
+		e.upkeep_expired_at   = 0;
 		e.heading             = 0;
 		e.pitch               = 0;
 		e.roll                = 0;
-		e.scale               = 1;
+		e.scale               = 0;
 		e.x                   = 0;
 		e.y                   = 0;
 		e.z                   = 0;
@@ -215,27 +219,28 @@ public:
 			e.property_id         = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.owner_character_id  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.placed              = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.heading             = row[4] ? strtof(row[4], nullptr) : 0;
-			e.pitch               = row[5] ? strtof(row[5], nullptr) : 0;
-			e.roll                = row[6] ? strtof(row[6], nullptr) : 0;
-			e.scale               = row[7] ? strtof(row[7], nullptr) : 1;
-			e.x                   = row[8] ? strtof(row[8], nullptr) : 0;
-			e.y                   = row[9] ? strtof(row[9], nullptr) : 0;
-			e.z                   = row[10] ? strtof(row[10], nullptr) : 0;
-			e.item_id             = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.charges             = row[12] ? static_cast<uint16_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.color               = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.augment_one         = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.augment_two         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.augment_three       = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.augment_four        = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.augment_five        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.augment_six         = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.instnodrop          = row[20] ? static_cast<uint8_t>(strtoul(row[20], nullptr, 10)) : 0;
-			e.custom_data         = row[21] ? row[21] : "";
-			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
-			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
-			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
+			e.upkeep_expired_at   = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.heading             = row[5] ? strtof(row[5], nullptr) : 0;
+			e.pitch               = row[6] ? strtof(row[6], nullptr) : 0;
+			e.roll                = row[7] ? strtof(row[7], nullptr) : 0;
+			e.scale               = row[8] ? strtof(row[8], nullptr) : 0;
+			e.x                   = row[9] ? strtof(row[9], nullptr) : 0;
+			e.y                   = row[10] ? strtof(row[10], nullptr) : 0;
+			e.z                   = row[11] ? strtof(row[11], nullptr) : 0;
+			e.item_id             = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
+			e.charges             = row[13] ? static_cast<uint16_t>(strtoul(row[13], nullptr, 10)) : 0;
+			e.color               = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
+			e.augment_one         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.augment_two         = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.augment_three       = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.augment_four        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.augment_five        = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
+			e.augment_six         = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.instnodrop          = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.custom_data         = row[22] ? row[22] : "";
+			e.ornament_icon       = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
+			e.ornament_idfile     = row[24] ? static_cast<uint32_t>(strtoul(row[24], nullptr, 10)) : 0;
+			e.ornament_hero_model = row[25] ? static_cast<int32_t>(atoi(row[25])) : 0;
 
 			return e;
 		}
@@ -272,27 +277,28 @@ public:
 		v.push_back(columns[1] + " = " + std::to_string(e.property_id));
 		v.push_back(columns[2] + " = " + std::to_string(e.owner_character_id));
 		v.push_back(columns[3] + " = " + std::to_string(e.placed));
-		v.push_back(columns[4] + " = " + std::to_string(e.heading));
-		v.push_back(columns[5] + " = " + std::to_string(e.pitch));
-		v.push_back(columns[6] + " = " + std::to_string(e.roll));
-		v.push_back(columns[7] + " = " + std::to_string(e.scale));
-		v.push_back(columns[8] + " = " + std::to_string(e.x));
-		v.push_back(columns[9] + " = " + std::to_string(e.y));
-		v.push_back(columns[10] + " = " + std::to_string(e.z));
-		v.push_back(columns[11] + " = " + std::to_string(e.item_id));
-		v.push_back(columns[12] + " = " + std::to_string(e.charges));
-		v.push_back(columns[13] + " = " + std::to_string(e.color));
-		v.push_back(columns[14] + " = " + std::to_string(e.augment_one));
-		v.push_back(columns[15] + " = " + std::to_string(e.augment_two));
-		v.push_back(columns[16] + " = " + std::to_string(e.augment_three));
-		v.push_back(columns[17] + " = " + std::to_string(e.augment_four));
-		v.push_back(columns[18] + " = " + std::to_string(e.augment_five));
-		v.push_back(columns[19] + " = " + std::to_string(e.augment_six));
-		v.push_back(columns[20] + " = " + std::to_string(e.instnodrop));
-		v.push_back(columns[21] + " = '" + Strings::Escape(e.custom_data) + "'");
-		v.push_back(columns[22] + " = " + std::to_string(e.ornament_icon));
-		v.push_back(columns[23] + " = " + std::to_string(e.ornament_idfile));
-		v.push_back(columns[24] + " = " + std::to_string(e.ornament_hero_model));
+		v.push_back(columns[4] + " = " + std::to_string(e.upkeep_expired_at));
+		v.push_back(columns[5] + " = " + std::to_string(e.heading));
+		v.push_back(columns[6] + " = " + std::to_string(e.pitch));
+		v.push_back(columns[7] + " = " + std::to_string(e.roll));
+		v.push_back(columns[8] + " = " + std::to_string(e.scale));
+		v.push_back(columns[9] + " = " + std::to_string(e.x));
+		v.push_back(columns[10] + " = " + std::to_string(e.y));
+		v.push_back(columns[11] + " = " + std::to_string(e.z));
+		v.push_back(columns[12] + " = " + std::to_string(e.item_id));
+		v.push_back(columns[13] + " = " + std::to_string(e.charges));
+		v.push_back(columns[14] + " = " + std::to_string(e.color));
+		v.push_back(columns[15] + " = " + std::to_string(e.augment_one));
+		v.push_back(columns[16] + " = " + std::to_string(e.augment_two));
+		v.push_back(columns[17] + " = " + std::to_string(e.augment_three));
+		v.push_back(columns[18] + " = " + std::to_string(e.augment_four));
+		v.push_back(columns[19] + " = " + std::to_string(e.augment_five));
+		v.push_back(columns[20] + " = " + std::to_string(e.augment_six));
+		v.push_back(columns[21] + " = " + std::to_string(e.instnodrop));
+		v.push_back(columns[22] + " = '" + Strings::Escape(e.custom_data) + "'");
+		v.push_back(columns[23] + " = " + std::to_string(e.ornament_icon));
+		v.push_back(columns[24] + " = " + std::to_string(e.ornament_idfile));
+		v.push_back(columns[25] + " = " + std::to_string(e.ornament_hero_model));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -318,6 +324,7 @@ public:
 		v.push_back(std::to_string(e.property_id));
 		v.push_back(std::to_string(e.owner_character_id));
 		v.push_back(std::to_string(e.placed));
+		v.push_back(std::to_string(e.upkeep_expired_at));
 		v.push_back(std::to_string(e.heading));
 		v.push_back(std::to_string(e.pitch));
 		v.push_back(std::to_string(e.roll));
@@ -372,6 +379,7 @@ public:
 			v.push_back(std::to_string(e.property_id));
 			v.push_back(std::to_string(e.owner_character_id));
 			v.push_back(std::to_string(e.placed));
+			v.push_back(std::to_string(e.upkeep_expired_at));
 			v.push_back(std::to_string(e.heading));
 			v.push_back(std::to_string(e.pitch));
 			v.push_back(std::to_string(e.roll));
@@ -430,27 +438,28 @@ public:
 			e.property_id         = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.owner_character_id  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.placed              = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.heading             = row[4] ? strtof(row[4], nullptr) : 0;
-			e.pitch               = row[5] ? strtof(row[5], nullptr) : 0;
-			e.roll                = row[6] ? strtof(row[6], nullptr) : 0;
-			e.scale               = row[7] ? strtof(row[7], nullptr) : 1;
-			e.x                   = row[8] ? strtof(row[8], nullptr) : 0;
-			e.y                   = row[9] ? strtof(row[9], nullptr) : 0;
-			e.z                   = row[10] ? strtof(row[10], nullptr) : 0;
-			e.item_id             = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.charges             = row[12] ? static_cast<uint16_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.color               = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.augment_one         = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.augment_two         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.augment_three       = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.augment_four        = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.augment_five        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.augment_six         = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.instnodrop          = row[20] ? static_cast<uint8_t>(strtoul(row[20], nullptr, 10)) : 0;
-			e.custom_data         = row[21] ? row[21] : "";
-			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
-			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
-			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
+			e.upkeep_expired_at   = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.heading             = row[5] ? strtof(row[5], nullptr) : 0;
+			e.pitch               = row[6] ? strtof(row[6], nullptr) : 0;
+			e.roll                = row[7] ? strtof(row[7], nullptr) : 0;
+			e.scale               = row[8] ? strtof(row[8], nullptr) : 0;
+			e.x                   = row[9] ? strtof(row[9], nullptr) : 0;
+			e.y                   = row[10] ? strtof(row[10], nullptr) : 0;
+			e.z                   = row[11] ? strtof(row[11], nullptr) : 0;
+			e.item_id             = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
+			e.charges             = row[13] ? static_cast<uint16_t>(strtoul(row[13], nullptr, 10)) : 0;
+			e.color               = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
+			e.augment_one         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.augment_two         = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.augment_three       = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.augment_four        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.augment_five        = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
+			e.augment_six         = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.instnodrop          = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.custom_data         = row[22] ? row[22] : "";
+			e.ornament_icon       = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
+			e.ornament_idfile     = row[24] ? static_cast<uint32_t>(strtoul(row[24], nullptr, 10)) : 0;
+			e.ornament_hero_model = row[25] ? static_cast<int32_t>(atoi(row[25])) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -479,27 +488,28 @@ public:
 			e.property_id         = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.owner_character_id  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.placed              = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.heading             = row[4] ? strtof(row[4], nullptr) : 0;
-			e.pitch               = row[5] ? strtof(row[5], nullptr) : 0;
-			e.roll                = row[6] ? strtof(row[6], nullptr) : 0;
-			e.scale               = row[7] ? strtof(row[7], nullptr) : 1;
-			e.x                   = row[8] ? strtof(row[8], nullptr) : 0;
-			e.y                   = row[9] ? strtof(row[9], nullptr) : 0;
-			e.z                   = row[10] ? strtof(row[10], nullptr) : 0;
-			e.item_id             = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.charges             = row[12] ? static_cast<uint16_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.color               = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.augment_one         = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.augment_two         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.augment_three       = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.augment_four        = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.augment_five        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.augment_six         = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.instnodrop          = row[20] ? static_cast<uint8_t>(strtoul(row[20], nullptr, 10)) : 0;
-			e.custom_data         = row[21] ? row[21] : "";
-			e.ornament_icon       = row[22] ? static_cast<uint32_t>(strtoul(row[22], nullptr, 10)) : 0;
-			e.ornament_idfile     = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
-			e.ornament_hero_model = row[24] ? static_cast<int32_t>(atoi(row[24])) : 0;
+			e.upkeep_expired_at   = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.heading             = row[5] ? strtof(row[5], nullptr) : 0;
+			e.pitch               = row[6] ? strtof(row[6], nullptr) : 0;
+			e.roll                = row[7] ? strtof(row[7], nullptr) : 0;
+			e.scale               = row[8] ? strtof(row[8], nullptr) : 0;
+			e.x                   = row[9] ? strtof(row[9], nullptr) : 0;
+			e.y                   = row[10] ? strtof(row[10], nullptr) : 0;
+			e.z                   = row[11] ? strtof(row[11], nullptr) : 0;
+			e.item_id             = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
+			e.charges             = row[13] ? static_cast<uint16_t>(strtoul(row[13], nullptr, 10)) : 0;
+			e.color               = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
+			e.augment_one         = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.augment_two         = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.augment_three       = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.augment_four        = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.augment_five        = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
+			e.augment_six         = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.instnodrop          = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.custom_data         = row[22] ? row[22] : "";
+			e.ornament_icon       = row[23] ? static_cast<uint32_t>(strtoul(row[23], nullptr, 10)) : 0;
+			e.ornament_idfile     = row[24] ? static_cast<uint32_t>(strtoul(row[24], nullptr, 10)) : 0;
+			e.ornament_hero_model = row[25] ? static_cast<int32_t>(atoi(row[25])) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -578,6 +588,7 @@ public:
 		v.push_back(std::to_string(e.property_id));
 		v.push_back(std::to_string(e.owner_character_id));
 		v.push_back(std::to_string(e.placed));
+		v.push_back(std::to_string(e.upkeep_expired_at));
 		v.push_back(std::to_string(e.heading));
 		v.push_back(std::to_string(e.pitch));
 		v.push_back(std::to_string(e.roll));
@@ -625,6 +636,7 @@ public:
 			v.push_back(std::to_string(e.property_id));
 			v.push_back(std::to_string(e.owner_character_id));
 			v.push_back(std::to_string(e.placed));
+			v.push_back(std::to_string(e.upkeep_expired_at));
 			v.push_back(std::to_string(e.heading));
 			v.push_back(std::to_string(e.pitch));
 			v.push_back(std::to_string(e.roll));

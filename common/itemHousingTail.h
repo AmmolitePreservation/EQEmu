@@ -12,7 +12,7 @@ namespace EQ {
     float placeableScaleMin = 0.0f;
     float placeableScaleMax = 0.0f;
     int32 realEstateUpkeepId = 0;
-    int32 maxPerRealEstate = 0;
+    int32 maxPerRealEstate = -1;
     char housepetFileName[32] = {};
     uint8 interactiveObject = 0;
     int32 trophyBenefitId = -1;

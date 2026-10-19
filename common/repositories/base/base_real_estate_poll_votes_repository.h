@@ -22,7 +22,6 @@ public:
 		uint32_t poll_id;
 		uint32_t character_id;
 		uint32_t option_key;
-		time_t   voted_at;
 	};
 
 	static std::string PrimaryKey()
@@ -36,7 +35,6 @@ public:
 			"poll_id",
 			"character_id",
 			"option_key",
-			"voted_at",
 		};
 	}
 
@@ -46,7 +44,6 @@ public:
 			"poll_id",
 			"character_id",
 			"option_key",
-			"UNIX_TIMESTAMP(voted_at)",
 		};
 	}
 
@@ -90,7 +87,6 @@ public:
 		e.poll_id      = 0;
 		e.character_id = 0;
 		e.option_key   = 0;
-		e.voted_at     = std::time(nullptr);
 
 		return e;
 	}
@@ -130,7 +126,6 @@ public:
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.voted_at     = strtoll(row[3] ? row[3] : "-1", nullptr, 10);
 
 			return e;
 		}
@@ -167,7 +162,6 @@ public:
 		v.push_back(columns[0] + " = " + std::to_string(e.poll_id));
 		v.push_back(columns[1] + " = " + std::to_string(e.character_id));
 		v.push_back(columns[2] + " = " + std::to_string(e.option_key));
-		v.push_back(columns[3] + " = FROM_UNIXTIME(" + (e.voted_at > 0 ? std::to_string(e.voted_at) : "null") + ")");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -192,7 +186,6 @@ public:
 		v.push_back(std::to_string(e.poll_id));
 		v.push_back(std::to_string(e.character_id));
 		v.push_back(std::to_string(e.option_key));
-		v.push_back("FROM_UNIXTIME(" + (e.voted_at > 0 ? std::to_string(e.voted_at) : "null") + ")");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -225,7 +218,6 @@ public:
 			v.push_back(std::to_string(e.poll_id));
 			v.push_back(std::to_string(e.character_id));
 			v.push_back(std::to_string(e.option_key));
-			v.push_back("FROM_UNIXTIME(" + (e.voted_at > 0 ? std::to_string(e.voted_at) : "null") + ")");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -262,7 +254,6 @@ public:
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.voted_at     = strtoll(row[3] ? row[3] : "-1", nullptr, 10);
 
 			all_entries.push_back(e);
 		}
@@ -290,7 +281,6 @@ public:
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.voted_at     = strtoll(row[3] ? row[3] : "-1", nullptr, 10);
 
 			all_entries.push_back(e);
 		}
@@ -368,7 +358,6 @@ public:
 		v.push_back(std::to_string(e.poll_id));
 		v.push_back(std::to_string(e.character_id));
 		v.push_back(std::to_string(e.option_key));
-		v.push_back("FROM_UNIXTIME(" + (e.voted_at > 0 ? std::to_string(e.voted_at) : "null") + ")");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -394,7 +383,6 @@ public:
 			v.push_back(std::to_string(e.poll_id));
 			v.push_back(std::to_string(e.character_id));
 			v.push_back(std::to_string(e.option_key));
-			v.push_back("FROM_UNIXTIME(" + (e.voted_at > 0 ? std::to_string(e.voted_at) : "null") + ")");
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
