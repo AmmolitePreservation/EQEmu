@@ -83,27 +83,27 @@ All three deserialize the same class (vtable `0xa1052c`, reader `0x7fdf00`).
 
 ```
 u32 id                 client +0x14
-u32                    +0x18  (Live: staticId, -1)
+u32                    +0x18  (Live: staticId, -1; 0 on a vacant player plot)
 u32 parentID           +0x1c  (parent property id; walked by 0x4d6790)
 u32 definitionID       +0x20  (0x6fd0 looks up its type)
 u32 guildID            +0x24  (owning guild, -1 = none; see the Purchase window checks)
 u32                    +0x28
-string                 +0x30
+string                 +0x30  (Live: primaryHandle, the owner's account id as text; empty with no owner)
 string                 +0x2c  (owner name: compared against the local character's name at player +0xa4)
-u32                    +0x34  (Live: primaryHandle, the owner's per-account handle; 0 with no owner)
+u32                    +0x34  (Live: defaultPermissionLevel, 0)
 u32 idCount            (count comes before the next string)
 string                 +0x38
 u32 × idCount          list at +0x48/+0x4c
 u8  pairCount
 {u32 key, f64 value} × pairCount   keyed map at +0x04  (balance per currency; key 0 = coin)
 u32                    +0x3c
-u32 upkeepCurrent       +0x40  (**upkeep-current flag**: non-zero = paid; 0 = expired → codes `0x18` (plot, `0x5b4780`) / `0x19` (house or crate); `0x63fd` compares it between updates)
+u32 upkeepExpiredTime  +0x40  (**upkeepExpiredTime**: 0 while paid; non-zero, the second a charge found the escrow empty, = expired → codes `0x18` (plot, `0x5b4780`) / `0x19` (house or crate); `0x63fd` compares it between updates)
 u8 votingOptOut        +0x44  (REPW_VotingOptOut_Checkbox checked state)
 ```
 
 - **`0x6fd0`** sets the **current property**: manager `+0x8c` = id and `+0x90` = definition type, then calls manager vtable `+0x24`.
-- **`0x4f09`** refreshes the Manage window, raises a UI-dirty flag if the owner name matches the local character, then calls manager vtable `+0x28(id, 0, 0, 0)`.
-- **`0x63fd`** merges an update into a known property. It compares the owner name and the `+0x40` flag to decide what to refresh, and updates the Items window (for the three ids it tracks), the Manage window, and the Purchase window.
+- **`0x4f09`** refreshes the Manage window, raises a UI-dirty flag if the owner name matches the local character, then calls manager vtable `+0x28(id, 0, 0, 0)`, which **removes the property** (`0x5b7c70`; Live's client the same), so the server sends it only for a property that is gone.
+- **`0x63fd`** merges an update into a known property, and inserts a property it doesn't know (vtable `+0x24`, `0x5b2f19`), so every record goes out as `0x63fd`. It compares the owner name and the `+0x40` flag to decide what to refresh, and updates the Items window (for the three ids it tracks), the Manage window, and the Purchase window.
 
 ## Character property lists (server → client)
 
