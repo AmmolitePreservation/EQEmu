@@ -21,25 +21,30 @@ public:
 	struct RealEstateDefinitions {
 		uint32_t    id;
 		std::string name;
+		std::string name_segment;
 		uint8_t     type;
-		uint32_t    category;
-		uint32_t    region_id;
-		uint32_t    purchase_cost_id;
-		uint32_t    upkeep_cost_id;
+		uint32_t    placement_group_id;
+		uint32_t    area_id;
+		uint32_t    cost_definition_id;
+		uint32_t    upkeep_definition_id;
 		uint32_t    max_items;
 		uint32_t    max_non_real_estate_items;
-		uint32_t    max_pet_items;
-		float       layout_origin_x;
-		float       layout_origin_y;
-		float       layout_origin_z;
-		float       layout_heading;
-		uint32_t    instance_zone_id;
-		uint8_t     instance_zone_version;
-		uint32_t    max_houses;
+		int32_t     max_npc_items;
+		float       switch_x;
+		float       switch_y;
+		float       switch_z;
+		float       switch_heading;
+		uint32_t    max_children;
 		uint32_t    zone_id;
 		uint32_t    dz_id;
 		uint32_t    icon;
 		std::string address;
+		uint32_t    exit_zone_id;
+		uint8_t     exit_zone_version;
+		float       exit_x;
+		float       exit_y;
+		float       exit_z;
+		float       exit_heading;
 	};
 
 	static std::string PrimaryKey()
@@ -52,25 +57,30 @@ public:
 		return {
 			"id",
 			"name",
+			"name_segment",
 			"type",
-			"category",
-			"region_id",
-			"purchase_cost_id",
-			"upkeep_cost_id",
+			"placement_group_id",
+			"area_id",
+			"cost_definition_id",
+			"upkeep_definition_id",
 			"max_items",
 			"max_non_real_estate_items",
-			"max_pet_items",
-			"layout_origin_x",
-			"layout_origin_y",
-			"layout_origin_z",
-			"layout_heading",
-			"instance_zone_id",
-			"instance_zone_version",
-			"max_houses",
+			"max_npc_items",
+			"switch_x",
+			"switch_y",
+			"switch_z",
+			"switch_heading",
+			"max_children",
 			"zone_id",
 			"dz_id",
 			"icon",
 			"address",
+			"exit_zone_id",
+			"exit_zone_version",
+			"exit_x",
+			"exit_y",
+			"exit_z",
+			"exit_heading",
 		};
 	}
 
@@ -79,25 +89,30 @@ public:
 		return {
 			"id",
 			"name",
+			"name_segment",
 			"type",
-			"category",
-			"region_id",
-			"purchase_cost_id",
-			"upkeep_cost_id",
+			"placement_group_id",
+			"area_id",
+			"cost_definition_id",
+			"upkeep_definition_id",
 			"max_items",
 			"max_non_real_estate_items",
-			"max_pet_items",
-			"layout_origin_x",
-			"layout_origin_y",
-			"layout_origin_z",
-			"layout_heading",
-			"instance_zone_id",
-			"instance_zone_version",
-			"max_houses",
+			"max_npc_items",
+			"switch_x",
+			"switch_y",
+			"switch_z",
+			"switch_heading",
+			"max_children",
 			"zone_id",
 			"dz_id",
 			"icon",
 			"address",
+			"exit_zone_id",
+			"exit_zone_version",
+			"exit_x",
+			"exit_y",
+			"exit_z",
+			"exit_heading",
 		};
 	}
 
@@ -140,25 +155,30 @@ public:
 
 		e.id                        = 0;
 		e.name                      = "";
+		e.name_segment              = "";
 		e.type                      = 0;
-		e.category                  = 0;
-		e.region_id                 = 0;
-		e.purchase_cost_id          = 0;
-		e.upkeep_cost_id            = 0;
+		e.placement_group_id        = 0;
+		e.area_id                   = 0;
+		e.cost_definition_id        = 0;
+		e.upkeep_definition_id      = 0;
 		e.max_items                 = 0;
 		e.max_non_real_estate_items = 0;
-		e.max_pet_items             = 0;
-		e.layout_origin_x           = 0;
-		e.layout_origin_y           = 0;
-		e.layout_origin_z           = 0;
-		e.layout_heading            = 0;
-		e.instance_zone_id          = 0;
-		e.instance_zone_version     = 0;
-		e.max_houses                = 0;
+		e.max_npc_items             = -1;
+		e.switch_x                  = 0;
+		e.switch_y                  = 0;
+		e.switch_z                  = 0;
+		e.switch_heading            = 0;
+		e.max_children              = 0;
 		e.zone_id                   = 0;
 		e.dz_id                     = 0;
 		e.icon                      = 0;
 		e.address                   = "";
+		e.exit_zone_id              = 0;
+		e.exit_zone_version         = 0;
+		e.exit_x                    = 0;
+		e.exit_y                    = 0;
+		e.exit_z                    = 0;
+		e.exit_heading              = 0;
 
 		return e;
 	}
@@ -197,25 +217,30 @@ public:
 
 			e.id                        = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.name                      = row[1] ? row[1] : "";
-			e.type                      = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.category                  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.region_id                 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.purchase_cost_id          = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.upkeep_cost_id            = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.max_items                 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.max_non_real_estate_items = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.max_pet_items             = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.layout_origin_x           = row[10] ? strtof(row[10], nullptr) : 0;
-			e.layout_origin_y           = row[11] ? strtof(row[11], nullptr) : 0;
-			e.layout_origin_z           = row[12] ? strtof(row[12], nullptr) : 0;
-			e.layout_heading            = row[13] ? strtof(row[13], nullptr) : 0;
-			e.instance_zone_id          = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.instance_zone_version     = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.address                   = row[20] ? row[20] : "";
+			e.name_segment              = row[2] ? row[2] : "";
+			e.type                      = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.placement_group_id        = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.area_id                   = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.cost_definition_id        = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.upkeep_definition_id      = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.max_items                 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
+			e.max_non_real_estate_items = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.max_npc_items             = row[10] ? static_cast<int32_t>(atoi(row[10])) : -1;
+			e.switch_x                  = row[11] ? strtof(row[11], nullptr) : 0;
+			e.switch_y                  = row[12] ? strtof(row[12], nullptr) : 0;
+			e.switch_z                  = row[13] ? strtof(row[13], nullptr) : 0;
+			e.switch_heading            = row[14] ? strtof(row[14], nullptr) : 0;
+			e.max_children              = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.zone_id                   = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.address                   = row[19] ? row[19] : "";
+			e.exit_zone_id              = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.exit_zone_version         = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.exit_x                    = row[22] ? strtof(row[22], nullptr) : 0;
+			e.exit_y                    = row[23] ? strtof(row[23], nullptr) : 0;
+			e.exit_z                    = row[24] ? strtof(row[24], nullptr) : 0;
+			e.exit_heading              = row[25] ? strtof(row[25], nullptr) : 0;
 
 			return e;
 		}
@@ -251,25 +276,30 @@ public:
 
 		v.push_back(columns[0] + " = " + std::to_string(e.id));
 		v.push_back(columns[1] + " = '" + Strings::Escape(e.name) + "'");
-		v.push_back(columns[2] + " = " + std::to_string(e.type));
-		v.push_back(columns[3] + " = " + std::to_string(e.category));
-		v.push_back(columns[4] + " = " + std::to_string(e.region_id));
-		v.push_back(columns[5] + " = " + std::to_string(e.purchase_cost_id));
-		v.push_back(columns[6] + " = " + std::to_string(e.upkeep_cost_id));
-		v.push_back(columns[7] + " = " + std::to_string(e.max_items));
-		v.push_back(columns[8] + " = " + std::to_string(e.max_non_real_estate_items));
-		v.push_back(columns[9] + " = " + std::to_string(e.max_pet_items));
-		v.push_back(columns[10] + " = " + std::to_string(e.layout_origin_x));
-		v.push_back(columns[11] + " = " + std::to_string(e.layout_origin_y));
-		v.push_back(columns[12] + " = " + std::to_string(e.layout_origin_z));
-		v.push_back(columns[13] + " = " + std::to_string(e.layout_heading));
-		v.push_back(columns[14] + " = " + std::to_string(e.instance_zone_id));
-		v.push_back(columns[15] + " = " + std::to_string(e.instance_zone_version));
-		v.push_back(columns[16] + " = " + std::to_string(e.max_houses));
-		v.push_back(columns[17] + " = " + std::to_string(e.zone_id));
-		v.push_back(columns[18] + " = " + std::to_string(e.dz_id));
-		v.push_back(columns[19] + " = " + std::to_string(e.icon));
-		v.push_back(columns[20] + " = '" + Strings::Escape(e.address) + "'");
+		v.push_back(columns[2] + " = '" + Strings::Escape(e.name_segment) + "'");
+		v.push_back(columns[3] + " = " + std::to_string(e.type));
+		v.push_back(columns[4] + " = " + std::to_string(e.placement_group_id));
+		v.push_back(columns[5] + " = " + std::to_string(e.area_id));
+		v.push_back(columns[6] + " = " + std::to_string(e.cost_definition_id));
+		v.push_back(columns[7] + " = " + std::to_string(e.upkeep_definition_id));
+		v.push_back(columns[8] + " = " + std::to_string(e.max_items));
+		v.push_back(columns[9] + " = " + std::to_string(e.max_non_real_estate_items));
+		v.push_back(columns[10] + " = " + std::to_string(e.max_npc_items));
+		v.push_back(columns[11] + " = " + std::to_string(e.switch_x));
+		v.push_back(columns[12] + " = " + std::to_string(e.switch_y));
+		v.push_back(columns[13] + " = " + std::to_string(e.switch_z));
+		v.push_back(columns[14] + " = " + std::to_string(e.switch_heading));
+		v.push_back(columns[15] + " = " + std::to_string(e.max_children));
+		v.push_back(columns[16] + " = " + std::to_string(e.zone_id));
+		v.push_back(columns[17] + " = " + std::to_string(e.dz_id));
+		v.push_back(columns[18] + " = " + std::to_string(e.icon));
+		v.push_back(columns[19] + " = '" + Strings::Escape(e.address) + "'");
+		v.push_back(columns[20] + " = " + std::to_string(e.exit_zone_id));
+		v.push_back(columns[21] + " = " + std::to_string(e.exit_zone_version));
+		v.push_back(columns[22] + " = " + std::to_string(e.exit_x));
+		v.push_back(columns[23] + " = " + std::to_string(e.exit_y));
+		v.push_back(columns[24] + " = " + std::to_string(e.exit_z));
+		v.push_back(columns[25] + " = " + std::to_string(e.exit_heading));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -293,25 +323,30 @@ public:
 
 		v.push_back(std::to_string(e.id));
 		v.push_back("'" + Strings::Escape(e.name) + "'");
+		v.push_back("'" + Strings::Escape(e.name_segment) + "'");
 		v.push_back(std::to_string(e.type));
-		v.push_back(std::to_string(e.category));
-		v.push_back(std::to_string(e.region_id));
-		v.push_back(std::to_string(e.purchase_cost_id));
-		v.push_back(std::to_string(e.upkeep_cost_id));
+		v.push_back(std::to_string(e.placement_group_id));
+		v.push_back(std::to_string(e.area_id));
+		v.push_back(std::to_string(e.cost_definition_id));
+		v.push_back(std::to_string(e.upkeep_definition_id));
 		v.push_back(std::to_string(e.max_items));
 		v.push_back(std::to_string(e.max_non_real_estate_items));
-		v.push_back(std::to_string(e.max_pet_items));
-		v.push_back(std::to_string(e.layout_origin_x));
-		v.push_back(std::to_string(e.layout_origin_y));
-		v.push_back(std::to_string(e.layout_origin_z));
-		v.push_back(std::to_string(e.layout_heading));
-		v.push_back(std::to_string(e.instance_zone_id));
-		v.push_back(std::to_string(e.instance_zone_version));
-		v.push_back(std::to_string(e.max_houses));
+		v.push_back(std::to_string(e.max_npc_items));
+		v.push_back(std::to_string(e.switch_x));
+		v.push_back(std::to_string(e.switch_y));
+		v.push_back(std::to_string(e.switch_z));
+		v.push_back(std::to_string(e.switch_heading));
+		v.push_back(std::to_string(e.max_children));
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.address) + "'");
+		v.push_back(std::to_string(e.exit_zone_id));
+		v.push_back(std::to_string(e.exit_zone_version));
+		v.push_back(std::to_string(e.exit_x));
+		v.push_back(std::to_string(e.exit_y));
+		v.push_back(std::to_string(e.exit_z));
+		v.push_back(std::to_string(e.exit_heading));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -343,25 +378,30 @@ public:
 
 			v.push_back(std::to_string(e.id));
 			v.push_back("'" + Strings::Escape(e.name) + "'");
+			v.push_back("'" + Strings::Escape(e.name_segment) + "'");
 			v.push_back(std::to_string(e.type));
-			v.push_back(std::to_string(e.category));
-			v.push_back(std::to_string(e.region_id));
-			v.push_back(std::to_string(e.purchase_cost_id));
-			v.push_back(std::to_string(e.upkeep_cost_id));
+			v.push_back(std::to_string(e.placement_group_id));
+			v.push_back(std::to_string(e.area_id));
+			v.push_back(std::to_string(e.cost_definition_id));
+			v.push_back(std::to_string(e.upkeep_definition_id));
 			v.push_back(std::to_string(e.max_items));
 			v.push_back(std::to_string(e.max_non_real_estate_items));
-			v.push_back(std::to_string(e.max_pet_items));
-			v.push_back(std::to_string(e.layout_origin_x));
-			v.push_back(std::to_string(e.layout_origin_y));
-			v.push_back(std::to_string(e.layout_origin_z));
-			v.push_back(std::to_string(e.layout_heading));
-			v.push_back(std::to_string(e.instance_zone_id));
-			v.push_back(std::to_string(e.instance_zone_version));
-			v.push_back(std::to_string(e.max_houses));
+			v.push_back(std::to_string(e.max_npc_items));
+			v.push_back(std::to_string(e.switch_x));
+			v.push_back(std::to_string(e.switch_y));
+			v.push_back(std::to_string(e.switch_z));
+			v.push_back(std::to_string(e.switch_heading));
+			v.push_back(std::to_string(e.max_children));
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.address) + "'");
+			v.push_back(std::to_string(e.exit_zone_id));
+			v.push_back(std::to_string(e.exit_zone_version));
+			v.push_back(std::to_string(e.exit_x));
+			v.push_back(std::to_string(e.exit_y));
+			v.push_back(std::to_string(e.exit_z));
+			v.push_back(std::to_string(e.exit_heading));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -397,25 +437,30 @@ public:
 
 			e.id                        = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.name                      = row[1] ? row[1] : "";
-			e.type                      = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.category                  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.region_id                 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.purchase_cost_id          = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.upkeep_cost_id            = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.max_items                 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.max_non_real_estate_items = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.max_pet_items             = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.layout_origin_x           = row[10] ? strtof(row[10], nullptr) : 0;
-			e.layout_origin_y           = row[11] ? strtof(row[11], nullptr) : 0;
-			e.layout_origin_z           = row[12] ? strtof(row[12], nullptr) : 0;
-			e.layout_heading            = row[13] ? strtof(row[13], nullptr) : 0;
-			e.instance_zone_id          = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.instance_zone_version     = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.address                   = row[20] ? row[20] : "";
+			e.name_segment              = row[2] ? row[2] : "";
+			e.type                      = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.placement_group_id        = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.area_id                   = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.cost_definition_id        = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.upkeep_definition_id      = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.max_items                 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
+			e.max_non_real_estate_items = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.max_npc_items             = row[10] ? static_cast<int32_t>(atoi(row[10])) : -1;
+			e.switch_x                  = row[11] ? strtof(row[11], nullptr) : 0;
+			e.switch_y                  = row[12] ? strtof(row[12], nullptr) : 0;
+			e.switch_z                  = row[13] ? strtof(row[13], nullptr) : 0;
+			e.switch_heading            = row[14] ? strtof(row[14], nullptr) : 0;
+			e.max_children              = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.zone_id                   = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.address                   = row[19] ? row[19] : "";
+			e.exit_zone_id              = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.exit_zone_version         = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.exit_x                    = row[22] ? strtof(row[22], nullptr) : 0;
+			e.exit_y                    = row[23] ? strtof(row[23], nullptr) : 0;
+			e.exit_z                    = row[24] ? strtof(row[24], nullptr) : 0;
+			e.exit_heading              = row[25] ? strtof(row[25], nullptr) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -442,25 +487,30 @@ public:
 
 			e.id                        = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
 			e.name                      = row[1] ? row[1] : "";
-			e.type                      = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.category                  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.region_id                 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.purchase_cost_id          = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.upkeep_cost_id            = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.max_items                 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.max_non_real_estate_items = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.max_pet_items             = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.layout_origin_x           = row[10] ? strtof(row[10], nullptr) : 0;
-			e.layout_origin_y           = row[11] ? strtof(row[11], nullptr) : 0;
-			e.layout_origin_z           = row[12] ? strtof(row[12], nullptr) : 0;
-			e.layout_heading            = row[13] ? strtof(row[13], nullptr) : 0;
-			e.instance_zone_id          = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.instance_zone_version     = row[15] ? static_cast<uint8_t>(strtoul(row[15], nullptr, 10)) : 0;
-			e.max_houses                = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.zone_id                   = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
-			e.dz_id                     = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
-			e.icon                      = row[19] ? static_cast<uint32_t>(strtoul(row[19], nullptr, 10)) : 0;
-			e.address                   = row[20] ? row[20] : "";
+			e.name_segment              = row[2] ? row[2] : "";
+			e.type                      = row[3] ? static_cast<uint8_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.placement_group_id        = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.area_id                   = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.cost_definition_id        = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.upkeep_definition_id      = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.max_items                 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
+			e.max_non_real_estate_items = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.max_npc_items             = row[10] ? static_cast<int32_t>(atoi(row[10])) : -1;
+			e.switch_x                  = row[11] ? strtof(row[11], nullptr) : 0;
+			e.switch_y                  = row[12] ? strtof(row[12], nullptr) : 0;
+			e.switch_z                  = row[13] ? strtof(row[13], nullptr) : 0;
+			e.switch_heading            = row[14] ? strtof(row[14], nullptr) : 0;
+			e.max_children              = row[15] ? static_cast<uint32_t>(strtoul(row[15], nullptr, 10)) : 0;
+			e.zone_id                   = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 0;
+			e.dz_id                     = row[17] ? static_cast<uint32_t>(strtoul(row[17], nullptr, 10)) : 0;
+			e.icon                      = row[18] ? static_cast<uint32_t>(strtoul(row[18], nullptr, 10)) : 0;
+			e.address                   = row[19] ? row[19] : "";
+			e.exit_zone_id              = row[20] ? static_cast<uint32_t>(strtoul(row[20], nullptr, 10)) : 0;
+			e.exit_zone_version         = row[21] ? static_cast<uint8_t>(strtoul(row[21], nullptr, 10)) : 0;
+			e.exit_x                    = row[22] ? strtof(row[22], nullptr) : 0;
+			e.exit_y                    = row[23] ? strtof(row[23], nullptr) : 0;
+			e.exit_z                    = row[24] ? strtof(row[24], nullptr) : 0;
+			e.exit_heading              = row[25] ? strtof(row[25], nullptr) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -537,25 +587,30 @@ public:
 
 		v.push_back(std::to_string(e.id));
 		v.push_back("'" + Strings::Escape(e.name) + "'");
+		v.push_back("'" + Strings::Escape(e.name_segment) + "'");
 		v.push_back(std::to_string(e.type));
-		v.push_back(std::to_string(e.category));
-		v.push_back(std::to_string(e.region_id));
-		v.push_back(std::to_string(e.purchase_cost_id));
-		v.push_back(std::to_string(e.upkeep_cost_id));
+		v.push_back(std::to_string(e.placement_group_id));
+		v.push_back(std::to_string(e.area_id));
+		v.push_back(std::to_string(e.cost_definition_id));
+		v.push_back(std::to_string(e.upkeep_definition_id));
 		v.push_back(std::to_string(e.max_items));
 		v.push_back(std::to_string(e.max_non_real_estate_items));
-		v.push_back(std::to_string(e.max_pet_items));
-		v.push_back(std::to_string(e.layout_origin_x));
-		v.push_back(std::to_string(e.layout_origin_y));
-		v.push_back(std::to_string(e.layout_origin_z));
-		v.push_back(std::to_string(e.layout_heading));
-		v.push_back(std::to_string(e.instance_zone_id));
-		v.push_back(std::to_string(e.instance_zone_version));
-		v.push_back(std::to_string(e.max_houses));
+		v.push_back(std::to_string(e.max_npc_items));
+		v.push_back(std::to_string(e.switch_x));
+		v.push_back(std::to_string(e.switch_y));
+		v.push_back(std::to_string(e.switch_z));
+		v.push_back(std::to_string(e.switch_heading));
+		v.push_back(std::to_string(e.max_children));
 		v.push_back(std::to_string(e.zone_id));
 		v.push_back(std::to_string(e.dz_id));
 		v.push_back(std::to_string(e.icon));
 		v.push_back("'" + Strings::Escape(e.address) + "'");
+		v.push_back(std::to_string(e.exit_zone_id));
+		v.push_back(std::to_string(e.exit_zone_version));
+		v.push_back(std::to_string(e.exit_x));
+		v.push_back(std::to_string(e.exit_y));
+		v.push_back(std::to_string(e.exit_z));
+		v.push_back(std::to_string(e.exit_heading));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -580,25 +635,30 @@ public:
 
 			v.push_back(std::to_string(e.id));
 			v.push_back("'" + Strings::Escape(e.name) + "'");
+			v.push_back("'" + Strings::Escape(e.name_segment) + "'");
 			v.push_back(std::to_string(e.type));
-			v.push_back(std::to_string(e.category));
-			v.push_back(std::to_string(e.region_id));
-			v.push_back(std::to_string(e.purchase_cost_id));
-			v.push_back(std::to_string(e.upkeep_cost_id));
+			v.push_back(std::to_string(e.placement_group_id));
+			v.push_back(std::to_string(e.area_id));
+			v.push_back(std::to_string(e.cost_definition_id));
+			v.push_back(std::to_string(e.upkeep_definition_id));
 			v.push_back(std::to_string(e.max_items));
 			v.push_back(std::to_string(e.max_non_real_estate_items));
-			v.push_back(std::to_string(e.max_pet_items));
-			v.push_back(std::to_string(e.layout_origin_x));
-			v.push_back(std::to_string(e.layout_origin_y));
-			v.push_back(std::to_string(e.layout_origin_z));
-			v.push_back(std::to_string(e.layout_heading));
-			v.push_back(std::to_string(e.instance_zone_id));
-			v.push_back(std::to_string(e.instance_zone_version));
-			v.push_back(std::to_string(e.max_houses));
+			v.push_back(std::to_string(e.max_npc_items));
+			v.push_back(std::to_string(e.switch_x));
+			v.push_back(std::to_string(e.switch_y));
+			v.push_back(std::to_string(e.switch_z));
+			v.push_back(std::to_string(e.switch_heading));
+			v.push_back(std::to_string(e.max_children));
 			v.push_back(std::to_string(e.zone_id));
 			v.push_back(std::to_string(e.dz_id));
 			v.push_back(std::to_string(e.icon));
 			v.push_back("'" + Strings::Escape(e.address) + "'");
+			v.push_back(std::to_string(e.exit_zone_id));
+			v.push_back(std::to_string(e.exit_zone_version));
+			v.push_back(std::to_string(e.exit_x));
+			v.push_back(std::to_string(e.exit_y));
+			v.push_back(std::to_string(e.exit_z));
+			v.push_back(std::to_string(e.exit_heading));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

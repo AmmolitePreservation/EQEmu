@@ -1,7 +1,9 @@
 """Tests sql/itemHousingTail.sql against a local MariaDB: the real `items` definition, the exported rows, every value checked
-against itemTailDecode.py, the column order, the capture, a re-run after a mid-way failure, and each guard.
+against itemTailDecode.py, the column order, the capture, a re-run after a mid-way failure, and each guard. Then
+sql/itemHousingAdoption.sql on the result: Live's values adopted in ITM-1's counts, nothing else changed, and every run
+leaving the same table.
 
-Usage: python3 testItemHousingTail.py pok-schema-all.json itemTailFull.txt   (a local MariaDB with a `peq` database, root without a
+Usage: python testItemHousingTail.py pok-schema-all.json itemTailFull.txt   (a local MariaDB with a `peq` database, root without a
 password; itemTailFull.txt is the second result set of the itemTailFull.sql export)
 """
 import contextlib, io, json, os, runpy, struct, subprocess, sys
@@ -87,3 +89,35 @@ for name, extra in [('non_placeable_item_outside_known_patterns', "INSERT INTO i
   intact = sql("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='peq' AND TABLE_NAME='items' AND COLUMN_NAME='UNK224'").strip()
   assert name in error and intact == '1', f'guard {name} did not stop the migration cleanly: {error[:200]}'
   print(f'guard {name}: stopped before any change')
+
+adoption = open(os.path.join(here, '..', 'sql', 'itemHousingAdoption.sql')).read()
+adopted = ['placeable', 'placeable_scale_min', 'placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll',
+           'disable_placement_rotation', 'max_per_real_estate', 'housepet_file_name']
+selectAll = 'SELECT id, ' + ', '.join(f'CAST(`{c}` AS DOUBLE)' if c in floats else f'`{c}`' for c in newColumns) + ' FROM items ORDER BY id'
+
+
+def snapshot():
+  return {int(line.split('\t')[0]): dict(zip(newColumns, line.split('\t')[1:])) for line in sql(selectAll).splitlines()}
+
+
+fresh(); sql(migration); before = snapshot()
+sql(adoption); after = snapshot()
+changed = lambda columns: sum(any(before[i][c] != after[i][c] for c in columns) for i in after)
+counts = dict(masks=changed(['placeable']), scaleMinimums=changed(['placeable_scale_min']),
+              orientations=changed(['placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll']),
+              limits=changed(['max_per_real_estate']), named=sum(after[i]['housepet_file_name'] != '' for i in after))
+assert counts == dict(masks=485, scaleMinimums=56, orientations=46, limits=4, named=113), f"adopted counts differ from ITM-1's: {counts}"
+print(f"adoption: {counts['masks']} masks, {counts['scaleMinimums']} scale minimums, {counts['orientations']} orientations, {counts['limits']} limits, "
+      f"{counts['named']} NPC items named; {changed(['disable_placement_rotation'])} rotation locks")
+outside = [i for i in after if any(before[i][c] != after[i][c] for c in newColumns if c not in adopted) or (before[i]['placeable'] == '0' and before[i] != after[i])]
+assert not outside, f'the adoption changed a column it does not adopt, or an item that is not placeable: {outside[:10]}'
+print('adoption: no other column and no non-placeable item changed')
+named = {i: (after[i]['placeable_default_heading'], after[i]['placeable_default_pitch'], after[i]['placeable_default_roll']) for i in (67906, 66865, 66866, 66867, 66868)}
+assert after[93435]['housepet_file_name'] == 'aquatic_mephit' and named[67906] == ('128', '0', '128') and all(named[i] == ('0', '0', '384') for i in range(66865, 66869)), (after[93435], named)
+print("adoption: 93435 is aquatic_mephit; 67906 faces 128, 0, 128 and 66865-66868 0, 0, 384, Live's off-grid orientations")
+sql(adoption)
+assert snapshot() == after, 'a second run of the adoption changed the table'
+pieces = [s for s in adoption.split(';\n') if s.strip()]
+fresh(); sql(migration); sql(';\n'.join(pieces[:len(pieces) // 2]) + ';\n'); sql(adoption)
+assert snapshot() == after, 'the adoption after stopping mid-way left a different table'
+print('adoption: a second run and a run after stopping mid-way leave the same table')

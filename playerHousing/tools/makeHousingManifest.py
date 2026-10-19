@@ -1,16 +1,18 @@
 """Generates the housing entries of common/database/database_update_manifest_custom.cpp from the tested SQL files.
 
 Version 1 is the item tail (sql/itemHousingTail.sql, content database); version 2 the catalog tables and version 3 the state
-tables of sql/housingSchema.sql. Each statement becomes its own raw string literal (MSVC limits one literal to about 16 KB).
-A schema migration checks for the last table it creates, so one stopped part way runs again (every table is IF NOT EXISTS).
+tables of sql/housingSchema.sql; version 4 Live's item housing values (sql/itemHousingAdoption.sql, content database). Each
+statement becomes its own raw string literal (MSVC limits one literal to about 16 KB). A schema migration checks for the last
+table it creates, so one stopped part way runs again (every table is IF NOT EXISTS); version 4 runs whenever it is pending,
+every statement in it repeatable.
 
-Usage: python3 makeHousingManifest.py   (prints the entries)
+Usage: python makeHousingManifest.py   (prints the entries)
 """
 import os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
 catalogTables = ['real_estate_definitions', 'real_estate_definition_children', 'real_estate_costs', 'real_estate_cost_options',
-                 'real_estate_cost_items', 'real_estate_regions', 'real_estate_neighborhood_words',
+                 'real_estate_cost_items', 'real_estate_regions', 'real_estate_zone_templates', 'real_estate_neighborhood_words',
                  'real_estate_npc_items']
 
 
@@ -44,10 +46,12 @@ def entry(version, description, check, condition, pieces, content):
 
 
 itemTail = statements(open(os.path.join(here, '..', 'sql', 'itemHousingTail.sql')).read())
+itemAdoption = statements(open(os.path.join(here, '..', 'sql', 'itemHousingAdoption.sql')).read())
 schema = tableStatements(open(os.path.join(here, '..', 'sql', 'housingSchema.sql')).read())
 stateTables = [t for t in schema if t not in catalogTables]
 if set(catalogTables) - set(schema):
   raise ValueError(f'catalog tables missing from the schema: {set(catalogTables) - set(schema)}')
 print(entry(1, '2026_09_26_items_housing_tail', "SHOW COLUMNS FROM `items` LIKE 'UNK224'", 'not_empty', itemTail, 'true')
       + entry(2, '2026_09_26_real_estate_catalog', f"SHOW TABLES LIKE '{catalogTables[-1]}'", 'empty', [schema[t] for t in catalogTables], 'true')
-      + entry(3, '2026_09_26_real_estate_state', f"SHOW TABLES LIKE '{stateTables[-1]}'", 'empty', [schema[t] for t in stateTables], 'false'), end='')
+      + entry(3, '2026_09_26_real_estate_state', f"SHOW TABLES LIKE '{stateTables[-1]}'", 'empty', [schema[t] for t in stateTables], 'false')
+      + entry(4, '2026_10_19_items_housing_live_values', "SHOW TABLES LIKE 'items'", 'not_empty', itemAdoption, 'true'), end='')

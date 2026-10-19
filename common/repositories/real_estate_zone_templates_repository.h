@@ -1,11 +1,11 @@
-#ifndef EQEMU_REAL_ESTATE_TRANSFER_OFFERS_REPOSITORY_H
-#define EQEMU_REAL_ESTATE_TRANSFER_OFFERS_REPOSITORY_H
+#ifndef EQEMU_REAL_ESTATE_ZONE_TEMPLATES_REPOSITORY_H
+#define EQEMU_REAL_ESTATE_ZONE_TEMPLATES_REPOSITORY_H
 
 #include "../database.h"
 #include "../strings.h"
-#include "base/base_real_estate_transfer_offers_repository.h"
+#include "base/base_real_estate_zone_templates_repository.h"
 
-class RealEstateTransferOffersRepository: public BaseRealEstateTransferOffersRepository {
+class RealEstateZoneTemplatesRepository: public BaseRealEstateZoneTemplatesRepository {
 public:
 
     /**
@@ -32,10 +32,10 @@ public:
      *
      * Example custom methods in a repository
      *
-     * RealEstateTransferOffersRepository::GetByZoneAndVersion(int zone_id, int zone_version)
-     * RealEstateTransferOffersRepository::GetWhereNeverExpires()
-     * RealEstateTransferOffersRepository::GetWhereXAndY()
-     * RealEstateTransferOffersRepository::DeleteWhereXAndY()
+     * RealEstateZoneTemplatesRepository::GetByZoneAndVersion(int zone_id, int zone_version)
+     * RealEstateZoneTemplatesRepository::GetWhereNeverExpires()
+     * RealEstateZoneTemplatesRepository::GetWhereXAndY()
+     * RealEstateZoneTemplatesRepository::DeleteWhereXAndY()
      *
      * Most of the above could be covered by base methods, but if you as a developer
      * find yourself re-using logic for other parts of the code, its best to just make a
@@ -47,4 +47,4 @@ public:
 
 };
 
-#endif //EQEMU_REAL_ESTATE_TRANSFER_OFFERS_REPOSITORY_H
+#endif //EQEMU_REAL_ESTATE_ZONE_TEMPLATES_REPOSITORY_H

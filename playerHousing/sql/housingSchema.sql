@@ -1,35 +1,47 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
--- when sent (owner names, children, poll states, region matrices, the character's property lists, trophy flags).
--- Content tables: definitions, costs, regions, NPC items, neighborhood words, poll labels. The rest is player state.
+-- when sent (owner names, children, composed property names, poll states, region matrices, the character's property lists,
+-- trophy flags, anchor targets).
+-- Content tables: definitions, costs, regions, zone templates, NPC items, neighborhood words. The rest is player state.
 
--- purchase_cost_id and upkeep_cost_id name real_estate_costs, as Live's definitions do (plots buy with one of five price
--- tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their own upkeep ids. max_houses is the
--- client's +0x30 (Live's maxChildren): the houses and guild halls a yard holds (placement counts its children that aren't crates).
+-- Columns take the names of Live's definition fields. cost_definition_id and upkeep_definition_id name real_estate_costs
+-- (plots buy with one of five price tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their
+-- own upkeep ids. max_children is the client's +0x30: the houses and guild halls a yard holds. max_npc_items is -1 for no
+-- cap. A property's name is composed when sent: its parent's composed name, then the plot's address or the definition's
+-- name_segment. switch_x and switch_y are EQEmu x and y (the wire and Live's dumps put y first). A plot's exit point is
+-- where its house's or hall's front door leaves to.
 CREATE TABLE IF NOT EXISTS `real_estate_definitions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `name_segment` VARCHAR(64) NOT NULL DEFAULT '',
   `type` TINYINT(3) UNSIGNED NOT NULL,
-  `category` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `region_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `purchase_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_cost_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `placement_group_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `area_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `cost_definition_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_definition_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `max_non_real_estate_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `max_pet_items` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `layout_origin_x` FLOAT NOT NULL DEFAULT 0,
-  `layout_origin_y` FLOAT NOT NULL DEFAULT 0,
-  `layout_origin_z` FLOAT NOT NULL DEFAULT 0,
-  `layout_heading` FLOAT NOT NULL DEFAULT 0,
-  `instance_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `instance_zone_version` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `max_houses` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `max_npc_items` INT(11) NOT NULL DEFAULT -1,
+  `switch_x` FLOAT NOT NULL DEFAULT 0,
+  `switch_y` FLOAT NOT NULL DEFAULT 0,
+  `switch_z` FLOAT NOT NULL DEFAULT 0,
+  `switch_heading` FLOAT NOT NULL DEFAULT 0,
+  `max_children` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `dz_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `icon` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `address` VARCHAR(600) NOT NULL DEFAULT '',
+  `exit_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `exit_zone_version` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `exit_x` FLOAT NOT NULL DEFAULT 0,
+  `exit_y` FLOAT NOT NULL DEFAULT 0,
+  `exit_z` FLOAT NOT NULL DEFAULT 0,
+  `exit_heading` FLOAT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_definition_type` CHECK (`type` BETWEEN 1 AND 8),
-  CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND `max_pet_items` <= `max_items`)
+  CONSTRAINT `real_estate_definition_item_caps` CHECK (`max_non_real_estate_items` <= `max_items` AND (`max_npc_items` = -1 OR `max_npc_items` BETWEEN 0 AND `max_items`)),
+  CONSTRAINT `real_estate_definition_area` CHECK (`area_id` = 0 OR `type` IN (4, 8)),
+  CONSTRAINT `real_estate_definition_name_segment` CHECK (`name_segment` = '' OR `type` NOT IN (1, 4, 5, 8)),
+  CONSTRAINT `real_estate_definition_exit` CHECK ((`exit_zone_id` <> 0) = (`type` IN (4, 8)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_definition_children` (
@@ -66,6 +78,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_cost_items` (
   PRIMARY KEY (`cost_id`, `option_key`, `currency`, `sub_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- RoF2 keys its placement permissions by region id and falls back to the current property's id in the same map (0x4b2bf0),
+-- so region ids stay below 100000, where property ids start.
 CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   `id` INT(10) UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
@@ -77,7 +91,23 @@ CREATE TABLE IF NOT EXISTS `real_estate_regions` (
   `size_z` FLOAT NOT NULL DEFAULT 0,
   `heading` FLOAT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  CONSTRAINT `real_estate_region_size` CHECK (`size_x` > 0 AND `size_y` > 0 AND `size_z` > 0)
+  CONSTRAINT `real_estate_region_size` CHECK (`size_x` > 0 AND `size_y` > 0 AND `size_z` > 0),
+  CONSTRAINT `real_estate_region_below_property_ids` CHECK (`id` < 100000)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The zone a definition's dz_id starts a copy of, and where entering puts a player. A copy is a plain instance, shared by
+-- everyone inside, discarded some time after it empties.
+CREATE TABLE IF NOT EXISTS `real_estate_zone_templates` (
+  `dz_id` INT(10) UNSIGNED NOT NULL,
+  `zone_id` INT(10) UNSIGNED NOT NULL,
+  `zone_version` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `zone_in_x` FLOAT NOT NULL,
+  `zone_in_y` FLOAT NOT NULL,
+  `zone_in_z` FLOAT NOT NULL,
+  `zone_in_heading` FLOAT NOT NULL,
+  PRIMARY KEY (`dz_id`),
+  CONSTRAINT `real_estate_zone_template_zone` CHECK (`dz_id` <> 0 AND `zone_id` <> 0),
+  CONSTRAINT `real_estate_zone_template_heading` CHECK (`zone_in_heading` >= 0 AND `zone_in_heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Words the server combines into names for the neighborhoods it creates as others fill, as Live does ("Maple Bridge Point",
@@ -98,8 +128,10 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
   PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- upkeep_currency is 0 (coin) or an alternate currency id: the record's option key is derived from it when sent, since
--- option positions move as the expansion enables options.
+-- name holds only a neighborhood's generated name. upkeep_currency is 0 (coin) or an alternate currency id: the record's
+-- option key is derived from it when sent, since option positions move as the expansion enables options. Upkeep runs on a
+-- clock per property: a charge at next_upkeep_at takes the daily cost prorated over the seconds since upkeep_settled_at;
+-- upkeep_expired_time is the second a charge found the escrow empty (0 while paid). Ids start above every region id.
 CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `parent_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -109,25 +141,23 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `name` VARCHAR(64) NOT NULL DEFAULT '',
   `host_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `interior_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `upkeep_current` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
+  `upkeep_expired_time` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_settled_at` DATETIME NULL DEFAULT NULL,
   `next_upkeep_at` DATETIME NULL DEFAULT NULL,
   `voting_opt_out` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `archived` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `revision` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `parent_id` (`parent_id`),
   KEY `owner_character_id` (`owner_character_id`),
   KEY `guild_id` (`guild_id`),
   KEY `host` (`host_zone_id`, `host_instance_id`),
   KEY `next_upkeep_at` (`next_upkeep_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4;
 
--- Upkeep is charged hourly, 1/24 of the daily cost at a time, so balances are fractional (the client keeps them as f64);
--- coin is in copper.
+-- Charges are prorated by the second, so balances are fractional (the client keeps them as f64); coin is in copper.
 CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   `property_id` INT(10) UNSIGNED NOT NULL,
   `currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -135,15 +165,18 @@ CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   PRIMARY KEY (`property_id`, `currency`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- An item stored without ever being placed has Live's all-zero transform, so scale has no default. upkeep_expired_at is the
+-- second an empty escrow stamped the item.
 CREATE TABLE IF NOT EXISTS `real_estate_items` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `property_id` INT(10) UNSIGNED NOT NULL,
   `owner_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `placed` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `upkeep_expired_at` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `heading` FLOAT NOT NULL DEFAULT 0,
   `pitch` FLOAT NOT NULL DEFAULT 0,
   `roll` FLOAT NOT NULL DEFAULT 0,
-  `scale` FLOAT NOT NULL DEFAULT 1,
+  `scale` FLOAT NOT NULL,
   `x` FLOAT NOT NULL DEFAULT 0,
   `y` FLOAT NOT NULL DEFAULT 0,
   `z` FLOAT NOT NULL DEFAULT 0,
@@ -166,6 +199,24 @@ CREATE TABLE IF NOT EXISTS `real_estate_items` (
   KEY `owner_character_id` (`owner_character_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The look the Augmentater gave one placed copy of an NPC item, kept until RESET or until the item is picked up (Live drops
+-- it then), so a row exists only once the Augmentater was used on that copy.
+CREATE TABLE IF NOT EXISTS `real_estate_item_looks` (
+  `real_estate_item_id` INT(10) UNSIGNED NOT NULL,
+  `race` SMALLINT(5) UNSIGNED NOT NULL,
+  `gender` TINYINT(3) UNSIGNED NOT NULL,
+  `face` TINYINT(3) UNSIGNED NOT NULL,
+  `hair_style` TINYINT(3) UNSIGNED NOT NULL,
+  `beard` TINYINT(3) UNSIGNED NOT NULL,
+  `hair_color` TINYINT(3) UNSIGNED NOT NULL,
+  `body_material` TINYINT(3) UNSIGNED NOT NULL,
+  `body_tint` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`real_estate_item_id`),
+  CONSTRAINT `real_estate_item_look_item` FOREIGN KEY (`real_estate_item_id`) REFERENCES `real_estate_items` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `real_estate_item_look_race` CHECK (`race` > 0),
+  CONSTRAINT `real_estate_item_look_gender` CHECK (`gender` <= 2)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `real_estate_access_groups` (
   `property_id` INT(10) UNSIGNED NOT NULL,
   `group_number` TINYINT(3) UNSIGNED NOT NULL,
@@ -180,19 +231,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_access_names` (
   `group_number` TINYINT(3) UNSIGNED NOT NULL,
   PRIMARY KEY (`property_id`, `name`),
   CONSTRAINT `real_estate_access_name_group` CHECK (`group_number` <= 6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `real_estate_transfer_offers` (
-  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `property_id` INT(10) UNSIGNED NOT NULL,
-  `from_character_id` INT(10) UNSIGNED NOT NULL,
-  `to_character_id` INT(10) UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `expires_at` DATETIME NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `property_id` (`property_id`),
-  KEY `to_character_id` (`to_character_id`),
-  KEY `expires_at` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_polls` (
@@ -218,7 +256,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_poll_options` (
   `poll_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
   `position` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `unknown_value` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`poll_id`, `option_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -232,17 +269,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_poll_votes` (
   `poll_id` INT(10) UNSIGNED NOT NULL,
   `character_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
-  `voted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`poll_id`, `character_id`, `option_key`),
   KEY `character_id` (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- The property "Translocate Primary Anchor" (spell effect 438) sends a character to; the guild hall anchor is derived (the
--- guild's hall).
-CREATE TABLE IF NOT EXISTS `character_real_estate_anchors` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `primary_property_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`character_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `character_trophy_tribute` (

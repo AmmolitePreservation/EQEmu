@@ -4,9 +4,9 @@ Compiles the new code in common/patches/rof2.cpp (the else branch after `if (pac
 verbatim ItemQuaternaryBodyStruct from rof2_structs.h and common/itemHousingTail.cpp, serializes a housing item, an ordinary
 item and today's struct, then reads each in the client reader's order (0x7f6bf0, windows/RealEstateItemsWnd.md): every
 housing field must read back, an ordinary item must read today's defaults with an empty name, and the bytes before the tail
-and the 14 after it must equal today's. Needs g++.
+and the 14 after it must equal today's. Needs g++, or on Windows MSVC's cl in a Developer Command Prompt (vcvars64.bat).
 
-Usage: python3 testItemTailSerializer.py
+Usage: python testItemTailSerializer.py
 """
 import os, struct, subprocess, sys, tempfile
 
@@ -52,7 +52,7 @@ BODY
   }
   return ob.str();
 }
-int main() {
+int main(int argc, char **argv) {
   EQ::setItemHousingTailProvider(provider);
   housingItem.placeable = 0x0c; housingItem.placeableIgnoreCollisions = 1; housingItem.placementType = 3; housingItem.realEstateDefinitionId = 5;
   housingItem.placeableScaleMin = 0.5f; housingItem.placeableScaleMax = 2.0f; housingItem.realEstateUpkeepId = 17; housingItem.maxPerRealEstate = 1;
@@ -62,16 +62,24 @@ int main() {
   RoF2::structs::ItemQuaternaryBodyStruct t; today(t);
   std::string a = serialize(7), b = serialize(8), c((const char *)&t, sizeof(t));
   uint32 lengths[4] = {(uint32)a.size(), (uint32)b.size(), (uint32)c.size(), (uint32)offsetof(RoF2::structs::ItemQuaternaryBodyStruct, Heirloom)};
-  fwrite(lengths, 4, 4, stdout); fwrite(a.data(), 1, a.size(), stdout); fwrite(b.data(), 1, b.size(), stdout); fwrite(c.data(), 1, c.size(), stdout);
+  if (argc != 2) return 1;
+  FILE *out = fopen(argv[1], "wb");
+  if (!out) return 1;
+  fwrite(lengths, 4, 4, out); fwrite(a.data(), 1, a.size(), out); fwrite(b.data(), 1, b.size(), out); fwrite(c.data(), 1, c.size(), out);
+  fclose(out);
   return 0;
 }
 '''.replace('DEFINITION', definition).replace('BODY', body)
 
 with tempfile.TemporaryDirectory() as work:
   open(os.path.join(work, 'harness.cpp'), 'w').write(harness)
-  subprocess.run(['g++', '-std=c++20', '-iquote', os.path.join(peridot, 'common'), '-o', os.path.join(work, 'harness'),
-                  os.path.join(work, 'harness.cpp'), os.path.join(peridot, 'common', 'itemHousingTail.cpp')], check=True)
-  raw = subprocess.run([os.path.join(work, 'harness')], check=True, capture_output=True).stdout
+  harnessPath, sources = os.path.join(work, 'harness.exe' if os.name == 'nt' else 'harness'), [os.path.join(work, 'harness.cpp'), os.path.join(peridot, 'common', 'itemHousingTail.cpp')]
+  if os.name == 'nt':
+    subprocess.run(['cl', '/nologo', '/std:c++20', '/EHsc', '/I', os.path.join(peridot, 'common'), f'/Fe{harnessPath}', '/Fo' + os.path.join(work, ''), *sources], check=True, cwd=work)
+  else:
+    subprocess.run(['g++', '-std=c++20', '-iquote', os.path.join(peridot, 'common'), '-o', harnessPath, *sources], check=True)
+  subprocess.run([harnessPath, os.path.join(work, 'serialized.bin')], check=True)
+  raw = open(os.path.join(work, 'serialized.bin'), 'rb').read()
 
 la, lb, lt, heirloom = struct.unpack_from('<4I', raw)
 housing, ordinary, current = raw[16:16 + la], raw[16 + la:16 + la + lb], raw[16 + la + lb:16 + la + lb + lt]
@@ -95,7 +103,7 @@ h, o, c = clientRead(housing), clientRead(ordinary), clientRead(current)
 failures = []
 expected = dict(placeable=0x0c, ignoreCollisions=1, placementType=3, definition=5, scaleMin=0.5, scaleMax=2.0, upkeep=17, maxPer=1, housepet=b'IT20300',
                 interactive=1, trophy=100, rotationOff=1, freeOff=0, respawn=4500, scale=1.25, heading=90.0, pitch=-3.5, roll=7.0, x609=0)
-defaults = dict(placeable=0, ignoreCollisions=0, placementType=0, definition=0, scaleMin=0.0, scaleMax=0.0, upkeep=0, maxPer=0, housepet=b'',
+defaults = dict(placeable=0, ignoreCollisions=0, placementType=0, definition=0, scaleMin=0.0, scaleMax=0.0, upkeep=0, maxPer=-1, housepet=b'',
                 interactive=0, trophy=-1, rotationOff=0, freeOff=0, respawn=0, scale=0.0, heading=0.0, pitch=0.0, roll=0.0, x609=0)
 failures += [f'housing item {k}: {h[k]!r}' for k, v in expected.items() if h[k] != v]
 failures += [f'ordinary item {k}: {o[k]!r}' for k, v in defaults.items() if o[k] != v]
