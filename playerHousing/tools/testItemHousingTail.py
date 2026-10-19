@@ -1,12 +1,18 @@
-"""Tests sql/itemHousingTail.sql against a local MariaDB: the real `items` definition, the exported rows, every value checked
-against itemTailDecode.py, the column order, the capture, a re-run after a mid-way failure, and each guard. Then
-sql/itemHousingAdoption.sql on the result: Live's values adopted in ITM-1's counts, nothing else changed, and every run
-leaving the same table.
+"""Tests sql/itemHousingTail.sql against a local MariaDB: the real `items` definition, every exported row, every value
+checked against itemTailDecode.py, the column order, the capture, a re-run after a mid-way failure, and each guard. Then
+sql/itemHousingAdoption.sql on the result: Live's values on every Peridot item Live lists as placeable, in the counts measured
+on Peridot's 117,944 items, the client record over items.txt, nothing else changed, and every run leaving the same table.
 
-Usage: python testItemHousingTail.py pok-schema-all.json itemTailFull.txt   (a local MariaDB with a `peq` database, root without a
-password; itemTailFull.txt is the second result set of the itemTailFull.sql export)
+Usage: python testItemHousingTail.py pok-schema-all.json itemTailAll.txt   (a local MariaDB with a `peq` database, root without
+a password)
+
+Both inputs come from Peridot's `peq`, read-only. pok-schema-all.json is each table's SHOW COLUMNS as
+{table: [{Field, Type, Null, Key, Default, Extra}]}; only `items` is read. itemTailAll.txt is every item's tail:
+  echo 'SET SESSION TRANSACTION READ ONLY; SELECT id, Name, UNK223, UNK224, UNK225, UNK226, UNK227, UNK228, UNK229, UNK230,
+    UNK231, UNK232, UNK233, UNK234, placeable, UNK236, UNK237, UNK238, UNK239, UNK240, UNK241 FROM items ORDER BY id;' |
+    mariadb -B -uroot peq > itemTailAll.txt
 """
-import contextlib, io, json, os, runpy, struct, subprocess, sys
+import contextlib, io, json, os, runpy, struct, subprocess, sys, tempfile
 
 schemaPath, exportPath = sys.argv[1], sys.argv[2]
 here = os.path.dirname(os.path.abspath(__file__))
@@ -29,16 +35,21 @@ def definition(c):
 createTable = ("DROP TABLE IF EXISTS items_housing_capture; DROP TABLE IF EXISTS items; CREATE TABLE items ("
                + ", ".join(definition(c) for c in schema) + ", PRIMARY KEY (`id`)) ENGINE=InnoDB;")
 
-with contextlib.redirect_stdout(io.StringIO()):
-  sys.argv = ['itemTailDecode.py', exportPath]
-  decoder = runpy.run_path(os.path.join(here, 'itemTailDecode.py'))
-rows = {r['id']: r for r in decoder['rows']}
+exportLines = [line for line in open(exportPath).read().split('\n') if line]
 exportColumns = ['id', 'Name', 'UNK223', 'UNK224', 'UNK225', 'UNK226', 'UNK227', 'UNK228', 'UNK229', 'UNK230', 'UNK231', 'UNK232',
                  'UNK233', 'UNK234', 'placeable', 'UNK236', 'UNK237', 'UNK238', 'UNK239', 'UNK240', 'UNK241']
-patterns = [(1041, [0] * 17), (1001, [0, 0, 0, 0, 0, 0, -1, 0, -256, 255, 0, 0, 0, 0, 0, 0, 0]), (1104, [0, 0, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0])]
-values = [f"({r['id']},'x',{','.join(str(r[c]) for c in exportColumns[2:])})" for r in rows.values()]
-values += [f"({i},'x',0,0,{','.join(map(str, p))})" for i, p in patterns]
-loadRows = f"INSERT INTO items ({','.join('`' + c + '`' for c in exportColumns)}) VALUES " + ",".join(values) + ";"
+assert exportLines[0].split('\t') == exportColumns, 'the export does not start with its column names'
+exported = [line.split('\t') for line in exportLines[1:]]
+with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as placeableExport:
+  placeableExport.write('\n'.join([exportLines[0]] + [line for line, p in zip(exportLines[1:], exported) if p[3] != '0']) + '\n')
+with contextlib.redirect_stdout(io.StringIO()):
+  sys.argv = ['itemTailDecode.py', placeableExport.name]
+  decoder = runpy.run_path(os.path.join(here, 'itemTailDecode.py'))
+os.unlink(placeableExport.name)
+rows = {r['id']: r for r in decoder['rows']}
+values = [f"({p[0]},'{p[1].replace(chr(39), chr(39) * 2)}',{','.join(p[2:])})" for p in exported]
+loadRows = ''.join(f"INSERT INTO items ({','.join('`' + c + '`' for c in exportColumns)}) VALUES " + ','.join(values[k:k + 10000]) + ';'
+                   for k in range(0, len(values), 10000))
 
 
 def fresh(extra=''):
@@ -64,18 +75,17 @@ def expected(i):
 
 def verify(label):
   select = ", ".join(f"CAST(`{c}` AS DOUBLE)" if c in floats else f"`{c}`" for c in newColumns)
-  mismatches = 0
+  mismatches, checked = 0, 0
   for line in sql(f"SELECT id, {select} FROM items").splitlines():
-    p = line.split('\t'); i = int(p[0])
+    p = line.split('\t'); i = int(p[0]); checked += 1
     for name, e, v in zip(newColumns, expected(i), p[1:]):
       same = bits(e) == bits(float(v)) if name in floats else (str(e) == v if name == 'housepet_file_name' else e == int(v))
       mismatches += not same
-  rename = dict(zip(['UNK224', 'UNK225', 'UNK226', 'UNK227', 'UNK228', 'UNK229', 'UNK230', 'UNK231', 'UNK232', 'UNK233', 'UNK234',
-                     'placeable', 'UNK236', 'UNK237', 'UNK238', 'UNK239', 'UNK240', 'UNK241'], newColumns))
+  rename = dict(zip(exportColumns[3:], newColumns))
   order = sql("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='peq' AND TABLE_NAME='items' ORDER BY ORDINAL_POSITION").split()
   assert order == [rename.get(c['Field'], c['Field']) for c in schema], 'column order changed'
-  assert mismatches == 0, f'{label}: {mismatches} values differ from the decoder'
-  print(f'{label}: {len(rows) + len(patterns)} rows match the decoder; {len(order)} columns in their original order')
+  assert checked == len(exported) and mismatches == 0, f'{label}: {checked} rows, {mismatches} values differ from the decoder'
+  print(f'{label}: {checked} rows match the decoder; {len(order)} columns in their original order')
 
 
 fresh(); sql(migration); verify('fresh run')
@@ -101,20 +111,39 @@ def snapshot():
 
 
 fresh(); sql(migration); before = snapshot()
+sql('DROP TABLE IF EXISTS items_before; CREATE TABLE items_before AS SELECT * FROM items;')
 sql(adoption); after = snapshot()
 changed = lambda columns: sum(any(before[i][c] != after[i][c] for c in columns) for i in after)
-counts = dict(masks=changed(['placeable']), scaleMinimums=changed(['placeable_scale_min']),
+counts = dict(items=changed(adopted), masks=changed(['placeable']), scaleMinimums=changed(['placeable_scale_min']),
               orientations=changed(['placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll']),
-              limits=changed(['max_per_real_estate']), named=sum(after[i]['housepet_file_name'] != '' for i in after))
-assert counts == dict(masks=485, scaleMinimums=56, orientations=46, limits=4, named=113), f"adopted counts differ from ITM-1's: {counts}"
-print(f"adoption: {counts['masks']} masks, {counts['scaleMinimums']} scale minimums, {counts['orientations']} orientations, {counts['limits']} limits, "
-      f"{counts['named']} NPC items named; {changed(['disable_placement_rotation'])} rotation locks")
-outside = [i for i in after if any(before[i][c] != after[i][c] for c in newColumns if c not in adopted) or (before[i]['placeable'] == '0' and before[i] != after[i])]
-assert not outside, f'the adoption changed a column it does not adopt, or an item that is not placeable: {outside[:10]}'
-print('adoption: no other column and no non-placeable item changed')
-named = {i: (after[i]['placeable_default_heading'], after[i]['placeable_default_pitch'], after[i]['placeable_default_roll']) for i in (67906, 66865, 66866, 66867, 66868)}
-assert after[93435]['housepet_file_name'] == 'aquatic_mephit' and named[67906] == ('128', '0', '128') and all(named[i] == ('0', '0', '384') for i in range(66865, 66869)), (after[93435], named)
-print("adoption: 93435 is aquatic_mephit; 67906 faces 128, 0, 128 and 66865-66868 0, 0, 384, Live's off-grid orientations")
+              rotationLocks=changed(['disable_placement_rotation']), limits=changed(['max_per_real_estate']),
+              named=sum(after[i]['housepet_file_name'] != '' for i in after),
+              newlyPlaceable=sum(before[i]['placeable'] == '0' and after[i]['placeable'] != '0' for i in after))
+assert counts == dict(items=11095, masks=10846, scaleMinimums=1365, orientations=100, rotationLocks=76, limits=24, named=568,
+                      newlyPlaceable=9119), f'adopted counts differ from those measured: {counts}'
+print(f"adoption: {counts['items']} items changed: {counts['masks']} masks ({counts['newlyPlaceable']} newly placeable), "
+      f"{counts['scaleMinimums']} scale minimums, {counts['orientations']} orientations, {counts['rotationLocks']} rotation locks, "
+      f"{counts['limits']} limits; {counts['named']} NPC items named")
+kept = [c['Field'] for c in schema if c['Field'] not in exportColumns[3:]] + [c for c in newColumns if c not in adopted]
+differing = sql('SELECT COUNT(*) FROM items a JOIN items_before b ON b.id = a.id WHERE NOT ('
+                + ' AND '.join(f'a.`{c}` <=> b.`{c}`' for c in kept) + ')').strip()
+total = sql('SELECT COUNT(*) FROM items').strip()
+sql('DROP TABLE items_before;')
+assert differing == '0' and total == str(len(exported)) and sorted(after) == sorted(before), (differing, total)
+print(f'adoption: {len(kept)} other columns unchanged on all {total} items; no item added')
+housing = lambda i: tuple(after[i][c] for c in ('placeable', 'placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll'))
+assert before[67906]['placeable'] == '0' and housing(67906) == ('142', '128', '0', '128'), after[67906]
+assert before[66868]['placeable'] == '0' and all(housing(i) == ('142', '0', '0', '384') for i in range(66865, 66869)), \
+  [after[i] for i in range(66865, 66869)]
+print('adoption: 67906, not placeable before, is 142 facing 128, 0, 128; 66865-66868 are 142 facing 0, 0, 384')
+pets = {i: (before[i]['placeable'], after[i]['placeable'], after[i]['housepet_file_name']) for i in (47715, 11164)}
+assert pets == {47715: ('0', '142', 'a_familiar_floating_skull'), 11164: ('0', '142', 'a_familiar_of_Zatozia')}, pets
+assert 93435 not in after, 'an item Live lists and Peridot lacks appeared'
+print('adoption: 47715 named a_familiar_floating_skull from its client record and 11164 a_familiar_of_Zatozia from items.txt, '
+      'neither placeable before; 93435 stays absent')
+masks = {i: (before[i]['placeable'], after[i]['placeable']) for i in (55446, 55448)}
+assert masks == {55446: ('-1', '-1'), 55448: ('0', '-1')}, masks
+print("adoption: 55446 and 55448 take the client record's mask -1 over items.txt's 255")
 sql(adoption)
 assert snapshot() == after, 'a second run of the adoption changed the table'
 pieces = [s for s in adoption.split(';\n') if s.strip()]
