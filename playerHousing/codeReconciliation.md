@@ -1,0 +1,164 @@
+# Code reconciliation
+
+The existing housing code (written through 2026-09-30) against serverPlan.md, the worklist's fix items and the Live results, which win in that order (Live highest). Owner decisions Q1-Q26 count as Live. Paths are from the repo root; `pH/` is `playerHousing/`. Keys are worklist items. Line numbers are at 9773cb427; the worklist's own line numbers are stale (housing.cpp sits about 29 lines lower).
+
+**Where the code is.** Chunks 1-4 exist but are half wired: `zone/housing/housing.h` declares `handlePacket`, `process`, `handleFindRequest`, `handleDoorClick`, `handleAnchorEffect` and `trophyBenefitItems`, and `world/housingUpkeep.cpp` declares `chargeDueUpkeep`; the hooks in zone code call them, nothing defines them, so housing does not link (BLD-1, BLD-2). Chunks 5-7 (placement, world objects, NPC items, menus, purchase/sell/transfer, escrow, upkeep charging, interiors, doors, anchors, polls, trophies) are unwritten beyond their hooks and tables. Per Q1 it all lands as one build with no stubs.
+
+## Throw away
+
+| File | What goes | Why | Items |
+|---|---|---|---|
+| common/emu_oplist.h:647, utils/patches/patch_RoF2.conf:771, zone/client_packet.cpp:449 | OP_RealEstateContainerOpen | 0x06c8 is OP_OpenContainer | OPC-1 |
+| common/ruletypes.h:1184-1188 | UpkeepTickSeconds, UpkeepGraceHours, InactivityDays, GuildInactivityDays | Live: per-property clock, no grace, 90-day escrow reclaim only | UPK-1, UPK-4, RCL-1 |
+| common/ruletypes.h:1202 | NeighborhoodPruneMargin | Live never prunes | NBH-4 |
+| manifest, pH/sql/housingSchema.sql, common/database_schema.h:70/:148, common/repositories/*character_real_estate_anchors* | character_real_estate_anchors table and repositories | The anchor target is the placed Lore anchor item | INT-6 |
+| manifest :63-64, :153 (and housingSchema.sql) | definitions instance_zone_id/_version, properties interior_instance_id | Interiors are shared, discarded copies held in a runtime map; zone and version move to a template table keyed by dz_id | INT-12 |
+| manifest :156 | properties.upkeep_current | Replaced by upkeep_expired_time | REC-2 |
+| manifest :161, :229, :260, :274 | properties.created_at, transfer_offers.created_at, poll_options.unknown_value, poll_votes.voted_at | Not Live data | SCH-2 |
+| zone/housing/housingStore.cpp:22-27 | propertiesWithInterior | Reads interior_instance_id | INT-12 |
+| world/housingUpkeep.cpp (the hourly schedule) | The tick design | Rewritten as a per-property clock (below) | UPK-1, UPK-22 |
+| common/spdat.h:1499-1500 | "implemented" on 437/438 | Nothing implements them until housingAnchors | INT-6 |
+
+## Change
+
+| File | Change | Items |
+|---|---|---|
+| **zone/housing/housing.cpp** | Define handlePacket (dispatch to the new modules for 0x2691, 0x45be, 0x792c, 0x507f, 0x5a63, 0x2aa6, 0x3146, placement, menus, polls, trophies), process (transfer expiry, trophy charges, NPC respawns, poll prompts), handleFindRequest (type 3 Locate incl. NPC spawn GUIDs, type 4 plot find), handleDoorClick, handleAnchorEffect, trophyBenefitItems | BLD-1 |
+| | Records go out as 0x63fd; 0x4f09 only for a property that is gone (:203) | REC-1 |
+| | upkeepOptionKey :181-196 and addTrees :93 fail loudly instead of sending 0 / a missing parent | REC-12 |
+| | currentPropertyFor :121-138: one type-1 root per zone, refuse a second; interior property from the runtime instance map; the X3 root's name from the zone's long name | ZIN-10, INT-12, EXT-9, EXT-14 |
+| | onZoneIn: an empty 0x49df to every RoF2 client in housing-off, catalog-less and dormant zones | REG-2 |
+| | onZoneBoot :306-313: load tails and register the provider first, even with housing off; fail boot on failure | ITM-5 |
+| | Split zone-in: 0x2698, records and 0x6fd0 before OP_WorldObjectsSent; 0x1045 and NPC spawns after the item lists (no 0x1045 for a spawned NPC item) | ZIN-8, WOB-2, NPC-3 |
+| | :256-263 load and send access lists for neighborhoods and guild halls too; houses none | ACC-1, ACC-3 |
+| **zone/housing/housingMessages.cpp** | :9 +0x18 = -1 (0 on a vacant player plot); :14 +0x30 owner's account id as text; :18 name composed at send time ("parent, segment"); :27 upkeep_expired_time | REC-7, REC-6, REC-5, REC-2 |
+| | :12 activeGuildId per REC-9 (only vacant guild plot = -1 is safe now) | REC-9 (blocked) |
+| **zone/housing/housingItems.cpp** | :127-133 y before x; :135 field 13 the placer's account id; :71 the item's upkeep_expired_at; a stable GUID per row (hex letter + 15 hex) | CAT-3, REC-6, UPK-2, REC-3 |
+| **zone/housing/housingCatalog.cpp/.h** | :276-279 origin y first; :275 max_npc_items as i32; Live's column names (region_id->area_id, purchase/upkeep_cost_id->cost/upkeep_definition_id, max_houses->max_children, max_pet_items->max_npc_items, layout_*->switch_*, category->placement_group_id); load rules: dz_id rules, region_id only on types 4/8, plot region ids unique per instance and below the property-id floor, one root per zone, a dz_id template per type 2/3, sub_key 1 on alternate currencies; fail when an NPC item has no real_estate_npc_items row | CAT-3, SCH-1, SCH-4, CAT-6, SCH-3, ZIN-10, INT-12, EXT-31, NPC-2 |
+| **zone/housing/housingAccess.cpp/.h** | mayTransact (owning guild's member always; else bit 11); the access-list writer (defaults at purchase, player or guild set; 0x3146 edits in one transaction, 0x485d to holders); after an edit, move anyone inside who lost Enter to the exit point, silently, through an event | ACC-3, ACC-1 |
+| **zone/housing/housingStore.cpp/.h** | Balance settlement, expiry stamps on property and placed items, plot release, guild member count, plots per character and per guild | UPK-*, RCL-1, STT-2 |
+| **zone/housing/housingEvents.h/.cpp** | Event types: propertyChanged, accessChanged, upkeepCharged/expired, transferOffer, guildNeighborhoodCreated, itemList, poll | UPK-9, ACC-3, NBH-1, STT-8, S5, S11 |
+| **zone/housing/housingSession.h** | Placement session (new/edit, source, GUID, context, latch); Augmentater mode | S5, NPC-18 |
+| **zone/housing/housingCommand.cpp** | :26-27 region 350 each way around the feet; :284 accept -1 for max_npc_items; :181 region ids below the property-id floor; renamed fields (:28-29, :220-227, :272); drop instance_zone_*; :161 prints upkeep_expired_time; :315 help on costs; cost set handles alternate currencies; door edits enforce the door rules; village create takes a definition; `#realestate poll` | REG-1, SCH-1, SCH-3, SCH-4, INT-12, REC-2, GMC-1, EXT-31, DOR-10, EXT-33, S11 |
+| **zone/client_packet.cpp** | Hook before OP_WorldObjectsSent (:1157); Handle_OP_OpenContainer (:11030) RoF2 12-byte branch for housing containers; register OP_PollList (:444-477); :450 OP_RealEstateEnter becomes the use/proximity opcode; guild bank :7720/:923 allows halls 737/738/751 and serves only the owning guild ("not a member of the guild", eqstr 5427) | ZIN-8, OPC-1, POL-1, MNU-2, ACC-6, NPC-7, NPC-9 |
+| **zone/doors.cpp:547-548** | Hand types 159-161 and data-mapped housing door ids to housing | DOR-3, EXT-27 |
+| **zone/zone.cpp ~:1610** | A housing copy's empty shutdown deletes its instance_list row and clears the map | INT-12 |
+| **zone/npc.h/.cpp, common/eq_packet_structs.h** | Carry the housing binding (property, record, GUID) on the NPC and in Spawn_Struct | NPC-3, MNU-4 |
+| **zone/zone_save_state.cpp:735-757** | Exclude housing NPC items from shutdown state saving | NPC-19 |
+| **zone/tribute.cpp:547, :563** | trophy_timer and tribute_trophy_toggle from trophy state | S12, TRO-3 |
+| **zone/spells.cpp** | Hook spell 7651 (Augmentater) | Q18b |
+| **zone/forage.cpp + forage/fishing repositories + migration** | `version` column; a housing version reads only its own rows | EXT-24 |
+| **common/patches/rof2.cpp** | SerializeItemForHousing :6457 takes the row GUID; :2435-2439 FilterID, bDisallowManaStone, bNoBind from the zone row; :4935-4937 the spawn's binding; :4366 unknown128 = 1 for trophy tributes; OP_SpawnDoor ~:3776 RealEstateDoorID in unknown0076; :2965 0x8000\|zone for halls (after ACC-8) | REC-3, ZIN-9, NPC-3, TRO-5, DOR-9, ACC-7 |
+| **common/emu_oplist.h, utils/patches/patch_RoF2.conf** | :366 OP_OpenContainer=0x06c8; add OP_RealEstatePlaceCancel=0x6213 and 0x7b22/0x51df/0x6d20; rename OP_RealEstateEnter to the use/proximity name (conf:774, oplist:650) | OPC-1, OPC-7, OPC-9, MNU-2 |
+| **common/ruletypes.h** | Add UpkeepIntervalSeconds 43200, UpkeepJitterSeconds ~4320, UpkeepPercent, MaxPetsPerHouse/MaxPetsPerGuildHall (-1); UnpaidUpkeepEvictionDays 90; DefaultAccess* 3, 3, 2051, 3587, 8071, 8191, 0; guild-plot defaults 0, 3, 2051, 3587, 8071, 8071, 0 plus rank entries `_Guild2`=5, `_Guild3`=4, `_Guild4`-`_Guild6`=3, `_Guild7`/`_Guild8`=2; SellRefundsEscrow description; EnableWorldPlots/WorldNeighborhoodDefinitions renamed to zone roots | UPK-1, UPK-22, EXT-1, SCH-1, RCL-1, ACC-1, STT-1, EXT-14 |
+| **common/itemHousingTail.h:316** | maxPerRealEstate = -1 | ITM-4 |
+| **common/item_instance.cpp:816-846, common/housingPropertyItem.h:290-298** | Strict "k^v^k^v" parse (odd count or non-number raises); a property-carrying item is No Trade per instance via attuned; an empty house picked up loses its property | ITM-10, STT-6, STT-4 |
+| **common/database/database_update_manifest_custom.cpp, pH/sql/housingSchema.sql** (regenerated by pH/tools/makeHousingManifest.py) | Nothing is applied yet, so v2/v3 are edited in place: max_pet_items signed INT DEFAULT -1 with CHECK; column renames; upkeep_expired_time; properties.upkeep_settled_at; items.upkeep_expired_at; items.scale not defaulting to 1; name segment and 99-char names; properties AUTO_INCREMENT above every region id; the dz_id template table (zone, version, zone-in xyzh); exit-point storage; real_estate_item_looks. New v4 adopting Live's item values (masks, scale minimums, orientations, limits, housepet names) | SCH-1..4, REC-2, REC-5, REC-11, UPK-1, UPK-2, INT-12, INT-11, NPC-19, ITM-1 |
+| **common/version.h:47** | CUSTOM_BINARY_DATABASE_VERSION 4 | ITM-1 |
+| **common/repositories/base/*real_estate*** | Regenerate for the schema; new real_estate_item_looks repository | SCH-*, NPC-19 |
+| **world/housingUpkeep.cpp/.h** | Per-property clock: scan next_upkeep_at, charge the daily total x seconds since settled / 86400 per currency, reductions clamped at 0; a short charge takes what's left; a charge on empty stamps the property and placed items, stores stamped non-house items, mails "Escrow expired on personal plot - First Notice" and sends both chat lines; reclaim 90 days after the stamp into a Crate of Eviction (def 31) archived for the owner, and at once when the owner is deleted; UpkeepPercent from the host zone's ruleset; dormant X3 zones paused; mail Date in Los Angeles wall time (polish) | UPK-1, UPK-2, UPK-5, UPK-6, UPK-7, UPK-22, RCL-1, Q19, EXT-1, EXT-21, BLD-2 |
+| **world/zoneserver.cpp:1676** | Owner-change events to housingNeighborhoods | NBH-1 |
+| **zone/CMakeLists.txt, world/CMakeLists.txt** | List the new files | BLD-1 |
+| **pH/tools/makeHousingCatalogSql.py → pH/sql/housingCatalog.sql** | Pets -1 on houses, halls and crates; def 2 houses 1711; origins from Live's switchCoords; renamed columns and segments; template rows by dz_id (35633 → 345 v2 ...); exit points; alternate currencies; Live-only defs and costs (blocked, CAT-4) | SCH-1, CAT-1, CAT-3, SCH-4, REC-5, INT-12, INT-1, INT-11, EXT-31 |
+| **pH/tools/makeHousingZonesSql.py → housingZones.sql, housingZoneSettings.sql** | 345 version 2; Live's safe and entry points; shutdowndelay ~31-33 min; Live's header values (bNoBind 1, ZoneType, clip, fog) | INT-1, INT-2, INT-3, INT-13, INT-14, ZIN-9, EXT-8 |
+| **pH/tools/makeGuildBorderDoorsSql.py** | Ids 226-229, Live's z and headings, the door rules | DOR-2, DOR-10 |
+| **pH/tools/test*.py** | testHousingCatalog (pets, def 2, origins, templates), testHousingSchema (renames, drops, 3-level name, id floor, PRC-3 negatives), testItemHousingTail (adopted counts), testItemTailSerializer (:98 maxPer -1) | as above, PRC-3 |
+
+## Write new
+
+| File | What | Items |
+|---|---|---|
+| zone/housing/housingSearch.cpp | 0x2691 types 0/1/2/4/5 (empty search lists every neighborhood; guild -1 on public ones; single-property reply's four u32s); Go 0x218c | NBH-3, NBH-5, OPC-5, S6 |
+| zone/housing/housingPurchase.cpp | Gates: HoT; VoA + rank permission 27; 10 members (eqstr 5426); village members only; 3 per character; 1 per guild; in the plot's instance. Effects: stamp 0, settled now, next charge one interval + jitter, default access list | STT-2, STT-3, STT-10, ACC-1, UPK-1, UPK-4 |
+| zone/housing/housingSell.cpp | 0x66bf gate codes 3, 4, 5, 6, 10, then 7634; pack into the placed crate (No Trade instance to the seller); whole escrow floored to copper, unsettled, nothing printed at 0; no price refund | STT-1 |
+| zone/housing/housingTransfer.cpp | Target a client in the owner's zone, owner in the plot; refusals 5279, 7637, 761, 5316, 5318, 8081, 5280, 782 only for an unresolved name; offer 7636; yes 735/736; 300 s expiry 7638; escrow, option and access stay; fellowship becomes the new owner's | STT-7, STT-8, STT-10 |
+| zone/housing/housingAccount.cpp | 0x2aa6: deposit settles prorated then credits and clears placed stamps; withdraw needs bit 2; type 2 sets the option; Day/Week totals | UPK-8, UPK-10, UPK-2 |
+| zone/housing/housingMenus.cpp/.h | 0x21ec in Live's order; Enter type 1 on 0x218c (permission, same zone, current upkeep, never crates); Adjust/Place/Move to Storage bit 10, Mail to Owner bit 7, crate Move to Inventory bit 3; Transact gate; owner actions on an expired plot; nap, training dummy, Inspect 0x58c7; Help left out | MNU-1, MNU-2, MNU-3, MNU-5, ACC-3, ACC-4, STT-6, Q25 |
+| zone/housing/housingPlacement.cpp/.h | 0x626e begin (rule sets, per-region map); 0x711a commit (rules at position, scale, locks, interior bound, stack merge); 0x2036 pick up, 0x3424 store; NO DROP/LORE rules; rule 0x1e cycle check; trophy rule 0x46 | S5, PLC-4, PLC-5, PLC-6, PLC-8, PLC-12, PLC-13 |
+| zone/housing/housingWorldObjects.cpp/.h | 0x1045/0x2a9e/0x2523: 'IT'+(ornament or idfile)+'_ACTORDEF', +0x0c item id, +0x98 NPC or ignore-collisions; held-item turn from effective slots | WOB-1..5 |
+| zone/housing/housingNpcItems.cpp/.h | Classify (housepet name, not interactive); spawn at the transform with the binding; 0x21ea only while placing; respawn; Ganak rider; look overlay on a private NPCType copy | NPC-1, NPC-2, NPC-3, NPC-19 |
+| zone/housing/housingAugmentater.cpp/.h | Spell 7651, Live's 9 modes, real_estate_item_looks | Q18a, Q18b, NPC-18, NPC-19 |
+| zone/housing/housingContainers.cpp | Tradeskill containers as transient Objects | S5 |
+| zone/housing/housingGuildServices.cpp/.h | Pool aura 31874 (radius ~35, Activate/Deactivate, server-only aura NPC, bit 0 Receive Buffs); Teleportation Assistant keys and alignment, Device platform | NPC-6, NPC-15, ACC-4 |
+| zone/housing/housingInteriors.cpp | Enter: permission and upkeep, template by dz_id, GetUnusedInstanceID + instance_list (never_expires 1, is_global 0), one shared copy, AddClientToInstance + MovePC. Leave: front door and /leaverealestate to the fixed exit point, 6866 elsewhere. Occupants out on revoked Enter, pickup, swap; login into a discarded copy. Store All, Pack, Unpack silent. Apartments | INT-8..14, EXT-9, EXT-22, EXT-26 |
+| zone/housing/housingDoors.cpp | Door data keyed (zone, version, door id): 159 list, 160 Purchase, 161 leave; lot and guild squares, portal, Guild Lobby gate; a purchase away from the plot refreshes with 0x2691 | DOR-3, DOR-4, EXT-27, EXT-29 |
+| zone/housing/housingAnchors.cpp | 437/438 to the placed anchor item; self Gate at once; AE sends 5329; landing +3-4 | INT-6, INT-7 |
+| zone/housing/housingPolls.cpp/.h | S11: answer 0x15e2 with the five lists; votes 0x15a8/0x6573; results 0x3311; 0x7a4d prompt; 0x499a teleport | POL-1, S11 |
+| zone/housing/housingTrophies.cpp/.h | S12 personal (available set, at most PersonalTrophySlots, timers) and guild (lock, perm 25); 0x2bc from a member anywhere, leader for others | S12, TRO-1, TRO-2, TRO-4, TRO-5, TRO-7 |
+| zone/housing/housingQuestAPI.cpp + Lua/Perl registration | Open Purchase, enter, leave | EXT-28 |
+| world/housingNeighborhoods.cpp | D11 growth only at boot and on owner change; names from the word table; villages "<guild> Village[ N]" up to 44 characters | NBH-1, NBH-2, NBH-4 |
+| world/housingInstances.cpp | Sweep housing instances with no running zone; zone roots at boot; neighborhood creation through the same path; writ to definition map; 0x1d3c to guild members | INT-12, EXT-14, EXT-33 |
+| pH/tools/makeItemHousingTailSql.py (or a new adoption generator) | ITM-1's v4 statements from Live's tsv | ITM-1 |
+| pH/tools/makeNpcItemsSql.py → pH/sql/npcItems.sql | npc_types and real_estate_npc_items for 275 items, housepet names, guard; guild service merchants, keys (24 + splinter), bankers, tribute masters, parcel merchants, geode landings | NPC-1, NPC-2, NPC-5, NPC-8, NPC-9, NPC-10, NPC-15 |
+| pH/tools/makeTrophyTributesSql.py → pH/sql/trophyTributes.sql | tributes and tribute_levels for the trophy ids items name | TRO-5, PRC-4 |
+| pH/tools/makeHousingDoorsSql.py | Front doors, hall doors, guildhalllrg's 26 interior doors, 345 v2 guild door, the door map; door rules | DOR-1, DOR-3, DOR-10 |
+| pH/tools/deployHousingContent.py | Load the content in order; fail on a missing file | PRC-4 |
+| Patcher (none exists in the repo) | On-demand lines, race lines, GlobalLoad_chr lines and count, dbstr 28 and 18 rows, the six RENW_Show*_Btn checked, front-door lines; polish: border/pad/portal, eqgame flag, host chr | PAT-1, PAT-2, PAT-4, PAT-5, PAT-6, EXT-11..13, EXT-15, EXT-31 |
+| mqPeridot/plugins/MQPeridotEmu | cursorItem section and the seven Lua suites | PRC-5 |
+
+**Already in code, nothing to do:** CAT-2, CAT-5, ITM-7, REG-1 data, REG-3, ZIN-3, ZIN-4, the CMake entries for existing files, database_schema.h lists, the 22 repositories, the access evaluator's named-group replacement, Owner/Leader bypass and expansion gates, activeGuildId, guild rank defaults (ACC-5), the purchase-limit and transfer-expiry rules, the hooks T18-T24, the incoming placement/menu/poll/trophy opcodes, the item tail fields, the poll/trophy/NPC tables, the catalog's dz_ids, OP_RealEstateLeave, door wire flags 0081/0083.
+
+## Where the plan is overruled
+
+The plan text needs these corrections; the code follows the right-hand side.
+
+| Plan says | Code follows | Source |
+|---|---|---|
+| Records on 0x4f09 | 0x63fd; 0x4f09 removes | REC-1 |
+| Housing after ClientReady | Before OP_WorldObjectsSent | ZIN-8 |
+| Housing-off zones get nothing | Empty 0x49df everywhere | REG-2, REG-3 |
+| x before y | y before x | CAT-3 |
+| Interiors as EQEmu dynamic zones, one never-expiring instance per house (D3) | Plain instances, a housing template table by dz_id, one shared copy, discarded ~31-33 min after empty | Q2, INT-12, INT-14 |
+| Neighborhoods are is_global | is_global 0, AddClientToInstance | INT-12, INT-13 |
+| Front door steps you out of the house | Fixed exit point per property | INT-11 |
+| Anchors in a character table | The placed Lore anchor item | INT-6, INT-7 |
+| X3 as a type-5 world neighborhood | A type-1 zone root | Q4, EXT-14 |
+| Hourly 1/24 upkeep tick, 0x191f warnings, grace hours, empty-escrow purchase expired (D9) | Per-property ~12 h clock prorated by the second; stamp only on an empty charge; stamp 0 until the first charge | UPK-1, UPK-4, UPK-5, UPK-22 |
+| Running out never evicts; inactivity eviction (D7) | 90-day reclaim after the stamp | RCL-1 |
+| Sell packs a new Crate of Eviction | Packs into the placed crate; def 31 is reclaim only | STT-1 |
+| Transfer to anyone anywhere (D10) | Same zone, owner on the plot | STT-7, STT-8 |
+| Default masks 2, 2, 2, 2050, 4095, 8191, 8191 | Live's player and guild-plot sets | ACC-1 |
+| Lazy pruning (D11) | Growth only | NBH-4 |
+| Receive Buffs and Mail Item not enforced | Bit 0 on the pool aura, bit 7 on Mail to Owner | ACC-4 |
+| Guild services open to all | Guild banker serves only the owning guild | NPC-7 |
+| Enter on 0x050c | Menu type 1 on 0x218c | MNU-2 |
+| Every interaction refused while expired | Owner's actions work; Enter still refused | MNU-3 |
+| NPC items get 0x1045, bound by 0x21ea | Spawn fields bind; no object for a spawned NPC item | WOB-2, NPC-3 |
+| Only the owner moves NO DROP/LORE | Placer removes NO DROP; LORE blocked if held | PLC-4 |
+| Pool is an NPC item | World object IT23628 + server-only aura NPC | NPC-5, NPC-6 |
+| Trophy opt-in by location | From a member anywhere | TRO-7 |
+| Pet caps default 0 = none | -1 = none | SCH-1 |
+| Item tail values in v1, edit in place only | Adopted in a new v4 | ITM-1 |
+
+## Decisions for the owner
+
+1. **Transfer offers:** a zone-local 300 s timer (Live shows only same-zone offers), or keep the real_estate_transfer_offers row on a world tick.
+2. **Interior bound:** Live has none client-side and its server bound is unknown; proposal: the zone's geometry from tools/housingZoneGeometry.py, as data.
+3. **Trophy tiers:** Live's tiers are spells; RoF2 applies tribute through items. An item per tier, or spell bonuses.
+4. **Tribute master class:** 63 (what RoF2 opens) unless a Peridot test shows Live's 74 works.
+
+Resolutions the slices proposed, to confirm: guild plots use the 90-day reclaim (RCL-1's under-10 clause dropped); a deposit settles but does not reschedule the next charge; a deleted owner's expired plot is reclaimed at the next charge.
+
+## Still unknown
+
+| Question | Decides | How |
+|---|---|---|
+| Instance id allocation: EQEmu reuses the lowest free id, Live counts up | housingInteriors | INT-16 (2026-10-21) |
+| Exit point per plot or per neighborhood (two Live points) | schema, catalog generator | More Live points; no item yet |
+| Group pick order: first match or highest | housingAccess | Re-read 0x4ff250; no item yet |
+| Placement rules after 0x0f, begin-reply fields, pick-up limit | housingPlacement | PLC-6, PLC-7, PLC-8 |
+| Records and item lists only for related properties | housing.cpp zone-in | ZIN-2 |
+| A plot's guild in the record | housingMessages | REC-10 |
+| Others, all clientAnalysis or peridotTest | see the worklist | UPK-3, UPK-11, STT-5, STT-6, STT-9, ACC-8, NBH-6, NPC-6, NPC-16, MNU-5, TRO-3, TRO-5, TRO-6, OPC-3, OPC-4, OPC-6, OPC-8, CAT-4, CAT-7, REC-13, ZIN-5, ZIN-6, ZIN-11, ITM-2, ITM-8, DOR-6..8, DOR-11, EXT-3..7, EXT-18..20, EXT-25, EXT-30, EXT-32, PAT-7, PRC-1, PRC-3 |
+
+## Build order
+
+Each step builds on the one before; nothing links until step 6 (Q1).
+
+1. **Schema and generators.** The migration edits and v4, the template and looks tables, repositories, version.h, the catalog, zones, doors and border generators and their tests. Everything else names these columns.
+2. **Fix the existing chunk 1-4 code.** Opcodes, record fields, GUIDs, axis order, send order, empty 0x49df, tail boot, strict parsing, root rule, catalog load rules, the GM command. Python tests pass.
+3. **Access and ownership.** housingAccess additions, store helpers, events, menus, search, purchase, sell, transfer, account; world upkeep and neighborhoods.
+4. **Placement and the world layer.** Session, placement, world objects, containers, NPC items, the spawn binding.
+5. **Interiors, doors, anchors.** Interiors, doors, anchors, world instances, zone shutdown.
+6. **Guild services, polls, trophies, Augmentater, quest API.** BLD-1 closes; the one build compiles and links.
+7. **Content and patcher.** NPC items, trophy tributes, deploy script, patcher lines, then the Chunk 8 validation in game.
