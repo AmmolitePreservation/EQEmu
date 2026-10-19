@@ -25,6 +25,7 @@
 - **Remaining extras questions:** content (Q9-Q11) in the implementation testing phase, after the build compiles and standard housing works; Q12 with the final polish item.
 - **Client data files:** a model RoF2 already ships is made to work, and a text-file change through the patcher is acceptable for that (Q21, and by the same rule Q22 and Q23). The first pass makes only RoF2's own content work. Models from Live are added at the very end of polish, as the final item (Q13, and Live's files in Q12).
 - **Code reconciliation (2026-10-19, codeReconciliation.md):** match Live wherever the research establishes it, without asking (transfer offers are a same-zone 300 s timer in the zone, no table); no interior placement bound; each plot's definition carries a configurable exit point; when a character matches several access entries the most permissive group wins, and an explicit deny (none exists in Live's lists) would beat it; guild plots use the 90-day reclaim, a deposit does not reschedule the next charge, a deleted owner's expired plot is reclaimed at the next charge.
+- **Trophies last (2026-10-19):** personal and guild trophies are the final implementation item, outside the first build; until then trophy items place as ordinary items with no benefit (codeReconciliation.md).
 - **Live research method:** every Live check, timed or not, runs through a Live build of claudelink driving a copy of the Live client, on the owner's non-GM test accounts (MacroQuest for movement, screenshots and purchases). Building it is PRC-6.
 
 ## Questions to work through
