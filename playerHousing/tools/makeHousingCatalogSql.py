@@ -54,7 +54,7 @@ arrivalPoints = {
   717: (0.0, -12.0, 5.0, 0.0), 718: (0.0, -12.0, 5.0, 0.0), 719: (0.0, -12.0, 5.0, 0.0),
   345: (-1.0, -1.0, 3.4, 0.0), 737: (71.0, -1.0, 1.56, 386.0), 738: (255.0, 2.0, -10.0, 386.0), 751: (255.0, 2.0, -10.0, 386.0),
 }
-# Where Live's front doors put a player (x, y, z, heading), by plot definition (INT-11).
+# Where Live's front doors put a player (x, y, z, heading), by plot definition (INT-11); each is a corner of the plot's outline.
 measuredExits = {171: (1931.75, -2461.25, 2.94661, 2.25), 188: (-1444.37, 2256.5, 112.95, 511.25)}
 
 
@@ -211,7 +211,13 @@ def main():
     regions.append(dict(id=int(live['areaId']), name=plot['address'], x=plot['center'][0], y=plot['center'][1],
                         z=plot['center'][2], sizeX=plot['sizeAcross'], sizeY=plot['sizeAlong'],
                         sizeZ=2 * (guildPlotRegionHalfHeight if guild else plotRegionHalfHeight), heading=plot['heading']))
-    exit = exitIn(measuredExits.get(liveId, arrivalPoints[neighborhoodZoneId]))
+    outline = footprint(regions[-1])
+    if liveId in measuredExits:
+      if min(math.dist(corner, measuredExits[liveId][:2]) for corner in outline) > 2:
+        raise ValueError(f"Live plot {liveId}: its measured exit is not at a corner of its outline")
+      exit = exitIn(measuredExits[liveId])
+    else:
+      exit = exitIn((*outline[0], plot['center'][2], 0.0))
     definitions.append(liveFields(live, id=liveId, name=plot['address'], segment='', type=typeGuildPlot if guild else typePlot, zone=0, exit=exit))
   itemUpkeeps = readPlanItemUpkeeps()
   for costId, amount in sorted(itemUpkeeps.items()):
