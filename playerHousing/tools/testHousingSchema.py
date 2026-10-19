@@ -63,7 +63,7 @@ INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple'),
 composedName = """
   WITH RECURSIVE chain AS (SELECT id, parent_id, 0 AS depth FROM real_estate_properties WHERE id = {}
     UNION ALL SELECT p.id, p.parent_id, c.depth + 1 FROM real_estate_properties p JOIN chain c ON p.id = c.parent_id)
-  SELECT GROUP_CONCAT(CASE WHEN c.parent_id = 0 THEN p.name WHEN d.type IN (4, 8) THEN d.address ELSE d.name_segment END ORDER BY c.depth DESC SEPARATOR ', ')
+  SELECT GROUP_CONCAT(CASE WHEN c.parent_id = 0 THEN p.name WHEN d.type IN (4, 8) THEN d.address ELSE d.name_segment END ORDER BY c.depth DESC SEPARATOR ', ') AS n
   FROM chain c JOIN real_estate_properties p ON p.id = c.id JOIN real_estate_definitions d ON d.id = p.definition_id"""
 check('property ids start at 100000, above every region id', "SELECT id FROM real_estate_properties WHERE name = 'Bridge Hills'", '100000')
 check('zone-in: properties hosted in 712/1001', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE host_zone_id = 712 AND host_instance_id = 1001", '100000,100001,100002,100003')
@@ -72,7 +72,7 @@ check('inside a house: the house and its parents', """
     UNION ALL SELECT p.id, p.parent_id FROM real_estate_properties p JOIN chain c ON p.id = c.parent_id)
   SELECT GROUP_CONCAT(id ORDER BY id) FROM chain""", '100000,100001,100003')
 check("a house's name composes three levels", composedName.format(100003), 'Bridge Hills, 101 Market Street, Three Room House')
-check("Live's longest name (99 characters) composes from four levels", f"SELECT CONCAT(LENGTH(n), ' ', n) FROM ({composedName.format(100008)}) x (n)",
+check("Live's longest name (99 characters) composes from four levels", f"SELECT CONCAT(LENGTH(n), ' ', n) FROM ({composedName.format(100008)}) x",
       "99 Prophetic Alliance Village II, 101 Terminus Heights, Three Room House, Scalebreaker's Storage Crate")
 check("entering a house finds its definition's zone template", """
   SELECT CONCAT_WS(' ', t.zone_id, t.zone_version, t.zone_in_x, t.zone_in_y, t.zone_in_z, t.zone_in_heading) FROM real_estate_properties p
