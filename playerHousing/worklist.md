@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 167, liveCheck 5, clientAnalysis 25, peridotTest 36, question 28, done 40; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 167, liveCheck 6, clientAnalysis 25, peridotTest 36, question 28, done 40; 301 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -831,6 +831,8 @@ Questions: Q2, Q14.
   <sub>Sources: workflow wf_b79489ff-740</sub>
 - **INT-15** `fix` **Id lists and the Locate rule.** opcode2698DefinitionsAndCosts.md:52 and S10's 'the houses share six': 23000-23005 are shared (five definitions each), 23015-23021 belong to one definition each (30, 42-47); halls use only 35633, 35634, 35635 and 35642; the interior zones are 714/715/716/717/719/723, not 717-723. RealEstateItemsWnd.md:138: Locate uses the nearest ancestor (self included, up to 10) whose definition has a non-zero dz_id (RoF2 0x5b46e0, Live 0x14033f1a0), so every zone-owning definition sends Live's dz_id. How the hall design ids map to RoF2 zone and version is INT-14's check.
   <sub>Sources: workflow wf_b79489ff-740</sub>
+- **INT-16** `liveCheck` **Instance numbers across a server restart.** Live numbers every housing instance (neighborhood, hall, house copy) from one rising counter: on 2026-10-18 a house took 4638, a neighborhood 4641, a hall 4644, the house again 4651 and a hall 4653 (INT-14), about 7-10 numbers an hour server-wide, and a copy made after a discard takes a new number. The captures since 2026-09-27 rise without a drop (about 800 then, 1,634 on 10-01, 3,849 on 10-14, 4,671 on 10-19), and one neighborhood was still instance 68 on 09-27, which puts the counter's start a few days after the 2026-09-17 hotfix. Check whether a restart starts it over: before the downtime enter Pariator's house and note its number; as soon as the servers return, enter a house and a hall and dump a neighborhood. Numbers in the low hundreds mean the counter starts again at each restart (Peridot can start its own at boot); about 5,000 and up mean it persists. The downtime also ends the NPC-12/14 behavior recordings: restart them afterwards. **Time-bound:** 2026-10-21, before 13:00 UTC and after the servers return (about 19:00 UTC).
+  <sub>Sources: livedumps captures 2026-09-27 to 2026-10-19; EverQuest forums, 'Server Downtime: Wednesday, October 21, 2026 at 6:00 AM'</sub>
 
 ### doors (DOR)
 
@@ -1042,8 +1044,9 @@ Questions: Q1.
 - UPK-6 Expiry notice bodies and the notice sequence **(time-bound: keep 44730591 unfunded; later notices arrive between 2026-09-29 and its reclaim (2026-12-28 07:29 UTC))**
 - RCL-2 Observe the 90-day reclaim **(time-bound: after 2026-11-11 19:00 UTC; 2026-12-10 20:00 UTC; optionally 2026-12-28 07:30 UTC)**
 - INT-14 Copy lifecycle details
+- INT-16 Instance numbers across a server restart **(time-bound: 2026-10-21, before 13:00 UTC and after the servers return)**
 
-Time-bound ones: UPK-6, RCL-2.
+Time-bound ones: UPK-6, RCL-2, INT-16.
 
 ### Client analysis
 
