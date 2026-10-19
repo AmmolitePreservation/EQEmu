@@ -85,5 +85,5 @@ The labels have no code of their own; the XML binds them to game data: **297** p
 
 1. Send trophy benefit definitions through the tribute info messages with `unknown128` = 1; answer the select-tribute requests with descriptions.
 2. Personal: the 10 slots in `OP_PlayerProfile`, `0x7697` / `0x4b65` / `0x08bf` updates, `0x51ae` timer; validate each `0x4b65` request (the benefit is available from placed trophies, the tier and the cost).
-3. Guild: `0x7dd2` (active set, favor, active flag), `0x7db5` (available), `0x7a41` (edit lock, one editor at a time); validate `0x7c1d` against permission 25 and the lock; handle `0x2bc` opt-in with the same location rule.
+3. Guild: `0x7dd2` (active set, favor, active flag), `0x7db5` (available), `0x7a41` (edit lock, one editor at a time); validate `0x7c1d` against permission 25 and the lock; accept `0x2bc` opt-in from a guild member anywhere, as Live does (the checkbox's location rule is RoF2's own limit).
 4. Item data: trophy benefit id `+0x5ec` and the placeable bits (`windows/RealEstateItemsWnd.md`).

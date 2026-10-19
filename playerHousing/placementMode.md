@@ -305,10 +305,10 @@ These are the same opcodes and 12-byte layout as the interaction menu's entry ty
 
 ## Upkeep expiring during placement (and what happens to items)
 
-**How upkeep reaches the client:** the property record's **`+0x40` is the upkeep-current flag** (non-zero = paid). `0x5b4780` checks it for the containing plot (walking up from a house or crate), and the placement rules check it for the house or crate being placed. **Property updates (`0x63fd`) carry it**; the handler compares `+0x40` between updates to decide what to refresh. **The client doesn't count upkeep down itself** (no timer in the manager tick), so it only learns of expiry from the server.
+**How upkeep reaches the client:** the property record's **`+0x40` is `upkeepExpiredTime`** (0 while paid; non-zero, the second a charge found the escrow empty, = expired). `0x5b4780` checks it for the containing plot (walking up from a house or crate), and the placement rules check it for the house or crate being placed. **Property updates (`0x63fd`) carry it**; the handler compares `+0x40` between updates to decide what to refresh. **The client doesn't count upkeep down itself** (no timer in the manager tick), so it only learns of expiry from the server.
 
 **Designed server behavior (the client's own strings):**
-- Upkeep is charged **daily** from the property's escrow. If escrow can't cover an item, the server warns (`0x191f`: "…or **the item will be moved back to the shed or closet** after the next upkeep charges are applied") and then **stores the item**.
+- The client's strings describe a daily charge and a per-item warning (`0x191f`: "…or **the item will be moved back to the shed or closet** after the next upkeep charges are applied") before the item is stored. Live's server today charges each property on its own clock of about 12 hours and sends no such warning: the charge that finds the escrow empty stamps the plot and stores its stamped items (`serverPlan.md` S8).
 - An expired house **can't be entered** (`0x1920`), and anchor teleports to it fail (`0x14e4`, `0x14e7`, `0x154a`).
 - These messages (`0x191f`, `0x1920`) are **server-sent**: no client code pushes them.
 
