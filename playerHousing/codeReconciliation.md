@@ -138,7 +138,8 @@ The plan text needs these corrections; the code follows the right-hand side.
 - **Exit points are per plot**, a configurable location in each plot's definition, so they can vary or all be the same (INT-11).
 - **Group pick: the most permissive match wins** (name, `_Fellowship`, `_Guild<rank>`), and an explicit deny would beat it. Live's lists have no deny: a name or club can only be assigned Visitor to Co-Owner (groups 1-5), so today this is the highest matching group.
 - **Accepted:** guild plots use the 90-day reclaim (RCL-1's under-10 clause dropped); a deposit settles but does not reschedule the next charge; a deleted owner's expired plot is reclaimed at the next charge.
-- **Open:** trophy tiers (spell vs item) and the Personal-Tribute Master's class (63 vs Live's 74).
+- **Trophies are the last implementation item, outside the first build.** Until then the `zone/bonuses.cpp:202` hook and `trophyBenefitItems` come out, trophy opcodes stay unregistered (logged as unhandled), the trophy tables stay unused, and trophy items place as ordinary items; tribute.cpp's two trophy fields stay 0. Tier delivery (a spell per tier through bonuses.cpp, or an item per tier) is decided then.
+- **Open:** the Personal-Tribute Master's class (63, which RoF2 opens, vs Live's 74).
 
 ## Still unknown
 
@@ -159,5 +160,6 @@ Each step builds on the one before; nothing links until step 6 (Q1).
 3. **Access and ownership.** housingAccess additions, store helpers, events, menus, search, purchase, sell, transfer, account; world upkeep and neighborhoods.
 4. **Placement and the world layer.** Session, placement, world objects, containers, NPC items, the spawn binding.
 5. **Interiors, doors, anchors.** Interiors, doors, anchors, world instances, zone shutdown.
-6. **Guild services, polls, trophies, Augmentater, quest API.** BLD-1 closes; the one build compiles and links.
-7. **Content and patcher.** NPC items, trophy tributes, deploy script, patcher lines, then the Chunk 8 validation in game.
+6. **Guild services, polls, Augmentater, quest API.** BLD-1 closes; the one build compiles and links.
+7. **Content and patcher.** NPC items, deploy script, patcher lines, then the Chunk 8 validation in game.
+8. **Trophies, last.** housingTrophies, the bonuses.cpp hook, the trophy opcodes, placement rule 0x46, tribute.cpp's trophy fields, rof2.cpp:4366, makeTrophyTributesSql.py.
