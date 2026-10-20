@@ -646,6 +646,7 @@ SET(common_headers
     housingEventTypes.h
     housingLedger.h
     housingNames.h
+    housingPlacementRules.h
     housingPropertyItem.h
     housingTransferOffers.h
     housingUpkeepMath.h

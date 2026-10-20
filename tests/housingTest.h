@@ -4,6 +4,7 @@
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
 #include "../common/housingNames.h"
+#include "../common/housingPlacementRules.h"
 #include "../common/housingTransferOffers.h"
 #include "../common/housingUpkeepMath.h"
 
@@ -42,6 +43,20 @@ public:
     TEST_ADD(HousingTest::transferOfferAnsweredOnlyByRecipientBeforeExpiry);
     TEST_ADD(HousingTest::transferOfferExpiresAfterItsSeconds);
     TEST_ADD(HousingTest::secondTransferOfferWhileOneWaitsIsRefused);
+    TEST_ADD(HousingTest::beginMapCodesMatchLive);
+    TEST_ADD(HousingTest::inventoryRulesRunInTheClientsOrder);
+    TEST_ADD(HousingTest::houseAndHallLimitsCountTheYardsHouses);
+    TEST_ADD(HousingTest::crateRulesKeepFullHousesAndCratesApart);
+    TEST_ADD(HousingTest::capacityCodesAndTheStackMergeWaiver);
+    TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
+    TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
+    TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
+    TEST_ADD(HousingTest::petCapsTakeTheLowerNonNegativeCap);
+    TEST_ADD(HousingTest::npcItemsAreNamedAndNotInteractive);
+    TEST_ADD(HousingTest::heldItemTurnMatchesLiveObjects);
+    TEST_ADD(HousingTest::effectiveSlotsAndEveryAugment);
+    TEST_ADD(HousingTest::worldObjectModelsAreLivesActorTags);
+    TEST_ADD(HousingTest::commitScaleAndLocks);
   }
 
 private:
@@ -291,6 +306,263 @@ private:
     TEST_ASSERT(refused);
     TEST_ASSERT(offers.pending(117754208, 1100));
     TEST_ASSERT(!offers.pending(117754208, 1300));
+  }
+
+  static housing::PlacementFacts yardPlacement() {
+    housing::PlacementFacts facts;
+    facts.source = housing::PlacementSource::inventory;
+    facts.houseOfThule = true;
+    facts.veilOfAlaris = true;
+    facts.placeable = true;
+    facts.allowedHere = true;
+    facts.maxHouses = 1;
+    facts.maxItems = 100;
+    facts.maxNonRealEstateItems = 10;
+    facts.npcCap = -1;
+    facts.mayAdd = true;
+    facts.mayMove = true;
+    facts.mayRemoveHouse = true;
+    return facts;
+  }
+
+  static uint32 code(const housing::PlacementFacts &facts) {
+    return static_cast<uint32>(housing::placementResult(facts));
+  }
+
+  // PLC-14: Pariator's begin map on 107 Terminus Street held 0 for his region, 24 for the two expired plots he is a trustee
+  // of, 71 for plots without add-item access and 17 for the neighborhood itself.
+  void beginMapCodesMatchLive() {
+    auto own = yardPlacement();
+    TEST_ASSERT_EQUALS(code(own), 0u);
+    auto expired = yardPlacement();
+    expired.plotUpkeepExpired = true;
+    TEST_ASSERT_EQUALS(code(expired), 24u);
+    auto stranger = yardPlacement();
+    stranger.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(stranger), 71u);
+    auto neighborhood = yardPlacement();
+    neighborhood.allowedHere = false;
+    neighborhood.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(neighborhood), 17u);
+  }
+
+  void inventoryRulesRunInTheClientsOrder() {
+    auto facts = yardPlacement();
+    facts.houseOfThule = false;
+    facts.plotUpkeepExpired = true;
+    facts.placeable = false;
+    TEST_ASSERT_EQUALS(code(facts), 47u);
+    facts.houseOfThule = true;
+    facts.underGuildPlot = true;
+    facts.veilOfAlaris = false;
+    TEST_ASSERT_EQUALS(code(facts), 82u);
+    facts.veilOfAlaris = true;
+    TEST_ASSERT_EQUALS(code(facts), 24u);
+    facts.plotUpkeepExpired = false;
+    TEST_ASSERT_EQUALS(code(facts), 36u);
+    facts.placeable = true;
+    facts.intoOwnProperty = true;
+    facts.allowedHere = false;
+    TEST_ASSERT_EQUALS(code(facts), 30u);
+    facts.intoOwnProperty = false;
+    TEST_ASSERT_EQUALS(code(facts), 17u);
+  }
+
+  void houseAndHallLimitsCountTheYardsHouses() {
+    auto house = yardPlacement();
+    house.carried = housing::CarriedKind::house;
+    house.destinationHouses = 1;
+    house.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(house), 15u);
+    auto hall = house;
+    hall.carried = housing::CarriedKind::guildHall;
+    TEST_ASSERT_EQUALS(code(hall), 68u);
+    house.destinationHouses = 0;
+    TEST_ASSERT_EQUALS(code(house), 75u);
+    auto crate = yardPlacement();
+    crate.carried = housing::CarriedKind::crate;
+    crate.destinationHasPlacedCrate = true;
+    TEST_ASSERT_EQUALS(code(crate), 16u);
+    crate.destinationHasPlacedCrate = false;
+    crate.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(crate), 77u);
+  }
+
+  void crateRulesKeepFullHousesAndCratesApart() {
+    auto shed = yardPlacement();
+    shed.carried = housing::CarriedKind::house;
+    shed.carriedHoldsItems = true;
+    shed.intoStorage = true;
+    TEST_ASSERT_EQUALS(code(shed), 32u);
+    auto crateInCrate = yardPlacement();
+    crateInCrate.carried = housing::CarriedKind::crate;
+    crateInCrate.carriedHoldsItems = true;
+    crateInCrate.intoStorage = true;
+    crateInCrate.destinationIsCrate = true;
+    TEST_ASSERT_EQUALS(code(crateInCrate), 32u);
+    auto secondHouse = shed;
+    secondHouse.destinationIsCrate = true;
+    secondHouse.crateHoldsNonEmptyHouse = true;
+    TEST_ASSERT_EQUALS(code(secondHouse), 39u);
+    secondHouse.crateHoldsNonEmptyHouse = false;
+    secondHouse.carriedHouseHoldsPlacedCrate = true;
+    TEST_ASSERT_EQUALS(code(secondHouse), 81u);
+    secondHouse.carriedHouseHoldsPlacedCrate = false;
+    TEST_ASSERT_EQUALS(code(secondHouse), 0u);
+  }
+
+  void capacityCodesAndTheStackMergeWaiver() {
+    auto full = yardPlacement();
+    full.realEstateCount = 100;
+    TEST_ASSERT_EQUALS(code(full), 10u);
+    full.intoStorage = true;
+    full.mergesIntoStack = true;
+    TEST_ASSERT_EQUALS(code(full), 0u);
+    auto vault = yardPlacement();
+    vault.placeable = false;
+    vault.intoStorage = true;
+    vault.vaultCount = 10;
+    TEST_ASSERT_EQUALS(code(vault), 12u);
+    vault.vaultCount = 9;
+    TEST_ASSERT_EQUALS(code(vault), 0u);
+    auto pets = yardPlacement();
+    pets.npcItem = true;
+    pets.npcCount = 40;
+    TEST_ASSERT_EQUALS(code(pets), 0u);
+    pets.npcCap = 0;
+    pets.npcCount = 0;
+    TEST_ASSERT_EQUALS(code(pets), 38u);
+  }
+
+  void lastInventoryRulesAndTheItemLimit() {
+    auto facts = yardPlacement();
+    facts.containerHoldsItems = true;
+    facts.itemUpkeepExpired = true;
+    TEST_ASSERT_EQUALS(code(facts), 19u);
+    facts.containerHoldsItems = false;
+    TEST_ASSERT_EQUALS(code(facts), 25u);
+    facts.itemUpkeepExpired = false;
+    facts.maxPerRealEstate = 1;
+    facts.sameItemCount = 1;
+    TEST_ASSERT_EQUALS(code(facts), 31u);
+    facts.maxPerRealEstate = -1;
+    TEST_ASSERT_EQUALS(code(facts), 0u);
+  }
+
+  void storedAndMovedItemsNeedMoveItem() {
+    auto stored = yardPlacement();
+    stored.source = housing::PlacementSource::sameProperty;
+    stored.houseOfThule = false;
+    stored.mayAdd = false;
+    stored.mayMove = false;
+    TEST_ASSERT_EQUALS(code(stored), 73u);
+    stored.mayMove = true;
+    TEST_ASSERT_EQUALS(code(stored), 0u);
+    stored.carried = housing::CarriedKind::house;
+    stored.mayRemoveHouse = false;
+    TEST_ASSERT_EQUALS(code(stored), 76u);
+    auto moved = yardPlacement();
+    moved.source = housing::PlacementSource::otherProperty;
+    moved.houseOfThule = false;
+    TEST_ASSERT_EQUALS(code(moved), 47u);
+    moved.houseOfThule = true;
+    moved.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(moved), 71u);
+  }
+
+  void pickUpRulesFollowTheClientsTexts() {
+    housing::PickUpFacts facts;
+    facts.ownerOrPlacer = true;
+    facts.placedByTaker = true;
+    facts.inventoryRoom = true;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 0u);
+    facts.noDrop = true;
+    facts.placedByTaker = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 64u);
+    facts.placedByTaker = true;
+    facts.loreHeld = true;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 65u);
+    facts.loreHeld = false;
+    facts.carriesItems = true;
+    facts.takerCarriesSameKindWithItems = true;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 33u);
+    facts.takerCarriesSameKindWithItems = false;
+    facts.inventoryRoom = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 4u);
+    facts.crate = true;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 78u);
+    facts.crate = false;
+    facts.ownerOrPlacer = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 72u);
+  }
+
+  void petCapsTakeTheLowerNonNegativeCap() {
+    TEST_ASSERT_EQUALS(housing::npcItemCap(-1, -1), -1);
+    TEST_ASSERT_EQUALS(housing::npcItemCap(12, -1), 12);
+    TEST_ASSERT_EQUALS(housing::npcItemCap(-1, 5), 5);
+    TEST_ASSERT_EQUALS(housing::npcItemCap(12, 5), 5);
+    TEST_ASSERT_EQUALS(housing::npcItemCap(4, 6), 4);
+    TEST_ASSERT_EQUALS(housing::npcItemCap(0, -1), 0);
+    bool refused = false;
+    try {
+      housing::npcItemCap(-2, -1);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
+  }
+
+  void npcItemsAreNamedAndNotInteractive() {
+    TEST_ASSERT(housing::isNpcItem("NGH_Merchant_General", false));
+    TEST_ASSERT(!housing::isNpcItem("NGH_Merchant_General", true));
+    TEST_ASSERT(!housing::isNpcItem("", false));
+  }
+
+  // Live: 50616's shield sits at pitch 128 and roll 256, 105582's cake (default pitch 384, primary) at 512, a decorative
+  // shield with no slots at 0 and 0, and a weapon for either hand (Dragonkiller 71672) turns its pitch only.
+  void heldItemTurnMatchesLiveObjects() {
+    const auto shield = housing::heldItemTilts(0.0f, 0.0f, housing::secondarySlotBit);
+    TEST_ASSERT(near(shield.pitch, 128.0) && near(shield.roll, 256.0));
+    const auto cake = housing::heldItemTilts(384.0f, 0.0f, housing::primarySlotBit);
+    TEST_ASSERT(near(cake.pitch, 512.0) && near(cake.roll, 0.0));
+    const auto decoration = housing::heldItemTilts(0.0f, 0.0f, 0);
+    TEST_ASSERT(near(decoration.pitch, 0.0) && near(decoration.roll, 0.0));
+    const auto eitherHand = housing::heldItemTilts(0.0f, 0.0f, housing::primarySlotBit | housing::secondarySlotBit);
+    TEST_ASSERT(near(eitherHand.pitch, 128.0) && near(eitherHand.roll, 0.0));
+    const auto ranged = housing::heldItemTilts(0.0f, 0.0f, housing::rangeSlotBit);
+    TEST_ASSERT(near(ranged.pitch, 128.0) && near(ranged.roll, 0.0));
+  }
+
+  void effectiveSlotsAndEveryAugment() {
+    TEST_ASSERT_EQUALS(housing::effectiveSlots(0x6000, true, {0x2000}), 0x2000u);
+    TEST_ASSERT_EQUALS(housing::effectiveSlots(0x6000, true, {}), 0x6000u);
+    TEST_ASSERT_EQUALS(housing::effectiveSlots(0x6000, true, {0x2000, 0x4000}), 0u);
+    TEST_ASSERT_EQUALS(housing::effectiveSlots(0x6000, false, {}), 0u);
+  }
+
+  void worldObjectModelsAreLivesActorTags() {
+    TEST_ASSERT_EQUALS(housing::worldObjectModel("IT10864", 0), std::string("IT10864_ACTORDEF"));
+    TEST_ASSERT_EQUALS(housing::worldObjectModel("it63", 0), std::string("IT63_ACTORDEF"));
+    TEST_ASSERT_EQUALS(housing::worldObjectModel("IT10864", 11927), std::string("IT11927_ACTORDEF"));
+    bool refused = false;
+    try {
+      housing::worldObjectModel("", 0);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
+  }
+
+  void commitScaleAndLocks() {
+    TEST_ASSERT(housing::scaleAllowed(2.5f, 0.1f, 2.5f));
+    TEST_ASSERT(housing::scaleAllowed(0.1f, 0.1f, 2.5f));
+    TEST_ASSERT(!housing::scaleAllowed(2.6f, 0.1f, 2.5f));
+    TEST_ASSERT(!housing::scaleAllowed(0.05f, 0.1f, 2.5f));
+    const housing::MountTilts tilts{128.0f, 256.0f};
+    TEST_ASSERT(housing::tiltsKept(128.0f, 256.0f, tilts));
+    TEST_ASSERT(!housing::tiltsKept(0.0f, 256.0f, tilts));
   }
 };
 

@@ -122,10 +122,26 @@ CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_words` (
   CONSTRAINT `neighborhood_word_position` CHECK (`position` <= 2)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- An NPC item spawns its NPC at the placed transform; a familiar that rides a mount also spawns the mount, unbound (Emperor
+-- Ganak's). race_tag is the three-character tag RoF2 spawns the placement preview from (0x504b60), since Live's IT63 names no
+-- race there. A training dummy's menu offers Live's dummy actions; the action rows are a pet's (Live's b codes and order).
 CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
   `item_id` INT(11) UNSIGNED NOT NULL,
   `npc_type_id` INT(11) UNSIGNED NOT NULL,
-  PRIMARY KEY (`item_id`)
+  `mount_npc_type_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+  `race_tag` CHAR(3) NOT NULL,
+  `training_dummy` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`item_id`),
+  CONSTRAINT `real_estate_npc_item_race_tag` CHECK (CHAR_LENGTH(`race_tag`) = 3),
+  CONSTRAINT `real_estate_npc_item_dummy` CHECK (`training_dummy` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `real_estate_npc_item_actions` (
+  `item_id` INT(11) UNSIGNED NOT NULL,
+  `action_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`item_id`, `action_id`),
+  CONSTRAINT `real_estate_npc_item_action_item` FOREIGN KEY (`item_id`) REFERENCES `real_estate_npc_items` (`item_id`) ON DELETE CASCADE,
+  CONSTRAINT `real_estate_npc_item_action_id` CHECK (`action_id` IN (16175, 16176, 16177, 16178, 16179, 16394, 16492))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- name holds only a neighborhood's generated name. upkeep_currency is 0 (coin) or an alternate currency id: the record's
