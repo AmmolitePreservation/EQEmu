@@ -12,7 +12,7 @@ option a way to pay, coin always, and each alternate currency gated by the expan
 Names are composed when sent, so a house, hall or crate carries Live's segment for it, checked against every property name
 Live sent for its definition. Each dz id gets a zone template: the zone its definition's interior is (the Standard Guild
 Hall's guildhall at version 2), entered at Live's arrival point. Each plot gets an exit point: Live's where it was measured
-(101 Market Street's house, 200 Terminus Heights' hall), otherwise its neighborhood's, Live's neighborhood safe point.
+(101 Market Street's house, 200 Terminus Heights' hall), otherwise the first corner of its outline at the plot's height, facing 0.
 
 Refuses to write when a plot has no single matching template plot, a price or kind disagrees, an item's definition can't be
 placed, a named cost or definition is missing from Live's catalog, a currency has no known expansion, two plot footprints
@@ -46,10 +46,10 @@ typeGuildHall, typePlayerHouse, typePlot, typeNeighborhood, typeMovingCrate, typ
 placeableInPlots, placeableInGuildPlots = 0x08, 0x80
 # Live's arrival points (x, y, z, heading), EQEmu's x and y (INT-2, INT-3): the house interiors' and the Grand and Modest halls'
 # are their zone headers' safe points, the houses facing 0; the Palatial's and the Standard's were measured on entering; the
-# neighborhood's is its header's safe point.
+# neighborhood's is where Live puts a player entering it (the player's own spawn in 4,797 neighborhood zone dumps).
 zoneVersions = {345: 2}
 arrivalPoints = {
-  712: (2035.0, -2940.0, 6.0, 0.0),
+  712: (2042.0, -2958.0, 3.19254, 481.0),
   714: (0.0, -12.0, 5.0, 0.0), 715: (0.0, -12.0, 5.0, 0.0), 716: (0.0, -12.0, 5.0, 0.0),
   717: (0.0, -12.0, 5.0, 0.0), 718: (0.0, -12.0, 5.0, 0.0), 719: (0.0, -12.0, 5.0, 0.0),
   345: (-1.0, -1.0, 3.4, 0.0), 737: (71.0, -1.0, 1.56, 386.0), 738: (255.0, 2.0, -10.0, 386.0), 751: (255.0, 2.0, -10.0, 386.0),
