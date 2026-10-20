@@ -112,4 +112,42 @@ namespace housing {
     message.u32(propertyId).u32(count).bytes(entries.content().data(), entries.content().size());
     return message;
   }
+
+  std::optional<PlacedItem> placedItem(uint32 propertyId, uint32 recordId) {
+    auto rows = RealEstateItemsRepository::GetWhere(database, fmt::format("id = {} AND property_id = {}", recordId, propertyId));
+    if (rows.empty()) {
+      return std::nullopt;
+    }
+    return rows.front();
+  }
+
+  // The inverse of itemInstance's charges: inventory keeps unlimited charges as the int16 maximum.
+  int16 storedCharges(const EQ::ItemInstance &instance) {
+    return instance.GetCharges() < 0 ? std::numeric_limits<int16>::max() : instance.GetCharges();
+  }
+
+  PlacedItem rowFromInstance(const EQ::ItemInstance &instance, uint32 propertyId, uint32 ownerCharacterId) {
+    PlacedItem row = RealEstateItemsRepository::NewEntity();
+    row.property_id = propertyId;
+    row.owner_character_id = ownerCharacterId;
+    row.item_id = instance.GetID();
+    row.charges = static_cast<uint16>(storedCharges(instance));
+    row.color = instance.GetColor();
+    const uint32 augments[EQ::invaug::SOCKET_COUNT] = {
+      instance.GetAugmentItemID(0), instance.GetAugmentItemID(1), instance.GetAugmentItemID(2),
+      instance.GetAugmentItemID(3), instance.GetAugmentItemID(4), instance.GetAugmentItemID(5)
+    };
+    row.augment_one = augments[0];
+    row.augment_two = augments[1];
+    row.augment_three = augments[2];
+    row.augment_four = augments[3];
+    row.augment_five = augments[4];
+    row.augment_six = augments[5];
+    row.instnodrop = instance.IsAttuned() ? 1 : 0;
+    row.custom_data = instance.GetCustomDataString();
+    row.ornament_icon = instance.GetOrnamentationIcon();
+    row.ornament_idfile = instance.GetOrnamentationIDFile();
+    row.ornament_hero_model = static_cast<int32_t>(instance.GetOrnamentHeroModel());
+    return row;
+  }
 }

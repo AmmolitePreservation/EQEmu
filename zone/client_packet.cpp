@@ -11025,6 +11025,10 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 
 void Client::Handle_OP_OpenContainer(const EQApplicationPacket *app)
 {
+	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && app->size == 12) {
+		housing::handleContainerOpened(this, app);
+	}
+
 	// Does not exist in Ti client
 	// SoF, SoD and UF clients send a 4-byte packet indicating the 'parent' slot
 	// SoF, SoD and UF slots are defined by a uint32 value and currently untranslated

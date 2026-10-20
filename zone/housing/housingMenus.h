@@ -35,6 +35,9 @@ namespace housing {
   void handleMenuRequest(Client *client, WireReader &reader);
   void handleInteract(Client *client, WireReader &reader);
   void handleInspect(Client *client, WireReader &reader);
+  void handleUse(Client *client, WireReader &reader);
+  void handleMenuAction(Client *client, WireReader &reader);
+  void handleMailToOwner(Client *client, WireReader &reader);
 
   void addNpcItemInteractions(Client *client, const MenuSubject &subject, MenuInteractions &interactions);
   void addContainerInteractions(Client *client, const MenuSubject &subject, MenuInteractions &interactions);

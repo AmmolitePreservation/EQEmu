@@ -1,9 +1,12 @@
 #include "housingCatalog.h"
 
 #include "housingItemTail.h"
+#include "housingNpcItems.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingPlacementRules.h"
 #include "../../common/rulesys.h"
+#include "../../common/strings.h"
 #include "../../common/repositories/alternate_currency_repository.h"
 #include "../../common/repositories/criteria/content_filter_criteria.h"
 #include "../../common/repositories/real_estate_cost_options_repository.h"
@@ -13,6 +16,7 @@
 #include "../zonedb.h"
 
 #include <algorithm>
+#include <cctype>
 #include <set>
 
 namespace housing {
@@ -199,12 +203,44 @@ namespace housing {
       }
     }
 
-    std::set<uint32> boundNpcItems;
+    npcItems.clear();
+    const std::set<uint32> npcItemIdSet = npcItemIds();
     for (const auto &row : RealEstateNpcItemsRepository::All(content_db)) {
-      boundNpcItems.insert(row.item_id);
+      if (!npcItemIdSet.count(row.item_id)) {
+        problems.push_back(fmt::format("real_estate_npc_items names item [{}], which is not an NPC item (a house-pet name and not interactive)", row.item_id));
+        continue;
+      }
+      if (!content_db.LoadNPCTypesData(row.npc_type_id)) {
+        problems.push_back(fmt::format("NPC item [{}] spawns NPC type [{}], which does not exist", row.item_id, row.npc_type_id));
+      }
+      if (row.mount_npc_type_id && !content_db.LoadNPCTypesData(row.mount_npc_type_id)) {
+        problems.push_back(fmt::format("NPC item [{}] rides NPC type [{}], which does not exist", row.item_id, row.mount_npc_type_id));
+      }
+      if (row.race_tag.size() != 3 || !std::all_of(row.race_tag.begin(), row.race_tag.end(), [](unsigned char c) { return std::isupper(c) || std::isdigit(c); })) {
+        problems.push_back(fmt::format("NPC item [{}] has race tag [{}]; RoF2 reads three upper-case characters", row.item_id, row.race_tag));
+      }
+      npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, {}};
     }
-    for (uint32 itemId : npcItemIds()) {
-      if (!boundNpcItems.count(itemId)) {
+    auto actions = content_db.QueryDatabase("SELECT item_id, action_id FROM real_estate_npc_item_actions ORDER BY item_id, action_id");
+    if (!actions.Success()) {
+      problems.push_back(fmt::format("the NPC item actions could not be read: {}", actions.ErrorMessage()));
+    }
+    for (auto row : actions) {
+      const uint32 itemId = Strings::ToUnsignedInt(row[0]);
+      const uint32 action = Strings::ToUnsignedInt(row[1]);
+      auto npcItem = npcItems.find(itemId);
+      if (npcItem == npcItems.end()) {
+        problems.push_back(fmt::format("NPC item action [{}] names item [{}], which has no real_estate_npc_items row", action, itemId));
+        continue;
+      }
+      if (!isPetAction(action)) {
+        problems.push_back(fmt::format("NPC item [{}] has action [{}], which is not one of Live's pet actions", itemId, action));
+        continue;
+      }
+      npcItem->second.actions.push_back(action);
+    }
+    for (uint32 itemId : npcItemIdSet) {
+      if (!npcItems.count(itemId)) {
         problems.push_back(fmt::format("NPC item [{}] has no real_estate_npc_items row naming the NPC it spawns", itemId));
       }
     }
@@ -214,7 +250,20 @@ namespace housing {
     if (maxChildrenOverride < -1) {
       problems.push_back(fmt::format("Housing:MaxHousesOverride [{}] must be -1 (off) or a count", maxChildrenOverride));
     }
+    const int maxPetsPerHouse = RuleI(Housing, MaxPetsPerHouse);
+    const int maxPetsPerGuildHall = RuleI(Housing, MaxPetsPerGuildHall);
+    if (maxPetsPerHouse < -1 || maxPetsPerGuildHall < -1) {
+      problems.push_back(fmt::format("Housing:MaxPetsPerHouse [{}] and Housing:MaxPetsPerGuildHall [{}] must be -1 (no cap) or a count", maxPetsPerHouse, maxPetsPerGuildHall));
+    }
     for (auto &[id, entry] : definitions) {
+      if (entry.row.max_npc_items < -1) {
+        problems.push_back(fmt::format("definition [{}] caps NPC items at [{}]; -1 is no cap", id, entry.row.max_npc_items));
+      }
+      else if (maxPetsPerHouse >= -1 && maxPetsPerGuildHall >= -1) {
+        const int ruleCap = entry.row.type == static_cast<uint8>(DefinitionType::playerHouse) ? maxPetsPerHouse
+          : entry.row.type == static_cast<uint8>(DefinitionType::guildHall) ? maxPetsPerGuildHall : -1;
+        entry.maxNpcItems = npcItemCap(entry.row.max_npc_items, ruleCap);
+      }
       if (!isType(entry.row.type, {DefinitionType::plot, DefinitionType::guildPlot})) {
         entry.maxChildren = entry.row.max_children;
       }
@@ -269,6 +318,11 @@ namespace housing {
     return found == templates.end() ? nullptr : &found->second;
   }
 
+  const NpcItem *Catalog::npcItem(uint32 itemId) const {
+    auto found = npcItems.find(itemId);
+    return found == npcItems.end() ? nullptr : &found->second;
+  }
+
   WireWriter Catalog::message() const {
     WireWriter message;
     message.u32(static_cast<uint32>(definitions.size()));
@@ -287,7 +341,7 @@ namespace housing {
         .u32(row.placement_group_id)
         .lengthString(row.address)
         .u32(row.icon)
-        .i32(row.max_npc_items)
+        .i32(entry.maxNpcItems)
         .f32(row.switch_y)
         .f32(row.switch_x)
         .f32(row.switch_z)
