@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "login_server.h"
 #include "login_server_list.h"
 #include "zonelist.h"
+#include "housingNeighborhoods.h"
 #include "worlddb.h"
 #include "client.h"
 #include "../common/md5.h"
@@ -1675,6 +1676,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 		}
 		case ServerOP_Housing: {
 			ZSList::Instance()->SendPacketToBootedZones(pack);
+			housing::onHousingEvent(pack);
 			break;
 		}
 		case ServerOP_BazaarPurchase: {
