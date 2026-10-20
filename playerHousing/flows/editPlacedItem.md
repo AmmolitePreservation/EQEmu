@@ -43,7 +43,7 @@ As `placeItem.md` S1–S8, plus:
 | Symptom | Cause |
 |---|---|
 | Right-clicking a placed item does nothing | no `0x21ec` reply from the server |
-| Left-clicking a placed item does nothing | expected for anything but a house, whose left click enters it: Peridot logs other left clicks (`0x218c`, `0x050c`) until Live's behaviour is known (MNU-7) |
+| Left-clicking a placed item does nothing | expected, the house included; only a left click on a house's door enters it. Peridot logs other left clicks (`0x218c`, `0x050c`) until Live's behaviour for the other kinds is known (MNU-7) |
 | Menu appears but "place" does nothing | no `0x626e` begin reply with A = 1 and the spawn id |
 | Real item stays visible while editing | the begin `0x626e`'s GUID differs from the world object's (the GUID must be the row's in every message), or for an NPC item the spawn id in `0x626e` is wrong |
 | Move buttons dark | the destination (closet/shed/crate) doesn't exist, the rules fail, or a request is pending |
