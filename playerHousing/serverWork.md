@@ -126,7 +126,7 @@ Verified live with the diagnostics plugin (`PhoenixCampfire/mqperidotemu`), 2026
 
 ### S11. Polls
 
-- **Client → server:** `0x15a8` (vote), `0x499a` (teleport to a ranked property), `0x6573` (the Purchase window's Vote button).
+- **Client → server:** `0x15a8` (vote), `0x499a` (teleport to a ranked property), `0x6573` (the Purchase window's voting opt-out).
 - **Server → client:** `0x15e2` / `0x39bb` (polls), `0x3311` (results), `0x6860` (option labels), `0x7497` (may vote / may see), `0x52b5` (your votes), `0x593a` (available), `0x7a4d` (open on a poll).
 - **Server rules:** validate votes (the poll is Open, the player is in the may-vote set, the key belongs to the poll, at most its tick limit); property polls use property ids as keys.
 - **Depends on:** S2 (property polls). **Readiness:** Specified; Live runs no polls, so Peridot runs none by default and a GM runs any (`#realestate poll`).

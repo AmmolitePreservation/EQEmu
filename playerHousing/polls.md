@@ -47,6 +47,7 @@ Every loader ends by refreshing the vote window (`0x795f30` / `0x795f90`), runni
 | Opcode | From | Meaning |
 |---|---|---|
 | **`0x15a8`** | the vote window's handler (`0x794e90`, send at `0x7951a3`) | **cast a vote** (sent on every click): **u32 poll id, u32 option key** (the clicked control's), **u8 selected** (0 when un-ticking a checkbox), **u32 N, N × u32** every option key currently ticked |
+| **`0x6573`** | the Purchase window's opt-out checkbox (`windows/RealEstatePurchaseWnd.md`) | **the plot's voting opt-out**: **{u32 property id (the plot one stands on), u32 whose low byte is the flag}**; the record's `+0x44` keeps it, and the Vote button is dark for an opted-out plot |
 | **`0x499a`** | game dialog `0x8b` ("Do you wish to be teleported to the selected real estate: %1?", from `VoteResultsWnd`'s Teleport to Selected) | **teleport to a ranked property**: **{u32 0, u32 poll id, u32 result key (the property), u32 -1}** (16 bytes); property polls only; on no, nothing is sent |
 
 ## Close-out
@@ -56,7 +57,7 @@ Every loader ends by refreshing the vote window (`0x795f30` / `0x795f90`), runni
 | Direction | Opcodes |
 |---|---|
 | server -> client | `0x15e2` (poll list), `0x39bb` (poll updates), `0x3311` (results), `0x6860` (option labels), `0x7497` (may vote / may see), `0x52b5` (your votes), `0x593a` (polling available), `0x7a4d` (open on a poll) |
-| client -> server | `0x15a8` (vote), `0x499a` (teleport to a ranked property) |
+| client -> server | `0x15e2` (bare request), `0x15a8` (vote), `0x6573` (voting opt-out), `0x499a` (teleport to a ranked property) |
 
 Peridot names them `OP_Poll*`; `0x15e2` (`OP_PollList`) goes both ways, the client's being the bare request after a UI reload.
 
