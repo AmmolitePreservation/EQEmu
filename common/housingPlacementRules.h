@@ -18,6 +18,7 @@ namespace housing {
     noInventoryRoom = 4,
     notFound = 9,
     full = 10,
+    nothingToTransfer = 11,
     vaultFull = 12,
     houseLimit = 15,
     crateLimit = 16,

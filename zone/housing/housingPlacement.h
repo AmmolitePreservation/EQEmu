@@ -28,6 +28,8 @@ namespace housing {
   void handlePlaceCommit(Client *client, WireReader &reader);
   void handleMoveToInventory(Client *client, WireReader &reader);
   void handleMoveToStorage(Client *client, WireReader &reader);
+  void handleStoreAll(Client *client, WireReader &reader);
+  void handlePack(Client *client, WireReader &reader);
 
   void sendItemResult(Client *client, ItemResult result);
   void cancelPlacement(Client *client, const std::string &reason);

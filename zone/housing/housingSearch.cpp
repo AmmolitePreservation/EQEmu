@@ -326,6 +326,11 @@ namespace housing {
     }
   }
 
+  // A neighborhood-list door (type 159) answers as an empty name search does: every listed neighborhood, the window shown.
+  void openNeighborhoodList(Client *client) {
+    searchNeighborhoods(client, 0, {}, {}, {});
+  }
+
   void sendPropertyWindow(Client *client, const Property &property, bool openPurchase) {
     const DefinitionType type = typeOf(property);
     if (type != DefinitionType::plot && type != DefinitionType::guildPlot) {

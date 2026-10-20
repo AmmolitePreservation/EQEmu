@@ -110,6 +110,24 @@ CREATE TABLE IF NOT EXISTS `real_estate_zone_templates` (
   CONSTRAINT `real_estate_zone_template_heading` CHECK (`zone_in_heading` >= 0 AND `zone_in_heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The doors housing answers, keyed as the client keys them (a door id is a byte). real_estate_door_id is Live's RealEstateDoorID,
+-- which RoF2 keeps but never reads: the plot definition a plot border (type 160) or an apartment entrance opens, 1 on a
+-- neighborhood-list door (type 159), 0 on a front door (type 161).
+CREATE TABLE IF NOT EXISTS `real_estate_doors` (
+  `zone_id` INT(10) UNSIGNED NOT NULL,
+  `zone_version` TINYINT(3) UNSIGNED NOT NULL,
+  `door_id` TINYINT(3) UNSIGNED NOT NULL,
+  `real_estate_door_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`zone_id`, `zone_version`, `door_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- An item that creates a guild neighborhood of a definition when used (Live's Guild Writ of the Sunrise makes Sunrise Hills).
+CREATE TABLE IF NOT EXISTS `real_estate_writs` (
+  `item_id` INT(11) UNSIGNED NOT NULL,
+  `definition_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Words the server combines into names for the neighborhoods it creates as others fill, as Live does ("Maple Bridge Point",
 -- "Walnut Lake", "Circle Hills"): position 0 an optional tree, 1 an optional middle word, 2 the place word, and at least one of
 -- the first two. A name is in use while a neighborhood property has it.
@@ -144,7 +162,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_item_actions` (
   CONSTRAINT `real_estate_npc_item_action_id` CHECK (`action_id` IN (16175, 16176, 16177, 16178, 16179, 16394, 16492))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- name holds only a neighborhood's generated name. upkeep_currency is 0 (coin) or an alternate currency id: the record's
+-- name holds only a neighborhood's generated name. Where a property is is derived, never stored: its root's definition names the
+-- zone (dz_id), a zone root runs at instance 0 and any other root in the copy real_estate_instances maps to it. upkeep_currency is 0 (coin) or an alternate currency id: the record's
 -- option key is derived from it when sent, since option positions move as the expansion enables options. Upkeep runs on a
 -- clock per property: a charge at next_upkeep_at takes the daily cost prorated over the seconds since upkeep_settled_at;
 -- upkeep_expired_time is the second a charge found the escrow empty (0 while paid). Ids start above every region id.
@@ -155,8 +174,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `guild_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `owner_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
-  `host_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_expired_time` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -169,9 +186,32 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   KEY `parent_id` (`parent_id`),
   KEY `owner_character_id` (`owner_character_id`),
   KEY `guild_id` (`guild_id`),
-  KEY `host` (`host_zone_id`, `host_instance_id`),
   KEY `next_upkeep_at` (`next_upkeep_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4;
+
+-- A running copy of a property's template zone (an interior or a neighborhood): one per property, removed with its instance
+-- when the copy is discarded.
+CREATE TABLE IF NOT EXISTS `real_estate_instances` (
+  `instance_id` INT(10) UNSIGNED NOT NULL,
+  `property_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`instance_id`),
+  UNIQUE KEY `property_id` (`property_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The instance id the next copy takes: copies count up as Live's do, skipping ids in use and wrapping past the last.
+CREATE TABLE IF NOT EXISTS `real_estate_instance_counter` (
+  `id` TINYINT(3) UNSIGNED NOT NULL,
+  `next_instance_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `real_estate_instance_counter_single` CHECK (`id` = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A character saved inside a copy that was discarded, and the property it was a copy of: the next login enters a new copy.
+CREATE TABLE IF NOT EXISTS `character_real_estate_interiors` (
+  `character_id` INT(10) UNSIGNED NOT NULL,
+  `property_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`character_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Charges are prorated by the second, so balances are fractional (the client keeps them as f64); coin is in copper.
 CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (

@@ -42,6 +42,7 @@
 #include "water_map.h"
 #include "npc_scale_manager.h"
 #include "dialogue_window.h"
+#include "housing/housing.h"
 
 #ifdef _WINDOWS
 	#define snprintf	_snprintf
@@ -997,6 +998,9 @@ bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app, Client *client)
 			new_door.invert_state = door->GetInvertState();
 
 			new_door.door_param = door->GetDoorParam();
+			if (client->ClientVersion() == EQ::versions::ClientVersion::RoF2) {
+				new_door.real_estate_door_id = housing::realEstateDoorID(door->GetDoorID());
+			}
 			memcpy(ptr, &new_door, sizeof(new_door));
 			ptr += sizeof(new_door);
 			*(ptr - 1) = 0x01;

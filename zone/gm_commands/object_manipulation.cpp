@@ -1157,8 +1157,8 @@ void ObjectManipulation::CommandHandler(Client *c, const Seperator *sep)
 			ds->size     = door.size;
 			ds->doorId   = door.doorid;
 			ds->opentype = door.opentype;
-			ds->unknown0052[9]  = 1; // *ptr-1 and *ptr-3 from EntityList::MakeDoorSpawnPacket()
-			ds->unknown0052[11] = 1;
+			ds->unknown0072[5] = 1; // *ptr-1 and *ptr-3 from EntityList::MakeDoorSpawnPacket()
+			ds->unknown0072[7] = 1;
 
 			entity_list.QueueClients(0, app);
 			safe_delete(app);

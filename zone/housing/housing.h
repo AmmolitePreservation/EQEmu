@@ -12,6 +12,7 @@ class ServerPacket;
 
 namespace housing {
   bool onZoneBoot();
+  void onZoneShutdown();
   void process();
   void handlePacket(Client *client, const EQApplicationPacket *app);
   void onZoneContents(Client *client);
@@ -21,7 +22,9 @@ namespace housing {
   void handleFindRequest(Client *client, uint32 type, int32 propertyId, int32 recordId);
   void handleContainerOpened(Client *client, const EQApplicationPacket *app);
   bool handleDoorClick(Client *client, Doors *door);
-  void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect);
+  void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect, uint16 spellId, int32 anchorItemId);
+  uint32 realEstateDoorID(uint8 doorId);
+  bool itemCastSpends(Client *client, uint32 inventorySlot);
   void handleCommand(Client *client, const Seperator *sep);
 }
 

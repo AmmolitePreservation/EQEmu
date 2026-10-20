@@ -50,8 +50,9 @@ namespace housing {
   ObjectTransform rowTransform(const PlacedItem &row);
   void writePlacementObject(WireWriter &message, const PlacementObject &object);
 
-  // The properties whose placed items stand in this zone: the outdoor ones hosted here, and the current property inside an interior.
-  bool shownHere(const Property &property, uint32 currentPropertyId);
+  // Whose placed items stand in this zone: the outdoor properties hosted here, and the current property inside an interior.
+  bool standsOutdoors(const Property &property);
+  bool shownHere(const Property &property, const Session &state);
   void sendWorldObjects(Client *client, const Session &state);
   void broadcastWorldObject(const PlacedItem &row);
   void broadcastWorldObjectRemove(const PlacedItem &row);

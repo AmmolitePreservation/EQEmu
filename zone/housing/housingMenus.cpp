@@ -39,7 +39,6 @@ namespace housing {
     constexpr size_t entryCount = 40;
     constexpr size_t npcSpawnOffset = 0x2fc;
     constexpr uint32 none = 0xFFFFFFFF;
-    constexpr uint32 upkeepExpired = 6432;
 
     constexpr MenuEntry enterEntry{1, none, 723, none};
     constexpr MenuEntry adjustPlacementEntry{2, 0, 5244, none};
@@ -131,7 +130,7 @@ namespace housing {
     // Adjust Placement and an item's interactions come only to a viewer in the item's own zone (full menu scans on Live).
     bool inItemZoneOf(const Session &state, const PlacedItem &item) {
       auto holder = state.properties.find(item.property_id);
-      return holder != state.properties.end() && shownHere(holder->second, state.currentPropertyId);
+      return holder != state.properties.end() && shownHere(holder->second, state);
     }
 
     struct Action {
@@ -264,39 +263,22 @@ namespace housing {
           LogHousing("[{}] asked to go to property [{}], which is not a listed neighborhood", client->GetCleanName(), propertyId);
           return;
         }
-        auto lists = accessLists({propertyId});
-        std::map<uint32, Property> known(state->properties);
-        known[propertyId] = neighborhood.front();
-        auto lookup = [&known](uint32 id) -> const Property * {
-          auto found = known.find(id);
-          return found == known.end() ? nullptr : &found->second;
-        };
-        auto listOf = [&lists](uint32 id) -> const AccessList * {
-          auto found = lists.find(id);
-          return found == lists.end() ? nullptr : &found->second;
-        };
-        if (!permitted(client, Permission::enter, neighborhood.front(), lookup, listOf)) {
-          LogHousing("[{}] may not enter neighborhood [{}]", client->GetCleanName(), propertyId);
-          return;
-        }
         enterProperty(client, neighborhood.front());
         return;
       }
-      if (b != none) {
-        LogHousing("[{}] clicked record [{}] of property [{}] with action [{}]; only the menu's Enter is handled here", client->GetCleanName(), recordId, propertyId, b);
+      // b is 0 only on a left click RoF2 found on a model's POINT1-4 quad (0x5384d0), the door of a house's exterior (INT-19).
+      const bool doorClick = b == 0;
+      if (b != none && !doorClick) {
+        LogHousing("[{}] clicked record [{}] of property [{}] with action [{}]; only Enter is handled here", client->GetCleanName(), recordId, propertyId, b);
         return;
       }
       const auto located = locate(client, *state, propertyId, recordId);
       if (!located) {
         return;
       }
-      const bool inItemZone = inItemZoneOf(*state, located->item);
-      if (!mayEnter(client, *state, *located, inItemZone)) {
-        LogHousing("[{}] may not enter the house of record [{}] of property [{}]", client->GetCleanName(), recordId, propertyId);
-        return;
-      }
-      if (!upkeepCurrent(*located)) {
-        client->MessageString(Chat::Red, upkeepExpired, propertyName(located->carried->id).c_str());
+      if (!isHouse(located->carried ? &*located->carried : nullptr) || !located->item.placed || !inItemZoneOf(*state, located->item)) {
+        LogHousing("[{}] {} record [{}] of property [{}], which is no placed house here; nothing happens", client->GetCleanName(),
+          doorClick ? "left clicked" : "chose Enter on", recordId, propertyId);
         return;
       }
       enterProperty(client, *located->carried);

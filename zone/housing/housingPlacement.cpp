@@ -385,16 +385,15 @@ namespace housing {
       const uint32 owner = ownerFor(destination, lookup);
       if (candidate.carried) {
         query(database, fmt::format(
-          "UPDATE real_estate_properties SET parent_id = {}, owner_character_id = {}, host_zone_id = {}, host_instance_id = {}, "
-          "contained_in_item = 0, archived = 0, revision = revision + 1 WHERE id = {}",
-          destination.id, owner, destination.host_zone_id, destination.host_instance_id, candidate.carried->id
+          "UPDATE real_estate_properties SET parent_id = {}, owner_character_id = {}, contained_in_item = 0, archived = 0, revision = revision + 1 WHERE id = {}",
+          destination.id, owner, candidate.carried->id
         ));
         changed.insert(candidate.carried->id);
         return;
       }
       auto created = query(database, fmt::format(
-        "INSERT INTO real_estate_properties (parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id) VALUES ({}, {}, {}, {}, {})",
-        destination.id, candidate.tail->realEstateDefinitionId, owner, destination.host_zone_id, destination.host_instance_id
+        "INSERT INTO real_estate_properties (parent_id, definition_id, owner_character_id) VALUES ({}, {}, {})",
+        destination.id, candidate.tail->realEstateDefinitionId, owner
       ));
       const uint32 propertyId = static_cast<uint32>(created.LastInsertedID());
       candidate.instance->SetCustomData(propertyItemKey, std::to_string(propertyId));
@@ -442,7 +441,7 @@ namespace housing {
         return;
       }
       auto property = state.properties.find(row.property_id);
-      if (property != state.properties.end() && !shownHere(property->second, state.currentPropertyId)) {
+      if (property != state.properties.end() && !shownHere(property->second, state)) {
         return;
       }
       if (isNpcItemId(row.item_id)) {
@@ -456,6 +455,125 @@ namespace housing {
     void refuse(Client *client, const ItemRefusal &refusal, const char *request) {
       LogHousing("Refused [{}]'s {}: {} (code [{}])", client->GetCleanName(), request, refusal.what(), static_cast<uint32>(refusal.result));
       sendItemResult(client, refusal.result);
+    }
+
+    // Store All, Pack and Unpack: every row of the source that passes the individual move rules into the destination moves,
+    // like items stacking into one stored entry, and nothing is said (Live, INT-9).
+    struct BulkMove {
+      std::vector<PlacedItem> withdrawn;
+      std::set<uint32> itemLists;
+      std::map<uint32, PropertyChangedPayload> changedProperties;
+      uint32 moved = 0;
+    };
+
+    Candidate bulkCandidate(const PlacedItem &row) {
+      Candidate candidate;
+      candidate.instance = itemInstance(row);
+      if (!candidate.instance) {
+        throw std::runtime_error(fmt::format("record [{}] holds item [{}], which does not exist", row.id, row.item_id));
+      }
+      candidate.item = candidate.instance->GetItem();
+      candidate.row = row;
+      candidate.guid = itemGuid(row);
+      describeCarrier(candidate);
+      return candidate;
+    }
+
+    BulkMove moveRows(Client *client, const Session &state, uint32 sourceId, uint32 destinationId, bool placedOnly) {
+      BulkMove result;
+      Transaction transaction(database);
+      lockedProperty(database, sourceId);
+      const Property destination = lockedProperty(database, destinationId);
+      View view = viewOf(state, {sourceId, destinationId});
+      view.properties[destination.id] = destination;
+      const std::vector<PlacedItem> rows = view.rowsOf(sourceId);
+      for (const PlacedItem &row : rows) {
+        if ((placedOnly && !row.placed) || carriedPropertyId(row.custom_data) == destinationId) {
+          continue;
+        }
+        Candidate candidate = bulkCandidate(row);
+        if (isHouseKind(candidate.kind)) {
+          continue;
+        }
+        const uint32 quantity = candidate.instance->IsStackable() ? static_cast<uint32>(std::max<int16>(candidate.instance->GetCharges(), 1)) : 1;
+        if (judge(client, view, candidate, destination, true, quantity) != ItemResult::success) {
+          continue;
+        }
+        auto &sourceRows = view.rows[sourceId];
+        sourceRows.erase(std::remove_if(sourceRows.begin(), sourceRows.end(), [&](const PlacedItem &entry) { return entry.id == row.id; }), sourceRows.end());
+        const PlacedItem *merge = mergeTarget(view, candidate, destinationId, row.owner_character_id, quantity);
+        if (merge) {
+          const uint32 mergeId = merge->id;
+          query(database, fmt::format("UPDATE real_estate_items SET charges = charges + {} WHERE id = {}", quantity, mergeId));
+          query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", row.id));
+          for (auto &entry : view.rows[destinationId]) {
+            if (entry.id == mergeId) {
+              entry.charges = static_cast<uint16>(entry.charges + quantity);
+            }
+          }
+        }
+        else {
+          PlacedItem stored = row;
+          stored.property_id = destinationId;
+          stored.placed = 0;
+          if (sourceId != destinationId) {
+            std::set<uint32> carriedChanged;
+            attachCarried(candidate, stored, destination, view.lookup(), carriedChanged);
+            for (uint32 id : carriedChanged) {
+              result.changedProperties[id] = PropertyChangedPayload{candidate.carried->owner_character_id, ownerFor(destination, view.lookup()), 0, 0};
+            }
+          }
+          updateRow(stored);
+          view.rows[destinationId].push_back(stored);
+        }
+        if (row.placed) {
+          result.withdrawn.push_back(row);
+        }
+        result.moved++;
+      }
+      if (result.moved) {
+        bumpRevision(database, sourceId);
+        if (destinationId != sourceId) {
+          bumpRevision(database, destinationId);
+        }
+        result.itemLists = {sourceId, destinationId};
+        if (!result.changedProperties.empty()) {
+          result.changedProperties[destination.id] = PropertyChangedPayload{destination.owner_character_id, destination.owner_character_id, destination.guild_id, destination.guild_id};
+        }
+      }
+      transaction.commit();
+      return result;
+    }
+
+    void finishBulkMove(Client *client, const BulkMove &result, const char *request) {
+      for (const PlacedItem &row : result.withdrawn) {
+        closeContainersOf(row.id);
+        if (isNpcItemId(row.item_id)) {
+          despawnNpcItem(row.id);
+        }
+        else {
+          broadcastWorldObjectRemove(row);
+        }
+        forEachSession([&](Client *editor, Session &editorState) {
+          if (editorState.placement && editorState.placement->sourceRecordId == row.id && editorState.placement->sourcePropertyId == row.property_id) {
+            cancelPlacement(editor, fmt::format("record [{}] was moved by {}", row.id, request));
+          }
+        });
+      }
+      sendItemResult(client, result.moved ? ItemResult::success : ItemResult::nothingToTransfer);
+      announce(result.itemLists, result.changedProperties);
+      LogHousing("[{}]'s {} moved [{}] records", client->GetCleanName(), request, result.moved);
+    }
+
+    // The yard the player stands in, or the house or hall they are inside: Store All's and the crate's "current location".
+    uint32 locationOf(Client *client, const Session &state) {
+      const uint32 location = propertyAt(state, client->GetX(), client->GetY(), client->GetZ());
+      if (!location) {
+        return 0;
+      }
+      const DefinitionType type = typeOf(state.properties.at(location));
+      const bool yardOrHouse = type == DefinitionType::plot || type == DefinitionType::guildPlot || type == DefinitionType::playerHouse || type == DefinitionType::guildHall;
+      return yardOrHouse ? location : 0;
     }
   }
 
@@ -780,7 +898,7 @@ namespace housing {
       if (candidate.carried) {
         if (carriesItems) {
           query(database, fmt::format(
-            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, host_zone_id = 0, host_instance_id = 0, contained_in_item = 1, "
+            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, contained_in_item = 1, "
             "archived = 0, revision = revision + 1 WHERE id = {}", client->CharacterID(), candidate.carried->id
           ));
           changedProperties[candidate.carried->id] = PropertyChangedPayload{candidate.carried->owner_character_id, client->CharacterID(), 0, 0};
@@ -986,5 +1104,68 @@ namespace housing {
     sendItemResult(client, ItemResult::success);
     announce(itemLists, changedProperties);
     LogHousing("[{}] stored item [{}] as record [{}] in property [{}]", client->GetCleanName(), stored.item_id, stored.id, stored.property_id);
+  }
+
+  void handleStoreAll(Client *client, WireReader &reader) {
+    if (reader.remaining()) {
+      LogError("Housing: [{}] sent a [{}]-byte store all; it has no body", client->GetCleanName(), reader.remaining());
+      return;
+    }
+    Session *state = session(client);
+    if (!state) {
+      return;
+    }
+    try {
+      const uint32 location = locationOf(client, *state);
+      if (!location) {
+        throw ItemRefusal(ItemResult::notPlaceableZone, "the player stands in no yard or house");
+      }
+      finishBulkMove(client, moveRows(client, *state, location, location, true), "store all");
+    }
+    catch (const ItemRefusal &refusal) {
+      refuse(client, refusal, "store all");
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: [{}]'s store all failed: {}", client->GetCleanName(), error.what());
+      sendItemResult(client, ItemResult::failed);
+    }
+  }
+
+  // RoF2 writes 0x613d's byte: 1 from the pack dialog, 0 from the unpack dialog (0x735480; INT-8).
+  void handlePack(Client *client, WireReader &reader) {
+    const uint8 pack = reader.u8();
+    if (reader.failed() || reader.remaining() || pack > 1) {
+      LogError("Housing: [{}] sent a malformed pack request", client->GetCleanName());
+      return;
+    }
+    Session *state = session(client);
+    if (!state) {
+      return;
+    }
+    const char *request = pack ? "pack" : "unpack";
+    try {
+      const uint32 location = locationOf(client, *state);
+      if (!location) {
+        throw ItemRefusal(ItemResult::notPlaceableZone, "the player stands in no yard or house");
+      }
+      const Property *plot = ancestorOfType(state->properties.at(location), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, state->lookup());
+      if (!plot) {
+        throw ItemRefusal(ItemResult::crateRequired, fmt::format("property [{}] stands on no plot", location));
+      }
+      View view = viewOf(*state, {plot->id});
+      const Property *crate = placedCrateIn(view, plot->id, 0);
+      if (!crate) {
+        throw ItemRefusal(ItemResult::crateRequired, fmt::format("plot [{}] has no placed moving crate", plot->id));
+      }
+      const uint32 crateId = crate->id;
+      finishBulkMove(client, pack ? moveRows(client, *state, location, crateId, false) : moveRows(client, *state, crateId, location, false), request);
+    }
+    catch (const ItemRefusal &refusal) {
+      refuse(client, refusal, request);
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: [{}]'s {} failed: {}", client->GetCleanName(), request, error.what());
+      sendItemResult(client, ItemResult::failed);
+    }
   }
 }

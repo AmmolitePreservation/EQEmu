@@ -139,6 +139,20 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   CONSTRAINT `real_estate_zone_template_heading` CHECK (`zone_in_heading` >= 0 AND `zone_in_heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_doors` (
+  `zone_id` INT(10) UNSIGNED NOT NULL,
+  `zone_version` TINYINT(3) UNSIGNED NOT NULL,
+  `door_id` TINYINT(3) UNSIGNED NOT NULL,
+  `real_estate_door_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`zone_id`, `zone_version`, `door_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_writs` (
+  `item_id` INT(11) UNSIGNED NOT NULL,
+  `definition_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_words` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `position` TINYINT(3) UNSIGNED NOT NULL,
@@ -183,8 +197,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `guild_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `owner_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
-  `host_zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `host_instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_expired_time` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -197,9 +209,28 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   KEY `parent_id` (`parent_id`),
   KEY `owner_character_id` (`owner_character_id`),
   KEY `guild_id` (`guild_id`),
-  KEY `host` (`host_zone_id`, `host_instance_id`),
   KEY `next_upkeep_at` (`next_upkeep_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_instances` (
+  `instance_id` INT(10) UNSIGNED NOT NULL,
+  `property_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`instance_id`),
+  UNIQUE KEY `property_id` (`property_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_instance_counter` (
+  `id` TINYINT(3) UNSIGNED NOT NULL,
+  `next_instance_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `real_estate_instance_counter_single` CHECK (`id` = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `character_real_estate_interiors` (
+  `character_id` INT(10) UNSIGNED NOT NULL,
+  `property_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`character_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   `property_id` INT(10) UNSIGNED NOT NULL,
@@ -444,7 +475,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 )",
 		.content_schema_update = true,
 	},
-
 // Used for testing
 //	ManifestEntry{
 //		.version = 9229,

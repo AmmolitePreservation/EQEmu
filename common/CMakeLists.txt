@@ -48,6 +48,7 @@ SET(common_sources
     file.cpp
     guild_base.cpp
     guilds.cpp
+    housingCopies.cpp
     housingLedger.cpp
     inventory_profile.cpp
     inventory_slot.cpp
@@ -643,7 +644,9 @@ SET(common_headers
     guild_base.h
     guilds.h
     housingAccessRules.h
+    housingCopies.h
     housingEventTypes.h
+    housingInstanceNumbers.h
     housingLedger.h
     housingNames.h
     housingPlacementRules.h

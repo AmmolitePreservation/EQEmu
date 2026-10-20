@@ -16,6 +16,7 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include "housingInstances.h"
 #include "../common/global_define.h"
 #include "../common/eq_packet.h"
 #include "../common/eq_stream_intf.h"
@@ -932,8 +933,10 @@ bool Client::HandleEnterWorldPacket(const EQApplicationPacket *app) {
 			!database.VerifyInstanceAlive(instance_id, GetCharID()) ||
 			!database.VerifyZoneInstance(zone_id, instance_id)
 		) {
-			zone_id = database.MoveCharacterToInstanceSafeReturn(charid, zone_id, instance_id);
-			instance_id = 0;
+			if (!RuleB(Housing, EnableHousing) || !housing::reenterDiscardedCopy(charid, zone_id, instance_id)) {
+				zone_id = database.MoveCharacterToInstanceSafeReturn(charid, zone_id, instance_id);
+				instance_id = 0;
+			}
 		}
 	}
 

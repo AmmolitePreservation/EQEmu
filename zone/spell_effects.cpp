@@ -503,7 +503,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_TeleporttoAnchor:
 			case SE_TranslocatetoAnchor:
 			{
-				housing::handleAnchorEffect(caster, this, effect);
+				housing::handleAnchorEffect(caster, this, effect, spell_id, spell.base_value[i]);
 				break;
 			}
 

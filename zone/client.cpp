@@ -12147,6 +12147,11 @@ void Client::SendPath(Mob* target)
 		return;
 	}
 
+	SendPath(glm::vec3(target->GetX(), target->GetY(), target->GetZ()), target->GetSize());
+}
+
+void Client::SendPath(const glm::vec3 &destination, float destination_size)
+{
 	std::vector<FindPerson_Point> points;
 
 	if (!RuleB(Pathing, Find) || !zone->pathing) {
@@ -12157,9 +12162,9 @@ void Client::SendPath(Mob* target)
 		a.x = GetX();
 		a.y = GetY();
 		a.z = GetZ();
-		b.x = target->GetX();
-		b.y = target->GetY();
-		b.z = target->GetZ();
+		b.x = destination.x;
+		b.y = destination.y;
+		b.z = destination.z;
 
 		points.push_back(a);
 		points.push_back(b);
@@ -12172,9 +12177,9 @@ void Client::SendPath(Mob* target)
 		);
 
 		glm::vec3 path_end(
-			target->GetX(),
-			target->GetY(),
-			target->GetZ() + (target->GetSize() < 6.0 ? 6 : target->GetSize()) * HEAD_POSITION
+			destination.x,
+			destination.y,
+			destination.z + (destination_size < 6.0 ? 6 : destination_size) * HEAD_POSITION
 		);
 
 		bool partial   = false;
@@ -12226,9 +12231,9 @@ void Client::SendPath(Mob* target)
 		}
 
 		if (!leads_to_teleporter) {
-			p.x = target->GetX();
-			p.y = target->GetY();
-			p.z = target->GetZ();
+			p.x = destination.x;
+			p.y = destination.y;
+			p.z = destination.z;
 
 			points.push_back(p);
 		}

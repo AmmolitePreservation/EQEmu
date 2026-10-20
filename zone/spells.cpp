@@ -85,6 +85,7 @@ Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
 #include "string_ids.h"
 #include "worldserver.h"
 #include "fastmath.h"
+#include "housing/housing.h"
 #include "lua_parser.h"
 
 #include <assert.h>
@@ -1770,6 +1771,10 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 	TryTwincast(this, target, spell_id);
 
 	TryTriggerOnCastFocusEffect(focusTriggerOnCast, spell_id);
+
+	if (IsClient() && DeleteChargeFromSlot >= 0 && !housing::itemCastSpends(CastToClient(), inventory_slot)) {
+		DeleteChargeFromSlot = -1;
+	}
 
 	if (IsClient() && DeleteChargeFromSlot >= 0) {
 		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);

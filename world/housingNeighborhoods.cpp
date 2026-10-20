@@ -1,9 +1,12 @@
 #include "housingNeighborhoods.h"
 
 #include "wguild_mgr.h"
+#include "housingInstances.h"
 #include "worlddb.h"
+#include "zonelist.h"
 
 #include "../common/eqemu_logsys.h"
+#include "../common/housingCopies.h"
 #include "../common/housingEventTypes.h"
 #include "../common/housingLedger.h"
 #include "../common/housingNames.h"
@@ -13,6 +16,7 @@
 #include "../common/strings.h"
 
 #include <cstring>
+#include <memory>
 #include <tuple>
 #include <stdexcept>
 
@@ -190,46 +194,43 @@ namespace housing {
     }
   }
 
+  // A neighborhood is rows only: it runs in copies of its template started on entry (D3), like an interior.
   uint32 createNeighborhood(uint32 definitionId, uint32 guildId) {
     if (definitionTypes(content_db, {definitionId}).at(definitionId) != neighborhoodType) {
       throw std::invalid_argument(fmt::format("definition [{}] is not a neighborhood", definitionId));
     }
-    auto zoneRow = query(content_db, fmt::format(
-      "SELECT t.zone_id FROM real_estate_definitions d JOIN real_estate_zone_templates t ON t.dz_id = d.dz_id WHERE d.id = {}", definitionId
-    ));
-    if (zoneRow.RowCount() != 1) {
-      throw std::runtime_error(fmt::format("neighborhood definition [{}] has no zone template", definitionId));
-    }
-    const uint32 zoneId = Strings::ToUnsignedInt(zoneRow.begin()[0]);
+    zoneTemplateOf(content_db, definitionId);
     const std::string name = newName(guildId);
-    std::vector<uint32> plotDefinitions;
-    std::set<uint32> childIds;
-    for (auto row : query(content_db, fmt::format("SELECT child_id FROM real_estate_definition_children WHERE parent_id = {} ORDER BY child_id", definitionId))) {
-      childIds.insert(Strings::ToUnsignedInt(row[0]));
-    }
-    for (const auto &[id, type] : definitionTypes(content_db, childIds)) {
-      if (type == plotType || type == guildPlotType) {
-        plotDefinitions.push_back(id);
-      }
-    }
-    Transaction transaction(database);
-    // A neighborhood runs in copies of its template started on entry; the copy, not the row, holds its instance (D3, step 5).
-    auto inserted = query(database, fmt::format(
-      "INSERT INTO real_estate_properties (parent_id, definition_id, guild_id, name, host_zone_id, host_instance_id) VALUES (0, {}, {}, '{}', {}, 0)",
-      definitionId, guildId, Strings::Escape(name), zoneId
-    ));
-    const uint32 neighborhoodId = inserted.LastInsertedID();
-    for (uint32 plotDefinition : plotDefinitions) {
-      query(database, fmt::format(
-        "INSERT INTO real_estate_properties (parent_id, definition_id, host_zone_id, host_instance_id) VALUES ({}, {}, {}, 0)",
-        neighborhoodId, plotDefinition, zoneId
-      ));
-    }
-    writeDefaultAccessList(database, neighborhoodId, false);
-    transaction.commit();
-    LogHousing("Created neighborhood [{}] [{}] of definition [{}] with [{}] plots{}", neighborhoodId, name, definitionId, plotDefinitions.size(),
+    const uint32 neighborhoodId = createPropertyTree(definitionId, guildId, name);
+    LogHousing("Created neighborhood [{}] [{}] of definition [{}]{}", neighborhoodId, name, definitionId,
       guildId ? fmt::format(" for guild [{}]", guildId) : std::string());
     return neighborhoodId;
+  }
+
+  // A writ's village (EXT-33), announced by 0x1d3c to the guild's members only.
+  void createGuildNeighborhood(const WritUsedPayload &writ) {
+    try {
+      const uint32 neighborhoodId = createNeighborhood(writ.definitionId, writ.guildId);
+      auto name = query(database, fmt::format("SELECT name FROM real_estate_properties WHERE id = {}", neighborhoodId));
+      GuildNeighborhoodCreatedPayload created{writ.guildId, {}, {}};
+      strncpy(created.characterName, writ.characterName, sizeof(created.characterName) - 1);
+      strncpy(created.neighborhoodName, name.begin()[0], sizeof(created.neighborhoodName) - 1);
+      auto announcement = std::make_unique<ServerPacket>(ServerOP_Housing, static_cast<uint32>(sizeof(ServerHousingEvent_Struct) + sizeof(created)));
+      auto *event = reinterpret_cast<ServerHousingEvent_Struct *>(announcement->pBuffer);
+      event->event_type = static_cast<uint32>(EventType::guildNeighborhoodCreated);
+      event->target_kind = static_cast<uint32>(EventTarget::guild);
+      event->target_id = writ.guildId;
+      event->origin_zone_id = 0;
+      event->origin_instance_id = 0;
+      event->property_id = neighborhoodId;
+      event->revision = 0;
+      event->payload_size = sizeof(created);
+      memcpy(event->payload, &created, sizeof(created));
+      ZSList::Instance()->SendPacketToBootedZones(announcement.get());
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: character [{}]'s writ for definition [{}] made no neighborhood for guild [{}]: {}", writ.characterId, writ.definitionId, writ.guildId, error.what());
+    }
   }
 
   void balanceNeighborhoods() {
@@ -259,8 +260,16 @@ namespace housing {
       return;
     }
     const auto *event = reinterpret_cast<const ServerHousingEvent_Struct *>(pack->pBuffer);
-    if (static_cast<EventType>(event->event_type) != EventType::propertyChanged || event->payload_size != sizeof(PropertyChangedPayload) ||
-        pack->size != sizeof(ServerHousingEvent_Struct) + event->payload_size) {
+    if (pack->size != sizeof(ServerHousingEvent_Struct) + event->payload_size) {
+      return;
+    }
+    if (static_cast<EventType>(event->event_type) == EventType::writUsed && event->payload_size == sizeof(WritUsedPayload)) {
+      WritUsedPayload writ;
+      memcpy(&writ, event->payload, sizeof(writ));
+      createGuildNeighborhood(writ);
+      return;
+    }
+    if (static_cast<EventType>(event->event_type) != EventType::propertyChanged || event->payload_size != sizeof(PropertyChangedPayload)) {
       return;
     }
     PropertyChangedPayload owners;

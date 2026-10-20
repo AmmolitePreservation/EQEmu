@@ -3795,6 +3795,7 @@ namespace RoF2
 			eq[r].state_at_spawn = emu[r].state_at_spawn;
 			eq[r].invert_state = emu[r].invert_state;
 			eq[r].door_param = emu[r].door_param;
+			eq[r].real_estate_door_id = emu[r].real_estate_door_id;
 			eq[r].unknown0080 = 0;
 			eq[r].unknown0081 = 1; // Both must be 1 to allow clicking doors
 			eq[r].unknown0082 = 0;
