@@ -19,6 +19,7 @@ namespace housing {
   void onDisconnect(Client *client);
   void handleServerPacket(ServerPacket *pack);
   void handleFindRequest(Client *client, uint32 type, int32 propertyId, int32 recordId);
+  void handleContainerOpened(Client *client, const EQApplicationPacket *app);
   bool handleDoorClick(Client *client, Doors *door);
   void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect);
   void handleCommand(Client *client, const Seperator *sep);

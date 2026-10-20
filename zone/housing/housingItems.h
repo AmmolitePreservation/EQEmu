@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -20,6 +21,9 @@ namespace housing {
   std::unique_ptr<EQ::ItemInstance> itemInstance(const PlacedItem &row);
   bool writeItemEntry(WireWriter &message, const PlacedItem &row, const std::map<uint32, CharacterIdentity> &owners);
   WireWriter itemList(uint32 propertyId, const std::vector<PlacedItem> &rows, const std::map<uint32, CharacterIdentity> &owners);
+  std::optional<PlacedItem> placedItem(uint32 propertyId, uint32 recordId);
+  PlacedItem rowFromInstance(const EQ::ItemInstance &instance, uint32 propertyId, uint32 ownerCharacterId);
+  int16 storedCharges(const EQ::ItemInstance &instance);
 }
 
 #endif

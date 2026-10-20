@@ -2,12 +2,16 @@
 
 #include "housingAccess.h"
 #include "housingCatalog.h"
+#include "housingContainers.h"
 #include "housingHandlers.h"
 #include "housingItems.h"
 #include "housingItemTail.h"
 #include "housingMenus.h"
 #include "housingMessages.h"
+#include "housingNpcItems.h"
+#include "housingPlacement.h"
 #include "housingSession.h"
+#include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/rulesys.h"
@@ -380,6 +384,7 @@ namespace housing {
       for (const auto &[id, list] : state->accessLists) {
         sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
       }
+      sendWorldObjects(client, *state);
       LogHousing("Zone-in for [{}]: [{}] properties, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
         client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
     }
@@ -444,6 +449,7 @@ namespace housing {
   }
 
   void onDisconnect(Client *client) {
+    closeContainerOf(client);
     sessions.erase(client);
   }
 
@@ -485,6 +491,7 @@ namespace housing {
       if (fresh.properties.count(old->currentPropertyId)) {
         fresh.currentPropertyId = old->currentPropertyId;
       }
+      fresh.placement = old->placement;
       std::set<uint32> added;
       for (const auto &[id, property] : fresh.properties) {
         if (!old->properties.count(id)) {
@@ -613,6 +620,27 @@ namespace housing {
       case OP_RealEstateInspect:
         handleInspect(client, reader);
         break;
+      case OP_RealEstateUse:
+        handleUse(client, reader);
+        break;
+      case OP_RealEstateMenuType9:
+        handleMenuAction(client, reader);
+        break;
+      case OP_RealEstateMenuType5:
+        handleMailToOwner(client, reader);
+        break;
+      case OP_RealEstatePlace:
+        handlePlaceRequest(client, reader);
+        break;
+      case OP_RealEstatePlaceCommit:
+        handlePlaceCommit(client, reader);
+        break;
+      case OP_RealEstateMoveToInventory:
+        handleMoveToInventory(client, reader);
+        break;
+      case OP_RealEstateMoveToStorage:
+        handleMoveToStorage(client, reader);
+        break;
       default:
         LogHousing("Unhandled housing opcode [{}] from [{}]", static_cast<uint32>(app->GetOpcode()), client->GetCleanName());
     }
@@ -621,6 +649,8 @@ namespace housing {
   void process() {
     if (housingActive()) {
       expireTransferOffers();
+      processNpcItems();
+      processContainers();
     }
   }
 }
