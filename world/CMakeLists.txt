@@ -12,6 +12,7 @@ SET(world_sources
     dynamic_zone_manager.cpp
     eql_config.cpp
     eqemu_api_world_data_service.cpp
+    housingNeighborhoods.cpp
     housingUpkeep.cpp
     launcher_link.cpp
     launcher_list.cpp
@@ -49,6 +50,7 @@ SET(world_headers
     dynamic_zone_manager.h
     eql_config.h
     eqemu_api_world_data_service.h
+    housingNeighborhoods.h
     housingUpkeep.h
     launcher_link.h
     launcher_list.h
