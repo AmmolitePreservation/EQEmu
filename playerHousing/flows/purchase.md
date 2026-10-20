@@ -83,7 +83,7 @@ Click (Purchase button, notification 1): purchase gate `0x5b1890` → price comb
 - Send `0x2698` early, with every definition referenced by properties and each definition's purchase and upkeep cost elements.
 - Send property records (with parent chains) before or with the `0x2691` single-property reply.
 - For guild plots, grant permissions 27 and 28 in `guild_permissions` for the right ranks; EQEmu sends them with `OP_GuildUpdate` action 5 (ranks 1–8, permissions 1–30, inside the bounds the client doesn't check; `robustness.md`).
-- Handle `0x45be`: validate the option keys against the definition's cost elements, the vacancy, funds, and the same rules as the gate; reply with `0x45be {u8 success}`, then `0x63fd` (new owner) and the character's property lists; on refusal, `0x45be` 0 and a result code.
+- Handle `0x45be`: validate the option keys against the definition's cost elements, the vacancy, funds, and the same rules as the gate, plus Live's server-only rules: the player in the plot's zone instance; at most 3 plots per character (eqstr 728) and 1 guild plot per guild (750); a guild plot needs a guild of at least 10 members (5426); a guild neighborhood sells only to its guild's members. Reply with `0x45be {u8 success}`, then `0x63fd` (new owner) and the character's property lists; on refusal, `0x45be` 0 and a result code. A new plot starts paid (`+0x40` = 0), settled now, its first charge one interval plus jitter away, with Live's default access list (`../permissions.md`).
 - Handle `0x2aa6` type 2 (upkeep option) and confirm with type 2, flag 0 (`opcode2aa6PropertyAccount.md`).
 - Answer guild-name requests for any guild id sent.
 

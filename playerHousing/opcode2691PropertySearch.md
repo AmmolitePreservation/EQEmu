@@ -115,7 +115,7 @@ This layout **matches the EQEmu docs' RoF/Live capture exactly** (type, id, unkn
 
 ## Entering a neighborhood
 
-The Neighborhood window's **Go** button sends **`0x218c` `{u32 neighborhood id, u32 -1, u32 0}`** (the general interact/enter request; record id -1 = the property itself). The server should move the player into that neighborhood.
+The Neighborhood window's **Go** button sends **`0x218c` `{u32 neighborhood id, u32 -1, u32 0}`** (`OP_RealEstateInteract`; record id -1 = the property itself). The server moves the player into the neighborhood's running copy, or a new one, at its template's zone-in point.
 
 ## Server obligation: guild names
 

@@ -38,7 +38,7 @@ A plot's owner (or someone with **Manage**) assigns people and the owner's clubs
 
 ## 7. Server obligations
 
-Apply `0x3146` with the **same rank rules** (the client can be bypassed); **validate names** (the client doesn't); answer with `0x485d`; enforce each permission where it matters (entering, buffs, mail, withdrawing, and so on).
+Write Live's default list at purchase (`../permissions.md`, *Client defaults*: the player-plot set, or the guild-plot set with its rank entries); apply `0x3146` with the **same rank rules** (the client can be bypassed) in one transaction; **validate names** (the client doesn't); send the new list as `0x485d` to everyone who holds it; after an edit, move anyone inside the property who lost Enter to the plot's exit point, silently. Pick a character's group as the most permissive matching entry (name, `_Fellowship`, `_Guild<rank>`), Everyone with none; enforce each permission where Live does (`../permissions.md`, *The server checks every permission itself*).
 
 ## 8. Test cases
 

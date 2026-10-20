@@ -2,7 +2,7 @@
 
 **Status:** done (messages and the poll manager; `windows/VoteWnd.md`; `windows/VoteResultsWnd.md`; flow `flows/polls.md`). Windows: `EQUI_VoteWnd.xml` ("Vote") and `EQUI_VoteResultsWnd.xml` ("Polls"); usage maps in `windows/VoteWnd.usage.md` and `windows/VoteResultsWnd.usage.md`.
 
-**The server pushes all poll data; the client never requests it.** All seven server messages are routed by the second dispatcher switch to one handler (`0x4d36bb` / `0x4d3e44`) and on to the **poll manager** (singleton `[0xe643ec]`, 0x294 bytes, getter `0x5a72a0`, constructor `0x5a7020`), whose dispatcher `0x5a7a20` switches on the opcode. **None of them is named in EQEmu's RoF2 table.**
+**The server pushes the poll data; the client asks for it only after a UI reload**, with a bare `0x15e2` (`0x49d990`), which the server answers with `0x15e2`, `0x6860`, `0x7497`, `0x52b5` and `0x593a`. All seven server messages are routed by the second dispatcher switch to one handler (`0x4d36bb` / `0x4d3e44`) and on to the **poll manager** (singleton `[0xe643ec]`, 0x294 bytes, getter `0x5a72a0`, constructor `0x5a7020`), whose dispatcher `0x5a7a20` switches on the opcode. Peridot names them `OP_Poll*` (`../serverPlan.md`, the opcode map).
 
 ## Server -> client
 
@@ -58,7 +58,7 @@ Every loader ends by refreshing the vote window (`0x795f30` / `0x795f90`), runni
 | server -> client | `0x15e2` (poll list), `0x39bb` (poll updates), `0x3311` (results), `0x6860` (option labels), `0x7497` (may vote / may see), `0x52b5` (your votes), `0x593a` (polling available), `0x7a4d` (open on a poll) |
 | client -> server | `0x15a8` (vote), `0x499a` (teleport to a ranked property) |
 
-None is named in EQEmu's RoF2 table. The client never requests poll data.
+Peridot names them `OP_Poll*`; `0x15e2` (`OP_PollList`) goes both ways, the client's being the bare request after a UI reload.
 
 **Sweep:** the results window handles clicks (1) and column sorts (`0x10`); the vote window only clicks. The only dialog is `0x8b` (the teleport). The "pollid=" chat link (`0x7961c0`) parses the id up to the next `&` and opens that poll, or prints `0x1de2`.
 

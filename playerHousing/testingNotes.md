@@ -13,11 +13,11 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 
 | Behavior | Why | Source |
 |---|---|---|
-| **The neighborhood list is empty even though the server sent neighborhoods** | all six filter checkboxes start **unchecked** (no `<Checked>` in the XML), and an unchecked box hides its category; tick boxes, or set `<Checked>true</Checked>` on the six buttons | `windows/RealEstateNeighborhoodWnd.md`, chunk 1 |
+| **The neighborhood list is empty even though the server sent neighborhoods** | all six filter checkboxes start **unchecked** in stock RoF2 (no `<Checked>` in the XML), and an unchecked box hides its category; the patcher sets `<Checked>true</Checked>` on the six buttons, as Live's client starts them (PAT-2) | `windows/RealEstateNeighborhoodWnd.md`, chunk 1 |
 | **Opening the window shows nothing and sends nothing** | the list is only filled by a `0x2691` reply (search results, or a server push with `showWindow`) | chunk 1 |
 | **Go is greyed out** | it's enabled only while a neighborhood row is selected | chunk 1–2 |
 | **Pressing Enter in the search box does nothing** | only the Search button searches | chunk 2 |
-| **A search with an empty box still goes out** | the client sends empty text as-is; the server decides what an empty search means | chunk 2 |
+| **A search with an empty box still goes out** | the client sends empty text as-is; the server lists every neighborhood, as Live does | chunk 2 |
 | **The search text disappears** | changing the search type clears the box | chunk 2 |
 | **Clicking a Player Plots / Guild Plots result does nothing** | both result lists are display-only | chunk 2 |
 | **Guild names show "Unknown Guild"** | the client's guild-name cache missed; it requests the name itself, and the server must answer | `opcode2691PropertySearch.md` |
@@ -37,7 +37,7 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 | **A long press doesn't commit** | only a quick click (< 500 ms) commits | `placementMode.md` |
 | **The preview is always red** | no `0x49df` regions, region ids ≠ definition `+0x1c`, or no code-0 region in `0x626e` | `placementMode.md`, *Validation* |
 | **Walking off the plot doesn't cancel placement** | player movement never cancels it; validity follows the item, not the player | *Scenario* |
-| **Clicking a placed item does nothing** | the client only sends `0x218c`/`0x050c`; the server must answer with the `0x21ec` menu | `flows/editPlacedItem.md` |
+| **Left-clicking a placed item does nothing** | a left click sends `0x218c`/`0x050c`, which Peridot only logs except on a house (Enter); the menu comes from a right click (`0x21ec`), which the server answers with the `0x21ec` menu | `flows/editPlacedItem.md` |
 | **Layouts appear for every character** | layout files (`.\userdata\RE_Layout_*.xml`) have no character in the name | *Layouts* |
 | **A loaded layout lands in the wrong place** | positions are relative to the plot definition's layout origin/heading (definition fields 15–18) | `flows/layouts.md` |
 | **Use Inventory has no effect when loading a layout** | it's silently turned off without permission 9, 6 or 4 (or GM) | *How Load plans* |
