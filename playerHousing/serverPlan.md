@@ -271,7 +271,7 @@ Every housing message, **77 opcode values** (the register's sections 2 and 3, `s
 | `0x21ea` | S→C | `OP_RealEstateNpcItemBinding` | binds the item being placed to its NPC spawn (a placed NPC item's spawn carries its binding itself, T28) | S5 |
 | `0x21ec` | both | `OP_RealEstateInteractionMenu` | client: menu request; server: the menu | S5 |
 | `0x218c` | C→S | `OP_RealEstateInteract` | interact: menu type 1 (Enter on a house or hall) and a left click on a placed item; record id -1 enters a neighborhood | S5, S6, S10 |
-| `0x050c` | C→S | `OP_RealEstateEnter` | use: menu type 8 (Use, the aura toggles) and a left click within 20 units of a placed item that misses it; never Enter | S5 |
+| `0x050c` | C→S | `OP_RealEstateUse` | use: menu type 8 (Use, the aura toggles) and a left click within 20 units of a placed item that misses it; never Enter | S5 |
 | `0x51e3` | C→S | `OP_RealEstateMenuType9` | menu entry type 9 | S5 |
 | `0x64a3` | C→S | `OP_RealEstateMenuType19` | menu entry type 0x13 | S5 |
 | `0x7ad1` | C→S | `OP_RealEstateMenuType5` | menu entry type 5 | S5 |

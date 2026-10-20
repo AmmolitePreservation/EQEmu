@@ -78,7 +78,7 @@ The constructor also looks up **`REMW_EscrowProperty_Combobox`** (binding `+0x2f
 | a row's `REMW_AddDayTemplate_Btn` | **5** | **the row item's upkeep cost id** (definition `+0x5c4`), not an item instance id |
 | a row's `REMW_AddWeekTemplate_Btn` | **6** | as type 5 |
 
-*Inferred:* since the client keeps no per-item paid time, **"add a day/week" means paying one day's/week's worth of that upkeep into escrow** (the server takes it from the player). Types 5/6 can't distinguish two placed items with the same upkeep cost id.
+**"Add a day/week" pays exactly one day's or seven days' cost into escrow from the clicker's purse**, as a deposit (Live, UPK-10); the client keeps no per-item paid time. Types 5/6 can't distinguish two placed items with the same upkeep cost id.
 
 **Setup** (`0x747570`, once): list colors and column behavior; the two template buttons (cloned into every row, columns 0 and 1) and Transfer start hidden.
 
@@ -177,6 +177,6 @@ Remove starts disabled (constructor) and is disabled again by every access-list 
 | `REMW_Permissions_Checkbox` | Button (template) | `+0x280` | per cell (see `Permissions_List`) | cloned into every grid cell (tag `+0x34` = group) | as `Permissions_List` | checked = mask bit | as above | done |
 | `REMW_AccessPage` | Page | `+0x25c` | — | as `REMW_Subwindows` (permission 12 or GM) | — | — | access lists | done |
 | `REMW_Subwindows` | TabBox | `+0x258` | always | always | tab switching (UI framework) | the Access page is **removed** (`0x88d650`) or **re-added** (`0x88db60`) on refresh and **every frame**: kept only with **permission 12 (manage access, `0xc`)** on the plot (`0x4ff6c0`) or GM (`0x5ad900`) | access lists, GM flag | done |
-| `REMW_Eviction_Label` | Label | `+0x344` | always | always | — | **player plot:** `0x3415` "Plots will pack up all items, send them to the owner, and become available for purchase again if the owner of the plot has not logged in within 90 days."; **guild plot** (`0x7f6280` on the plot's definition type): `0x3416` "…if no member of the guild has logged in within 30 days." | the server's inactivity rule (90 days owner / 30 days guild) | done |
+| `REMW_Eviction_Label` | Label | `+0x344` | always | always | — | **player plot:** `0x3415` "Plots will pack up all items, send them to the owner, and become available for purchase again if the owner of the plot has not logged in within 90 days."; **guild plot** (`0x7f6280` on the plot's definition type): `0x3416` "…if no member of the guild has logged in within 30 days." | none: the strings describe a login rule Live no longer has; the server reclaims a plot 90 days after its escrow expired, player or guild (RCL-1), and the patcher replaces both strings with Live's escrow wording (Q24) | done |
 
 Controls the client never looks up (16): static labels, layout boxes, and screens. Each still needs a check that it isn't changed indirectly (for example through its parent screen or a template).

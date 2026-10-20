@@ -163,11 +163,11 @@ Ownership comparisons (`0x4d6b10`, owner names); **House of Thule `0x2f`, Veil o
 
 **The wire order differs from the memory order** (client reader `0x7f6bf0`): `Placeable` u32, `bPlaceableIgnoreCollisions` u8, `PlacementType` u32, `RealEstateDefID` u32, scale min / max f32, `RealEstateUpkeepID` u32, `MaxPerRealEstate` u32, **`HousepetFileName` as a NUL-terminated string** (`0x4048d0`: scans to the NUL, keeps at most 31 characters, skips the whole string), **then `bInteractiveObject` u8**, `TrophyBenefitID` u32, the rotation and free-placement flags (u8 each), `NpcRespawnInterval` u32, default scale / heading / pitch / roll (f32 x4), **a u8 count at `+0x609` followed by that many u32s into an array at `+0x60c`** (loop at `0x7f7da0`; the server sends 0, so none follow); then `+0x110`-`+0x113` (u8 each), `+0x114` u32 and `+0x118` u8, where this reader returns. (Verified against the reader with `tools/traceClientReader.py`.)
 
-**How EQEmu's current bytes read:** `SerializeItem` writes `ItemQuaternaryBodyStruct` as one block, so its fields land on the client's differently: `unknown28` (`0xffffffff`) and `unknown29`'s low byte (0) become **a 3-character housepet file name `"\xff\xff\xff"` on every item**, which absorbs the 6 bytes the struct has beyond the true layout; **`unknown30` (-1) lands on `TrophyBenefitID`** (critical finding 19); everything else in the tail reads as 0.
+**How stock EQEmu's bytes read:** `SerializeItem` writes `ItemQuaternaryBodyStruct` as one block, so its fields land on the client's differently: `unknown28` (`0xffffffff`) and `unknown29`'s low byte (0) become **a 3-character housepet file name `"\xff\xff\xff"` on every item**, which absorbs the 6 bytes the struct has beyond the true layout; **`unknown30` (-1) lands on `TrophyBenefitID`** (critical finding 19); everything else in the tail reads as 0.
 
-**The server's item-tail fix must write all of these in the wire order**, not only the three fields the findings name.
+**Peridot's item tail writes all of these in the wire order** (`common/itemHousingTail.h`, from `SerializeItem` in `common/patches/rof2.cpp`), not only the three fields the findings name, with Live's housing values for each item.
 
-**EQEmu hardcodes it to zero:** `common/patches/rof2.cpp` (`SerializeItem`) sets **`iqbs.Placeable = 0;`** (and `iqbs.Heirloom = 0;`). **So no item sent by the current encoder is placeable**: every placement and storage rule fails at the placeable check (`0x24`), the Place button stays dark, and the list shows every item as "V". The server must set `Placeable` for real-estate items.
+**Stock EQEmu hardcodes it to zero:** `common/patches/rof2.cpp` (`SerializeItem`) sets **`iqbs.Placeable = 0;`** (and `iqbs.Heirloom = 0;`). **So no item stock EQEmu sends is placeable**: every placement and storage rule fails at the placeable check (`0x24`), the Place button stays dark, and the list shows every item as "V". Peridot's item tail replaces the zero with the item's placeable mask.
 
 ### Click paths (notification handler `0x73cc50`)
 
@@ -263,7 +263,7 @@ Built with a byte-stream writer (append `0x404de0`; u16 writer `0x423850`); sent
 | Part | Format |
 |---|---|
 | header | **u32 yard property id** (window `+0x26c`), **u32 house property id** (window `+0x270`), **u16 record count** (two bytes reserved by `0x423710`, filled by `0x423850` after the records) |
-| record, **tag 1: place** (`0x738de0`(stream, &count, layoutItem, guid, location, srcProperty, srcRecord, destProperty)) | u8 **1**; the item's **GUID** as a NUL-terminated string (`0x740760`, from item `+0xd8`); the item's **inventory location** (`0x7408a0`: u8 type + 3 × u16 slots; all -1 when the item isn't in inventory); u32 **source property id**; u32 **source record id** (-1 for inventory items); **seven f32: the target transform, in the order heading, pitch, roll, scale, x, y, z** (the layout's saved transform converted to world space, see below); u32 **destination property id**. Verified at the `0x739830` call site (row `+0x08`/`+0x0c`). |
+| record, **tag 1: place** (`0x738de0`(stream, &count, layoutItem, guid, location, srcProperty, srcRecord, destProperty)) | u8 **1**; the item's **GUID** as a NUL-terminated string (`0x740760`, from item `+0xd8`); the item's **inventory location** (`0x7408a0`: u8 type + 3 × u16 slots; all -1 when the item isn't in inventory); u32 **source property id**; u32 **source record id** (-1 for inventory items); **seven f32: the target transform, in the order heading, pitch, roll, scale, then the position y first (EQEmu's y, x, z)** (the layout's saved transform converted to world space, see below); u32 **destination property id**. Verified at the `0x739830` call site (row `+0x08`/`+0x0c`). |
 | record, **tag 0: move to storage** (`0x733370`(stream, &count, guid (unused), srcProperty, srcRecord, quantity, destProperty)) | u8 **0**; u32 **source property id**; u32 **source record id**; u32 **quantity** (**0 = the whole item**); u32 **destination property id**, the item arrives **stored** there. Verified at the Store Extra writer `0x738280` (each candidate first passes the between-properties rules into the destination, `0x5b3e50`) and the stack-merge path `0x738600` (quantity = the room left in the destination stack). |
 
 **How Load plans** (`0x73bec0`; the Details button runs the same planning as a dry run, `0x73ab10`):
@@ -317,8 +317,8 @@ Built with a byte-stream writer (append `0x404de0`; u16 writer `0x423850`); sent
 | `0x2036` | Move to Inventory, menu type 4, quantity answer | 44-byte header (+ quantity) |
 | `0x3424` | Move to Closet/Shed/Crate, menu type 3, quantity answer | 48 bytes: header + destination (+ quantity) |
 | `0x21ec` | right click on a row | 0x300-byte menu request |
-| `0x218c`, `0x050c`, `0x51e3`, `0x64a3` | menu types 1, 8, 9, `0x13` | 12 bytes: property id, record id, entry `b` |
-| `0x7ad1` | menu type 5 | 148 bytes: property id, record id, zeros |
+| `0x218c` (`OP_RealEstateInteract`), `0x050c` (`OP_RealEstateUse`), `0x51e3`, `0x64a3` | menu types 1 (Enter), 8 (Use), 9, `0x13` | 12 bytes: property id, record id, entry `b` |
+| `0x7ad1` | menu type 5 (Mail to Owner) | 148 bytes: property id, record id, zeros |
 | `0x3c8b` | menu type `0xe` → text entry | 352 bytes: 2, property id, record id, text |
 | `0x58c7` | inspect | 8 bytes: property id, record id |
 | `0x21ba` | house swap (dialog `0x67`) | 24 bytes |
