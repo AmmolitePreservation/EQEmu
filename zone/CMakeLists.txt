@@ -46,13 +46,19 @@ SET(zone_sources
     horse.cpp
     housing/housing.cpp
     housing/housingAccess.cpp
+    housing/housingAccount.cpp
     housing/housingCatalog.cpp
     housing/housingCommand.cpp
     housing/housingEvents.cpp
     housing/housingItemTail.cpp
     housing/housingItems.cpp
+    housing/housingMenus.cpp
     housing/housingMessages.cpp
+    housing/housingPurchase.cpp
+    housing/housingSearch.cpp
+    housing/housingSell.cpp
     housing/housingStore.cpp
+    housing/housingTransfer.cpp
     housing/housingWire.cpp
     inventory.cpp
     loot.cpp
@@ -172,8 +178,11 @@ SET(zone_headers
     housing/housingCatalog.h
     housing/housingEvents.h
     housing/housingGeometry.h
+    housing/housingHandlers.h
+    housing/housingInteriors.h
     housing/housingItemTail.h
     housing/housingItems.h
+    housing/housingMenus.h
     housing/housingMessages.h
     housing/housingSession.h
     housing/housingStore.h
