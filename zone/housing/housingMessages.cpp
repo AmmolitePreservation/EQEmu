@@ -3,28 +3,28 @@
 #include "housingGeometry.h"
 
 namespace housing {
-  WireWriter propertyRecord(const Property &property, uint32 guildId, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances, uint32 upkeepOptionKey) {
+  WireWriter propertyRecord(const Property &property, const RecordFields &fields) {
     WireWriter message;
     message.u32(property.id)
-      .u32(0)
+      .i32(fields.vacantPlayerPlot ? 0 : -1)
       .u32(property.parent_id)
       .u32(property.definition_id)
-      .u32(guildId ? guildId : 0xFFFFFFFF)
+      .u32(fields.guildId ? fields.guildId : 0xFFFFFFFF)
       .u32(0)
-      .lengthString("")
-      .lengthString(ownerName)
+      .lengthString(fields.owner ? std::to_string(fields.owner->accountId) : "")
+      .lengthString(fields.owner ? fields.owner->name : "")
       .u32(0)
-      .u32(static_cast<uint32>(childIds.size()))
-      .lengthString(property.name);
-    for (uint32 child : childIds) {
+      .u32(static_cast<uint32>(fields.childIds.size()))
+      .lengthString(fields.name);
+    for (uint32 child : fields.childIds) {
       message.u32(child);
     }
-    message.u8(static_cast<uint8>(propertyBalances.size()));
-    for (const auto &balance : propertyBalances) {
+    message.u8(static_cast<uint8>(fields.balances.size()));
+    for (const auto &balance : fields.balances) {
       message.u32(balance.currency).f64(balance.amount);
     }
-    message.u32(upkeepOptionKey)
-      .u32(property.upkeep_current)
+    message.u32(fields.upkeepOptionKey)
+      .u32(property.upkeep_expired_time)
       .u8(property.voting_opt_out);
     return message;
   }

@@ -18,13 +18,6 @@ namespace housing {
     return RealEstatePropertiesRepository::GetWhere(database, fmt::format("host_zone_id = {} AND host_instance_id = {} AND archived = 0", zoneId, instanceId));
   }
 
-  std::vector<Property> propertiesWithInterior(uint32 instanceId) {
-    if (instanceId == 0) {
-      return {};
-    }
-    return RealEstatePropertiesRepository::GetWhere(database, fmt::format("interior_instance_id = {}", instanceId));
-  }
-
   std::vector<Property> propertiesOwnedBy(uint32 characterId) {
     return RealEstatePropertiesRepository::GetWhere(database, fmt::format("owner_character_id = {}", characterId));
   }
@@ -58,8 +51,8 @@ namespace housing {
     return result;
   }
 
-  std::map<uint32, std::string> characterNames(const std::set<uint32> &characterIds) {
-    std::map<uint32, std::string> result;
+  std::map<uint32, CharacterIdentity> characterIdentities(const std::set<uint32> &characterIds) {
+    std::map<uint32, CharacterIdentity> result;
     std::set<uint32> wanted;
     for (uint32 id : characterIds) {
       if (id) {
@@ -69,9 +62,9 @@ namespace housing {
     if (wanted.empty()) {
       return result;
     }
-    auto rows = database.QueryDatabase(fmt::format("SELECT id, name FROM character_data WHERE id IN ({})", idList(wanted)));
+    auto rows = database.QueryDatabase(fmt::format("SELECT id, name, account_id FROM character_data WHERE id IN ({})", idList(wanted)));
     for (auto row : rows) {
-      result[Strings::ToUnsignedInt(row[0])] = row[1] ? row[1] : "";
+      result[Strings::ToUnsignedInt(row[0])] = CharacterIdentity{row[1], Strings::ToUnsignedInt(row[2])};
     }
     return result;
   }

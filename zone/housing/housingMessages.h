@@ -7,7 +7,17 @@
 #include "../../common/repositories/real_estate_regions_repository.h"
 
 namespace housing {
-  WireWriter propertyRecord(const Property &property, uint32 guildId, const std::vector<uint32> &childIds, const std::string &ownerName, const std::vector<Balance> &propertyBalances, uint32 upkeepOptionKey);
+  struct RecordFields {
+    bool vacantPlayerPlot;
+    uint32 guildId;
+    const CharacterIdentity *owner;
+    std::string name;
+    std::vector<uint32> childIds;
+    std::vector<Balance> balances;
+    uint32 upkeepOptionKey;
+  };
+
+  WireWriter propertyRecord(const Property &property, const RecordFields &fields);
   WireWriter propertyIdList(const std::vector<uint32> &ids);
   WireWriter regionList(const std::vector<RealEstateRegionsRepository::RealEstateRegions> &regions);
 }

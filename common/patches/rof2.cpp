@@ -42,6 +42,7 @@
 #include <cstddef>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <numeric>
 #include <cassert>
 #include <cinttypes>
@@ -6454,11 +6455,17 @@ namespace RoF2
 		return NextItemInstSerialNumber;
 	}
 
-	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, int16 slot_id, ItemPacketType packet_type)
+	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, const std::string& guid, int16 slot_id, ItemPacketType packet_type)
 	{
+		static_assert(offsetof(structs::ItemSerializationHeader, unknown000) == 0, "the item GUID leads the serialized item");
+		if (guid.size() != sizeof(structs::ItemSerializationHeader::unknown000) - 1) {
+			throw std::invalid_argument(fmt::format("housing item GUID [{}] is not {} characters", guid, sizeof(structs::ItemSerializationHeader::unknown000) - 1));
+		}
 		EQ::OutBuffer ob;
 		SerializeItem(ob, inst, slot_id, 0, packet_type);
-		return ob.str();
+		std::string serialized = ob.str();
+		serialized.replace(0, guid.size(), guid);
+		return serialized;
 	}
 
 	void SerializeItem(EQ::OutBuffer& ob, const EQ::ItemInstance *inst, int16 slot_id_in, uint8 depth, ItemPacketType packet_type)
