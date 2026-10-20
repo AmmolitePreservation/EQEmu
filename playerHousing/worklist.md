@@ -474,7 +474,7 @@ Questions are in their own section above, the extras items in the section before
   <sub>Sources: chunk2-missed-2 · C2-34 · report:contradiction-30 · XA:DZ11</sub>
 - **BLD-2** `fix` **BLOCKING** **World does not link: chargeDueUpkeep() has no body.** Define chargeDueUpkeep() (declared world/housingUpkeep.cpp:12, called :31 and :38) as the per-property charge (UPK-1) and the expiring pass (UPK-2), never as a stub (Q1). *After:* UPK-1, UPK-2.
   <sub>Sources: C1-67 · G1-16 · report:contradiction-30</sub>
-- **BLD-3** `fix` **handleFindRequest belongs to no build step.** Locate (OP_FindPersonRequest type 3: a path to a placed item, or to an NPC item's spawn) and plot finding (type 4, Plot Search's Go) are housing.h's handleFindRequest, which codeReconciliation.md gives housing.cpp but no step; after step 4 the zone link still lacks it. Assign it to step 5 (the interiors and doors build the same paths) or implement it with the world layer.
+- **BLD-3** `fix` **handleFindRequest belongs to no build step.** Locate (OP_FindPersonRequest type 3: a path to a placed item, or to an NPC item's spawn) and plot finding (type 4, Plot Search's Go) are housing.h's handleFindRequest, which codeReconciliation.md gives housing.cpp but no step; after step 4 the zone link still lacks it. Build step 5 implements it, beside the interiors and doors that build the same paths.
   <sub>Sources: codeReconciliation.md · build step 4</sub>
 
 ### schema (SCH)
