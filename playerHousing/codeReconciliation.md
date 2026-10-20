@@ -139,7 +139,7 @@ The plan text needs these corrections; the code follows the right-hand side.
 - **Group pick: the most permissive match wins** (name, `_Fellowship`, `_Guild<rank>`), and an explicit deny would beat it. Live's lists have no deny: a name or club can only be assigned Visitor to Co-Owner (groups 1-5), so today this is the highest matching group.
 - **Accepted:** guild plots use the 90-day reclaim (RCL-1's under-10 clause dropped); a deposit settles but does not reschedule the next charge; a deleted owner's expired plot is reclaimed at the next charge.
 - **Trophies are the last implementation item, outside the first build.** Until then the `zone/bonuses.cpp:202` hook and `trophyBenefitItems` come out, trophy opcodes stay unregistered (logged as unhandled), the trophy tables stay unused, and trophy items place as ordinary items; tribute.cpp's two trophy fields stay 0. Tier delivery (a spell per tier through bonuses.cpp, or an item per tier) is decided then.
-- **Open:** the Personal-Tribute Master's class (63, which RoF2 opens, vs Live's 74).
+- **Personal-Tribute Master:** class 63 (owner); Live's 74 is past RoF2.
 
 ## Still unknown
 
