@@ -27,6 +27,8 @@
 #include "strings.h"
 #include "evolving_items.h"
 
+#include <stdexcept>
+
 //#include "../common/light_source.h"
 
 #include <limits.h>
@@ -814,33 +816,36 @@ const EQ::ItemData* EQ::ItemInstance::GetUnscaledItem() const
 }
 
 std::string EQ::ItemInstance::GetCustomDataString() const {
-	std::string ret_val;
-	auto iter = m_custom_data.begin();
-	while (iter != m_custom_data.end()) {
-		if (ret_val.length() > 0) {
-			ret_val += "^";
-		}
-		ret_val += iter->first;
-		ret_val += "^";
-		ret_val += iter->second;
-		++iter;
-
-		if (ret_val.length() > 0) {
-			ret_val += "^";
-		}
+	std::vector<std::string> components;
+	for (const auto& [identifier, value] : m_custom_data) {
+		components.push_back(identifier);
+		components.push_back(value);
 	}
-	return ret_val;
+	return Strings::Join(components, "^");
+}
+
+std::map<std::string, std::string> EQ::ItemInstance::ParseCustomDataString(const std::string& str)
+{
+	std::map<std::string, std::string> custom_data;
+	if (str.empty()) {
+		return custom_data;
+	}
+
+	const auto components = Strings::Split(str, "^");
+	if (components.size() % 2 != 0) {
+		throw std::invalid_argument(fmt::format("item custom data [{}] does not hold identifier and value pairs", str));
+	}
+
+	for (size_t i = 0; i < components.size(); i += 2) {
+		custom_data[components[i]] = components[i + 1];
+	}
+
+	return custom_data;
 }
 
 void EQ::ItemInstance::SetCustomDataString(const std::string& str)
 {
-	auto components = Strings::Split(str, "^");
-	auto value_count = components.size() / 2;
-
-	for (auto i = 0; i < value_count; i++) {
-		auto identifier = components[i * 2];
-		auto value = components[(i * 2) + 1];
-
+	for (const auto& [identifier, value] : ParseCustomDataString(str)) {
 		SetCustomData(identifier, value);
 	}
 }
