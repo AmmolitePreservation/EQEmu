@@ -118,6 +118,9 @@ public:
 		uint8_t     idle_when_empty;
 		uint32_t    seconds_before_idle;
 		int32_t     shard_at_player_count;
+		float       ceiling;
+		int32_t     filter_id;
+		int8_t      disallow_mana_stone;
 	};
 
 	static std::string PrimaryKey()
@@ -227,6 +230,9 @@ public:
 			"idle_when_empty",
 			"seconds_before_idle",
 			"shard_at_player_count",
+			"ceiling",
+			"filter_id",
+			"disallow_mana_stone",
 		};
 	}
 
@@ -332,6 +338,9 @@ public:
 			"idle_when_empty",
 			"seconds_before_idle",
 			"shard_at_player_count",
+			"ceiling",
+			"filter_id",
+			"disallow_mana_stone",
 		};
 	}
 
@@ -471,6 +480,9 @@ public:
 		e.idle_when_empty           = 1;
 		e.seconds_before_idle       = 60;
 		e.shard_at_player_count     = 0;
+		e.ceiling                   = 0;
+		e.filter_id                 = 2008;
+		e.disallow_mana_stone       = 1;
 
 		return e;
 	}
@@ -606,6 +618,9 @@ public:
 			e.idle_when_empty           = row[96] ? static_cast<uint8_t>(strtoul(row[96], nullptr, 10)) : 1;
 			e.seconds_before_idle       = row[97] ? static_cast<uint32_t>(strtoul(row[97], nullptr, 10)) : 60;
 			e.shard_at_player_count     = row[98] ? static_cast<int32_t>(atoi(row[98])) : 0;
+			e.ceiling                   = row[99] ? strtof(row[99], nullptr) : 0;
+			e.filter_id                 = row[100] ? static_cast<int32_t>(atoi(row[100])) : 2008;
+			e.disallow_mana_stone       = row[101] ? static_cast<int8_t>(atoi(row[101])) : 1;
 
 			return e;
 		}
@@ -737,6 +752,9 @@ public:
 		v.push_back(columns[96] + " = " + std::to_string(e.idle_when_empty));
 		v.push_back(columns[97] + " = " + std::to_string(e.seconds_before_idle));
 		v.push_back(columns[98] + " = " + std::to_string(e.shard_at_player_count));
+		v.push_back(columns[99] + " = " + std::to_string(e.ceiling));
+		v.push_back(columns[100] + " = " + std::to_string(e.filter_id));
+		v.push_back(columns[101] + " = " + std::to_string(e.disallow_mana_stone));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -857,6 +875,9 @@ public:
 		v.push_back(std::to_string(e.idle_when_empty));
 		v.push_back(std::to_string(e.seconds_before_idle));
 		v.push_back(std::to_string(e.shard_at_player_count));
+		v.push_back(std::to_string(e.ceiling));
+		v.push_back(std::to_string(e.filter_id));
+		v.push_back(std::to_string(e.disallow_mana_stone));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -985,6 +1006,9 @@ public:
 			v.push_back(std::to_string(e.idle_when_empty));
 			v.push_back(std::to_string(e.seconds_before_idle));
 			v.push_back(std::to_string(e.shard_at_player_count));
+			v.push_back(std::to_string(e.ceiling));
+			v.push_back(std::to_string(e.filter_id));
+			v.push_back(std::to_string(e.disallow_mana_stone));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -1117,6 +1141,9 @@ public:
 			e.idle_when_empty           = row[96] ? static_cast<uint8_t>(strtoul(row[96], nullptr, 10)) : 1;
 			e.seconds_before_idle       = row[97] ? static_cast<uint32_t>(strtoul(row[97], nullptr, 10)) : 60;
 			e.shard_at_player_count     = row[98] ? static_cast<int32_t>(atoi(row[98])) : 0;
+			e.ceiling                   = row[99] ? strtof(row[99], nullptr) : 0;
+			e.filter_id                 = row[100] ? static_cast<int32_t>(atoi(row[100])) : 2008;
+			e.disallow_mana_stone       = row[101] ? static_cast<int8_t>(atoi(row[101])) : 1;
 
 			all_entries.push_back(e);
 		}
@@ -1240,6 +1267,9 @@ public:
 			e.idle_when_empty           = row[96] ? static_cast<uint8_t>(strtoul(row[96], nullptr, 10)) : 1;
 			e.seconds_before_idle       = row[97] ? static_cast<uint32_t>(strtoul(row[97], nullptr, 10)) : 60;
 			e.shard_at_player_count     = row[98] ? static_cast<int32_t>(atoi(row[98])) : 0;
+			e.ceiling                   = row[99] ? strtof(row[99], nullptr) : 0;
+			e.filter_id                 = row[100] ? static_cast<int32_t>(atoi(row[100])) : 2008;
+			e.disallow_mana_stone       = row[101] ? static_cast<int8_t>(atoi(row[101])) : 1;
 
 			all_entries.push_back(e);
 		}
@@ -1413,6 +1443,9 @@ public:
 		v.push_back(std::to_string(e.idle_when_empty));
 		v.push_back(std::to_string(e.seconds_before_idle));
 		v.push_back(std::to_string(e.shard_at_player_count));
+		v.push_back(std::to_string(e.ceiling));
+		v.push_back(std::to_string(e.filter_id));
+		v.push_back(std::to_string(e.disallow_mana_stone));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -1534,6 +1567,9 @@ public:
 			v.push_back(std::to_string(e.idle_when_empty));
 			v.push_back(std::to_string(e.seconds_before_idle));
 			v.push_back(std::to_string(e.shard_at_player_count));
+			v.push_back(std::to_string(e.ceiling));
+			v.push_back(std::to_string(e.filter_id));
+			v.push_back(std::to_string(e.disallow_mana_stone));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

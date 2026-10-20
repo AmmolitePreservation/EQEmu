@@ -405,6 +405,9 @@ struct NewZone_Struct {
 /*0728*/	uint32 lava_damage; // Seen 50
 /*0732*/	uint32 min_lava_damage; // Seen 10
 /*0736*/	float safe_heading;
+/*0740*/	int32 filter_id;
+/*0744*/	uint8 disallow_mana_stone;
+/*0745*/	uint8 no_bind;
 };
 
 /*
