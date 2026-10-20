@@ -56,7 +56,10 @@ INSERT INTO real_estate_items (property_id, owner_character_id, placed, scale, x
 INSERT INTO real_estate_item_looks VALUES (3, 4, 0, 0, 0, 255, 0, 2, 4278222848);
 INSERT INTO real_estate_access_groups VALUES (100001, 0, 255), (100001, 1, 3);
 INSERT INTO real_estate_access_names VALUES (100001, 'Friendly', 1);
-INSERT INTO real_estate_npc_items VALUES (66639, 1001);
+INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag) VALUES (66639, 1001, 'DAF');
+INSERT INTO real_estate_npc_items (item_id, npc_type_id, mount_npc_type_id, race_tag) VALUES (93850, 1002, 1003, 'FRM');
+INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag, training_dummy) VALUES (66700, 1004, 'TDU', 1);
+INSERT INTO real_estate_npc_item_actions VALUES (93850, 16178), (93850, 16175), (93850, 16179);
 INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple'), (0, 'Walnut'), (1, 'Bridge'), (1, 'Circle'), (2, 'Point'), (2, 'Lake'), (2, 'Hills');
 """)
 
@@ -114,6 +117,10 @@ check('the next free generated neighborhood name skips one in use', """
   ) n LEFT JOIN real_estate_properties pr ON pr.name = n.name AND pr.definition_id IN (SELECT id FROM real_estate_definitions WHERE type = 5)
   WHERE pr.id IS NULL ORDER BY n.name LIMIT 1""", 'Bridge Lake')
 check('an NPC item spawns its NPC type', "SELECT npc_type_id FROM real_estate_npc_items WHERE item_id = 66639", '1001')
+check('a familiar riding a mount spawns both, a service no mount', "SELECT GROUP_CONCAT(CONCAT(item_id, ':', npc_type_id, ':', mount_npc_type_id) ORDER BY item_id) FROM real_estate_npc_items WHERE item_id IN (66639, 93850)", '66639:1001:0,93850:1002:1003')
+check("a pet's actions in Live's order", "SELECT GROUP_CONCAT(action_id ORDER BY action_id) FROM real_estate_npc_item_actions WHERE item_id = 93850", '16175,16178,16179')
+check('only a training dummy is one', "SELECT GROUP_CONCAT(item_id ORDER BY item_id) FROM real_estate_npc_items WHERE training_dummy = 1", '66700')
+check("an NPC item's actions go with its row", "DELETE FROM real_estate_npc_items WHERE item_id = 93850; SELECT COUNT(*) FROM real_estate_npc_item_actions", '0')
 check('an upkeep reduction stays negative', "SELECT amount FROM real_estate_cost_items WHERE cost_id = 3", '-200')
 check('a cost stores each option it can be paid with', "SELECT GROUP_CONCAT(CONCAT(option_key, ':', currency, ':', amount) ORDER BY option_key) FROM real_estate_cost_items WHERE cost_id = 1", '0:0:5000000,1:10:6,2:15:3')
 enabledAt = lambda expansion: (f"SELECT GROUP_CONCAT(option_key ORDER BY option_key) FROM real_estate_cost_options WHERE cost_id = 1"
@@ -148,6 +155,11 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('a look for no placed item', "INSERT INTO real_estate_item_looks VALUES (999, 4, 0, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_item'),
                    ('a look with gender 3', "INSERT INTO real_estate_item_looks VALUES (1, 4, 3, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_gender'),
                    ('a look with race 0', "INSERT INTO real_estate_item_looks VALUES (1, 0, 0, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_race'),
+                   ('an NPC item race tag of two characters', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag) VALUES (66641, 1001, 'ER')", 'real_estate_npc_item_race_tag'),
+                   ('an NPC item without a race tag', "INSERT INTO real_estate_npc_items (item_id, npc_type_id) VALUES (66641, 1001)", "Field 'race_tag' doesn't have a default value"),
+                   ('a training dummy flag of 2', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag, training_dummy) VALUES (66641, 1001, 'ERM', 2)", 'real_estate_npc_item_dummy'),
+                   ('a pet action Live has none of', "INSERT INTO real_estate_npc_item_actions VALUES (66639, 25754)", 'real_estate_npc_item_action_id'),
+                   ('an action for no NPC item', "INSERT INTO real_estate_npc_item_actions VALUES (61410, 16175)", 'real_estate_npc_item_action_item'),
                    ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')", "for key 'position_word'"),
                    ('neighborhood word position above 2', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (3, 'Vale')", 'neighborhood_word_position')]:
   error = sql(bad, expectError=True)

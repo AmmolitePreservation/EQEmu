@@ -797,7 +797,20 @@ protected:
 public:
 	const Handin GetHandin() { return m_hand_in; }
 
+	// player housing: a placed NPC item's spawn carries its entry (property, record, GUID), which RoF2 binds it to; a mount it
+	// rides is a housing spawn with no entry
+	void SetHousingBinding(uint32 property_id, uint32 record_id, const std::string& guid);
+	void MarkHousingSpawn() { m_housing_spawn = true; }
+	bool IsHousingSpawn() const { return m_housing_spawn; }
+	bool IsHousingNpcItem() const { return !m_housing_item_guid.empty(); }
+	uint32 GetHousingPropertyID() const { return m_housing_property_id; }
+	uint32 GetHousingRecordID() const { return m_housing_record_id; }
+
 private:
+	bool                m_housing_spawn = false;
+	uint32              m_housing_property_id = 0;
+	uint32              m_housing_record_id = 0;
+	std::string         m_housing_item_guid;
 	uint32              m_loottable_id;
 	bool                m_skip_global_loot;
 	bool                m_skip_auto_scale;

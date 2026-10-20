@@ -745,7 +745,8 @@ void Zone::SaveZoneState()
 				 n.second->IsMerc() ||
 				 n.second->IsTrap() ||
 				 n.second->GetSwarmOwner() ||
-				 n.second->IsPet();
+				 n.second->IsPet() ||
+				 n.second->IsHousingSpawn(); // housing respawns its NPC items with their binding and look
 		if (ignore_npcs) {
 			continue;
 		}

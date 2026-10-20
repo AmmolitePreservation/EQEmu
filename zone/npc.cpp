@@ -21,6 +21,7 @@
 #include "../common/global_define.h"
 #include "../common/misc_functions.h"
 #include "../common/rulesys.h"
+#include <stdexcept>
 #include "../common/seperator.h"
 #include "../common/spdat.h"
 #include "../common/strings.h"
@@ -2182,6 +2183,22 @@ void NPC::FillSpawnStruct(NewSpawn_Struct* ns, Mob* ForWho)
 	ns->spawn.show_name   = NPCTypedata->show_name;
 	ns->spawn.trader      = false;
 	ns->spawn.npc_tint_id = GetNpcTintId();
+	if (IsHousingNpcItem()) {
+		strn0cpy(ns->spawn.real_estate_item_guid, m_housing_item_guid.c_str(), sizeof(ns->spawn.real_estate_item_guid));
+		ns->spawn.real_estate_id      = static_cast<int32>(m_housing_property_id);
+		ns->spawn.real_estate_item_id = static_cast<int32>(m_housing_record_id);
+	}
+}
+
+void NPC::SetHousingBinding(uint32 property_id, uint32 record_id, const std::string& guid)
+{
+	if (guid.size() != sizeof(Spawn_Struct::real_estate_item_guid) - 1) {
+		throw std::invalid_argument(fmt::format("a housing NPC item's GUID [{}] is not 16 characters", guid));
+	}
+	m_housing_spawn       = true;
+	m_housing_property_id = property_id;
+	m_housing_record_id   = record_id;
+	m_housing_item_guid   = guid;
 }
 
 void NPC::PetOnSpawn(NewSpawn_Struct* ns)

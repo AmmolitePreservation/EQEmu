@@ -4933,9 +4933,16 @@ namespace RoF2
 			// SplineID -- no idea
 			Buffer += 8;
 			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, emu->IsMercenary);
-			VARSTRUCT_ENCODE_STRING(Buffer, "0000000000000000"); // RealEstateItemGuid
-			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0xffffffff); // RealEstateID
-			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0xffffffff); // RealEstateItemID
+			if (emu->real_estate_item_guid[0]) {
+				VARSTRUCT_ENCODE_STRING(Buffer, emu->real_estate_item_guid);
+				VARSTRUCT_ENCODE_TYPE(int32, Buffer, emu->real_estate_id);
+				VARSTRUCT_ENCODE_TYPE(int32, Buffer, emu->real_estate_item_id);
+			}
+			else {
+				VARSTRUCT_ENCODE_STRING(Buffer, "0000000000000000"); // RealEstateItemGuid
+				VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0xffffffff); // RealEstateID
+				VARSTRUCT_ENCODE_TYPE(uint32, Buffer, 0xffffffff); // RealEstateItemID
+			}
 			// 29 zero bytes follow
 			// PhysicsEffects follow here ... unsure what they are but it's a count followed by a struct like {spellid, casterid, effectid, baseeffect}
 			Buffer += 29;
@@ -6466,6 +6473,17 @@ namespace RoF2
 		std::string serialized = ob.str();
 		serialized.replace(0, guid.size(), guid);
 		return serialized;
+	}
+
+	uint32 HousingItemLocationToServerSlot(uint32 location_type, int16 slot, int16 sub_index, int16 aug_index)
+	{
+		structs::InventorySlot_Struct rof2_slot{};
+		rof2_slot.Type      = static_cast<int16>(location_type & 0xFFFF);
+		rof2_slot.Unknown02 = static_cast<int16>(location_type >> 16);
+		rof2_slot.Slot      = slot;
+		rof2_slot.SubIndex  = sub_index;
+		rof2_slot.AugIndex  = aug_index;
+		return RoF2ToServerSlot(rof2_slot);
 	}
 
 	void SerializeItem(EQ::OutBuffer& ob, const EQ::ItemInstance *inst, int16 slot_id_in, uint8 depth, ItemPacketType packet_type)

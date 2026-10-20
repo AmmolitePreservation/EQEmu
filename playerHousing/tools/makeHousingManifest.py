@@ -14,7 +14,7 @@ import os, re
 here = os.path.dirname(os.path.abspath(__file__))
 catalogTables = ['real_estate_definitions', 'real_estate_definition_children', 'real_estate_costs', 'real_estate_cost_options',
                  'real_estate_cost_items', 'real_estate_regions', 'real_estate_zone_templates', 'real_estate_neighborhood_words',
-                 'real_estate_npc_items']
+                 'real_estate_npc_items', 'real_estate_npc_item_actions']
 
 
 def statements(sql):

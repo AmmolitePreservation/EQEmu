@@ -235,7 +235,9 @@ void Object::HandleAugmentation(Client* user, const AugmentItem_Struct* in_augme
 			cos->Clear = 1;
 			user->QueuePacket(outapp);
 			safe_delete(outapp);
-			database.DeleteWorldContainer(worldo->m_id, zone->GetZoneID());
+			if (!worldo->IsTransient()) {
+				database.DeleteWorldContainer(worldo->m_id, zone->GetZoneID());
+			}
 		} else { // Delete items in our inventory container...
 			for (uint8 i = EQ::invbag::SLOT_BEGIN; i < EQ::invtype::WORLD_SIZE; i++) {
 				const EQ::ItemInstance* inst = container->GetItem(i);
@@ -519,7 +521,9 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 		cos->Clear = 1;
 		user->QueuePacket(outapp);
 		safe_delete(outapp);
-		database.DeleteWorldContainer(worldo->m_id, zone->GetZoneID());
+		if (!worldo->IsTransient()) {
+			database.DeleteWorldContainer(worldo->m_id, zone->GetZoneID());
+		}
 	} else{
 		for (uint8 i = EQ::invbag::SLOT_BEGIN; i < EQ::invtype::WORLD_SIZE; i++) {
 			const EQ::ItemInstance* inst = container->GetItem(i);

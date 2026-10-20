@@ -19,8 +19,11 @@
 class BaseRealEstateNpcItemsRepository {
 public:
 	struct RealEstateNpcItems {
-		uint32_t item_id;
-		uint32_t npc_type_id;
+		uint32_t    item_id;
+		uint32_t    npc_type_id;
+		uint32_t    mount_npc_type_id;
+		std::string race_tag;
+		uint8_t     training_dummy;
 	};
 
 	static std::string PrimaryKey()
@@ -33,6 +36,9 @@ public:
 		return {
 			"item_id",
 			"npc_type_id",
+			"mount_npc_type_id",
+			"race_tag",
+			"training_dummy",
 		};
 	}
 
@@ -41,6 +47,9 @@ public:
 		return {
 			"item_id",
 			"npc_type_id",
+			"mount_npc_type_id",
+			"race_tag",
+			"training_dummy",
 		};
 	}
 
@@ -81,8 +90,11 @@ public:
 	{
 		RealEstateNpcItems e{};
 
-		e.item_id     = 0;
-		e.npc_type_id = 0;
+		e.item_id           = 0;
+		e.npc_type_id       = 0;
+		e.mount_npc_type_id = 0;
+		e.race_tag          = "";
+		e.training_dummy    = 0;
 
 		return e;
 	}
@@ -119,8 +131,11 @@ public:
 		if (results.RowCount() == 1) {
 			RealEstateNpcItems e{};
 
-			e.item_id     = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.npc_type_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.item_id           = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.npc_type_id       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.race_tag          = row[3] ? row[3] : "";
+			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -156,6 +171,9 @@ public:
 
 		v.push_back(columns[0] + " = " + std::to_string(e.item_id));
 		v.push_back(columns[1] + " = " + std::to_string(e.npc_type_id));
+		v.push_back(columns[2] + " = " + std::to_string(e.mount_npc_type_id));
+		v.push_back(columns[3] + " = '" + Strings::Escape(e.race_tag) + "'");
+		v.push_back(columns[4] + " = " + std::to_string(e.training_dummy));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -179,6 +197,9 @@ public:
 
 		v.push_back(std::to_string(e.item_id));
 		v.push_back(std::to_string(e.npc_type_id));
+		v.push_back(std::to_string(e.mount_npc_type_id));
+		v.push_back("'" + Strings::Escape(e.race_tag) + "'");
+		v.push_back(std::to_string(e.training_dummy));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -210,6 +231,9 @@ public:
 
 			v.push_back(std::to_string(e.item_id));
 			v.push_back(std::to_string(e.npc_type_id));
+			v.push_back(std::to_string(e.mount_npc_type_id));
+			v.push_back("'" + Strings::Escape(e.race_tag) + "'");
+			v.push_back(std::to_string(e.training_dummy));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -243,8 +267,11 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			RealEstateNpcItems e{};
 
-			e.item_id     = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.npc_type_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.item_id           = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.npc_type_id       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.race_tag          = row[3] ? row[3] : "";
+			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -269,8 +296,11 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			RealEstateNpcItems e{};
 
-			e.item_id     = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.npc_type_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.item_id           = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.npc_type_id       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.race_tag          = row[3] ? row[3] : "";
+			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -347,6 +377,9 @@ public:
 
 		v.push_back(std::to_string(e.item_id));
 		v.push_back(std::to_string(e.npc_type_id));
+		v.push_back(std::to_string(e.mount_npc_type_id));
+		v.push_back("'" + Strings::Escape(e.race_tag) + "'");
+		v.push_back(std::to_string(e.training_dummy));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -371,6 +404,9 @@ public:
 
 			v.push_back(std::to_string(e.item_id));
 			v.push_back(std::to_string(e.npc_type_id));
+			v.push_back(std::to_string(e.mount_npc_type_id));
+			v.push_back("'" + Strings::Escape(e.race_tag) + "'");
+			v.push_back(std::to_string(e.training_dummy));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

@@ -326,6 +326,10 @@ union
 	bool buyer;
 	bool untargetable;
 	uint32 npc_tint_id;
+	// a placed housing NPC item's entry: RoF2 binds the spawn to it (empty GUID: not one)
+	char real_estate_item_guid[17];
+	int32 real_estate_id;
+	int32 real_estate_item_id;
 };
 
 struct PlayerState_Struct {
