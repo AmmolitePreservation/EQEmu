@@ -5,7 +5,8 @@
 #include "housingStore.h"
 #include "housingWire.h"
 
-#include <array>
+#include "../../common/housingAccessRules.h"
+
 #include <functional>
 
 class Client;
@@ -27,12 +28,12 @@ namespace housing {
     manage = 12
   };
 
-  constexpr uint8 accessGroupCount = 7;
-  constexpr uint8 ownerGroup = 6;
+  constexpr uint32 houseOfThule = 0x10000;
+  constexpr uint32 veilOfAlaris = 0x20000;
 
   struct AccessList {
-    std::array<uint32, accessGroupCount> masks{};
-    std::vector<std::pair<std::string, uint8>> names;
+    AccessMasks masks{};
+    AccessNames names;
   };
 
   using PropertyLookup = std::function<const Property *(uint32)>;
@@ -42,11 +43,17 @@ namespace housing {
   DefinitionType typeOf(const Property &property);
   uint32 activeGuildId(const Property &property);
   const Property *ancestorOfType(const Property &property, uint32 typeMask, bool startAtParent, const PropertyLookup &lookup);
+  const Property *accessSubject(const Property &property, const PropertyLookup &lookup);
+  bool holdsAccessList(DefinitionType type);
 
   std::map<uint32, AccessList> accessLists(const std::set<uint32> &propertyIds);
   WireWriter accessListMessage(uint32 propertyId, const AccessList &list);
+  WireWriter accessListRemoveMessage(uint32 propertyId);
   uint8 accessGroup(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
   bool permitted(Client *client, Permission permission, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
+  bool mayTransact(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
+  void handleSetAccessList(Client *client, WireReader &reader);
+  void applyAccessChange(uint32 propertyId);
 }
 
 #endif
