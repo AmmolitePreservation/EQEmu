@@ -469,11 +469,6 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_RealEstateTransfer]          = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateTransferOffer]     = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateUse]               = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_TrophyGuildEditLock]         = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_TrophyGuildOptIn]            = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_TrophyGuildSave]             = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_TrophyPersonalSlot]          = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_TrophyWindowOpened]          = &Client::Handle_OP_Housing;
 
 	LogInfo("Mapped [{}] client opcode handlers", _maxEmuOpcode);
 }
