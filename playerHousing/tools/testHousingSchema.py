@@ -121,6 +121,7 @@ enabledAt = lambda expansion: (f"SELECT GROUP_CONCAT(option_key ORDER BY option_
 check("EQEmu's expansion filter leaves only coin at PoP", enabledAt(4), '0')
 check("EQEmu's expansion filter adds the TBS option at TBS", enabledAt(13), '0,1')
 check("EQEmu's expansion filter adds the SoD option at SoD", enabledAt(15), '0,1,2')
+check('an access name may be a Co-Owner (5)', "INSERT INTO real_estate_access_names VALUES (100001, '_Guild2', 5); SELECT group_number FROM real_estate_access_names WHERE property_id = 100001 AND name = '_Guild2'", '5')
 check('no NPC item cap is -1, the default', "INSERT INTO real_estate_definitions (id, name_segment, type, max_items) VALUES (990, 'Hut', 3, 10); SELECT max_npc_items FROM real_estate_definitions WHERE id = 990", '-1')
 check('an NPC item cap may equal max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_npc_items) VALUES (991, 7, 10, 10); SELECT max_npc_items FROM real_estate_definitions WHERE id = 991", '10')
 for label, bad, reason in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)", 'real_estate_definition_type'),
@@ -134,7 +135,8 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('a zone template without a zone', "INSERT INTO real_estate_zone_templates VALUES (23001, 0, 0, 0, 0, 0, 0)", 'real_estate_zone_template_zone'),
                    ('a zone template heading of 512', "INSERT INTO real_estate_zone_templates VALUES (23001, 716, 0, 0, 0, 0, 512)", 'real_estate_zone_template_heading'),
                    ('access group above 6', "INSERT INTO real_estate_access_groups VALUES (100001, 7, 1)", 'real_estate_access_group_number'),
-                   ('access name group above 6', "INSERT INTO real_estate_access_names VALUES (100001, 'Stranger', 7)", 'real_estate_access_name_group'),
+                   ('access name in the Owner group (6)', "INSERT INTO real_estate_access_names VALUES (100001, 'Stranger', 6)", 'real_estate_access_name_group'),
+                   ('access name in the Everyone group (0)', "INSERT INTO real_estate_access_names VALUES (100001, 'Stranger', 0)", 'real_estate_access_name_group'),
                    ('personal trophy slot above 9', "INSERT INTO character_trophy_tribute VALUES (7, 10, 100, 0)", 'character_trophy_tribute_slot'),
                    ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)", 'guild_trophy_tribute_slot'),
                    ('poll kind 3', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (3, 2, NOW(), NOW() + INTERVAL 1 DAY)", 'real_estate_poll_kind'),
