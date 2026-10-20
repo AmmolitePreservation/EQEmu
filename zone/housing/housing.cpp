@@ -2,8 +2,10 @@
 
 #include "housingAccess.h"
 #include "housingCatalog.h"
+#include "housingHandlers.h"
 #include "housingItems.h"
 #include "housingItemTail.h"
+#include "housingMenus.h"
 #include "housingMessages.h"
 #include "housingSession.h"
 
@@ -17,6 +19,7 @@
 #include "../zonedb.h"
 
 #include <algorithm>
+#include <ctime>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -228,14 +231,8 @@ namespace housing {
       return fields;
     }
 
-    void sendZoneContents(Client *client) {
-      sessions.erase(client);
-      if (!housingActive()) {
-        return;
-      }
-      Session state;
+    bool buildSession(Client *client, Session &state, std::map<uint32, RecordFields> &fields, const std::set<uint32> &alsoKnown) {
       std::vector<std::string> problems;
-      std::map<uint32, RecordFields> fields;
       try {
         const auto hosted = propertiesHostedAt(zone->GetZoneID(), zone->GetInstanceID());
         const auto owned = propertiesOwnedBy(client->CharacterID());
@@ -256,6 +253,9 @@ namespace housing {
           state.carriedIds.push_back(property.id);
           state.properties[property.id] = property;
         }
+        for (auto &property : propertiesById(alsoKnown)) {
+          state.properties[property.id] = property;
+        }
         addTrees(state.properties, problems);
         for (const auto &[id, property] : state.properties) {
           if (!catalog().definition(property.definition_id)) {
@@ -272,12 +272,16 @@ namespace housing {
       }
       if (!problems.empty()) {
         for (const auto &problem : problems) {
-          LogError("Housing: zone-in for [{}]: {}", client->GetCleanName(), problem);
+          LogError("Housing: [{}]: {}", client->GetCleanName(), problem);
         }
         LogError("Housing: no housing data is sent to [{}] in this zone", client->GetCleanName());
-        return;
+        return false;
       }
+      return true;
+    }
 
+    std::vector<const Property *> parentsFirst(const Session &state) {
+      std::vector<std::string> problems;
       std::map<uint32, size_t> depths;
       std::vector<const Property *> ordered;
       for (const auto &[id, property] : state.properties) {
@@ -287,9 +291,61 @@ namespace housing {
       std::stable_sort(ordered.begin(), ordered.end(), [&](const Property *a, const Property *b) {
         return depths[a->id] < depths[b->id];
       });
+      return ordered;
+    }
 
+    std::set<uint32> listHoldersOf(const Session &state) {
+      std::set<uint32> holders;
+      for (const auto &[id, property] : state.properties) {
+        if (holdsAccessList(typeOf(property))) {
+          holders.insert(id);
+        }
+      }
+      return holders;
+    }
+
+    void sendPropertyLists(Client *client, const Session &state) {
+      std::vector<uint32> listC;
+      for (uint32 id : state.ownedIds) {
+        if (state.properties.at(id).archived) {
+          listC.push_back(id);
+        }
+      }
+      sendMessage(client, OP_RealEstateOwnedProperties, propertyIdList(state.ownedIds));
+      sendMessage(client, OP_RealEstateItemOwnedProperties, propertyIdList(state.carriedIds));
+      sendMessage(client, OP_RealEstateArchivedProperties, propertyIdList(listC));
+    }
+
+    void sendItemLists(Client *client, const std::set<uint32> &holders) {
+      const auto items = itemsOf(holders);
+      std::set<uint32> itemOwners;
+      for (const auto &item : items) {
+        itemOwners.insert(item.owner_character_id);
+      }
+      const auto itemOwnerIdentities = characterIdentities(itemOwners);
+      for (uint32 id : holders) {
+        sendMessage(client, OP_RealEstateItemList, itemList(id, items, itemOwnerIdentities));
+      }
+    }
+
+    void sendZoneContents(Client *client) {
+      sessions.erase(client);
+      if (!housingActive()) {
+        return;
+      }
+      try {
+        deliverPendingCrates(client);
+      }
+      catch (const std::exception &error) {
+        LogError("Housing: pending crates for [{}] could not be delivered: {}", client->GetCleanName(), error.what());
+      }
+      Session state;
+      std::map<uint32, RecordFields> fields;
+      if (!buildSession(client, state, fields, {})) {
+        return;
+      }
       sendMessage(client, OP_RealEstateDefinitions, catalog().message());
-      for (const Property *property : ordered) {
+      for (const Property *property : parentsFirst(state)) {
         sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
       }
       if (state.currentPropertyId) {
@@ -304,16 +360,7 @@ namespace housing {
         sendMessage(client, OP_RealEstateRegions, regionList({}));
         return;
       }
-
-      std::vector<uint32> listC;
-      for (uint32 id : state->ownedIds) {
-        if (state->properties.at(id).archived) {
-          listC.push_back(id);
-        }
-      }
-      sendMessage(client, OP_RealEstateOwnedProperties, propertyIdList(state->ownedIds));
-      sendMessage(client, OP_RealEstateItemOwnedProperties, propertyIdList(state->carriedIds));
-      sendMessage(client, OP_RealEstateArchivedProperties, propertyIdList(listC));
+      sendPropertyLists(client, *state);
 
       std::vector<RealEstateRegionsRepository::RealEstateRegions> regions;
       for (uint32 id : state->hostedIds) {
@@ -327,23 +374,9 @@ namespace housing {
       std::set<uint32> itemHolders(state->hostedIds);
       itemHolders.insert(state->ownedIds.begin(), state->ownedIds.end());
       itemHolders.insert(state->carriedIds.begin(), state->carriedIds.end());
-      const auto items = itemsOf(itemHolders);
-      std::set<uint32> itemOwners;
-      for (const auto &item : items) {
-        itemOwners.insert(item.owner_character_id);
-      }
-      const auto itemOwnerIdentities = characterIdentities(itemOwners);
-      for (uint32 id : itemHolders) {
-        sendMessage(client, OP_RealEstateItemList, itemList(id, items, itemOwnerIdentities));
-      }
+      sendItemLists(client, itemHolders);
 
-      std::set<uint32> listHolders;
-      for (const auto &[id, property] : state->properties) {
-        if (isAnyType(typeOf(property), {DefinitionType::plot, DefinitionType::guildPlot, DefinitionType::neighborhood, DefinitionType::guildHall})) {
-          listHolders.insert(id);
-        }
-      }
-      state->accessLists = accessLists(listHolders);
+      state->accessLists = accessLists(listHoldersOf(*state));
       for (const auto &[id, list] : state->accessLists) {
         sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
       }
@@ -412,5 +445,182 @@ namespace housing {
 
   void onDisconnect(Client *client) {
     sessions.erase(client);
+  }
+
+  void forEachSession(const std::function<void(Client *, Session &)> &visit) {
+    for (const auto &[id, client] : entity_list.GetClientList()) {
+      Session *state = session(client);
+      if (state) {
+        visit(client, *state);
+      }
+    }
+  }
+
+  void refreshClients(const std::set<uint32> &propertyIds, const std::set<uint32> &characterIds) {
+    if (!housingActive()) {
+      return;
+    }
+    std::set<uint32> existing;
+    for (const auto &property : propertiesById(propertyIds)) {
+      existing.insert(property.id);
+    }
+    for (const auto &[entityId, client] : entity_list.GetClientList()) {
+      Session *old = session(client);
+      if (!old) {
+        continue;
+      }
+      bool concerned = characterIds.count(client->CharacterID()) > 0;
+      for (uint32 id : propertyIds) {
+        concerned = concerned || old->properties.count(id);
+      }
+      if (!concerned) {
+        continue;
+      }
+      Session fresh;
+      std::map<uint32, RecordFields> fields;
+      if (!buildSession(client, fresh, fields, existing)) {
+        sessions.erase(client);
+        continue;
+      }
+      if (fresh.properties.count(old->currentPropertyId)) {
+        fresh.currentPropertyId = old->currentPropertyId;
+      }
+      std::set<uint32> added;
+      for (const auto &[id, property] : fresh.properties) {
+        if (!old->properties.count(id)) {
+          added.insert(id);
+        }
+      }
+      for (const Property *property : parentsFirst(fresh)) {
+        if (propertyIds.count(property->id) || added.count(property->id)) {
+          sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
+        }
+      }
+      for (uint32 id : propertyIds) {
+        if (!existing.count(id) && old->properties.count(id)) {
+          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{false, 0, nullptr, {}, {}, {}, 0}));
+        }
+      }
+      sendPropertyLists(client, fresh);
+      fresh.accessLists = accessLists(listHoldersOf(fresh));
+      for (const auto &[id, list] : fresh.accessLists) {
+        if (propertyIds.count(id) || added.count(id)) {
+          sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
+        }
+      }
+      for (uint32 id : propertyIds) {
+        if (old->accessLists.count(id) && !fresh.accessLists.count(id)) {
+          sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
+        }
+      }
+      std::set<uint32> newHolders;
+      for (uint32 id : added) {
+        const bool owned = std::find(fresh.ownedIds.begin(), fresh.ownedIds.end(), id) != fresh.ownedIds.end();
+        const bool carried = std::find(fresh.carriedIds.begin(), fresh.carriedIds.end(), id) != fresh.carriedIds.end();
+        if (fresh.hostedIds.count(id) || owned || carried) {
+          newHolders.insert(id);
+        }
+      }
+      sendItemLists(client, newHolders);
+      sessions[client] = std::move(fresh);
+    }
+  }
+
+  void refreshItemLists(const std::set<uint32> &propertyIds) {
+    if (!housingActive()) {
+      return;
+    }
+    forEachSession([&](Client *client, Session &state) {
+      std::set<uint32> known;
+      for (uint32 id : propertyIds) {
+        if (state.properties.count(id)) {
+          known.insert(id);
+        }
+      }
+      if (!known.empty()) {
+        sendItemLists(client, known);
+      }
+    });
+  }
+
+  std::string propertyName(uint32 propertyId) {
+    std::map<uint32, Property> chain;
+    std::vector<std::string> problems;
+    for (uint32 id = propertyId; id;) {
+      if (chain.size() > maximumDepth) {
+        throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", propertyId, maximumDepth));
+      }
+      auto rows = propertiesById({id});
+      if (rows.size() != 1) {
+        throw std::runtime_error(fmt::format("property [{}] has ancestor [{}], which does not exist", propertyId, id));
+      }
+      chain[id] = rows.front();
+      id = rows.front().parent_id;
+    }
+    const std::string name = composedName(chain.at(propertyId), chain, problems);
+    if (!problems.empty() || name.empty()) {
+      throw std::runtime_error(fmt::format("property [{}] has no name: {}", propertyId, Strings::Join(problems, "; ")));
+    }
+    return name;
+  }
+
+  bool hostedHere(const Property &property) {
+    return property.host_zone_id == zone->GetZoneID() && property.host_instance_id == zone->GetInstanceID();
+  }
+
+  int64 currentTime() {
+    return static_cast<int64>(std::time(nullptr));
+  }
+
+  void handlePacket(Client *client, const EQApplicationPacket *app) {
+    if (!isRoF2(client)) {
+      LogError("Housing: [{}] sent housing opcode [{}] from a client that is not RoF2", client->GetCleanName(), static_cast<uint32>(app->GetOpcode()));
+      return;
+    }
+    if (!housingActive()) {
+      LogHousing("Housing is off in this zone; [{}]'s request [{}] is refused", client->GetCleanName(), static_cast<uint32>(app->GetOpcode()));
+      return;
+    }
+    WireReader reader(app->pBuffer, app->size);
+    switch (app->GetOpcode()) {
+      case OP_RealEstateSearch:
+        handleSearch(client, reader);
+        break;
+      case OP_RealEstatePurchase:
+        handlePurchase(client, reader);
+        break;
+      case OP_RealEstateSell:
+        handleSell(client, reader);
+        break;
+      case OP_RealEstateTransfer:
+        handleTransfer(client, reader);
+        break;
+      case OP_RealEstateTransferOffer:
+        handleTransferAnswer(client, reader);
+        break;
+      case OP_RealEstateAccount:
+        handleAccount(client, reader);
+        break;
+      case OP_RealEstateSetAccessList:
+        handleSetAccessList(client, reader);
+        break;
+      case OP_RealEstateInteractionMenu:
+        handleMenuRequest(client, reader);
+        break;
+      case OP_RealEstateInteract:
+        handleInteract(client, reader);
+        break;
+      case OP_RealEstateInspect:
+        handleInspect(client, reader);
+        break;
+      default:
+        LogHousing("Unhandled housing opcode [{}] from [{}]", static_cast<uint32>(app->GetOpcode()), client->GetCleanName());
+    }
+  }
+
+  void process() {
+    if (housingActive()) {
+      expireTransferOffers();
+    }
   }
 }

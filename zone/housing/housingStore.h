@@ -1,6 +1,7 @@
 #ifndef EQEMU_ZONE_HOUSING_HOUSING_STORE_H
 #define EQEMU_ZONE_HOUSING_HOUSING_STORE_H
 
+#include "../../common/housingLedger.h"
 #include "../../common/housingPropertyItem.h"
 #include "../../common/repositories/real_estate_properties_repository.h"
 
@@ -12,7 +13,7 @@
 namespace housing {
   // an item carrying a property (a packed crate, a picked-up house) names it in its custom data; inventory guids change at every load
 
-  using Property = RealEstatePropertiesRepository::RealEstateProperties;
+  using Property = PropertyRow;
 
   struct CharacterIdentity {
     std::string name;
@@ -30,7 +31,7 @@ namespace housing {
   std::vector<Property> propertiesChildOf(const std::set<uint32> &parentIds);
   std::map<uint32, std::vector<Balance>> balances(const std::set<uint32> &propertyIds);
   std::map<uint32, CharacterIdentity> characterIdentities(const std::set<uint32> &characterIds);
-  std::string idList(const std::set<uint32> &ids);
+  bool guildOwnsNeighborhood(uint32 guildId);
 }
 
 #endif

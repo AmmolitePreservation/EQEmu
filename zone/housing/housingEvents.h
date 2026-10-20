@@ -1,18 +1,13 @@
 #ifndef EQEMU_ZONE_HOUSING_HOUSING_EVENTS_H
 #define EQEMU_ZONE_HOUSING_HOUSING_EVENTS_H
 
-#include "../../common/types.h"
+#include "../../common/housingEventTypes.h"
+
+#include <string>
 
 namespace housing {
-  enum class EventType : uint32 {
-    catalogChanged = 1
-  };
-
-  enum class EventTarget : uint32 {
-    allZones = 5
-  };
-
-  void sendEvent(EventType type, EventTarget target, uint32 targetId);
+  void sendEvent(EventType type, EventTarget target, uint32 targetId, uint32 propertyId, const std::string &payload);
+  void sendPropertyChanged(uint32 propertyId, const PropertyChangedPayload &owners);
 }
 
 #endif

@@ -21,6 +21,7 @@ namespace housing {
     WireWriter &f64(double value);
     WireWriter &lengthString(const std::string &value);
     WireWriter &cString(const std::string &value);
+    WireWriter &fixedString(const std::string &value, size_t length);
     WireWriter &bytes(const void *data, size_t length);
     const std::string &content() const { return buffer; }
 
@@ -42,6 +43,8 @@ namespace housing {
     double f64();
     std::string lengthString();
     std::string cString();
+    std::string fixedString(size_t length);
+    void skip(size_t length);
     bool failed() const { return overrun; }
     size_t remaining() const { return length - position; }
 

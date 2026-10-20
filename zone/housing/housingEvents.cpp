@@ -1,6 +1,7 @@
 #include "housingEvents.h"
 
 #include "housing.h"
+#include "housingAccess.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -9,24 +10,32 @@
 #include "../worldserver.h"
 #include "../zone.h"
 
+#include <cstring>
 #include <memory>
 
 extern WorldServer worldserver;
 extern Zone *zone;
 
 namespace housing {
-  void sendEvent(EventType type, EventTarget target, uint32 targetId) {
-    auto pack = std::make_unique<ServerPacket>(ServerOP_Housing, sizeof(ServerHousingEvent_Struct));
+  void sendEvent(EventType type, EventTarget target, uint32 targetId, uint32 propertyId, const std::string &payload) {
+    auto pack = std::make_unique<ServerPacket>(ServerOP_Housing, static_cast<uint32>(sizeof(ServerHousingEvent_Struct) + payload.size()));
     auto *event = reinterpret_cast<ServerHousingEvent_Struct *>(pack->pBuffer);
     event->event_type = static_cast<uint32>(type);
     event->target_kind = static_cast<uint32>(target);
     event->target_id = targetId;
     event->origin_zone_id = zone->GetZoneID();
     event->origin_instance_id = zone->GetInstanceID();
-    event->property_id = 0;
+    event->property_id = propertyId;
     event->revision = 0;
-    event->payload_size = 0;
+    event->payload_size = static_cast<uint32>(payload.size());
+    if (!payload.empty()) {
+      memcpy(event->payload, payload.data(), payload.size());
+    }
     worldserver.SendPacket(pack.get());
+  }
+
+  void sendPropertyChanged(uint32 propertyId, const PropertyChangedPayload &owners) {
+    sendEvent(EventType::propertyChanged, EventTarget::property, propertyId, propertyId, std::string(reinterpret_cast<const char *>(&owners), sizeof(owners)));
   }
 
   void handleServerPacket(ServerPacket *pack) {
@@ -45,6 +54,22 @@ namespace housing {
     switch (static_cast<EventType>(event->event_type)) {
       case EventType::catalogChanged:
         reloadCatalog();
+        break;
+      case EventType::propertyChanged: {
+        if (event->payload_size != sizeof(PropertyChangedPayload)) {
+          LogError("Housing: property changed event for [{}] carries [{}] bytes, not [{}]", event->property_id, event->payload_size, sizeof(PropertyChangedPayload));
+          return;
+        }
+        PropertyChangedPayload owners;
+        memcpy(&owners, event->payload, sizeof(owners));
+        refreshClients({event->property_id}, {owners.previousOwnerCharacterId, owners.ownerCharacterId});
+        break;
+      }
+      case EventType::accessChanged:
+        applyAccessChange(event->property_id);
+        break;
+      case EventType::itemListChanged:
+        refreshItemLists({event->property_id});
         break;
       default:
         LogError("Housing: unknown event [{}] from zone [{}] instance [{}]", event->event_type, event->origin_zone_id, event->origin_instance_id);
