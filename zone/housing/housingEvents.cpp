@@ -2,7 +2,9 @@
 
 #include "housing.h"
 #include "housingAccess.h"
+#include "housingInteriors.h"
 #include "housingSession.h"
+#include "housingWrits.h"
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/rulesys.h"
@@ -62,6 +64,7 @@ namespace housing {
         }
         PropertyChangedPayload owners;
         memcpy(&owners, event->payload, sizeof(owners));
+        checkHostedRoot(event->property_id);
         refreshClients({event->property_id}, {owners.previousOwnerCharacterId, owners.ownerCharacterId});
         break;
       }
@@ -71,6 +74,18 @@ namespace housing {
       case EventType::itemListChanged:
         refreshItemLists({event->property_id});
         break;
+      case EventType::writUsed:
+        break;
+      case EventType::guildNeighborhoodCreated: {
+        if (event->payload_size != sizeof(GuildNeighborhoodCreatedPayload)) {
+          LogError("Housing: guild neighborhood event carries [{}] bytes, not [{}]", event->payload_size, sizeof(GuildNeighborhoodCreatedPayload));
+          return;
+        }
+        GuildNeighborhoodCreatedPayload created;
+        memcpy(&created, event->payload, sizeof(created));
+        announceGuildNeighborhood(created);
+        break;
+      }
       default:
         LogError("Housing: unknown event [{}] from zone [{}] instance [{}]", event->event_type, event->origin_zone_id, event->origin_instance_id);
     }

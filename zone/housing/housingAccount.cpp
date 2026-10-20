@@ -6,6 +6,7 @@
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingCopies.h"
 #include "../../common/housingLedger.h"
 #include "../client.h"
 #include "../zone.h"
@@ -323,7 +324,7 @@ namespace housing {
           const int64 days = request.type == addWeekAll || request.type == addWeekItem ? 7 : 1;
           const bool oneItem = request.type == addDayItem || request.type == addWeekItem;
           const auto daily = dailyTotal(plot, oneItem ? static_cast<int32>(request.argument) : -1);
-          const int percent = upkeepPercent(database, content_db, plot.host_zone_id);
+          const int percent = upkeepPercent(database, content_db, hostZoneOf(database, content_db, plot));
           Credit credit;
           for (const auto &[currency, amount] : daily) {
             const int64 owed = flooredUnits(proratedCharge(amount, percent, days * secondsPerDay));

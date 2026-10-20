@@ -6,10 +6,6 @@
 #include <cstdlib>
 
 namespace housing {
-  std::vector<Property> propertiesHostedAt(uint32 zoneId, uint32 instanceId) {
-    return RealEstatePropertiesRepository::GetWhere(database, fmt::format("host_zone_id = {} AND host_instance_id = {} AND archived = 0", zoneId, instanceId));
-  }
-
   std::vector<Property> propertiesOwnedBy(uint32 characterId) {
     return RealEstatePropertiesRepository::GetWhere(database, fmt::format("owner_character_id = {}", characterId));
   }

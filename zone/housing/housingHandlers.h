@@ -54,6 +54,7 @@ namespace housing {
   }
 
   void handleSearch(Client *client, WireReader &reader);
+  void openNeighborhoodList(Client *client);
   void sendPropertyWindow(Client *client, const Property &property, bool openPurchase);
   void handlePurchase(Client *client, WireReader &reader);
   void handleSell(Client *client, WireReader &reader);

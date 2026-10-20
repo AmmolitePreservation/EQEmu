@@ -43,13 +43,18 @@ INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upk
 INSERT INTO real_estate_cost_options (cost_id, option_key) VALUES (1, 0), (2, 0), (3, 0);
 INSERT INTO real_estate_cost_options (cost_id, option_key, min_expansion) VALUES (1, 1, 13), (1, 2, 15);
 INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (1, 1, 10, 1, 6), (1, 2, 15, 1, 3), (2, 0, 0, 0, 1000), (3, 0, 0, 0, -200);
-INSERT INTO real_estate_properties (parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (0, 900, 712, 1001, 'Bridge Hills');
-INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id, upkeep_settled_at, next_upkeep_at, name)
-  VALUES (100001, 100000, 901, 7, 712, 1001, '2026-10-14 12:00:00', NOW() - INTERVAL 1 HOUR, ''), (100002, 100000, 902, 0, 712, 1001, NULL, NULL, '');
-INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, host_zone_id, host_instance_id) VALUES (100003, 100001, 5, 7, 712, 1001);
+INSERT INTO real_estate_properties (parent_id, definition_id, name) VALUES (0, 900, 'Bridge Hills');
+INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, upkeep_settled_at, next_upkeep_at, name)
+  VALUES (100001, 100000, 901, 7, '2026-10-14 12:00:00', NOW() - INTERVAL 1 HOUR, ''), (100002, 100000, 902, 0, NULL, NULL, '');
+INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id) VALUES (100003, 100001, 5, 7);
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, contained_in_item, archived) VALUES (100004, 0, 31, 7, 1, 1);
-INSERT INTO real_estate_properties (id, parent_id, definition_id, host_zone_id, host_instance_id, name) VALUES (100005, 0, 900, 712, 1002, 'Prophetic Alliance Village II'),
-  (100006, 100005, 903, 712, 1002, ''), (100007, 100006, 5, 712, 1002, ''), (100008, 100007, 192, 712, 1002, '');
+INSERT INTO real_estate_properties (id, parent_id, definition_id, name) VALUES (100005, 0, 900, 'Prophetic Alliance Village II'),
+  (100006, 100005, 903, ''), (100007, 100006, 5, ''), (100008, 100007, 192, '');
+INSERT INTO real_estate_instances VALUES (1001, 100000), (1002, 100005), (1003, 100003);
+INSERT INTO real_estate_instance_counter VALUES (1, 1004);
+INSERT INTO real_estate_doors VALUES (712, 0, 1, 101), (712, 0, 130, 1), (714, 0, 0, 0);
+INSERT INTO real_estate_writs VALUES (52656, 900);
+INSERT INTO character_real_estate_interiors VALUES (7, 100003);
 INSERT INTO real_estate_property_balances VALUES (100001, 0, 10000), (100001, 9, 3);
 INSERT INTO real_estate_items (property_id, owner_character_id, placed, scale, x, y, z, item_id) VALUES (100001, 7, 1, 1, 101, 201, 0, 61410), (100003, 7, 0, 0, 0, 0, 0, 61441),
   (100003, 7, 1, 1.5, 3, 4, 0, 66641);
@@ -69,7 +74,16 @@ composedName = """
   SELECT GROUP_CONCAT(CASE WHEN c.parent_id = 0 THEN p.name WHEN d.type IN (4, 8) THEN d.address ELSE d.name_segment END ORDER BY c.depth DESC SEPARATOR ', ') AS n
   FROM chain c JOIN real_estate_properties p ON p.id = c.id JOIN real_estate_definitions d ON d.id = p.definition_id"""
 check('property ids start at 100000, above every region id', "SELECT id FROM real_estate_properties WHERE name = 'Bridge Hills'", '100000')
-check('zone-in: properties hosted in 712/1001', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE host_zone_id = 712 AND host_instance_id = 1001", '100000,100001,100002,100003')
+check('zone-in: the property copy 1001 runs and the tree under it', """
+  WITH RECURSIVE tree AS (SELECT p.id FROM real_estate_properties p JOIN real_estate_instances i ON i.property_id = p.id WHERE i.instance_id = 1001
+    UNION ALL SELECT p.id FROM real_estate_properties p JOIN tree t ON p.parent_id = t.id)
+  SELECT GROUP_CONCAT(id ORDER BY id) FROM tree""", '100000,100001,100002,100003')
+check("a neighborhood's zone is its definition's template's", """
+  SELECT t.zone_id FROM real_estate_properties p JOIN real_estate_definitions d ON d.id = p.definition_id JOIN real_estate_zone_templates t ON t.dz_id = d.dz_id
+  WHERE p.id = 100005""", '712')
+check('a door click finds its plot definition by zone, version and door id', "SELECT real_estate_door_id FROM real_estate_doors WHERE zone_id = 712 AND zone_version = 0 AND door_id = 1", '101')
+check('a writ names the neighborhood definition it creates', "SELECT definition_id FROM real_estate_writs WHERE item_id = 52656", '900')
+check('a character saved in a discarded copy names its property', "SELECT property_id FROM character_real_estate_interiors WHERE character_id = 7", '100003')
 check('inside a house: the house and its parents', """
   WITH RECURSIVE chain AS (SELECT id, parent_id FROM real_estate_properties WHERE id = 100003
     UNION ALL SELECT p.id, p.parent_id FROM real_estate_properties p JOIN chain c ON p.id = c.parent_id)
@@ -86,8 +100,8 @@ check("leaving a house goes to its plot's exit point", """
 check('children, derived from parent_id', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE parent_id = 100000", '100001,100002')
 check('list A (owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7", '100001,100003,100004')
 check('list C (archived, a subset of owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7 AND archived = 1", '100004')
-check('a property inside an item is flagged and hosted nowhere', """
-  SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE contained_in_item = 1 AND host_zone_id = 0 AND host_instance_id = 0""", '100004')
+check('a property inside an item is flagged and has no parent', """
+  SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE contained_in_item = 1 AND parent_id = 0""", '100004')
 check('neighborhood row: player plots, used, guild plots, used', """
   SELECT CONCAT_WS(',', SUM(d.type = 4), SUM(d.type = 4 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)),
                         SUM(d.type = 8), SUM(d.type = 8 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)))
@@ -161,6 +175,11 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('a pet action Live has none of', "INSERT INTO real_estate_npc_item_actions VALUES (66639, 25754)", 'real_estate_npc_item_action_id'),
                    ('an action for no NPC item', "INSERT INTO real_estate_npc_item_actions VALUES (61410, 16175)", 'real_estate_npc_item_action_item'),
                    ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')", "for key 'position_word'"),
+                   ('a second copy of one property', "INSERT INTO real_estate_instances VALUES (1004, 100000)", "for key 'property_id'"),
+                   ('a second copy on one instance id', "INSERT INTO real_estate_instances VALUES (1001, 100005)", "for key 'PRIMARY'"),
+                   ('a second instance counter', "INSERT INTO real_estate_instance_counter VALUES (2, 5)", 'real_estate_instance_counter_single'),
+                   ('two map rows for one door', "INSERT INTO real_estate_doors VALUES (712, 0, 1, 102)", "for key 'PRIMARY'"),
+                   ('a door id above a byte', "INSERT INTO real_estate_doors VALUES (712, 0, 256, 1)", "Out of range value"),
                    ('neighborhood word position above 2', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (3, 'Vale')", 'neighborhood_word_position')]:
   error = sql(bad, expectError=True)
   assert reason in error, f'{label}: refused for another reason: {error[:300]}'

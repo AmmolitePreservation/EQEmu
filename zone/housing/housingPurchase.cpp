@@ -3,6 +3,7 @@
 #include "housingAccess.h"
 #include "housingCatalog.h"
 #include "housingEvents.h"
+#include "housingGeometry.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -45,6 +46,13 @@ namespace housing {
         throw Refusal(fmt::format("{} option [{}] is not an enabled option of cost [{}]", use, key, costId), nullptr);
       }
       return cost->options[key];
+    }
+
+    bool standsOn(Client *client, const Property &plot) {
+      const Definition *definition = catalog().definition(plot.definition_id);
+      const auto *region = definition && definition->row.area_id ? catalog().region(definition->row.area_id) : nullptr;
+      return region && regionContains(RegionBox{region->x, region->y, region->z, region->size_x, region->size_y, region->size_z, region->heading},
+        client->GetX(), client->GetY(), client->GetZ());
     }
 
     void sendResult(Client *client, bool success) {
@@ -191,7 +199,18 @@ namespace housing {
       client->MessageString(Chat::White, spentAlternateCurrency, std::to_string(price.amount).c_str(), std::to_string(price.currency).c_str());
     }
     client->MessageString(Chat::White, purchased);
-    sendResult(client, true);
+    // RoF2's 0x45be {1} opens Manage for the plot the player stands on (0x5b2f52), so a purchase from elsewhere (a plaque, a
+    // quest) answers 0 and refreshes the Purchase window with the bought plot instead (EXT-29).
+    if (standsOn(client, bought)) {
+      sendResult(client, true);
+    }
+    else {
+      sendResult(client, false);
+      auto refreshed = propertiesById({propertyId});
+      if (refreshed.size() == 1) {
+        sendPropertyWindow(client, refreshed.front(), true);
+      }
+    }
     LogHousing("[{}] bought property [{}]", client->GetCleanName(), propertyId);
     sendPropertyChanged(propertyId, PropertyChangedPayload{0, bought.owner_character_id, 0, bought.guild_id});
   }

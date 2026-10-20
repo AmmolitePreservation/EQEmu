@@ -885,6 +885,8 @@ void Zone::Shutdown(bool quiet)
 		c.second->WorldKick();
 	}
 
+	housing::onZoneShutdown();
+
 	if (m_save_zone_state && RuleB(Zone, StateSavingOnShutdown) && zone && zone->IsLoaded()) {
 		SaveZoneState();
 	}

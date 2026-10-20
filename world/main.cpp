@@ -91,6 +91,7 @@
 #include "../common/skill_caps.h"
 #include "../common/repositories/character_parcels_repository.h"
 #include "../common/ip_util.h"
+#include "housingInstances.h"
 #include "housingNeighborhoods.h"
 #include "housingUpkeep.h"
 
@@ -199,6 +200,13 @@ int main(int argc, char **argv)
 	if (RuleB(Housing, EnableHousing)) {
 		if (!housing::startUpkeep()) {
 			LogError("Player housing's upkeep rules are out of range; world does not start");
+			return 1;
+		}
+		try {
+			housing::startHousingInstances();
+		}
+		catch (const std::exception &error) {
+			LogError("Player housing's instances could not start: {}; world does not start", error.what());
 			return 1;
 		}
 		housing::balanceNeighborhoods();
@@ -429,6 +437,7 @@ int main(int argc, char **argv)
 		ClientList::Instance()->Process();
 		guild_mgr.Process();
 		housing::processUpkeep();
+		housing::processHousingInstances();
 
 		if (parcel_prune_timer.Check()) {
 			if (RuleB(Parcel, EnableParcelMerchants) && RuleB(Parcel, EnablePruning)) {

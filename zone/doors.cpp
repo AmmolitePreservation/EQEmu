@@ -192,6 +192,10 @@ void Doors::HandleClick(Client *sender, uint8 trigger)
 		to_string(m_destination).c_str()
 	);
 
+	if (sender && housing::handleDoorClick(sender, this)) {
+		return;
+	}
+
 	auto outapp            = new EQApplicationPacket(OP_MoveDoor, sizeof(MoveDoor_Struct));
 	auto *move_door_packet = (MoveDoor_Struct *) outapp->pBuffer;
 	move_door_packet->doorid = m_door_id;
@@ -545,10 +549,6 @@ void Doors::HandleClick(Client *sender, uint8 trigger)
 
 	// teleport door
 	if (EQ::ValueWithin(m_open_type, 57, 58) && HasDestinationZone()) {
-		if (housing::handleDoorClick(sender, this)) {
-			return;
-		}
-
 		bool has_key_required = (required_key_item && required_key_item == player_key);
 
 		if (sender->GetGM() && !has_key_required) {

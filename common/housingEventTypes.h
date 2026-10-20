@@ -8,7 +8,9 @@ namespace housing {
     catalogChanged = 1,
     propertyChanged = 2,
     accessChanged = 3,
-    itemListChanged = 4
+    itemListChanged = 4,
+    writUsed = 5,
+    guildNeighborhoodCreated = 6
   };
 
   enum class EventTarget : uint32 {
@@ -25,6 +27,21 @@ namespace housing {
     uint32 ownerCharacterId;
     uint32 previousGuildId;
     uint32 guildId;
+  };
+
+  // A zone tells world a writ was used; world makes the guild's village of the writ's definition (EXT-33).
+  struct WritUsedPayload {
+    uint32 characterId;
+    uint32 guildId;
+    uint32 definitionId;
+    char characterName[64];
+  };
+
+  // World tells the zones a guild's village exists, for 0x1d3c to the guild's members.
+  struct GuildNeighborhoodCreatedPayload {
+    uint32 guildId;
+    char characterName[64];
+    char neighborhoodName[64];
   };
 }
 

@@ -2933,7 +2933,8 @@ struct Door_Struct
 /*0062*/ uint8 state_at_spawn;
 /*0063*/ uint8 invert_state;	// if this is 1, the door is normally open
 /*0064*/ uint32 door_param;
-/*0068*/ uint8 unknown0052[12]; // mostly 0s, the last 3 bytes are something tho
+/*0068*/ uint32 real_estate_door_id; // RoF2 only: the housing door map's RealEstateDoorID
+/*0072*/ uint8 unknown0072[8]; // mostly 0s, the last 3 bytes are something tho
 /*0080*/
 };
 

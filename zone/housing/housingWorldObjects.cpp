@@ -116,20 +116,21 @@ namespace housing {
       .u32(object.lightType);
   }
 
-  bool shownHere(const Property &property, uint32 currentPropertyId) {
-    if (property.id == currentPropertyId) {
-      return true;
-    }
+  bool standsOutdoors(const Property &property) {
     switch (typeOf(property)) {
       case DefinitionType::regularZone:
       case DefinitionType::plot:
       case DefinitionType::neighborhood:
       case DefinitionType::town:
       case DefinitionType::guildPlot:
-        return hostedHere(property);
+        return true;
       default:
         return false;
     }
+  }
+
+  bool shownHere(const Property &property, const Session &state) {
+    return property.id == state.currentPropertyId || (standsOutdoors(property) && state.hostedIds.count(property.id));
   }
 
   WireWriter itemReference(const std::string &guid, const ItemLocation &location, uint32 propertyId, uint32 recordId) {
@@ -149,7 +150,7 @@ namespace housing {
   void sendWorldObjects(Client *client, const Session &state) {
     std::set<uint32> shown;
     for (const auto &[id, property] : state.properties) {
-      if (shownHere(property, state.currentPropertyId)) {
+      if (shownHere(property, state)) {
         shown.insert(id);
       }
     }

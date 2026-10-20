@@ -3,6 +3,7 @@
 
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
+#include "../common/housingInstanceNumbers.h"
 #include "../common/housingNames.h"
 #include "../common/housingPlacementRules.h"
 #include "../common/housingTransferOffers.h"
@@ -57,6 +58,9 @@ public:
     TEST_ADD(HousingTest::effectiveSlotsAndEveryAugment);
     TEST_ADD(HousingTest::worldObjectModelsAreLivesActorTags);
     TEST_ADD(HousingTest::commitScaleAndLocks);
+    TEST_ADD(HousingTest::copiesCountUpPastIdsInUse);
+    TEST_ADD(HousingTest::copyNumbersWrapAboveTheReservedIds);
+    TEST_ADD(HousingTest::noCopyWhenEveryIdIsInUse);
   }
 
 private:
@@ -563,6 +567,41 @@ private:
     const housing::MountTilts tilts{128.0f, 256.0f};
     TEST_ASSERT(housing::tiltsKept(128.0f, 256.0f, tilts));
     TEST_ASSERT(!housing::tiltsKept(0.0f, 256.0f, tilts));
+  }
+
+  // Live, 2026-10-18: a house took 4638, then a neighborhood 4641 and a hall 4644 with other copies made between (INT-14).
+  void copiesCountUpPastIdsInUse() {
+    const housing::InstanceRange range = housing::instanceRange(100);
+    TEST_ASSERT(range.first == 101 && range.last == 32000);
+    TEST_ASSERT(housing::nextInstanceId(4638, range, {}) == std::optional<uint32>(4638));
+    TEST_ASSERT(housing::nextInstanceId(4639, range, {4638, 4639, 4640}) == std::optional<uint32>(4641));
+    TEST_ASSERT(housing::nextInstanceId(4642, range, {101, 102, 4638}) == std::optional<uint32>(4642));
+  }
+
+  void copyNumbersWrapAboveTheReservedIds() {
+    const housing::InstanceRange range = housing::instanceRange(100);
+    TEST_ASSERT(housing::nextInstanceId(32000, range, {32000}) == std::optional<uint32>(101));
+    TEST_ASSERT(housing::nextInstanceId(32001, range, {101}) == std::optional<uint32>(102));
+    TEST_ASSERT(housing::nextInstanceId(50, range, {}) == std::optional<uint32>(101));
+    bool refused = false;
+    try {
+      housing::instanceRange(32000);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
+  }
+
+  void noCopyWhenEveryIdIsInUse() {
+    const housing::InstanceRange range = housing::instanceRange(31990);
+    std::set<uint32> used;
+    for (uint32 id = 31991; id <= 32000; id++) {
+      used.insert(id);
+    }
+    TEST_ASSERT(!housing::nextInstanceId(31995, range, used).has_value());
+    used.erase(31993);
+    TEST_ASSERT(housing::nextInstanceId(31995, range, used) == std::optional<uint32>(31993));
   }
 };
 

@@ -7,6 +7,7 @@
 
 #include "../common/eqemu_logsys.h"
 #include "../common/housingEventTypes.h"
+#include "../common/housingCopies.h"
 #include "../common/housingLedger.h"
 #include "../common/random.h"
 #include "../common/rulesys.h"
@@ -92,9 +93,10 @@ namespace housing {
       for (const PropertyRow *property : path) {
         switch (types.at(property->definition_id)) {
           case regularZoneType: {
-            const char *longName = ZoneLongName(property->host_zone_id);
+            const uint32 zoneId = zoneTemplateOf(content_db, property->definition_id).zoneId;
+            const char *longName = ZoneLongName(zoneId);
             if (!longName) {
-              throw std::runtime_error(fmt::format("zone root [{}] names host zone [{}], which has no zone row", property->id, property->host_zone_id));
+              throw std::runtime_error(fmt::format("zone root [{}] names zone [{}], which has no zone row", property->id, zoneId));
             }
             parts.push_back(longName);
             break;

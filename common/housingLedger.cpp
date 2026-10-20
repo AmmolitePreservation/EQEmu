@@ -1,6 +1,7 @@
 #include "housingLedger.h"
 
 #include "database.h"
+#include "housingCopies.h"
 #include "housingPropertyItem.h"
 #include "repositories/criteria/content_filter_criteria.h"
 #include "rulesys.h"
@@ -273,7 +274,7 @@ namespace housing {
     const int64 elapsed = std::max<int64>(0, now - static_cast<int64>(plot.upkeep_settled_at));
     const PlotContents contents = placedUnder(database, content, plot);
     const auto daily = netDailyCost(upkeepCostItems(database, content, plot, contents));
-    const UpkeepCharge charge = applyCharge(readBalances(database, plot.id), daily, upkeepPercent(database, content, plot.host_zone_id), elapsed);
+    const UpkeepCharge charge = applyCharge(readBalances(database, plot.id), daily, upkeepPercent(database, content, hostZoneOf(database, content, plot)), elapsed);
     writeBalances(database, plot.id, charge.balances);
     query(database, fmt::format("UPDATE real_estate_properties SET upkeep_settled_at = FROM_UNIXTIME({}) WHERE id = {}", now, plot.id));
     return charge;

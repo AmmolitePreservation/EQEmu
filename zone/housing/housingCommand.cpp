@@ -132,7 +132,7 @@ namespace housing {
       }
       std::vector<const Property *> here;
       for (const auto &[id, property] : state->properties) {
-        if (property.host_zone_id != zone->GetZoneID() || property.host_instance_id != zone->GetInstanceID()) {
+        if (!state->hostedIds.count(id)) {
           continue;
         }
         const Definition *definition = catalog().definition(property.definition_id);

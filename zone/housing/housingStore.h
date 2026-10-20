@@ -25,7 +25,6 @@ namespace housing {
     double amount;
   };
 
-  std::vector<Property> propertiesHostedAt(uint32 zoneId, uint32 instanceId);
   std::vector<Property> propertiesOwnedBy(uint32 characterId);
   std::vector<Property> propertiesById(const std::set<uint32> &ids);
   std::vector<Property> propertiesChildOf(const std::set<uint32> &parentIds);

@@ -47,10 +47,14 @@ SET(zone_sources
     housing/housing.cpp
     housing/housingAccess.cpp
     housing/housingAccount.cpp
+    housing/housingAnchors.cpp
     housing/housingCatalog.cpp
     housing/housingCommand.cpp
     housing/housingContainers.cpp
+    housing/housingDoors.cpp
     housing/housingEvents.cpp
+    housing/housingFind.cpp
+    housing/housingInteriors.cpp
     housing/housingItemTail.cpp
     housing/housingItems.cpp
     housing/housingMenus.cpp
@@ -64,6 +68,7 @@ SET(zone_sources
     housing/housingTransfer.cpp
     housing/housingWire.cpp
     housing/housingWorldObjects.cpp
+    housing/housingWrits.cpp
     inventory.cpp
     loot.cpp
     embperl.cpp
@@ -179,8 +184,10 @@ SET(zone_headers
     horse.h
     housing/housing.h
     housing/housingAccess.h
+    housing/housingAnchors.h
     housing/housingCatalog.h
     housing/housingContainers.h
+    housing/housingDoors.h
     housing/housingEvents.h
     housing/housingGeometry.h
     housing/housingHandlers.h
@@ -195,6 +202,7 @@ SET(zone_headers
     housing/housingStore.h
     housing/housingWire.h
     housing/housingWorldObjects.h
+    housing/housingWrits.h
     lua_bot.h
     lua_bit.h
     lua_buff.h

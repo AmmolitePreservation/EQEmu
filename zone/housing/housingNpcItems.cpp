@@ -1,6 +1,7 @@
 #include "housingNpcItems.h"
 
 #include "housingCatalog.h"
+#include "housingInteriors.h"
 #include "housingItemTail.h"
 #include "housingMessages.h"
 #include "housingSession.h"
@@ -253,8 +254,9 @@ namespace housing {
 
   void spawnShownNpcItems() {
     std::set<uint32> shown;
-    for (const auto &property : propertiesHostedAt(zone->GetZoneID(), zone->GetInstanceID())) {
-      if (shownHere(property, 0)) {
+    const auto root = hostedRoot();
+    for (const auto &property : hostedProperties()) {
+      if (standsOutdoors(property) || (root && property.id == root->id)) {
         shown.insert(property.id);
       }
     }
@@ -269,6 +271,11 @@ namespace housing {
         LogError("Housing: NPC item record [{}] (item [{}]) of property [{}] could not spawn: {}", row.id, row.item_id, row.property_id, error.what());
       }
     }
+  }
+
+  void resetNpcItems() {
+    spawned.clear();
+    spawnedAtBoot = false;
   }
 
   void processNpcItems() {

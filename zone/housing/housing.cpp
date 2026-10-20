@@ -1,9 +1,13 @@
 #include "housing.h"
 
 #include "housingAccess.h"
+#include "housingAnchors.h"
 #include "housingCatalog.h"
 #include "housingContainers.h"
+#include "housingDoors.h"
+#include "housingWrits.h"
 #include "housingHandlers.h"
+#include "housingInteriors.h"
 #include "housingItems.h"
 #include "housingItemTail.h"
 #include "housingMenus.h"
@@ -127,9 +131,10 @@ namespace housing {
         }
         switch (static_cast<DefinitionType>(definition->row.type)) {
           case DefinitionType::regularZone: {
-            const char *longName = ZoneLongName(current.host_zone_id);
+            const ZoneTemplate *zoneTemplate = catalog().zoneTemplate(definition->row.dz_id);
+            const char *longName = zoneTemplate ? ZoneLongName(zoneTemplate->zone_id) : nullptr;
             if (!longName) {
-              problems.push_back(fmt::format("zone root [{}] names host zone [{}], which has no zone row", current.id, current.host_zone_id));
+              problems.push_back(fmt::format("zone root [{}]'s definition [{}] names no zone with a zone row", current.id, current.definition_id));
               return {};
             }
             parts.push_back(longName);
@@ -173,18 +178,11 @@ namespace housing {
       return option->key;
     }
 
+    // The current property is the root this zone runs: a zone root, a neighborhood, or the house or hall inside an interior.
     uint32 currentPropertyFor(const std::vector<Property> &hosted, std::vector<std::string> &problems) {
-      std::set<uint32> hostedIds;
-      for (const auto &property : hosted) {
-        hostedIds.insert(property.id);
-      }
-      std::vector<std::string> roots;
       std::set<uint32> areas;
       for (const auto &property : hosted) {
         const DefinitionType type = typeOf(property);
-        if (isAnyType(type, {DefinitionType::regularZone, DefinitionType::neighborhood, DefinitionType::town}) && !hostedIds.count(property.parent_id)) {
-          roots.push_back(std::to_string(property.id));
-        }
         if (isAnyType(type, {DefinitionType::plot, DefinitionType::guildPlot})) {
           const uint32 area = catalog().definition(property.definition_id)->row.area_id;
           if (area && !areas.insert(area).second) {
@@ -192,10 +190,8 @@ namespace housing {
           }
         }
       }
-      if (roots.size() > 1) {
-        problems.push_back(fmt::format("this zone hosts [{}] root properties ({}); one is allowed", roots.size(), Strings::Join(roots, ", ")));
-      }
-      return roots.empty() ? 0 : Strings::ToUnsignedInt(roots.front());
+      const auto root = hostedRoot();
+      return root ? root->id : 0;
     }
 
     std::map<uint32, RecordFields> recordFieldsFor(const std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
@@ -238,7 +234,7 @@ namespace housing {
     bool buildSession(Client *client, Session &state, std::map<uint32, RecordFields> &fields, const std::set<uint32> &alsoKnown) {
       std::vector<std::string> problems;
       try {
-        const auto hosted = propertiesHostedAt(zone->GetZoneID(), zone->GetInstanceID());
+        const auto hosted = hostedProperties();
         const auto owned = propertiesOwnedBy(client->CharacterID());
         const auto carried = propertiesById(carriedPropertyIds(client->CharacterID()));
         for (const auto &property : hosted) {
@@ -410,6 +406,15 @@ namespace housing {
 
   bool reloadCatalog() {
     catalogReady = catalog().load();
+    if (catalogReady) {
+      try {
+        loadHostedRoot();
+      }
+      catch (const std::exception &error) {
+        LogError("Housing: the property this zone runs could not be found after the catalog reload: {}", error.what());
+        clearHostedRoot();
+      }
+    }
     for (const auto &[id, client] : entity_list.GetClientList()) {
       if (isRoF2(client)) {
         sendZoneContents(client);
@@ -433,7 +438,25 @@ namespace housing {
       return true;
     }
     catalogReady = catalog().load();
+    if (catalogReady) {
+      try {
+        loadHostedRoot();
+        loadDoorMap();
+        loadWrits();
+      }
+      catch (const std::exception &error) {
+        LogError("Housing: the property this zone runs or its doors could not be loaded: {}", error.what());
+        return false;
+      }
+    }
     return true;
+  }
+
+  void onZoneShutdown() {
+    discardHostedCopy();
+    resetNpcItems();
+    clearHostedRoot();
+    sessions.clear();
   }
 
   void onZoneContents(Client *client) {
@@ -446,11 +469,19 @@ namespace housing {
     if (isRoF2(client)) {
       sendZoneIn(client);
     }
+    if (housingActive()) {
+      admitOccupant(client);
+    }
   }
 
   void onDisconnect(Client *client) {
     closeContainerOf(client);
+    forgetAnchorOffer(client);
     sessions.erase(client);
+    // A copy's discard delay runs from its last occupant's leaving, a camp included (Live kept an empty house 30.8 minutes after a camp).
+    if (zone && hostedRoot() && zone->GetInstanceID()) {
+      zone->ResetShutdownTimer();
+    }
   }
 
   void forEachSession(const std::function<void(Client *, Session &)> &visit) {
@@ -571,10 +602,6 @@ namespace housing {
     return name;
   }
 
-  bool hostedHere(const Property &property) {
-    return property.host_zone_id == zone->GetZoneID() && property.host_instance_id == zone->GetInstanceID();
-  }
-
   int64 currentTime() {
     return static_cast<int64>(std::time(nullptr));
   }
@@ -640,6 +667,18 @@ namespace housing {
         break;
       case OP_RealEstateMoveToStorage:
         handleMoveToStorage(client, reader);
+        break;
+      case OP_RealEstateStoreAll:
+        handleStoreAll(client, reader);
+        break;
+      case OP_RealEstatePack:
+        handlePack(client, reader);
+        break;
+      case OP_RealEstateLeave:
+        handleLeave(client);
+        break;
+      case OP_RealEstateAnchorTeleport:
+        handleAnchorAnswer(client, reader);
         break;
       default:
         LogHousing("Unhandled housing opcode [{}] from [{}]", static_cast<uint32>(app->GetOpcode()), client->GetCleanName());

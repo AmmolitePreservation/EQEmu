@@ -3009,7 +3009,7 @@ struct Door_Struct
 /*0064*/ uint32  door_param; // normally ff ff ff ff (-1)
 /*0068*/ uint32	unknown0068; // 00 00 00 00
 /*0072*/ uint32	unknown0072; // 00 00 00 00
-/*0076*/ uint8	unknown0076[4]; // New for RoF2
+/*0076*/ uint32	real_estate_door_id; // EQSwitch RealEstateDoorID, kept but never read by the client
 /*0080*/ uint8	unknown0080; // seen 1 or 0
 /*0081*/ uint8	unknown0081; // seen 1 (always?)
 /*0082*/ uint8	unknown0082; // seen 0 (always?)
