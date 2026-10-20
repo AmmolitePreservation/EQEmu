@@ -8,7 +8,7 @@ current expansion unless its row bypasses it (a PoP-era server, housing needs it
 included). Empty file_name and map_file_name make EQEmu use each zone's own short name.
 
 Header values are Live's, from a livedumps clone's master/fields/zoneHeaders.tsv (ZIN-9): the safe point (EQEmu's x and y),
-the floor as underworld, the zone type, clip planes, fog and no binding. A zone Live never sent keeps its safe point derived
+the floor as underworld, the ceiling, the filter id, the mana stone flag, the zone type, clip planes, fog and no binding. A zone Live never sent keeps its safe point derived
 from the client's zone files by housingZoneGeometry.py and an underworld below any floor, and takes the other header values
 of Live's house interiors. Every interior and hall is kept running for Live's discard delay once empty (INT-13, INT-14).
 Writes the rows (housingZones.sql) and, for rows already added, the same values with the bypass, and the neighborhood's
@@ -64,7 +64,8 @@ def zoneColumns():
   body = text[text.index('static std::vector<std::string> Columns()'):]
   columns = re.findall(r'"([a-z_0-9]+)"', body[:body.index('};')])
   needed = ['zoneidnumber', 'version', 'short_name', 'long_name', 'file_name', 'map_file_name', 'note', 'underworld', 'safe_x', 'safe_y', 'safe_z',
-            'safe_heading', 'ztype', 'minclip', 'maxclip', 'fog_density', 'canbind', 'shutdowndelay', 'bypass_expansion_check'] + gateColumns
+            'safe_heading', 'ztype', 'minclip', 'maxclip', 'fog_density', 'canbind', 'shutdowndelay', 'bypass_expansion_check', 'ceiling',
+            'filter_id', 'disallow_mana_stone'] + gateColumns
   needed += [column for _, names in fogColumns for column in names]
   if columns[0] != 'id' or any(column not in columns for column in needed):
     raise ValueError(f'unexpected zone columns: {columns}')
@@ -80,7 +81,8 @@ def headerValues(header, geometry):
   if header['bNoBind'] != '1':
     raise ValueError(f"{header['zone']}: Live lets players bind there, which no housing zone does")
   values = dict(ztype=str(int(header['ZoneType'])), minclip=number(header['MinClip']), maxclip=number(header['MaxClip']),
-                fog_density=number(header['FogDensity']), canbind='0')
+                fog_density=number(header['FogDensity']), canbind='0', ceiling=number(header['Ceiling']), filter_id=str(int(header['FilterID'])),
+                disallow_mana_stone=str(int(header['bDisallowManaStone'])))
   for field, names in fogColumns:
     parts = header[field].split(',')
     if len(parts) != len(names):
@@ -154,7 +156,7 @@ BEGIN NOT ATOMIC
   END IF;
 {inserts}END //
 DELIMITER ;
-SELECT zoneidnumber, version, short_name, long_name, min_expansion, max_expansion, underworld, ztype, canbind, shutdowndelay FROM zone WHERE {anyRow} ORDER BY zoneidnumber, version;
+SELECT zoneidnumber, version, short_name, long_name, min_expansion, max_expansion, underworld, ceiling, filter_id, disallow_mana_stone, ztype, canbind, shutdowndelay FROM zone WHERE {anyRow} ORDER BY zoneidnumber, version;
 """
   path = os.path.join(here, '..', 'sql', 'housingZones.sql')
   open(path, 'w', encoding='ascii').write(sql)
@@ -172,7 +174,7 @@ BEGIN NOT ATOMIC
   END IF;
 {updates}END //
 DELIMITER ;
-SELECT zoneidnumber, version, short_name, safe_x, safe_y, safe_z, safe_heading, underworld, ztype, maxclip, canbind, shutdowndelay, expansion, bypass_expansion_check FROM zone WHERE (short_name = 'neighborhood' AND version = 0) OR {anyRow} ORDER BY zoneidnumber, version;
+SELECT zoneidnumber, version, short_name, safe_x, safe_y, safe_z, safe_heading, underworld, ceiling, filter_id, disallow_mana_stone, ztype, maxclip, canbind, shutdowndelay, expansion, bypass_expansion_check FROM zone WHERE (short_name = 'neighborhood' AND version = 0) OR {anyRow} ORDER BY zoneidnumber, version;
 """
   updatePath = os.path.join(here, '..', 'sql', 'housingZoneSettings.sql')
   open(updatePath, 'w', encoding='ascii').write(update)

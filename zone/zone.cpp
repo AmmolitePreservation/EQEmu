@@ -1385,6 +1385,10 @@ bool Zone::LoadZoneCFG(const char* filename, uint16 instance_version)
 	newzone_data.safe_z                    = z->safe_z;
 	newzone_data.safe_heading              = z->safe_heading;
 	newzone_data.underworld                = z->underworld;
+	newzone_data.max_z                     = z->ceiling;
+	newzone_data.filter_id                 = z->filter_id;
+	newzone_data.disallow_mana_stone       = z->disallow_mana_stone;
+	newzone_data.no_bind                   = z->canbind == 0;
 	newzone_data.minclip                   = z->minclip;
 	newzone_data.maxclip                   = z->maxclip;
 	newzone_data.time_type                 = z->time_type;

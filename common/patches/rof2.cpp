@@ -2433,11 +2433,11 @@ namespace RoF2
 
 		eq->SkyRelated2 = -1;
 		eq->NPCAggroMaxDist = 600;
-		eq->FilterID = 2008; // Guild Lobby observed value
+		eq->FilterID = emu->filter_id;
 		OUT(lava_damage);
 		OUT(min_lava_damage);
-		eq->bDisallowManaStone     = 1;
-		eq->bNoBind                = 0;
+		eq->bDisallowManaStone     = emu->disallow_mana_stone;
+		eq->bNoBind                = emu->no_bind;
 		eq->bNoAttack              = 0;
 		eq->bNoCallOfHero          = 0;
 		eq->bNoFlux                = 0;
