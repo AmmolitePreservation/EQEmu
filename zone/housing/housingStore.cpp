@@ -6,14 +6,6 @@
 #include <cstdlib>
 
 namespace housing {
-  std::string idList(const std::set<uint32> &ids) {
-    std::vector<std::string> parts;
-    for (uint32 id : ids) {
-      parts.push_back(std::to_string(id));
-    }
-    return Strings::Join(parts, ",");
-  }
-
   std::vector<Property> propertiesHostedAt(uint32 zoneId, uint32 instanceId) {
     return RealEstatePropertiesRepository::GetWhere(database, fmt::format("host_zone_id = {} AND host_instance_id = {} AND archived = 0", zoneId, instanceId));
   }
@@ -67,5 +59,18 @@ namespace housing {
       result[Strings::ToUnsignedInt(row[0])] = CharacterIdentity{row[1], Strings::ToUnsignedInt(row[2])};
     }
     return result;
+  }
+
+  bool guildOwnsNeighborhood(uint32 guildId) {
+    std::set<uint32> definitions;
+    for (auto row : query(database, fmt::format("SELECT DISTINCT definition_id FROM real_estate_properties WHERE guild_id = {}", guildId))) {
+      definitions.insert(Strings::ToUnsignedInt(row[0]));
+    }
+    for (const auto &[id, type] : definitionTypes(content_db, definitions)) {
+      if (type == neighborhoodType) {
+        return true;
+      }
+    }
+    return false;
   }
 }

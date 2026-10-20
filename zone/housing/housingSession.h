@@ -4,8 +4,10 @@
 #include "housingAccess.h"
 #include "housingStore.h"
 
+#include <functional>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 class Client;
@@ -25,6 +27,12 @@ namespace housing {
   bool housingActive();
   bool reloadCatalog();
   Session *session(Client *client);
+  void forEachSession(const std::function<void(Client *, Session &)> &visit);
+  void refreshClients(const std::set<uint32> &propertyIds, const std::set<uint32> &characterIds);
+  void refreshItemLists(const std::set<uint32> &propertyIds);
+  std::string propertyName(uint32 propertyId);
+  bool hostedHere(const Property &property);
+  int64 currentTime();
 }
 
 #endif

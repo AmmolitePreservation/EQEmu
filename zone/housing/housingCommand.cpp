@@ -95,7 +95,7 @@ namespace housing {
         refuse(client, "Refused: the database did not commit the change.");
         return false;
       }
-      sendEvent(EventType::catalogChanged, EventTarget::allZones, 0);
+      sendEvent(EventType::catalogChanged, EventTarget::allZones, 0, 0, {});
       say(client, done + "; every zone reloads the catalog.");
       return true;
     }
@@ -356,7 +356,7 @@ namespace housing {
       costCommand(client, sep);
     }
     else if (subcommand == "reload") {
-      sendEvent(EventType::catalogChanged, EventTarget::allZones, 0);
+      sendEvent(EventType::catalogChanged, EventTarget::allZones, 0, 0, {});
       say(client, "Every zone reloads the catalog.");
     }
     else {

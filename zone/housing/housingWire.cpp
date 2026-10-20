@@ -2,6 +2,7 @@
 
 #include "../client.h"
 
+#include <algorithm>
 #include <cstring>
 
 namespace housing {
@@ -27,6 +28,13 @@ namespace housing {
 
   WireWriter &WireWriter::cString(const std::string &value) {
     buffer.append(value.c_str(), strlen(value.c_str()) + 1);
+    return *this;
+  }
+
+  WireWriter &WireWriter::fixedString(const std::string &value, size_t length) {
+    std::string field(length, '\0');
+    memcpy(field.data(), value.data(), std::min(value.size(), length - 1));
+    buffer.append(field);
     return *this;
   }
 
@@ -82,6 +90,24 @@ namespace housing {
     std::string value(reinterpret_cast<const char *>(data + position), size);
     position += size + 1;
     return value;
+  }
+
+  std::string WireReader::fixedString(size_t length) {
+    if (overrun || remaining() < length) {
+      overrun = true;
+      return {};
+    }
+    const char *start = reinterpret_cast<const char *>(data + position);
+    position += length;
+    return std::string(start, strnlen(start, length));
+  }
+
+  void WireReader::skip(size_t length) {
+    if (overrun || remaining() < length) {
+      overrun = true;
+      return;
+    }
+    position += length;
   }
 
   void sendMessage(Client *client, EmuOpcode opcode, const WireWriter &message) {
