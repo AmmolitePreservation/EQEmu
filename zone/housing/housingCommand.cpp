@@ -23,10 +23,11 @@ extern Zone *zone;
 
 namespace housing {
   namespace {
-    constexpr float regionBelowFeet = 100.0f;
-    constexpr float regionAboveFeet = 900.0f;
-    const std::set<std::string> numericDefinitionFields = {"purchase_cost_id", "upkeep_cost_id", "max_items", "max_non_real_estate_items",
-                                                           "max_pet_items", "max_houses", "region_id", "instance_zone_id", "instance_zone_version", "type", "category"};
+    constexpr float regionReachFromFeet = 350.0f;
+    const std::set<std::string> numericDefinitionFields = {"type", "placement_group_id", "area_id", "cost_definition_id", "upkeep_definition_id", "max_items",
+                                                           "max_non_real_estate_items", "max_npc_items", "max_children", "zone_id", "dz_id", "icon",
+                                                           "exit_zone_id", "exit_zone_version"};
+    const std::set<std::string> textDefinitionFields = {"name", "name_segment", "address"};
 
     void say(Client *client, const std::string &text) {
       client->Message(Chat::White, "%s", text.c_str());
@@ -57,9 +58,16 @@ namespace housing {
       return RegionBox{region.x, region.y, region.z, region.size_x, region.size_y, region.size_z, region.heading};
     }
 
-    int64 coinOf(uint32 costId) {
-      const CostOption *coin = catalog().option(costId, 0);
-      return coin ? coin->items[0].amount : 0;
+    std::string pricesOf(uint32 costId) {
+      const Cost *cost = catalog().cost(costId);
+      if (!cost) {
+        return "none";
+      }
+      std::vector<std::string> prices;
+      for (const auto &option : cost->options) {
+        prices.push_back(option.currency ? fmt::format("{} of currency {}", option.items[0].amount, option.currency) : fmt::format("{} copper", option.items[0].amount));
+      }
+      return prices.empty() ? "no enabled option" : Strings::Join(prices, " or ");
     }
 
     bool applyEdit(Client *client, const std::string &done, const std::vector<std::string> &statements) {
@@ -100,7 +108,7 @@ namespace housing {
         }
         std::vector<std::string> users;
         for (const auto &[definitionId, entry] : catalog().allDefinitions()) {
-          if (entry.row.region_id == id) {
+          if (entry.row.area_id == id) {
             users.push_back(fmt::format("{} ({})", definitionId, entry.row.name));
           }
         }
@@ -128,7 +136,7 @@ namespace housing {
           continue;
         }
         const Definition *definition = catalog().definition(property.definition_id);
-        const auto *region = definition && definition->row.region_id ? catalog().region(definition->row.region_id) : nullptr;
+        const auto *region = definition && definition->row.area_id ? catalog().region(definition->row.area_id) : nullptr;
         if (id == state->currentPropertyId || (region && regionContains(boxOf(*region), client->GetX(), client->GetY(), client->GetZ()))) {
           here.push_back(&property);
         }
@@ -139,7 +147,7 @@ namespace housing {
         owners.insert(property->owner_character_id);
         ids.insert(property->id);
       }
-      const auto names = characterNames(owners);
+      const auto identities = characterIdentities(owners);
       const auto money = balances(ids);
       for (const Property *property : here) {
         size_t children = 0;
@@ -154,11 +162,12 @@ namespace housing {
           }
         }
         const Definition *definition = catalog().definition(property->definition_id);
-        auto owner = names.find(property->owner_character_id);
-        say(client, fmt::format("{} property {} '{}': definition {} ({}), owner {}, guild {}, upkeep {} in currency {}, {} children, escrow{}",
+        auto owner = identities.find(property->owner_character_id);
+        say(client, fmt::format("{} property {} '{}': definition {} ({}), owner {}, guild {}, upkeep in currency {} {}, {} children, escrow{}",
           property->id == state->currentPropertyId ? "Current" : "Standing in", property->id, property->name, property->definition_id,
-          definition ? typeName(definition->row.type) : "unknown", owner == names.end() ? "none" : owner->second, property->guild_id,
-          property->upkeep_current ? "current" : "expired", property->upkeep_currency, children, escrow.empty() ? " empty" : escrow));
+          definition ? typeName(definition->row.type) : "unknown", owner == identities.end() ? "none" : owner->second.name, property->guild_id,
+          property->upkeep_currency, property->upkeep_expired_time ? fmt::format("expired at {}", property->upkeep_expired_time) : "paid",
+          children, escrow.empty() ? " empty" : escrow));
       }
       listRegionsHere(client);
     }
@@ -170,7 +179,7 @@ namespace housing {
         listRegionsHere(client);
         return;
       }
-      const float centerZ = client->GetZ() + (regionAboveFeet - regionBelowFeet) / 2.0f;
+      const float centerZ = client->GetZ();
       if (action == "create") {
         float across = 0.0f;
         float along = 0.0f;
@@ -185,10 +194,14 @@ namespace housing {
         }
         auto row = rows.begin();
         const uint32 id = Strings::ToUnsignedInt(row[0]);
+        if (id >= propertyIdFloor) {
+          refuse(client, fmt::format("Refused: region {} would not be below the property id floor {}.", id, propertyIdFloor));
+          return;
+        }
         const std::string name = sep->arg[5][0] ? sep->argplus[5] : fmt::format("region {}", id);
         applyEdit(client, fmt::format("Region {} created around you", id), {fmt::format(
           "INSERT INTO real_estate_regions (id, name, x, y, z, size_x, size_y, size_z, heading) VALUES ({}, '{}', {}, {}, {}, {}, {}, {}, {})",
-          id, Strings::Escape(name), client->GetX(), client->GetY(), centerZ, across, along, regionBelowFeet + regionAboveFeet, client->GetHeading())});
+          id, Strings::Escape(name), client->GetX(), client->GetY(), centerZ, across, along, 2.0f * regionReachFromFeet, client->GetHeading())});
         return;
       }
       int64 id = 0;
@@ -217,14 +230,20 @@ namespace housing {
       for (uint32 child : entry.children) {
         children.push_back(std::to_string(child));
       }
-      say(client, fmt::format("Definition {} '{}': type {} ({}), category {}, region {}, instance zone {} version {}",
-        row.id, row.name, row.type, typeName(row.type), row.category, row.region_id, row.instance_zone_id, row.instance_zone_version));
-      say(client, fmt::format("  items {}, vault {}, pets {}, houses {} (effective {})",
-        row.max_items, row.max_non_real_estate_items, row.max_pet_items, row.max_houses, entry.maxHouses));
-      say(client, fmt::format("  purchase cost {} ({} copper), upkeep cost {} ({} copper a day)",
-        row.purchase_cost_id, coinOf(row.purchase_cost_id), row.upkeep_cost_id, coinOf(row.upkeep_cost_id)));
-      say(client, fmt::format("  layout origin ({:.1f}, {:.1f}, {:.1f}) heading {:.1f}; children: {}",
-        row.layout_origin_x, row.layout_origin_y, row.layout_origin_z, row.layout_heading, children.empty() ? "none" : Strings::Join(children, " ")));
+      const ZoneTemplate *zoneTemplate = row.dz_id ? catalog().zoneTemplate(row.dz_id) : nullptr;
+      say(client, fmt::format("Definition {} '{}': type {} ({}), placement group {}, area {}, address '{}', name segment '{}', icon {}",
+        row.id, row.name, row.type, typeName(row.type), row.placement_group_id, row.area_id, row.address, row.name_segment, row.icon));
+      say(client, fmt::format("  zone {}, dz {}{}", row.zone_id, row.dz_id, zoneTemplate
+        ? fmt::format(" (zone {} version {} at ({:.1f}, {:.1f}, {:.1f}) heading {:.1f})", zoneTemplate->zone_id, zoneTemplate->zone_version,
+            zoneTemplate->zone_in_x, zoneTemplate->zone_in_y, zoneTemplate->zone_in_z, zoneTemplate->zone_in_heading)
+        : std::string()));
+      say(client, fmt::format("  items {}, non-real-estate items {}, NPC items {}, children {} (effective {})",
+        row.max_items, row.max_non_real_estate_items, row.max_npc_items < 0 ? std::string("no cap") : std::to_string(row.max_npc_items), row.max_children, entry.maxChildren));
+      say(client, fmt::format("  purchase cost {} ({}), upkeep cost {} ({} a day)",
+        row.cost_definition_id, pricesOf(row.cost_definition_id), row.upkeep_definition_id, pricesOf(row.upkeep_definition_id)));
+      say(client, fmt::format("  switch ({:.2f}, {:.2f}, {:.2f}) heading {:.1f}; exit zone {} version {} at ({:.2f}, {:.2f}, {:.2f}) heading {:.1f}; children: {}",
+        row.switch_x, row.switch_y, row.switch_z, row.switch_heading, row.exit_zone_id, row.exit_zone_version, row.exit_x, row.exit_y, row.exit_z,
+        row.exit_heading, children.empty() ? "none" : Strings::Join(children, " ")));
     }
 
     void definitionCommand(Client *client, const Seperator *sep) {
@@ -268,21 +287,23 @@ namespace housing {
         return;
       }
       if (action == "origin") {
-        applyEdit(client, fmt::format("Definition {} layout origin set to you", id), {fmt::format(
-          "UPDATE real_estate_definitions SET layout_origin_x = {}, layout_origin_y = {}, layout_origin_z = {}, layout_heading = {} WHERE id = {}",
+        applyEdit(client, fmt::format("Definition {} switch set to you", id), {fmt::format(
+          "UPDATE real_estate_definitions SET switch_x = {}, switch_y = {}, switch_z = {}, switch_heading = {} WHERE id = {}",
           client->GetX(), client->GetY(), client->GetZ(), client->GetHeading(), id)});
         return;
       }
       if (action == "set") {
         const std::string field = Strings::ToLower(sep->arg[4]);
-        if (field == "name" && sep->arg[5][0]) {
-          applyEdit(client, fmt::format("Definition {} renamed", id), {fmt::format(
-            "UPDATE real_estate_definitions SET name = '{}' WHERE id = {}", Strings::Escape(sep->argplus[5]), id)});
+        if (textDefinitionFields.count(field)) {
+          applyEdit(client, fmt::format("Definition {} {} set", id, field), {fmt::format(
+            "UPDATE real_estate_definitions SET `{}` = '{}' WHERE id = {}", field, Strings::Escape(sep->argplus[5]), id)});
           return;
         }
         int64 value = 0;
-        if (!numericDefinitionFields.count(field) || !parseInteger(sep->arg[5], value) || value < 0) {
-          refuse(client, "Usage: #realestate definition set <id> <field> <value>; fields: name, " + Strings::Join(std::vector<std::string>(numericDefinitionFields.begin(), numericDefinitionFields.end()), ", "));
+        if (!numericDefinitionFields.count(field) || !parseInteger(sep->arg[5], value) || (value < 0 && !(field == "max_npc_items" && value == -1))) {
+          std::vector<std::string> fields(textDefinitionFields.begin(), textDefinitionFields.end());
+          fields.insert(fields.end(), numericDefinitionFields.begin(), numericDefinitionFields.end());
+          refuse(client, "Usage: #realestate definition set <id> <field> <value> (max_npc_items takes -1 for no cap); fields: " + Strings::Join(fields, ", "));
           return;
         }
         applyEdit(client, fmt::format("Definition {} {} set to {}", id, field, value), {fmt::format(
@@ -294,25 +315,27 @@ namespace housing {
 
     void costCommand(Client *client, const Seperator *sep) {
       int64 id = 0;
+      int64 currency = 0;
       int64 amount = 0;
-      if (Strings::ToLower(sep->arg[2]) != "set" || !parseInteger(sep->arg[3], id) || id <= 0 || !parseInteger(sep->arg[4], amount) || amount == 0) {
-        refuse(client, "Usage: #realestate cost set <cost id> <copper, not 0; negative is a reduction>");
+      if (Strings::ToLower(sep->arg[2]) != "set" || !parseInteger(sep->arg[3], id) || id <= 0 || !parseInteger(sep->arg[4], currency) || currency < 0 ||
+          !parseInteger(sep->arg[5], amount) || amount == 0) {
+        refuse(client, "Usage: #realestate cost set <cost id> <currency: 0 for coin, else an alternate currency id> <amount, not 0; copper for coin; negative is a reduction>");
         return;
       }
-      auto rows = content_db.QueryDatabase(fmt::format("SELECT COUNT(*) FROM real_estate_cost_items WHERE cost_id = {} AND currency = 0", id));
+      auto rows = content_db.QueryDatabase(fmt::format("SELECT COUNT(*) FROM real_estate_cost_items WHERE cost_id = {} AND currency = {}", id, currency));
       if (!rows.Success() || rows.RowCount() != 1 || Strings::ToInt(rows.begin()[0]) != 1) {
-        refuse(client, fmt::format("Cost {} has no coin option.", id));
+        refuse(client, fmt::format("Cost {} has no option paying in currency {}.", id, currency));
         return;
       }
-      applyEdit(client, fmt::format("Cost {} set to {} copper", id, amount), {fmt::format(
-        "UPDATE real_estate_cost_items SET amount = {} WHERE cost_id = {} AND currency = 0", amount, id)});
+      applyEdit(client, fmt::format("Cost {} set to {} in currency {}", id, amount, currency), {fmt::format(
+        "UPDATE real_estate_cost_items SET amount = {} WHERE cost_id = {} AND currency = {}", amount, id, currency)});
     }
 
     void help(Client *client) {
       say(client, "#realestate info: the properties and regions where you stand");
-      say(client, "#realestate region create <across> <along> [name] | move <id> | size <id> <across> <along> | show");
-      say(client, "#realestate definition show <id> | set <id> <field> <value> | origin <id> | create <id> <type 1-8> <name> | child add|remove <parent> <child>");
-      say(client, "#realestate cost set <id> <copper>: a stored (item upkeep) cost");
+      say(client, "#realestate region create <across> <along> [name] | move <id> | size <id> <across> <along> | show: a box 350 below and above your feet");
+      say(client, "#realestate definition show <id> | set <id> <field> <value> | origin <id> (the switch, at you) | create <id> <type 1-8> <name> | child add|remove <parent> <child>");
+      say(client, "#realestate cost set <cost id> <currency> <amount>: any cost's price in coin (currency 0, in copper) or an alternate currency; a negative amount is a reduction");
       say(client, "#realestate reload: every zone reloads the catalog");
       say(client, "Edits are validated before they're kept and reach every zone; one that would break the catalog is refused.");
     }
