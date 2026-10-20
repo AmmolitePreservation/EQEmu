@@ -156,7 +156,7 @@ The plan text needs these corrections; the code follows the right-hand side.
 Each step builds on the one before; nothing links until step 6 (Q1).
 
 1. **Schema and generators.** The migration edits and v4, the template and looks tables, repositories, version.h, the catalog, zones, doors and border generators and their tests. Everything else names these columns.
-2. **Fix the existing chunk 1-4 code.** Opcodes, record fields, GUIDs, axis order, send order, empty 0x49df, tail boot, strict parsing, root rule, catalog load rules, the GM command. Python tests pass.
+2. **Fix the existing chunk 1-4 code.** Opcodes, record fields, GUIDs, axis order, send order, empty 0x49df, tail boot, strict parsing, root rule, catalog load rules, the GM command. Python tests pass. **Done.** world/housingUpkeep.cpp reads the removed `Housing:UpkeepTickSeconds` and compiles again only once step 3 rewrites it.
 3. **Access and ownership.** housingAccess additions, store helpers, events, menus, search, purchase, sell, transfer, account; world upkeep and neighborhoods.
 4. **Placement and the world layer.** Session, placement, world objects, containers, NPC items, the spawn binding.
 5. **Interiors, doors, anchors.** Interiors, doors, anchors, world instances, zone shutdown.
