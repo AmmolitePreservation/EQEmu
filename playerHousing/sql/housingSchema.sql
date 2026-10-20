@@ -230,7 +230,7 @@ CREATE TABLE IF NOT EXISTS `real_estate_access_names` (
   `name` VARCHAR(64) NOT NULL,
   `group_number` TINYINT(3) UNSIGNED NOT NULL,
   PRIMARY KEY (`property_id`, `name`),
-  CONSTRAINT `real_estate_access_name_group` CHECK (`group_number` <= 6)
+  CONSTRAINT `real_estate_access_name_group` CHECK (`group_number` BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_polls` (
