@@ -16,6 +16,16 @@ namespace housing {
     return found == tails.end() ? nullptr : &found->second;
   }
 
+  std::set<uint32> npcItemIds() {
+    std::set<uint32> ids;
+    for (const auto &[id, tail] : tails) {
+      if (tail.housepetFileName[0] && !tail.interactiveObject) {
+        ids.insert(id);
+      }
+    }
+    return ids;
+  }
+
   bool loadItemHousingTails() {
     tails.clear();
     auto results = content_db.QueryDatabase(
@@ -26,7 +36,7 @@ namespace housing {
       "FROM items WHERE placeable <> 0"
     );
     if (!results.Success()) {
-      LogError("Housing: the item housing tail could not be loaded; placeable items are sent without it");
+      LogError("Housing: the item housing tail could not be loaded: {}", results.ErrorMessage());
       return false;
     }
     for (auto row : results) {

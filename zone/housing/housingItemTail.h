@@ -3,9 +3,12 @@
 
 #include "../../common/itemHousingTail.h"
 
+#include <set>
+
 namespace housing {
   bool loadItemHousingTails();
   const EQ::ItemHousingTail *itemHousingTail(uint32 itemId);
+  std::set<uint32> npcItemIds();
 }
 
 #endif
