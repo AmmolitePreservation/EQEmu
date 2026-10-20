@@ -1239,7 +1239,10 @@ bool Zone::Init(bool is_static) {
 
 	guild_mgr.LoadGuilds();
 
-	housing::onZoneBoot();
+	if (!housing::onZoneBoot()) {
+		LogError("Player housing failed to load; the zone does not boot");
+		return false;
+	}
 
 	LogInfo("Zone booted successfully zone_id [{}] time_offset [{}]", zoneid, zone_time.getEQTimeZone());
 

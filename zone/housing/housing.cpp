@@ -10,22 +10,32 @@
 #include "../../common/eqemu_logsys.h"
 #include "../../common/rulesys.h"
 #include "../../common/strings.h"
+#include "../../common/zone_store.h"
 #include "../client.h"
+#include "../entity.h"
 #include "../zone.h"
 #include "../zonedb.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <unordered_map>
 
+extern EntityList entity_list;
 extern Zone *zone;
 
 namespace housing {
   namespace {
+    constexpr int maximumDepth = 10;
+
     std::unordered_map<Client *, Session> sessions;
     bool catalogReady = false;
 
-    bool servesClient(Client *client) {
-      return housingActive() && client && client->ClientVersion() == EQ::versions::ClientVersion::RoF2;
+    bool isRoF2(Client *client) {
+      return client->ClientVersion() == EQ::versions::ClientVersion::RoF2;
+    }
+
+    bool isAnyType(DefinitionType type, std::initializer_list<DefinitionType> types) {
+      return std::find(types.begin(), types.end(), type) != types.end();
     }
 
     std::set<uint32> carriedPropertyIds(uint32 characterId) {
@@ -33,8 +43,11 @@ namespace housing {
       auto rows = database.QueryDatabase(fmt::format(
         "SELECT custom_data FROM inventory WHERE character_id = {} AND custom_data LIKE '%{}^%'", characterId, propertyItemKey
       ));
+      if (!rows.Success()) {
+        throw std::runtime_error(fmt::format("the carried properties of character [{}] could not be read: {}", characterId, rows.ErrorMessage()));
+      }
       for (auto row : rows) {
-        const uint32 propertyId = carriedPropertyId(row[0] ? row[0] : "");
+        const uint32 propertyId = carriedPropertyId(row[0]);
         if (propertyId) {
           ids.insert(propertyId);
         }
@@ -42,7 +55,7 @@ namespace housing {
       return ids;
     }
 
-    void addTrees(std::map<uint32, Property> &properties) {
+    void addTrees(std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
       std::set<uint32> requested;
       while (true) {
         std::set<uint32> missing;
@@ -61,7 +74,7 @@ namespace housing {
       }
       for (uint32 id : requested) {
         if (!properties.count(id)) {
-          LogError("Housing: a property names parent [{}], which does not exist", id);
+          problems.push_back(fmt::format("a property names parent [{}], which does not exist", id));
         }
       }
       std::set<uint32> frontier;
@@ -80,163 +93,262 @@ namespace housing {
       }
     }
 
-    int depthOf(const Property &property, const std::map<uint32, Property> &properties) {
-      int depth = 0;
-      for (uint32 parent = property.parent_id; parent && depth < 32; depth++) {
-        auto found = properties.find(parent);
-        parent = found == properties.end() ? 0 : found->second.parent_id;
+    std::vector<const Property *> ancestry(const Property &property, const std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
+      std::vector<const Property *> chain{&property};
+      while (chain.back()->parent_id) {
+        if (chain.size() > maximumDepth) {
+          problems.push_back(fmt::format("property [{}] has an ancestor chain deeper than [{}]", property.id, maximumDepth));
+          return {};
+        }
+        auto parent = properties.find(chain.back()->parent_id);
+        if (parent == properties.end()) {
+          return {};
+        }
+        chain.push_back(&parent->second);
       }
-      return depth;
+      return chain;
     }
 
-    uint32 currentPropertyFor(const std::vector<Property> &hosted, const std::vector<Property> &interior) {
-      if (!interior.empty()) {
-        return interior.front().id;
+    std::string composedName(const Property &property, const std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
+      std::vector<std::string> parts;
+      const auto chain = ancestry(property, properties, problems);
+      for (auto link = chain.rbegin(); link != chain.rend(); ++link) {
+        const Property &current = **link;
+        const Definition *definition = catalog().definition(current.definition_id);
+        if (!definition) {
+          return {};
+        }
+        switch (static_cast<DefinitionType>(definition->row.type)) {
+          case DefinitionType::regularZone: {
+            const char *longName = ZoneLongName(current.host_zone_id);
+            if (!longName) {
+              problems.push_back(fmt::format("zone root [{}] names host zone [{}], which has no zone row", current.id, current.host_zone_id));
+              return {};
+            }
+            parts.push_back(longName);
+            break;
+          }
+          case DefinitionType::neighborhood:
+            if (current.name.empty()) {
+              problems.push_back(fmt::format("neighborhood [{}] has no name", current.id));
+              return {};
+            }
+            parts = {current.name};
+            break;
+          case DefinitionType::plot:
+          case DefinitionType::guildPlot:
+            parts.push_back(definition->row.address);
+            break;
+          case DefinitionType::guildHall:
+          case DefinitionType::playerHouse:
+          case DefinitionType::movingCrate:
+            parts.push_back(definition->row.name_segment);
+            break;
+          default:
+            problems.push_back(fmt::format("property [{}] is of definition type [{}], which has no name rule", current.id, definition->row.type));
+            return {};
+        }
       }
+      return Strings::Join(parts, ", ");
+    }
+
+    uint32 upkeepOptionKey(const Property &property, std::vector<std::string> &problems) {
+      const Definition *definition = catalog().definition(property.definition_id);
+      if (!definition || !definition->row.upkeep_definition_id) {
+        return 0;
+      }
+      const CostOption *option = catalog().option(definition->row.upkeep_definition_id, property.upkeep_currency);
+      if (!option) {
+        problems.push_back(fmt::format("property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer",
+          property.id, property.upkeep_currency, definition->row.upkeep_definition_id));
+        return 0;
+      }
+      return option->key;
+    }
+
+    uint32 currentPropertyFor(const std::vector<Property> &hosted, std::vector<std::string> &problems) {
       std::set<uint32> hostedIds;
       for (const auto &property : hosted) {
         hostedIds.insert(property.id);
       }
+      std::vector<std::string> roots;
+      std::set<uint32> areas;
       for (const auto &property : hosted) {
-        if (!property.parent_id || !hostedIds.count(property.parent_id)) {
-          const DefinitionType type = typeOf(property);
-          if (type == DefinitionType::neighborhood || type == DefinitionType::town || type == DefinitionType::regularZone) {
-            return property.id;
+        const DefinitionType type = typeOf(property);
+        if (isAnyType(type, {DefinitionType::regularZone, DefinitionType::neighborhood, DefinitionType::town}) && !hostedIds.count(property.parent_id)) {
+          roots.push_back(std::to_string(property.id));
+        }
+        if (isAnyType(type, {DefinitionType::plot, DefinitionType::guildPlot})) {
+          const uint32 area = catalog().definition(property.definition_id)->row.area_id;
+          if (area && !areas.insert(area).second) {
+            problems.push_back(fmt::format("two plots hosted here own region [{}]", area));
           }
         }
       }
-      return 0;
+      if (roots.size() > 1) {
+        problems.push_back(fmt::format("this zone hosts [{}] root properties ({}); one is allowed", roots.size(), Strings::Join(roots, ", ")));
+      }
+      return roots.empty() ? 0 : Strings::ToUnsignedInt(roots.front());
     }
 
-    void sendZoneIn(Client *client, Session &state) {
-      sendMessage(client, OP_RealEstateDefinitions, catalog().message());
-
-      const auto hosted = propertiesHostedAt(zone->GetZoneID(), zone->GetInstanceID());
-      const auto interior = propertiesWithInterior(zone->GetInstanceID());
-      const auto owned = propertiesOwnedBy(client->CharacterID());
-      std::vector<Property> carried;
-      for (auto &property : propertiesById(carriedPropertyIds(client->CharacterID()))) {
-        if (property.contained_in_item) {
-          carried.push_back(property);
-        }
-      }
-
-      const std::vector<const std::vector<Property> *> groups = {&hosted, &interior, &owned, &carried};
-      state.properties.clear();
-      for (const auto *group : groups) {
-        for (const auto &property : *group) {
-          state.properties[property.id] = property;
-        }
-      }
-      addTrees(state.properties);
-
+    std::map<uint32, RecordFields> recordFieldsFor(const std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
       std::set<uint32> ids;
       std::set<uint32> owners;
       std::map<uint32, std::vector<uint32>> children;
-      for (const auto &[id, property] : state.properties) {
+      for (const auto &[id, property] : properties) {
         ids.insert(id);
         owners.insert(property.owner_character_id);
         if (property.parent_id) {
           children[property.parent_id].push_back(id);
         }
       }
-      const auto names = characterNames(owners);
-      const auto money = balances(ids);
+      const auto identities = characterIdentities(owners);
+      auto money = balances(ids);
+      std::map<uint32, RecordFields> fields;
+      for (const auto &[id, property] : properties) {
+        const CharacterIdentity *owner = nullptr;
+        if (property.owner_character_id) {
+          auto found = identities.find(property.owner_character_id);
+          if (found == identities.end()) {
+            problems.push_back(fmt::format("property [{}] is owned by character [{}], which does not exist", id, property.owner_character_id));
+            continue;
+          }
+          owner = &found->second;
+        }
+        fields[id] = RecordFields{
+          typeOf(property) == DefinitionType::plot && !property.owner_character_id,
+          activeGuildId(property),
+          owner,
+          composedName(property, properties, problems),
+          children[id],
+          money[id],
+          upkeepOptionKey(property, problems)
+        };
+      }
+      return fields;
+    }
+
+    void sendZoneContents(Client *client) {
+      sessions.erase(client);
+      if (!housingActive()) {
+        return;
+      }
+      Session state;
+      std::vector<std::string> problems;
+      std::map<uint32, RecordFields> fields;
+      try {
+        const auto hosted = propertiesHostedAt(zone->GetZoneID(), zone->GetInstanceID());
+        const auto owned = propertiesOwnedBy(client->CharacterID());
+        const auto carried = propertiesById(carriedPropertyIds(client->CharacterID()));
+        for (const auto &property : hosted) {
+          state.hostedIds.insert(property.id);
+          state.properties[property.id] = property;
+        }
+        for (const auto &property : owned) {
+          state.ownedIds.push_back(property.id);
+          state.properties[property.id] = property;
+        }
+        for (const auto &property : carried) {
+          if (!property.contained_in_item) {
+            problems.push_back(fmt::format("an item the character carries names property [{}], which is not in an item", property.id));
+            continue;
+          }
+          state.carriedIds.push_back(property.id);
+          state.properties[property.id] = property;
+        }
+        addTrees(state.properties, problems);
+        for (const auto &[id, property] : state.properties) {
+          if (!catalog().definition(property.definition_id)) {
+            problems.push_back(fmt::format("property [{}] names unknown definition [{}]", id, property.definition_id));
+          }
+        }
+        if (problems.empty()) {
+          state.currentPropertyId = currentPropertyFor(hosted, problems);
+          fields = recordFieldsFor(state.properties, problems);
+        }
+      }
+      catch (const std::exception &error) {
+        problems.push_back(error.what());
+      }
+      if (!problems.empty()) {
+        for (const auto &problem : problems) {
+          LogError("Housing: zone-in for [{}]: {}", client->GetCleanName(), problem);
+        }
+        LogError("Housing: no housing data is sent to [{}] in this zone", client->GetCleanName());
+        return;
+      }
+
+      std::map<uint32, size_t> depths;
       std::vector<const Property *> ordered;
       for (const auto &[id, property] : state.properties) {
+        depths[id] = ancestry(property, state.properties, problems).size();
         ordered.push_back(&property);
       }
       std::stable_sort(ordered.begin(), ordered.end(), [&](const Property *a, const Property *b) {
-        return depthOf(*a, state.properties) < depthOf(*b, state.properties);
+        return depths[a->id] < depths[b->id];
       });
-      auto upkeepOptionKey = [&](const Property &property) -> uint32 {
-        const Definition *definition = catalog().definition(property.definition_id);
-        if (!definition) {
-          LogError("Housing: property [{}] names unknown definition [{}]", property.id, property.definition_id);
-          return 0;
-        }
-        if (!definition->row.upkeep_cost_id) {
-          return 0;
-        }
-        const CostOption *option = catalog().option(definition->row.upkeep_cost_id, property.upkeep_currency);
-        if (!option) {
-          LogError("Housing: property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer", property.id, property.upkeep_currency, definition->row.upkeep_cost_id);
-          return 0;
-        }
-        return option->key;
-      };
-      auto recordOf = [&](const Property &property) {
-        auto name = names.find(property.owner_character_id);
-        auto propertyMoney = money.find(property.id);
-        return propertyRecord(property, activeGuildId(property), children[property.id], name == names.end() ? "" : name->second, propertyMoney == money.end() ? std::vector<Balance>{} : propertyMoney->second, upkeepOptionKey(property));
-      };
+
+      sendMessage(client, OP_RealEstateDefinitions, catalog().message());
       for (const Property *property : ordered) {
-        sendMessage(client, OP_RealEstateProperty, recordOf(*property));
+        sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
       }
-
-      state.currentPropertyId = currentPropertyFor(hosted, interior);
       if (state.currentPropertyId) {
-        sendMessage(client, OP_RealEstateCurrentProperty, recordOf(state.properties.at(state.currentPropertyId)));
+        sendMessage(client, OP_RealEstateCurrentProperty, propertyRecord(state.properties.at(state.currentPropertyId), fields.at(state.currentPropertyId)));
+      }
+      sessions[client] = std::move(state);
+    }
+
+    void sendZoneIn(Client *client) {
+      Session *state = session(client);
+      if (!state) {
+        sendMessage(client, OP_RealEstateRegions, regionList({}));
+        return;
       }
 
-      std::vector<uint32> listA;
       std::vector<uint32> listC;
-      for (const auto &property : owned) {
-        listA.push_back(property.id);
-        if (property.archived) {
-          listC.push_back(property.id);
+      for (uint32 id : state->ownedIds) {
+        if (state->properties.at(id).archived) {
+          listC.push_back(id);
         }
       }
-      std::vector<uint32> listB;
-      for (const auto &property : carried) {
-        listB.push_back(property.id);
-      }
-      sendMessage(client, OP_RealEstateOwnedProperties, propertyIdList(listA));
-      sendMessage(client, OP_RealEstateItemOwnedProperties, propertyIdList(listB));
+      sendMessage(client, OP_RealEstateOwnedProperties, propertyIdList(state->ownedIds));
+      sendMessage(client, OP_RealEstateItemOwnedProperties, propertyIdList(state->carriedIds));
       sendMessage(client, OP_RealEstateArchivedProperties, propertyIdList(listC));
 
-      std::set<uint32> regionIds;
-      for (const auto &property : hosted) {
-        const Definition *definition = catalog().definition(property.definition_id);
-        if (definition && definition->row.region_id) {
-          regionIds.insert(definition->row.region_id);
-        }
-      }
       std::vector<RealEstateRegionsRepository::RealEstateRegions> regions;
-      for (uint32 id : regionIds) {
-        regions.push_back(*catalog().region(id));
+      for (uint32 id : state->hostedIds) {
+        const uint32 area = catalog().definition(state->properties.at(id).definition_id)->row.area_id;
+        if (area) {
+          regions.push_back(*catalog().region(area));
+        }
       }
       sendMessage(client, OP_RealEstateRegions, regionList(regions));
 
-      std::set<uint32> itemHolders;
-      for (const auto *group : groups) {
-        for (const auto &property : *group) {
-          itemHolders.insert(property.id);
-        }
-      }
+      std::set<uint32> itemHolders(state->hostedIds);
+      itemHolders.insert(state->ownedIds.begin(), state->ownedIds.end());
+      itemHolders.insert(state->carriedIds.begin(), state->carriedIds.end());
       const auto items = itemsOf(itemHolders);
       std::set<uint32> itemOwners;
       for (const auto &item : items) {
         itemOwners.insert(item.owner_character_id);
       }
-      const auto itemOwnerNames = characterNames(itemOwners);
+      const auto itemOwnerIdentities = characterIdentities(itemOwners);
       for (uint32 id : itemHolders) {
-        sendMessage(client, OP_RealEstateItemList, itemList(id, items, itemOwnerNames));
+        sendMessage(client, OP_RealEstateItemList, itemList(id, items, itemOwnerIdentities));
       }
 
-      std::set<uint32> plots;
-      for (const auto &[id, property] : state.properties) {
-        const DefinitionType type = typeOf(property);
-        if (type == DefinitionType::plot || type == DefinitionType::guildPlot) {
-          plots.insert(id);
+      std::set<uint32> listHolders;
+      for (const auto &[id, property] : state->properties) {
+        if (isAnyType(typeOf(property), {DefinitionType::plot, DefinitionType::guildPlot, DefinitionType::neighborhood, DefinitionType::guildHall})) {
+          listHolders.insert(id);
         }
       }
-      state.accessLists = accessLists(plots);
-      for (const auto &[id, list] : state.accessLists) {
+      state->accessLists = accessLists(listHolders);
+      for (const auto &[id, list] : state->accessLists) {
         sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
       }
       LogHousing("Zone-in for [{}]: [{}] properties, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
-        client->GetCleanName(), state.properties.size(), state.currentPropertyId, regions.size(), itemHolders.size(), state.accessLists.size());
+        client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
     }
   }
 
@@ -260,13 +372,13 @@ namespace housing {
 
   bool reloadCatalog() {
     catalogReady = catalog().load();
-    if (!catalogReady) {
-      return false;
+    for (const auto &[id, client] : entity_list.GetClientList()) {
+      if (isRoF2(client)) {
+        sendZoneContents(client);
+        sendZoneIn(client);
+      }
     }
-    for (auto &[client, state] : sessions) {
-      sendZoneIn(client, state);
-    }
-    return true;
+    return catalogReady;
   }
 
   Session *session(Client *client) {
@@ -274,22 +386,28 @@ namespace housing {
     return found == sessions.end() ? nullptr : &found->second;
   }
 
-  void onZoneBoot() {
+  bool onZoneBoot() {
+    if (!loadItemHousingTails()) {
+      return false;
+    }
     if (!RuleB(Housing, EnableHousing)) {
       LogHousing("Player housing is disabled by rule Housing:EnableHousing");
-      return;
+      return true;
     }
-    loadItemHousingTails();
     catalogReady = catalog().load();
+    return true;
+  }
+
+  void onZoneContents(Client *client) {
+    if (isRoF2(client)) {
+      sendZoneContents(client);
+    }
   }
 
   void onZoneIn(Client *client) {
-    if (!servesClient(client)) {
-      return;
+    if (isRoF2(client)) {
+      sendZoneIn(client);
     }
-    Session &state = sessions[client];
-    state = Session{};
-    sendZoneIn(client, state);
   }
 
   void onDisconnect(Client *client) {
