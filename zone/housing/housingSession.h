@@ -6,12 +6,16 @@
 
 #include <map>
 #include <set>
+#include <vector>
 
 class Client;
 
 namespace housing {
   struct Session {
     uint32 currentPropertyId = 0;
+    std::set<uint32> hostedIds;
+    std::vector<uint32> ownedIds;
+    std::vector<uint32> carriedIds;
     std::map<uint32, Property> properties;
     std::map<uint32, AccessList> accessLists;
     PropertyLookup lookup() const;

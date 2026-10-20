@@ -13,9 +13,10 @@ class Seperator;
 class ServerPacket;
 
 namespace housing {
-  void onZoneBoot();
+  bool onZoneBoot();
   void process();
   void handlePacket(Client *client, const EQApplicationPacket *app);
+  void onZoneContents(Client *client);
   void onZoneIn(Client *client);
   void onDisconnect(Client *client);
   void handleServerPacket(ServerPacket *pack);
