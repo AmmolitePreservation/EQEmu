@@ -24,6 +24,8 @@ The client evaluates real-estate permissions itself to decide control states (fo
 
 **Every client call of the permission check** (`0x4ff6c0`, 32 sites, the permission pushed as a constant): 3, 5, 8 in the stored-item rules (`0x5b72c0`); 4, 6, 9 in the placement rules (`0x5b6b90`) and the Items window (`0x73ab10`, `0x73bc50`, `0x73bec0`); 5 and 6 together (`0x5b6eb0`); 2 and 3 (`0x5b7fa0`); 10 alone (`0x5b71a0`); 11 alone (`0x5b75f0`); 12 in the Manage and Purchase windows; and 3-10, any of them (`0x4ff730`). Permissions 0, 1 and 7 are never checked by the client.
 
+**The server checks every permission itself** (Live's menus, ACC-3 and ACC-4): Enter (1) for the Enter entry and entering an interior, and an edit that takes it away moves anyone inside to the plot's exit point; Receive Buffs (0) on a guild hall's regeneration pool aura; Withdraw Upkeep (2) on `0x2aa6` withdrawals; Remove Crate (3) on a crate's Move to Inventory; Mail Item (7) on Mail to Owner; Move Item (10) on Adjust Placement, Place and Move to Storage; Interact Item (11) on a guild service's Transact for anyone outside the owning guild (its members always get it); Manage (12) on `0x3146`; and the placement rules' add and remove bits.
+
 **Groups** (`REMW_Groups_Combobox` choices; the 7 masks): **0 Everyone, 1 Visitor, 2 Acquaintance, 3 Friend, 4 Trustee, 5 Co-Owner, 6 Owner**. A person or club can be assigned groups 1–5 (`REMW_Access_Combobox`: Visitor … Co-Owner); Everyone is implicit and Owner is the owner.
 
 **Clubs:** the owner's **fellowship** and **guild ranks** are stored in the same name → group list under reserved keys: **`_Fellowship`** and **`_Guild<rank>`** (one entry per guild rank; `0x4fef40`, `0x4feff0`). A character's group on a property (`0x4ff250`) uses their name and character **`+0x204c`** (guild id), **`+0x2054`** (**fellowship id**) and **`+0x205c`** (**guild rank**); see *Group computation*.
@@ -35,7 +37,7 @@ The client evaluates real-estate permissions itself to decide control states (fo
 Gathers from the character:
 - name (profile `+0x44`)
 - guild id (`+0x204c`)
-- `+0x2054` and `+0x205c` (unknown)
+- `+0x2054` (fellowship id) and `+0x205c` (guild rank)
 - **expansion flags** (character virtual `+0x5c`, the same source as Q1)
 
 Then calls `0x4ff570`. Returns false if the record or character is null.
@@ -84,7 +86,7 @@ count × { string name, u32 group }            name -> group; names include indi
 
 **Send the group number (0-6) in the first u32 of each pair and the mask in the second.** A server that treats the pair as one 64-bit mask with the permission bits in the first u32 makes every permission read as denied.
 
-**Client defaults** (`0x5b5830` applies them to every new list before the server's list is read over it; `0x5b3d50(group, permission)`), a sane starting point for the server:
+**Client defaults** (`0x5b5830` applies them to every new list before the server's list is read over it; `0x5b3d50(group, permission)`). They are also **Live's own defaults for a new player plot** (7,962 of 7,993 captured lists), which the server writes at purchase (`Housing:DefaultAccess*`):
 
 | Group | Mask | Permissions |
 |---|---|---|
@@ -96,15 +98,19 @@ count × { string name, u32 group }            name -> group; names include indi
 | 5 Co-Owner | `0x1fff` | all thirteen |
 | 6 Owner | `0x0000` | none (the owner is recognized before the list is consulted) |
 
+**A new guild plot's list differs** (Live, ACC-1): masks `0x0000`, `0x0003`, `0x0803`, `0x0e03`, `0x1f87`, `0x1f87`, `0x0000` from Everyone up (Everyone may not enter, and Co-Owner matches Trustee), plus an entry for each rank but Leader: `_Guild2` group 5, `_Guild3` 4, `_Guild4` to `_Guild6` 3, `_Guild7` and `_Guild8` 2.
+
 | Opcode | Payload | Effect | Evidence |
 |---|---|---|---|
 | **`0x485d`** | `u32 propertyID`, then the access list | **Set or replace** the property's access list (`0x5b7de0` → manager map `+0x54`); the Manage window refreshes before (`0x747ed0`) and after (`0x7465c0`) | case `0x5b2abd` |
 | **`0x3146`** (client → server) | `u32 propertyID`, then that property's full access list (serializer `0x749420`) | **Set the access list**: the Manage window queues the plot id on every local edit to map `+0x54` (`0x5b0b10` set a name's/club's group, `0x5b0bb0` remove an entry, `0x5b0ad0` set a group's permission bit) and flushes the queue every 3 s (`0x747ed0`); the `0x485d` handler flushes it first | Manage `0x747ed0` |
 | **`0x3968`** | `u32 propertyID`, an access list (parsed into a temporary and discarded), then `u32` | **Remove** the property's access list (`0x5b78d0`); Manage window refresh `0x7465f0`. The trailing u32 goes to `0x5b59a0` when global `[0xdcee30]` is 0 (not understood). | case `0x5b28eb` |
 
-**Test preconditions this implies:** the character's expansion flags must include `0x10000` for any real-estate permission, and `0x20000` for guild plots. Non-owners need an access list entry: the server sends it with `0x485d` (and receives edits as `0x3146`).
+**Test preconditions this implies:** the character's expansion flags must include `0x10000` for any real-estate permission, and `0x20000` for guild plots. Non-owners need the property's access list (with no list the evaluator denies): the server sends it with `0x485d` (and receives edits as `0x3146`) for plots, guild plots, neighborhoods and guild halls (none for houses); the client evaluates a house, hall or crate by its plot's list.
 
 **Group computation** (`0x4ff250(record, name, guild id, guild rank, fellowship id)`; callers pass character `+0x204c`, `+0x205c`, `+0x2054`): a house or crate uses its plot's record (`0x4d6790`); on a **player plot**, the owner's name -> **6 (Owner)**; on a **guild plot**, a character in the plot's guild (record `+0x24`) **with guild rank 1 -> 6 (Owner)**. Otherwise the plot's access list (map `+0x54`, by record `+0x14`) gives the **highest** of: the **name** entry (`0x4ff130`, map lookup `0x5b9eb0`); **`"_Fellowship"`** if the character's fellowship id (`+0x2054`) equals **record `+0x28` (the owner's fellowship id)**; **`"_Guild<rank>"`** if the character's guild (`+0x204c`) equals **record `+0x24`**. The reserved keys are built by `0x4fef40` (`"%c%s"`: `_Fellowship`) and `0x4feff0` (`"%c%s%d"`: `_Guild` + the guild rank).
+
+**The server picks the group the same way: the most permissive matching entry wins**, and a matching entry replaces Everyone rather than adding to it (Live). An explicit deny would beat any match (owner's decision); Live's lists hold none, since a name or club can only be assigned Visitor to Co-Owner. EQEmu has no fellowships, so the owner's fellowship id goes out as 0 and `_Fellowship` entries never match.
 
 ## Guild rank permissions and account membership (Q9, Q21, Q22)
 
@@ -139,6 +145,6 @@ The client's guild name table gives the rank names and the permission names; **p
 | 14 | Bank: Withdraw Items | 30 | Members: Demote Self |
 | 15 | Bank: View Items | | |
 
-**A server-only rule:** string 5426 ("…your guild only has %1 members. In order to purchase a guild plot, your guild must have at least %2 members.") is never shown by client code, so Live enforced a **minimum guild size for guild plots** on the server.
+**A server-only rule:** string 5426 ("…your guild only has %1 members. In order to purchase a guild plot, your guild must have at least %2 members.") is never shown by client code, so Live enforced a **minimum guild size for guild plots** on the server. Peridot enforces it with `Housing:GuildPlotMinimumMembers` (10, Veil of Alaris' launch value).
 
 **The ancestor walk** (`0x4d6790(record, mask, skip)`) tests each property's definition type against `mask` through **`0x7f5e30`, verified entry by entry: type `n` → bit `1 << (n - 1)`** (1 Regular Zone 0x1 ... 4 Plot 0x8, 5 Neighborhood 0x10, 7 Moving Crate 0x40, 8 Guild Plot 0x80); `skip` levels are passed before testing (1 = start at the parent), and it gives up after 10 levels.
