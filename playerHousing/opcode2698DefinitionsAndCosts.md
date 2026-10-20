@@ -113,6 +113,6 @@ On construction (`0x5b21e0`), `RealEstateManagerClient` tries to read `RealEstat
 - **Definitions and costs:** fully replaced by `0x2698`.
 - **Item groups** (`(int key, int group, bool flag)` rows): **the client never reads them.** The item-groups class has only a constructor, file loader, insert, clear, and destructor, with no lookup. The only read of its pointer (manager `+0x7c`) is the destructor, and none of the 194 singleton call sites touch it. It's server-side data that happens to be linked into the client.
 
-## Still open
+## When the server sends it
 
-- When the server should send `0x2698`: on zone-in, or on the first real-estate window open. Decide once the request flows are decoded.
+At zone-in in every zone with housing, first in the sequence and before `OP_WorldObjectsSent` (`serverPlan.md`, the zone-in sequence); RoF2 keeps definitions and costs across zoning.

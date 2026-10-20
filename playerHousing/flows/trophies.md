@@ -32,4 +32,4 @@ A character places trophies in their plot or house; each trophy offers a **troph
 
 ## 7. Server obligations
 
-See `../trophyTribute.md`, *Server obligations*.
+See `../trophyTribute.md`, *Server obligations*. **Trophies are the build's last step**, outside the first build: until then the trophy opcodes are unregistered (logged as unhandled), trophy items place as ordinary items with no benefit, and the guild opt-in, when it comes, is accepted from a member anywhere.

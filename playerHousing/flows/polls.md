@@ -22,6 +22,7 @@ The server runs polls: **question polls** (single or multiple choice) and **prop
 
 | Step | Direction | Message | Notes |
 |---|---|---|---|
+| 0 | C -> S | a bare `0x15e2` | after a UI reload |
 | 1 | S -> C | `0x6860`, `0x15e2`, `0x7497`, `0x52b5`, `0x593a` | labels, polls, eligibility, votes, availability; the client may pop the Vote window once for polls with the "prompt" flag the player hasn't voted on |
 | 2 | (client) | open the Vote window | Purchase window **Vote** (property polls, key = the plot), Polls **Open Polls** (question polls), a "pollid=" chat link, or server `0x7a4d` |
 | 3 | C -> S | **`0x15a8`** on every click | poll id, the clicked key, selected byte, all ticked keys |
@@ -31,4 +32,4 @@ The server runs polls: **question polls** (single or multiple choice) and **prop
 
 ## 7. Server obligations
 
-Send the labels (`0x6860`) for every option key; keep sets A/B, votes and results current; **validate `0x15a8`** (the poll is Open, the player is in set A, the key belongs to the poll (or, for property polls, is a valid plot), at most record `+0x34` choices); answer with `0x52b5`; for property polls, use property ids as option/result keys and the property's name as the result text; handle `0x499a` by moving the player to that property.
+Answer the bare `0x15e2` request with the five lists; send the labels (`0x6860`) for every option key; keep sets A/B, votes and results current; **validate `0x15a8`** (the poll is Open, the player is in set A, the key belongs to the poll (or, for property polls, is a valid plot), at most record `+0x34` choices); answer with `0x52b5`; for property polls, use property ids as option/result keys and the property's name as the result text; handle `0x499a` by moving the player to that property. Live runs no polls, so Peridot runs none by default; they are created with `#realestate poll` or content SQL.
