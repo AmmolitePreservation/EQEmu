@@ -1,5 +1,7 @@
 #include "housingCatalog.h"
 
+#include "housingItemTail.h"
+
 #include "../../common/eqemu_logsys.h"
 #include "../../common/rulesys.h"
 #include "../../common/repositories/alternate_currency_repository.h"
@@ -7,12 +9,24 @@
 #include "../../common/repositories/real_estate_cost_options_repository.h"
 #include "../../common/repositories/real_estate_costs_repository.h"
 #include "../../common/repositories/real_estate_definition_children_repository.h"
+#include "../../common/repositories/real_estate_npc_items_repository.h"
 #include "../zonedb.h"
 
 #include <algorithm>
 #include <set>
 
 namespace housing {
+  namespace {
+    bool isType(uint8 type, std::initializer_list<DefinitionType> types) {
+      for (DefinitionType candidate : types) {
+        if (type == static_cast<uint8>(candidate)) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
   Catalog &catalog() {
     static Catalog instance;
     return instance;
@@ -22,6 +36,7 @@ namespace housing {
     definitions.clear();
     costs.clear();
     regions.clear();
+    templates.clear();
     loaded = false;
     std::vector<std::string> problems;
 
@@ -30,6 +45,12 @@ namespace housing {
     }
     for (const auto &row : RealEstateRegionsRepository::All(content_db)) {
       regions[row.id] = row;
+      if (row.id >= propertyIdFloor) {
+        problems.push_back(fmt::format("region [{}] is not below the property id floor [{}]", row.id, propertyIdFloor));
+      }
+    }
+    for (const auto &row : RealEstateZoneTemplatesRepository::All(content_db)) {
+      templates[row.dz_id] = row;
     }
     for (const auto &row : RealEstateCostsRepository::All(content_db)) {
       costs[row.id].id = row.id;
@@ -90,6 +111,10 @@ namespace housing {
         if (item.currency == 0 && item.sub_key != 0) {
           problems.push_back(fmt::format("cost [{}] option [{}] pays in coin with sub key [{}]", id, option.key, item.sub_key));
         }
+        // The client matches an alternate currency cost item by currency and sub key 1 (0x7f7e70), the sub key EQEmu sends.
+        if (item.currency != 0 && item.sub_key != 1) {
+          problems.push_back(fmt::format("cost [{}] option [{}] pays in currency [{}] with sub key [{}], not 1", id, option.key, item.currency, item.sub_key));
+        }
         if (item.currency != 0 && !alternateCurrencies.count(static_cast<int32>(item.currency))) {
           problems.push_back(fmt::format("cost [{}] option [{}] pays in currency [{}], which is not in alternate_currency", id, option.key, item.currency));
         }
@@ -99,6 +124,7 @@ namespace housing {
       }
     }
 
+    std::set<uint32> childrenOfZoneRoots;
     for (const auto &row : RealEstateDefinitionChildrenRepository::All(content_db)) {
       auto parent = definitions.find(row.parent_id);
       if (parent == definitions.end() || !definitions.count(row.child_id)) {
@@ -106,17 +132,60 @@ namespace housing {
         continue;
       }
       parent->second.children.push_back(row.child_id);
+      if (parent->second.row.type == static_cast<uint8>(DefinitionType::regularZone)) {
+        childrenOfZoneRoots.insert(row.child_id);
+      }
     }
 
     for (const auto &[id, entry] : definitions) {
       const auto &row = entry.row;
-      if (row.region_id && !regions.count(row.region_id)) {
-        problems.push_back(fmt::format("definition [{}] region [{}] does not exist", id, row.region_id));
-      }
-      if (row.type > static_cast<uint8>(DefinitionType::guildPlot)) {
+      if (row.type < static_cast<uint8>(DefinitionType::regularZone) || row.type > static_cast<uint8>(DefinitionType::guildPlot)) {
         problems.push_back(fmt::format("definition [{}] has unknown type [{}]", id, row.type));
+        continue;
       }
-      for (const auto &[use, costId] : {std::pair<const char *, uint32>{"purchase", row.purchase_cost_id}, {"upkeep", row.upkeep_cost_id}}) {
+      const bool yard = isType(row.type, {DefinitionType::plot, DefinitionType::guildPlot});
+      if (row.area_id && !yard) {
+        problems.push_back(fmt::format("definition [{}] of type [{}] has area [{}]; only plots and guild plots own a region", id, row.type, row.area_id));
+      }
+      if (row.area_id && !regions.count(row.area_id)) {
+        problems.push_back(fmt::format("definition [{}] area [{}] does not exist", id, row.area_id));
+      }
+      if (yard && row.address.empty()) {
+        problems.push_back(fmt::format("definition [{}] is a plot with no address to name its properties", id));
+      }
+      if (isType(row.type, {DefinitionType::guildHall, DefinitionType::playerHouse, DefinitionType::movingCrate}) && row.name_segment.empty()) {
+        problems.push_back(fmt::format("definition [{}] of type [{}] has no name segment to name its properties", id, row.type));
+      }
+      const bool exitSet = row.exit_zone_id || row.exit_zone_version || row.exit_x || row.exit_y || row.exit_z || row.exit_heading;
+      if (yard && !row.exit_zone_id) {
+        problems.push_back(fmt::format("definition [{}] is a plot with no exit zone", id));
+      }
+      if (!yard && exitSet) {
+        problems.push_back(fmt::format("definition [{}] of type [{}] has an exit point; only plots and guild plots do", id, row.type));
+      }
+      // The client takes the first ancestor with a nonzero dz_id as the zone's (0x5b46e0), which gates Locate (0x5b0cc0).
+      if (isType(row.type, {DefinitionType::guildHall, DefinitionType::playerHouse})) {
+        if (!row.dz_id) {
+          problems.push_back(fmt::format("definition [{}] of type [{}] has no dz_id", id, row.type));
+        }
+        else if (!templates.count(row.dz_id)) {
+          problems.push_back(fmt::format("definition [{}] dz_id [{}] has no zone template", id, row.dz_id));
+        }
+      }
+      else if (row.type == static_cast<uint8>(DefinitionType::neighborhood) && childrenOfZoneRoots.count(id)) {
+        if (row.dz_id) {
+          problems.push_back(fmt::format("definition [{}] is a neighborhood under a zone root with dz_id [{}]; it must be 0", id, row.dz_id));
+        }
+      }
+      else if (isType(row.type, {DefinitionType::regularZone, DefinitionType::neighborhood})) {
+        if (!row.dz_id) {
+          problems.push_back(fmt::format("definition [{}] of type [{}] has no dz_id", id, row.type));
+        }
+      }
+      else if (row.dz_id) {
+        problems.push_back(fmt::format("definition [{}] of type [{}] has dz_id [{}]; it must be 0", id, row.type, row.dz_id));
+      }
+      for (const auto &[use, costId] : {std::pair<const char *, uint32>{"purchase", row.cost_definition_id}, {"upkeep", row.upkeep_definition_id}}) {
         if (!costId) {
           continue;
         }
@@ -130,21 +199,30 @@ namespace housing {
       }
     }
 
-    const int maxHousesOverride = RuleI(Housing, MaxHousesOverride);
-    const int maxHousesAdditive = RuleI(Housing, MaxHousesAdditive);
-    if (maxHousesOverride < -1) {
-      problems.push_back(fmt::format("Housing:MaxHousesOverride [{}] must be -1 (off) or a count", maxHousesOverride));
+    std::set<uint32> boundNpcItems;
+    for (const auto &row : RealEstateNpcItemsRepository::All(content_db)) {
+      boundNpcItems.insert(row.item_id);
+    }
+    for (uint32 itemId : npcItemIds()) {
+      if (!boundNpcItems.count(itemId)) {
+        problems.push_back(fmt::format("NPC item [{}] has no real_estate_npc_items row naming the NPC it spawns", itemId));
+      }
+    }
+
+    const int maxChildrenOverride = RuleI(Housing, MaxHousesOverride);
+    const int maxChildrenAdditive = RuleI(Housing, MaxHousesAdditive);
+    if (maxChildrenOverride < -1) {
+      problems.push_back(fmt::format("Housing:MaxHousesOverride [{}] must be -1 (off) or a count", maxChildrenOverride));
     }
     for (auto &[id, entry] : definitions) {
-      const bool yard = entry.row.type == static_cast<uint8>(DefinitionType::plot) || entry.row.type == static_cast<uint8>(DefinitionType::guildPlot);
-      if (!yard) {
-        entry.maxHouses = entry.row.max_houses;
+      if (!isType(entry.row.type, {DefinitionType::plot, DefinitionType::guildPlot})) {
+        entry.maxChildren = entry.row.max_children;
       }
-      else if (maxHousesOverride >= 0) {
-        entry.maxHouses = static_cast<uint32>(maxHousesOverride);
+      else if (maxChildrenOverride >= 0) {
+        entry.maxChildren = static_cast<uint32>(maxChildrenOverride);
       }
       else {
-        entry.maxHouses = static_cast<uint32>(std::max<int64_t>(0, static_cast<int64_t>(entry.row.max_houses) + maxHousesAdditive));
+        entry.maxChildren = static_cast<uint32>(std::max<int64_t>(0, static_cast<int64_t>(entry.row.max_children) + maxChildrenAdditive));
       }
     }
 
@@ -153,8 +231,8 @@ namespace housing {
     }
     lastProblems = problems;
     loaded = problems.empty();
-    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs with [{}] of [{}] options enabled, [{}] regions", loaded ? "valid" : "INVALID, housing disabled in this zone",
-      definitions.size(), costs.size(), optionCount, storedOptions.size(), regions.size());
+    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs with [{}] of [{}] options enabled, [{}] regions, [{}] zone templates",
+      loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), optionCount, storedOptions.size(), regions.size(), templates.size());
     return loaded;
   }
 
@@ -186,29 +264,34 @@ namespace housing {
     return found == regions.end() ? nullptr : &found->second;
   }
 
+  const ZoneTemplate *Catalog::zoneTemplate(uint32 dzId) const {
+    auto found = templates.find(dzId);
+    return found == templates.end() ? nullptr : &found->second;
+  }
+
   WireWriter Catalog::message() const {
     WireWriter message;
     message.u32(static_cast<uint32>(definitions.size()));
     for (const auto &[id, entry] : definitions) {
       const auto &row = entry.row;
       message.u32(row.id)
-        .u32(row.region_id)
-        .u32(row.purchase_cost_id)
-        .u32(row.upkeep_cost_id)
+        .u32(row.area_id)
+        .u32(row.cost_definition_id)
+        .u32(row.upkeep_definition_id)
         .u32(row.max_items)
         .u32(row.max_non_real_estate_items)
-        .u32(entry.maxHouses)
+        .u32(entry.maxChildren)
         .u32(row.zone_id)
         .u32(row.dz_id)
         .u32(row.type)
-        .u32(row.category)
+        .u32(row.placement_group_id)
         .lengthString(row.address)
         .u32(row.icon)
-        .u32(row.max_pet_items)
-        .f32(row.layout_origin_x)
-        .f32(row.layout_origin_y)
-        .f32(row.layout_origin_z)
-        .f32(row.layout_heading)
+        .i32(row.max_npc_items)
+        .f32(row.switch_y)
+        .f32(row.switch_x)
+        .f32(row.switch_z)
+        .f32(row.switch_heading)
         .u32(static_cast<uint32>(entry.children.size()));
       for (uint32 child : entry.children) {
         message.u32(child);
