@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 171, liveCheck 13, clientAnalysis 26, peridotTest 38, question 29, done 48; 325 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 174, liveCheck 19, clientAnalysis 27, peridotTest 45, question 29, done 49; 343 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -474,6 +474,8 @@ Questions are in their own section above, the extras items in the section before
   <sub>Sources: chunk2-missed-2 · C2-34 · report:contradiction-30 · XA:DZ11</sub>
 - **BLD-2** `fix` **BLOCKING** **World does not link: chargeDueUpkeep() has no body.** Define chargeDueUpkeep() (declared world/housingUpkeep.cpp:12, called :31 and :38) as the per-property charge (UPK-1) and the expiring pass (UPK-2), never as a stub (Q1). *After:* UPK-1, UPK-2.
   <sub>Sources: C1-67 · G1-16 · report:contradiction-30</sub>
+- **BLD-3** `fix` **handleFindRequest belongs to no build step.** Locate (OP_FindPersonRequest type 3: a path to a placed item, or to an NPC item's spawn) and plot finding (type 4, Plot Search's Go) are housing.h's handleFindRequest, which codeReconciliation.md gives housing.cpp but no step; after step 4 the zone link still lacks it. Assign it to step 5 (the interiors and doors build the same paths) or implement it with the world layer.
+  <sub>Sources: codeReconciliation.md · build step 4</sub>
 
 ### schema (SCH)
 
@@ -644,11 +646,25 @@ Questions: Q19, Q20.
   <sub>Sources: COVERAGE:95 · placementMode.md:284 · placementMode.md:301 · windows/RealEstatePurchaseWnd.md:253 · serverWork:173-q25 · summary:s6-peridot-tests-q25 · report:peridottest-17</sub>
 - **PLC-12** `fix` **Rule 7 (code 0x1e) is a cycle check.** Refuse placing an item that carries a property into that property or any descendant (0x5b6b1e-0x5b6bab: item +0x7c against the destination and its parents via 0x4b3090). Fix windows/RealEstateItemsWnd.md rule 7 and serverPlan.md:383 ('destination inside the current context').
   <sub>Sources: XA:PM19</sub>
-- **PLC-13** `fix` **Server bounds placement where the client doesn't.** With no containing region the final 0x626e pair {house id, 0} makes the whole zone placeable (0x4b2ec1-0x4b2efe; Live 0x1401ed5cc), so the client checks no position in an interior. Validate 0x711a positions against a per-(zone, version) interior bound; Live's own bound is unverified.
+- **PLC-13** `done` **Server bounds placement where the client doesn't.** With no containing region the final 0x626e pair {house id, 0} makes the whole zone placeable (0x4b2ec1-0x4b2efe; Live 0x1401ed5cc), so the client checks no position in an interior. Validate 0x711a positions against a per-(zone, version) interior bound; Live's own bound is unverified. **Done (owner's decision, 2026-10-19; build step 4):** Live shows no bound (PLC-14) and nobody was found to have hit one, so housingPlacement checks none inside an interior: a commit outside every plot region lands in the current property.
   <sub>Sources: XA:PM8 · XA:DZv7</sub>
 - **PLC-14** `done` **Live's begin-placement permission list.** Capture Live's begin-placement reply in a yard and in a house (packet capture, or a plugin dump of the region object's map): is the final pair keyed by zoneRealEstateId, and what code does it carry at a neighborhood? Confirms SCH-3 and PLC-13. **Result (Live, 2026-10-16, plugin 2.11's regions section read during placement mode): the final pair is keyed by zoneRealEstateId.** Pariator began placing a Gold-Plated Shield on his own 107 Terminus Street (65484207, region 137): the map held 76 codes, one per region and {65484171 (the neighborhood, the manager's zoneRealEstateId), 17}: code 17 (0x1464, 'You can't put that item in this real estate.') for the neighborhood itself, 0 for his own region and two others, 24 (upkeep expired) for the two expired plots he is a trustee of (163, 167), 71 (no add-item access) for the rest. In his Three Room House (117754110) the region table was empty and the map held one pair, {117754110, 0}: the house's id, the zone's zoneRealEstateId, with 0, so nothing in an interior bounds a placement client-side (PLC-13). Live's fallback lookup (0x1401ed5ec) keys by the manager's zoneRealEstateId (+0x107c); RoF2's keys by its current property id (+0x8c), which SCH-3 keeps disjoint from region ids. The map outlives the placement: Anastrianaa's held 76 codes in Dirge Inferno Village long after her last placement there, and zoning clears it.
 - **PLC-15** `fix` **Housing:MaxPetsPerHouse and MaxPetsPerGuildHall cap NPC items.** Nothing reads the two rules yet. In build step 4, apply each as an extra cap on top of the definition's max_npc_items (-1 = none for both; the lower non-negative cap wins). *After:* SCH-1.
   <sub>Sources: XA:PM7 · XA:PM8</sub>
+- **PLC-16** `liveCheck` **Live's code for a commit off the scale range or the rotation lock.** RoF2's client keeps a placement within the item's scale range and, with rotation disabled, its tilts, so only a modified client sends either; no code in the 0x1228 table names them. Peridot refuses such a commit with 1 ('Your real estate item request failed.'). Live's code, if any, needs a commit sent off range (a packet tool), so it waits for the paused Live research.
+  <sub>Sources: build step 4 (housingPlacement.cpp)</sub>
+- **PLC-17** `peridotTest` **The free-placement lock is the client's alone.** The server has no zone or model geometry, so a commit cannot show whether the item was placed in Free mode; disable_free_placement reaches the client as the placement object's +0x9a, which refuses Free mode (0x5ae160). Check on Peridot that an item with the lock (Live's bDisableFreePlacement) offers no Free mode, so PLC-5's free-placement half holds without a server check.
+  <sub>Sources: placementMode.md, Sub-modes · build step 4</sub>
+- **PLC-18** `liveCheck` **A stack moved into storage that only part of fits.** Rule 10b merges an item into a stored stack of the same owner and item with room (0x5b54b0 only asks that the stack holds fewer than its maximum). Peridot merges only when the whole moved quantity fits and otherwise stores a new entry under the capacity rules, so a nearly full stack beside a full closet is refused where the client allowed it. On Live, move a stack of 20 into a closet holding the same item at 990 of 1000 and record the result (entries and counts).
+  <sub>Sources: windows/RealEstateItemsWnd.md rule 10b · build step 4</sub>
+- **PLC-19** `clientAnalysis` **The rules housingPlacement does not replay.** Inventory rule 5 (0x57bfb0, code 4, no text) and rule 3 (membership, 0x53; EQEmu has none) are not replayed; the stored set's 'code 1' position and the move set (0x5b5ff0) were read only as far as windows/RealEstateItemsWnd.md records, so the server applies Move Item (10), Remove House and Add House there, and adds to the move set the allowed-here, house-limit, crate and upkeep rules. Trace 0x57bfb0 and the two sets' remaining checks and align (with PLC-7).
+  <sub>Sources: windows/RealEstateItemsWnd.md, Rules · build step 4</sub>
+- **PLC-20** `peridotTest` **Pick-up refusals RoF2 shows without text.** With no room in inventory Peridot refuses 0x2036 with code 4, the code the client's own pick-up check (0x5af500, 0x57ae80) produces without a text, inferred to be the inventory check; and a stack picked up in part leaves the rest placed. Check both in game, and the quantity window's partial moves to storage.
+  <sub>Sources: windows/RealEstateItemsWnd.md, Move buttons · build step 4</sub>
+- **PLC-21** `fix` **The personal trophy's owner-only rule with the trophies (build step 8).** The stored set ends with 0x17 ('This can only be done by the owner of the property') for items 0x7b0bd0 flags, the personal trophies; with trophy rule 0x46 it lands with the trophies. Until then trophy items place as ordinary items (owner's decision), so the client refuses 0x17 locally where the server would not. *After:* step 8.
+  <sub>Sources: windows/RealEstateItemsWnd.md, stored rules · codeReconciliation.md</sub>
+- **PLC-22** `peridotTest` **The request header's item location.** windows/RealEstateItemsWnd.md gives the common header's location as u32 type at +0x14, u32 slot at +0x18 and u16 sub-slot at +0x1c; placementMode.md and the begin reply's LOC read it as a type and three u16 indexes, RoF2's 12-byte InventorySlot_Struct (type, unknown, slot, sub-index, aug-index, unknown), which housingPlacement reads. Place from a bag slot and from a general slot on Peridot: a wrong reading refuses with 9 (the item's GUID doesn't match the slot's).
+  <sub>Sources: windows/RealEstateItemsWnd.md, Request structs · placementMode.md · build step 4</sub>
 
 ### worldObjects (WOB)
 
@@ -666,6 +682,8 @@ Questions: Q19, Q20.
   <sub>Sources: report:peridottest-9 · G5-19 · XA:A2</sub>
 - **WOB-7** `clientAnalysis` **Animated furniture in any zone.** Trace actor creation to the animation lookups (EQGraphicsDX9 0x10061e70 with types 0x100a/0x100b and the on-demand flag, 0x100418d7, 0x10041f9f) to confirm animated items (IT23629-23631) animate outside the neighborhood. Low value.
   <sub>Sources: XA:A13</sub>
+- **WOB-8** `peridotTest` **0x2a9e and 0x2523 as the requests' item reference.** worldLayer.md reads both as the common header (GUID +0x00, location +0x14, property +0x20, record +0x24); Peridot sends 44 bytes in that layout, and the placement object's light type as a u32. Check that removing and moving a placed item updates the world (and the item being placed) in game.
+  <sub>Sources: worldLayer.md, Step 2 · build step 4</sub>
 
 ### npcItems (NPC)
 
@@ -709,6 +727,16 @@ Questions: Q18.
   <sub>Sources: Q18b · workflow wf_db6d408e-d91</sub>
 - **NPC-19** `fix` **Per-copy look storage and the spawn overlay.** If NPC-18 shows the look is lost at pickup: real_estate_item_looks (real_estate_item_id primary key, FOREIGN KEY to real_estate_items(id) ON DELETE CASCADE as character_parcels_containers does; race SMALLINT UNSIGNED, gender, face, hair_style, beard, hair_color, body_material TINYINT UNSIGNED, body_tint INT UNSIGNED, all NOT NULL; polish adds head_material, primary_model, secondary_model), a row only once the Augmentater is used (the full look, unowned fields 0), RESET deletes it. Either way: CHECKs for the plain ranges plus a C++ check of hair, beard and hair colour against the Augmentater's per-race option table on every write and load (EQEmu's IsValidHair/IsValidBeard follow character creation, not Live's lists); at every spawn overlay a private NPCType copy (pets' pattern, zone/pets.cpp:129-131; GiveNPCTypeData): race, gender, luclinface, hairstyle, beard, haircolor, beardcolor 0, texture = material with the per-slot textures 0, armor_tint chest..feet = tint, use_model 0. Store, sale, reclaim and transfer paths UPDATE the placed row rather than delete and re-insert, so the look and the row-derived GUID (SCH) survive. Exclude housing NPC items from Zone:StateSavingOnShutdown (zone/zone_save_state.cpp:735-757), which would restore them without look or binding.
   <sub>Sources: Q18b · workflow wf_db6d408e-d91 · INT-13</sub>
+- **NPC-20** `liveCheck` **What a pet's actions do on Live.** Peridot acts on the spawn from the labels: Stay stops it, Walk Around and Run Around roam it within 20 units of its placed spot at walk or run speed, Follow Me makes it follow the player who chose it, Play Dead and Sit Down set its appearance, Kick the Gnome plays the player's kick and runs the gnome 20 units away. Watch each on Live (who may use them: anyone, as menus.tsv shows; the roaming distance; whether Follow Me leaves the yard; how long Play Dead lasts; what the gnome does) and adopt it.
+  <sub>Sources: livedumps menus.tsv · build step 4 (housingNpcItems.cpp)</sub>
+- **NPC-21** `liveCheck` **What a training dummy's actions do on Live.** Peridot: armor class steps by 5% or 10% of its NPC type's, level by 1, 5 or 10 within 1-255, hit points to 10, 100 or 1000 times its type's (healed to full), body type 0 for No Bodytype, all on the spawn only (a respawn restores the type's), and Report Statistics as a plain line of level, armor class, hit points and body type. Record on Live the steps' base, the bounds, Report Statistics' text, whether a change survives a zone restart, and who may use them (Peridot: Transact's gate; 45 guild member menus had them, 22 visitor menus none).
+  <sub>Sources: livedumps menus.tsv · build step 4</sub>
+- **NPC-22** `peridotTest` **Emperor Ganak on his mount.** Peridot spawns the familiar and its mount (mount_npc_type_id) at the same transform and binds only the rider. Check that RoF2 shows him seated; if not, find what Live's spawn carries for a rider (the spawn dumps) and send it.
+  <sub>Sources: serverPlan.md, NPC items · build step 4</sub>
+- **NPC-23** `peridotTest` **An NPC item's placement preview from its race tag.** The begin object of a new NPC item names its race_tag (RoF2 spawns the preview from the first three characters, 0x504b60). Place a familiar and a guild service and check the preview takes the NPC's race and that the placed spawn then replaces it.
+  <sub>Sources: placementMode.md, Begin · build step 4</sub>
+- **NPC-24** `fix` **The NPC item content's new columns.** makeNpcItemsSql.py (NPC-8) fills real_estate_npc_items' race_tag (the first three characters of the NPC's actor tag, npcLooks.tsv), mount_npc_type_id (Emperor Ganak's mount), training_dummy (66700-66716), and real_estate_npc_item_actions from Live's menus.tsv (each item's type 9 pet actions). The catalog load refuses an NPC item row for an item that isn't one, an unknown NPC type and a bad race tag. *After:* NPC-8.
+  <sub>Sources: build step 4 (housingSchema.sql)</sub>
 
 ### upkeep (UPK)
 
@@ -855,6 +883,8 @@ Questions: Q2, Q14.
 - **INT-18** `peridotTest` **Never-sold interiors' derived points.** housingZones.sql gives phinterior1b1 (720), plhogrinteriors* (739-744) and plhdkeinteriors* (745-750) safe points derived from the client's zone files by housingZoneGeometry.py (all six plhdke rows at 0, 2, 3), an underworld of -2000, and phinterior3a1's other header values; Live never sent them. When Q14 content uses one, enter it on Peridot and check the arrival stands on the floor inside the house.
 - **INT-19** `fix` **A left click on a house's door enters it (build step 5).** Owner (DOC-37): the house's door enters, the rest of the house does nothing, and the menu's Enter enters too, under the same checks (Enter permission, same zone, current upkeep). Find on the RoF2 client how the door click reaches the server (a 0x218c hit with something that names the door, or a door actor on the house model sending OP_ClickDoor) and handle it in housingInteriors.
   <sub>Sources: livedumps captures 2026-09-27 to 2026-10-19; EverQuest forums, 'Server Downtime: Wednesday, October 21, 2026 at 6:00 AM'</sub>
+- **INT-20** `fix` **An interior's copy shows its house's items (build step 5).** housingWorldObjects' shownHere counts a zone's outdoor properties hosted here and the session's current property, so in an interior the house's world objects and menus follow once step 5 sends the house as the current property; the NPC items a zone spawns at boot are the outdoor ones only. When a copy starts, spawn the house's or hall's placed NPC items there (housingNpcItems spawnNpcItem), and leave the house out of the yard zone's (a house is hosted at its plot's zone and instance so its record reaches the yard). *After:* INT-12.
+  <sub>Sources: build step 4 (housingWorldObjects.cpp, housingNpcItems.cpp)</sub>
 
 ### doors (DOR)
 
@@ -942,6 +972,12 @@ Questions: Q16.
 - **MNU-6** `liveCheck` **Which beds offer Take a Nap.** Open the menu of every placeable bed model on a plot and record which offer Take a Nap; only one bed (record 188) has been seen with it, and items.txt doesn't tell the beds apart. Peridot offers it on none until this is seen.
 - **MNU-7** `liveCheck` **Left click on a placed item.** Left click placed items of each kind (furniture, container, NPC item; the house is settled by DOC-37) and record what 0x218c carries (action other than Enter) and what Live does. Peridot logs it and does nothing.
   <sub>Sources: serverWork:78 · serverPlan:394-help · summary:s6-help · commandsAndKeybindings.md:35 · XA:Z12 · XA:Z17</sub>
+- **MNU-8** `liveCheck` **How Live delivers Mail to Owner.** Peridot sends the item to the player who placed it as an EQEmu parcel from the sender, the property's name as the note (augments kept; a parcel holds no custom data, color or ornament), and refuses when the owner's parcels are full. On Live, have a guild member mail another's placed painting and record what the owner receives (parcel, in-game mail, or the item in inventory), the note, and the chat on both sides.
+  <sub>Sources: livedumps menus.tsv (35 Mail to Owner menus) · build step 4</sub>
+- **MNU-9** `liveCheck` **Use on a player plot's crafting station.** Live offered Use (8, 0, 5236) to the owning guild's members and the plot's owner and to no visitor; Peridot gates it as Transact (owning guild, else Interact Item). Check a visitor with Interact Item on a player plot's Ice Cream Churn.
+  <sub>Sources: livedumps menus.tsv · build step 4</sub>
+- **MNU-10** `peridotTest` **Which placed items are tradeskill containers.** Peridot offers Use on a placed item of the container class whose bag type is a combine type (not a bag, chest, quiver, pouch, satchel, tradeskill or collectible bag). Check every guild crafting station (66625 and its siblings) and the Ice Cream Churn against Peridot's item rows, and that a combine works and nothing persists in the container.
+  <sub>Sources: build step 4 (housingContainers.cpp)</sub>
 
 ### gmCommands (GMC)
 
@@ -1078,11 +1114,11 @@ Time-bound ones: UPK-6, RCL-2, INT-16.
 
 ### Client analysis
 
-CAT-7, ITM-9, OPC-3, OPC-4, OPC-6, OPC-8, REC-8, REC-10, REC-13, ZIN-6, ZIN-11, PLC-2, PLC-6, PLC-7, PLC-8, WOB-7, NPC-16, STT-9, DOR-11, TRO-3, MNU-5, EXT-18, EXT-19, EXT-20, EXT-25.
+CAT-7, ITM-9, OPC-3, OPC-4, OPC-6, OPC-8, REC-8, REC-10, REC-13, ZIN-6, ZIN-11, PLC-2, PLC-6, PLC-7, PLC-8, PLC-19, WOB-7, NPC-16, STT-9, DOR-11, TRO-3, MNU-5, EXT-18, EXT-19, EXT-20, EXT-25.
 
 ### Peridot tests
 
-ITM-2, ITM-3, ITM-6, ITM-8, OPC-2, REC-4, ZIN-2, ZIN-5, ZIN-7, PLC-1, PLC-3, PLC-10, PLC-11, WOB-6, NPC-4, NPC-13, UPK-3, ACC-8, STT-5, INT-5, DOR-6, DOR-7, DOR-8, NBH-6, TRO-6, POL-2, PAT-7, PRC-1, PRC-3, EXT-3, EXT-4, EXT-5, EXT-6, EXT-7, EXT-30, EXT-32.
+ITM-2, ITM-3, ITM-6, ITM-8, OPC-2, REC-4, REC-14, ZIN-2, ZIN-5, ZIN-7, PLC-1, PLC-3, PLC-10, PLC-11, PLC-17, PLC-20, PLC-22, WOB-6, WOB-8, NPC-4, NPC-13, NPC-22, NPC-23, MNU-10, UPK-3, ACC-8, STT-5, INT-5, DOR-6, DOR-7, DOR-8, NBH-6, TRO-6, POL-2, PAT-7, PRC-1, PRC-3, EXT-3, EXT-4, EXT-5, EXT-6, EXT-7, EXT-30, EXT-32.
 
 ## No action
 
