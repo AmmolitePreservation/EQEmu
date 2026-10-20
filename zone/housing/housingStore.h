@@ -14,18 +14,22 @@ namespace housing {
 
   using Property = RealEstatePropertiesRepository::RealEstateProperties;
 
+  struct CharacterIdentity {
+    std::string name;
+    uint32 accountId;
+  };
+
   struct Balance {
     uint32 currency;
     double amount;
   };
 
   std::vector<Property> propertiesHostedAt(uint32 zoneId, uint32 instanceId);
-  std::vector<Property> propertiesWithInterior(uint32 instanceId);
   std::vector<Property> propertiesOwnedBy(uint32 characterId);
   std::vector<Property> propertiesById(const std::set<uint32> &ids);
   std::vector<Property> propertiesChildOf(const std::set<uint32> &parentIds);
   std::map<uint32, std::vector<Balance>> balances(const std::set<uint32> &propertyIds);
-  std::map<uint32, std::string> characterNames(const std::set<uint32> &characterIds);
+  std::map<uint32, CharacterIdentity> characterIdentities(const std::set<uint32> &characterIds);
   std::string idList(const std::set<uint32> &ids);
 }
 

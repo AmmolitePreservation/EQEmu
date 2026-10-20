@@ -38,7 +38,7 @@ namespace RoF2
 	extern void Reload();
 
 	// player housing: an item in RoF2's serialized form, the bytes OP_ItemPacket carries after its packet type
-	extern std::string SerializeItemForHousing(const EQ::ItemInstance* inst, int16 slot_id, ItemPacketType packet_type);
+	extern std::string SerializeItemForHousing(const EQ::ItemInstance* inst, const std::string& guid, int16 slot_id, ItemPacketType packet_type);
 
 
 

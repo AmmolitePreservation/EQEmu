@@ -16,6 +16,11 @@ namespace housing {
     return RealEstateItemsRepository::GetWhere(database, fmt::format("property_id IN ({}) ORDER BY property_id, id", idList(propertyIds)));
   }
 
+  // EQEmu serials are 16 decimal digits, so a leading hex letter keeps a row's GUID apart from every serial.
+  std::string itemGuid(const PlacedItem &row) {
+    return fmt::format("a{:015x}", row.id);
+  }
+
   std::unique_ptr<EQ::ItemInstance> itemInstance(const PlacedItem &row) {
     const EQ::ItemData *item = database.GetItem(row.item_id);
     if (!item) {
@@ -59,39 +64,47 @@ namespace housing {
     return instance;
   }
 
-  bool writeItemEntry(WireWriter &message, const PlacedItem &row, const std::string &ownerName) {
+  bool writeItemEntry(WireWriter &message, const PlacedItem &row, const std::map<uint32, CharacterIdentity> &owners) {
     auto instance = itemInstance(row);
     if (!instance) {
       LogError("Housing: property [{}] record [{}] holds item [{}], which does not exist; not sent", row.property_id, row.id, row.item_id);
       return false;
     }
+    const CharacterIdentity *owner = nullptr;
+    if (row.owner_character_id) {
+      auto found = owners.find(row.owner_character_id);
+      if (found == owners.end()) {
+        LogError("Housing: property [{}] record [{}] was placed by character [{}], which does not exist; not sent", row.property_id, row.id, row.owner_character_id);
+        return false;
+      }
+      owner = &found->second;
+    }
     message.u32(row.property_id)
       .u32(row.id)
       .u8(row.placed)
-      .u32(0)
+      .u32(row.upkeep_expired_at)
       .f32(row.heading)
       .f32(row.pitch)
       .f32(row.roll)
       .f32(row.scale)
-      .f32(row.x)
       .f32(row.y)
+      .f32(row.x)
       .f32(row.z)
-      .lengthString(ownerName)
-      .lengthString("");
-    const std::string serialized = RoF2::SerializeItemForHousing(instance.get(), EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
+      .lengthString(owner ? owner->name : "")
+      .lengthString(owner ? std::to_string(owner->accountId) : "");
+    const std::string serialized = RoF2::SerializeItemForHousing(instance.get(), itemGuid(row), EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
     message.bytes(serialized.data(), serialized.size());
     return true;
   }
 
-  WireWriter itemList(uint32 propertyId, const std::vector<PlacedItem> &rows, const std::map<uint32, std::string> &ownerNames) {
+  WireWriter itemList(uint32 propertyId, const std::vector<PlacedItem> &rows, const std::map<uint32, CharacterIdentity> &owners) {
     WireWriter entries;
     uint32 count = 0;
     for (const auto &row : rows) {
       if (row.property_id != propertyId) {
         continue;
       }
-      auto owner = ownerNames.find(row.owner_character_id);
-      if (writeItemEntry(entries, row, owner == ownerNames.end() ? "" : owner->second)) {
+      if (writeItemEntry(entries, row, owners)) {
         count++;
       }
     }
