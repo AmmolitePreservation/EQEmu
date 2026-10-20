@@ -2,6 +2,7 @@
 
 #include "housingAccess.h"
 #include "housingCatalog.h"
+#include "housingInteriors.h"
 #include "housingItemTail.h"
 #include "housingNpcItems.h"
 
@@ -131,6 +132,17 @@ namespace housing {
 
   bool shownHere(const Property &property, const Session &state) {
     return property.id == state.currentPropertyId || (standsOutdoors(property) && state.hostedIds.count(property.id));
+  }
+
+  std::set<uint32> propertiesShownInZone() {
+    std::set<uint32> shown;
+    const auto root = hostedRoot();
+    for (const auto &property : hostedProperties()) {
+      if (standsOutdoors(property) || (root && property.id == root->id)) {
+        shown.insert(property.id);
+      }
+    }
+    return shown;
   }
 
   WireWriter itemReference(const std::string &guid, const ItemLocation &location, uint32 propertyId, uint32 recordId) {

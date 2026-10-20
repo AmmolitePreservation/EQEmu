@@ -145,6 +145,13 @@ check("EQEmu's expansion filter adds the SoD option at SoD", enabledAt(15), '0,1
 check('an access name may be a Co-Owner (5)', "INSERT INTO real_estate_access_names VALUES (100001, '_Guild2', 5); SELECT group_number FROM real_estate_access_names WHERE property_id = 100001 AND name = '_Guild2'", '5')
 check('no NPC item cap is -1, the default', "INSERT INTO real_estate_definitions (id, name_segment, type, max_items) VALUES (990, 'Hut', 3, 10); SELECT max_npc_items FROM real_estate_definitions WHERE id = 990", '-1')
 check('an NPC item cap may equal max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_npc_items) VALUES (991, 7, 10, 10); SELECT max_npc_items FROM real_estate_definitions WHERE id = 991", '10')
+check('a teleport assistant and a device take their roles', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag, teleport_role) VALUES (66640, 1005, 'GNM', 1), (66646, 1006, 'I28', 2); "
+  "SELECT GROUP_CONCAT(CONCAT(item_id, ':', teleport_role) ORDER BY item_id) FROM real_estate_npc_items WHERE teleport_role > 0", '66640:1,66646:2')
+check('a deactivated aura goes with its placed row', "INSERT INTO real_estate_inactive_auras VALUES (2); DELETE FROM real_estate_items WHERE id = 2; SELECT COUNT(*) FROM real_estate_inactive_auras", '0')
+check("a device's alignment goes with its hall", "INSERT INTO real_estate_properties (id, parent_id, definition_id) VALUES (100009, 0, 5); INSERT INTO real_estate_teleport_alignments VALUES (100009, 76001); "
+  "DELETE FROM real_estate_properties WHERE id = 100009; SELECT COUNT(*) FROM real_estate_teleport_alignments", '0')
+check('a guild standard key lands nowhere fixed', "INSERT INTO real_estate_teleport_keys (item_id, destination, guild_standard) VALUES (88737, 'your Guild Standard', 1); "
+  "SELECT CONCAT(guild_standard, ':', zone_id) FROM real_estate_teleport_keys WHERE item_id = 88737", '1:0')
 for label, bad, reason in [('definition type out of range', "INSERT INTO real_estate_definitions (id, type) VALUES (999, 9)", 'real_estate_definition_type'),
                    ('vault items above max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_non_real_estate_items) VALUES (998, 3, 10, 11)", 'real_estate_definition_item_caps'),
                    ('NPC items above max items', "INSERT INTO real_estate_definitions (id, type, max_items, max_npc_items) VALUES (998, 3, 10, 11)", 'real_estate_definition_item_caps'),
@@ -172,6 +179,13 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('an NPC item race tag of two characters', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag) VALUES (66641, 1001, 'ER')", 'real_estate_npc_item_race_tag'),
                    ('an NPC item without a race tag', "INSERT INTO real_estate_npc_items (item_id, npc_type_id) VALUES (66641, 1001)", "Field 'race_tag' doesn't have a default value"),
                    ('a training dummy flag of 2', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag, training_dummy) VALUES (66641, 1001, 'ERM', 2)", 'real_estate_npc_item_dummy'),
+                   ('a teleport role of 3', "INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag, teleport_role) VALUES (66641, 1001, 'ERM', 3)", 'real_estate_npc_item_teleport_role'),
+                   ('an aura of radius 0', "INSERT INTO real_estate_auras VALUES (66645, 31874, 0, 'in', 'out')", 'real_estate_aura_radius'),
+                   ('a deactivated aura for no placed item', "INSERT INTO real_estate_inactive_auras VALUES (999)", 'real_estate_inactive_aura_item'),
+                   ('an alignment for no property', "INSERT INTO real_estate_teleport_alignments VALUES (999, 76001)", 'real_estate_teleport_alignment_property'),
+                   ('a key with no landing zone', "INSERT INTO real_estate_teleport_keys (item_id, destination) VALUES (76000, 'North Karana')", 'real_estate_teleport_key_landing'),
+                   ('a guild standard key with a landing zone', "INSERT INTO real_estate_teleport_keys (item_id, destination, guild_standard, zone_id) VALUES (76000, 'x', 1, 13)", 'real_estate_teleport_key_landing'),
+                   ('a key heading of 512', "INSERT INTO real_estate_teleport_keys (item_id, destination, zone_id, heading) VALUES (76000, 'North Karana', 13, 512)", 'real_estate_teleport_key_heading'),
                    ('a pet action Live has none of', "INSERT INTO real_estate_npc_item_actions VALUES (66639, 25754)", 'real_estate_npc_item_action_id'),
                    ('an action for no NPC item', "INSERT INTO real_estate_npc_item_actions VALUES (61410, 16175)", 'real_estate_npc_item_action_item'),
                    ('duplicate neighborhood word in one position', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (0, 'Maple')", "for key 'position_word'"),

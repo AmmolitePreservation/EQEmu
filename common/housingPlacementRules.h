@@ -36,6 +36,12 @@ namespace housing {
     npcLimit = 38,
     crateHoldsNonEmptyHouse = 39,
     needsHouseOfThule = 47,
+    swapItemsFull = 48,
+    swapVaultFull = 49,
+    swapNpcItemsFull = 50,
+    swapNoHousePlaced = 53,
+    swapAlreadyPlaced = 55,
+    swapPlacedCrate = 59,
     noDropNotOwner = 64,
     loreHeld = 65,
     ownItem = 66,
@@ -309,6 +315,32 @@ namespace housing {
     }
     if (!facts.inventoryRoom) {
       return ItemResult::noInventoryRoom;
+    }
+    return ItemResult::success;
+  }
+
+  // A swapped-out house's items move into the incoming house's storage beside what it holds (eqstr 5331-5333).
+  struct SwapCapacity {
+    uint32 realEstateMoving = 0;
+    uint32 vaultMoving = 0;
+    uint32 npcMoving = 0;
+    uint32 realEstateHeld = 0;
+    uint32 vaultHeld = 0;
+    uint32 npcHeld = 0;
+    uint32 maxItems = 0;
+    uint32 maxVault = 0;
+    int32 npcCap = -1;
+  };
+
+  inline ItemResult swapCapacityResult(const SwapCapacity &space) {
+    if (space.realEstateHeld + space.realEstateMoving > space.maxItems) {
+      return ItemResult::swapItemsFull;
+    }
+    if (space.vaultHeld + space.vaultMoving > space.maxVault) {
+      return ItemResult::swapVaultFull;
+    }
+    if (space.npcCap >= 0 && space.npcHeld + space.npcMoving > static_cast<uint32>(space.npcCap)) {
+      return ItemResult::swapNpcItemsFull;
     }
     return ItemResult::success;
   }

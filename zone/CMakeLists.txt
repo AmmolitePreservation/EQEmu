@@ -48,12 +48,14 @@ SET(zone_sources
     housing/housingAccess.cpp
     housing/housingAccount.cpp
     housing/housingAnchors.cpp
+    housing/housingAugmentater.cpp
     housing/housingCatalog.cpp
     housing/housingCommand.cpp
     housing/housingContainers.cpp
     housing/housingDoors.cpp
     housing/housingEvents.cpp
     housing/housingFind.cpp
+    housing/housingGuildServices.cpp
     housing/housingInteriors.cpp
     housing/housingItemTail.cpp
     housing/housingItems.cpp
@@ -61,7 +63,9 @@ SET(zone_sources
     housing/housingMessages.cpp
     housing/housingNpcItems.cpp
     housing/housingPlacement.cpp
+    housing/housingPolls.cpp
     housing/housingPurchase.cpp
+    housing/housingQuestAPI.cpp
     housing/housingSearch.cpp
     housing/housingSell.cpp
     housing/housingStore.cpp
@@ -185,11 +189,13 @@ SET(zone_headers
     housing/housing.h
     housing/housingAccess.h
     housing/housingAnchors.h
+    housing/housingAugmentater.h
     housing/housingCatalog.h
     housing/housingContainers.h
     housing/housingDoors.h
     housing/housingEvents.h
     housing/housingGeometry.h
+    housing/housingGuildServices.h
     housing/housingHandlers.h
     housing/housingInteriors.h
     housing/housingItemTail.h
@@ -198,6 +204,7 @@ SET(zone_headers
     housing/housingMessages.h
     housing/housingNpcItems.h
     housing/housingPlacement.h
+    housing/housingPolls.h
     housing/housingSession.h
     housing/housingStore.h
     housing/housingWire.h

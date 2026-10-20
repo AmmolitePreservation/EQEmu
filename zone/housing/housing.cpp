@@ -5,6 +5,7 @@
 #include "housingCatalog.h"
 #include "housingContainers.h"
 #include "housingDoors.h"
+#include "housingGuildServices.h"
 #include "housingWrits.h"
 #include "housingHandlers.h"
 #include "housingInteriors.h"
@@ -14,6 +15,7 @@
 #include "housingMessages.h"
 #include "housingNpcItems.h"
 #include "housingPlacement.h"
+#include "housingPolls.h"
 #include "housingSession.h"
 #include "housingWorldObjects.h"
 
@@ -381,6 +383,7 @@ namespace housing {
         sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
       }
       sendWorldObjects(client, *state);
+      sendPolls(client);
       LogHousing("Zone-in for [{}]: [{}] properties, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
         client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
     }
@@ -454,6 +457,8 @@ namespace housing {
 
   void onZoneShutdown() {
     discardHostedCopy();
+    resetGuildServices();
+    resetPolls();
     resetNpcItems();
     clearHostedRoot();
     sessions.clear();
@@ -470,6 +475,7 @@ namespace housing {
       sendZoneIn(client);
     }
     if (housingActive()) {
+      stripAuraBuffs(client);
       admitOccupant(client);
     }
   }
@@ -477,6 +483,7 @@ namespace housing {
   void onDisconnect(Client *client) {
     closeContainerOf(client);
     forgetAnchorOffer(client);
+    forgetGuildServiceClient(client);
     sessions.erase(client);
     // A copy's discard delay runs from its last occupant's leaving, a camp included (Live kept an empty house 30.8 minutes after a camp).
     if (zone && hostedRoot() && zone->GetInstanceID()) {
@@ -523,6 +530,7 @@ namespace housing {
         fresh.currentPropertyId = old->currentPropertyId;
       }
       fresh.placement = old->placement;
+      fresh.augmentaterMode = old->augmentaterMode;
       std::set<uint32> added;
       for (const auto &[id, property] : fresh.properties) {
         if (!old->properties.count(id)) {
@@ -674,11 +682,29 @@ namespace housing {
       case OP_RealEstatePack:
         handlePack(client, reader);
         break;
+      case OP_RealEstateHouseSwap:
+        handleHouseSwap(client, reader);
+        break;
+      case OP_RealEstateLoadLayout:
+        handleLoadLayout(client, reader);
+        break;
       case OP_RealEstateLeave:
         handleLeave(client);
         break;
       case OP_RealEstateAnchorTeleport:
         handleAnchorAnswer(client, reader);
+        break;
+      case OP_PollList:
+        handlePollRequest(client, reader);
+        break;
+      case OP_PollVote:
+        handleVote(client, reader);
+        break;
+      case OP_PollVotingOptOut:
+        handleVotingOptOut(client, reader);
+        break;
+      case OP_PollTeleport:
+        handlePollTeleport(client, reader);
         break;
       default:
         LogHousing("Unhandled housing opcode [{}] from [{}]", static_cast<uint32>(app->GetOpcode()), client->GetCleanName());
@@ -690,6 +716,8 @@ namespace housing {
       expireTransferOffers();
       processNpcItems();
       processContainers();
+      processGuildServices();
+      processPolls();
     }
   }
 }

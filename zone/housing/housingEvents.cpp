@@ -3,6 +3,7 @@
 #include "housing.h"
 #include "housingAccess.h"
 #include "housingInteriors.h"
+#include "housingPolls.h"
 #include "housingSession.h"
 #include "housingWrits.h"
 
@@ -75,6 +76,9 @@ namespace housing {
         refreshItemLists({event->property_id});
         break;
       case EventType::writUsed:
+        break;
+      case EventType::pollsChanged:
+        refreshPolls();
         break;
       case EventType::guildNeighborhoodCreated: {
         if (event->payload_size != sizeof(GuildNeighborhoodCreatedPayload)) {

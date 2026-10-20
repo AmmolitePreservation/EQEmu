@@ -4,6 +4,7 @@
 #include "housingAccess.h"
 #include "housingStore.h"
 
+#include "../../common/housingAugmentaterRules.h"
 #include "../../common/housingPlacementRules.h"
 
 #include <functional>
@@ -48,6 +49,7 @@ namespace housing {
     std::map<uint32, Property> properties;
     std::map<uint32, AccessList> accessLists;
     std::optional<Placement> placement;
+    std::optional<AugmentaterMode> augmentaterMode;
     PropertyLookup lookup() const;
     AccessListLookup accessLookup() const;
   };

@@ -3,6 +3,8 @@
 
 #include "housingItems.h"
 
+#include <functional>
+
 class Client;
 class NPC;
 
@@ -26,6 +28,7 @@ namespace housing {
   void spawnNpcItem(const PlacedItem &row);
   void despawnNpcItem(uint32 recordId);
   NPC *npcItemSpawn(uint32 recordId);
+  void forEachNpcItemSpawn(const std::function<void(const PlacedItem &, NPC *)> &visit);
   void processNpcItems();
   void resetNpcItems();
   void performNpcItemAction(Client *client, const PlacedItem &row, uint32 action);

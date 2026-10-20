@@ -644,12 +644,14 @@ SET(common_headers
     guild_base.h
     guilds.h
     housingAccessRules.h
+    housingAugmentaterRules.h
     housingCopies.h
     housingEventTypes.h
     housingInstanceNumbers.h
     housingLedger.h
     housingNames.h
     housingPlacementRules.h
+    housingPollRules.h
     housingPropertyItem.h
     housingTransferOffers.h
     housingUpkeepMath.h

@@ -1,5 +1,6 @@
 #include "housingNpcItems.h"
 
+#include "housingAugmentater.h"
 #include "housingCatalog.h"
 #include "housingInteriors.h"
 #include "housingItemTail.h"
@@ -73,8 +74,14 @@ namespace housing {
       return npc;
     }
 
+    // A re-skinned copy spawns from a private copy of its type carrying its look (NPC-19, pets' pattern).
     uint16 spawnRider(const PlacedItem &row, const NpcItem &npcItem) {
-      NPC *npc = spawnAt(row, npcItem.npcTypeId);
+      const NPCType *base = npcType(npcItem.npcTypeId);
+      auto looked = lookedNpcType(row, *base);
+      auto npc = new NPC(looked ? looked.get() : base, nullptr, glm::vec4(row.x, row.y, row.z, row.heading), GravityBehavior::Water);
+      if (looked) {
+        npc->GiveNPCTypeData(looked.release());
+      }
       npc->SetHousingBinding(row.property_id, row.id, itemGuid(row));
       entity_list.AddNPC(npc, true, true);
       return npc->GetID();
@@ -252,15 +259,16 @@ namespace housing {
     return found == spawned.end() ? nullptr : liveSpawn(found->second.npcId, recordId, false);
   }
 
-  void spawnShownNpcItems() {
-    std::set<uint32> shown;
-    const auto root = hostedRoot();
-    for (const auto &property : hostedProperties()) {
-      if (standsOutdoors(property) || (root && property.id == root->id)) {
-        shown.insert(property.id);
+  void forEachNpcItemSpawn(const std::function<void(const PlacedItem &, NPC *)> &visit) {
+    for (const auto &[recordId, entry] : spawned) {
+      if (NPC *npc = liveSpawn(entry.npcId, recordId, false)) {
+        visit(entry.row, npc);
       }
     }
-    for (const auto &row : itemsOf(shown)) {
+  }
+
+  void spawnShownNpcItems() {
+    for (const auto &row : itemsOf(propertiesShownInZone())) {
       if (!row.placed || !isNpcItemId(row.item_id)) {
         continue;
       }

@@ -9,6 +9,7 @@
 #include "../../common/repositories/real_estate_zone_templates_repository.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -35,14 +36,37 @@ namespace housing {
     int32 maxNpcItems = -1;
   };
 
-  // An NPC item's spawn (real_estate_npc_items): its NPC, a mount it rides, the race tag RoF2 previews it with, and its menu
-  // actions (Live's b codes, in Live's order).
+  // A guild hall's teleport service: the Assistant aligns the Device to the key handed to him.
+  enum class TeleportRole : uint8 { none = 0, assistant = 1, device = 2 };
+
+  // An NPC item's spawn (real_estate_npc_items): its NPC, a mount it rides, the race tag RoF2 previews it with, a teleport
+  // role, and its menu actions (Live's b codes, in Live's order).
   struct NpcItem {
     uint32 npcTypeId;
     uint32 mountNpcTypeId;
     std::string raceTag;
     bool trainingDummy;
+    TeleportRole teleportRole;
     std::vector<uint32> actions;
+  };
+
+  // A placed item's aura (real_estate_auras): the spell kept on those within the radius and the lines on walking in and out.
+  struct AuraItem {
+    uint32 spellId;
+    float radius;
+    std::string nearMessage;
+    std::string leaveMessage;
+  };
+
+  // A Teleportation Assistant's key (real_estate_teleport_keys): where the Device then sends a traveller.
+  struct TeleportKey {
+    std::string destination;
+    bool guildStandard;
+    uint32 zoneId;
+    float x;
+    float y;
+    float z;
+    float heading;
   };
 
   struct CostOption {
@@ -68,6 +92,10 @@ namespace housing {
     const RealEstateRegionsRepository::RealEstateRegions *region(uint32 id) const;
     const ZoneTemplate *zoneTemplate(uint32 dzId) const;
     const NpcItem *npcItem(uint32 itemId) const;
+    const AuraItem *auraItem(uint32 itemId) const;
+    const TeleportKey *teleportKey(uint32 itemId) const;
+    std::set<uint32> auraSpellIds() const;
+    std::set<uint32> auraItemIds() const;
     const std::map<uint32, Definition> &allDefinitions() const { return definitions; }
     const std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> &allRegions() const { return regions; }
     WireWriter message() const;
@@ -79,6 +107,8 @@ namespace housing {
     std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> regions;
     std::map<uint32, ZoneTemplate> templates;
     std::map<uint32, NpcItem> npcItems;
+    std::map<uint32, AuraItem> auraItems;
+    std::map<uint32, TeleportKey> teleportKeys;
     std::vector<std::string> lastProblems;
     bool loaded = false;
   };

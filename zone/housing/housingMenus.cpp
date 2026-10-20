@@ -4,6 +4,7 @@
 #include "housingCatalog.h"
 #include "housingContainers.h"
 #include "housingEvents.h"
+#include "housingGuildServices.h"
 #include "housingInteriors.h"
 #include "housingNpcItems.h"
 #include "housingPlacement.h"
@@ -50,6 +51,7 @@ namespace housing {
     constexpr MenuEntry manageEntry{0, none, 722, none};
     constexpr MenuEntry showItemsEntry{11, none, 5285, none};
     constexpr MenuEntry useEntry{8, 0, 5236, none};
+    constexpr MenuEntry swapHousesEntry{17, none, 5336, none};
     constexpr uint32 mailToOwnerSize = 148;
 
     // Live's training dummy menu (menus.tsv): four submenus of type 9 actions keyed by their header, then Report Statistics.
@@ -110,6 +112,29 @@ namespace housing {
       return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
     }
 
+    // RoF2 finds the yard's placed house itself (0x5b3170) and swaps it for the stored one the menu is for (0x21ba).
+    bool yardHasPlacedHouse(const Session &state, const Property &yard, uint32 exceptRecordId) {
+      for (const auto &row : itemsOf({yard.id})) {
+        auto carried = state.properties.find(carriedPropertyId(row.custom_data));
+        if (row.placed && row.id != exceptRecordId && carried != state.properties.end() && isHouse(&carried->second)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    bool maySwap(Client *client, const Session &state, const Located &located, bool plotExpired) {
+      const DefinitionType holderType = typeOf(*located.holder);
+      if (plotExpired || located.item.placed || !isHouse(located.carried ? &*located.carried : nullptr) ||
+          (holderType != DefinitionType::plot && holderType != DefinitionType::guildPlot)) {
+        return false;
+      }
+      const auto lookup = state.lookup();
+      const auto listOf = state.accessLookup();
+      return permitted(client, Permission::moveItem, *located.holder, lookup, listOf) && permitted(client, Permission::removeHouse, *located.holder, lookup, listOf) &&
+        permitted(client, Permission::addHouse, *located.holder, lookup, listOf) && yardHasPlacedHouse(state, *located.holder, located.item.id);
+    }
+
     bool mayEnter(Client *client, const Session &state, const Located &located, bool inItemZone) {
       if (!isHouse(located.carried ? &*located.carried : nullptr) || !located.item.placed || !inItemZone) {
         return false;
@@ -152,7 +177,7 @@ namespace housing {
     }
 
     // Live's order (MNU-1): the item's own interactions, then Enter, Adjust Placement, Place, Move to Storage, Move to Inventory,
-    // Mail to Owner, Inspect, Manage, Show Items. Help is left out: RoF2's type 0xe opens a text entry, not Live's help window (MNU-5).
+    // Mail to Owner, Swap Houses, Inspect, Manage, Show Items. Help is left out: RoF2's type 0xe opens a text entry, not Live's help window (MNU-5).
     MenuInteractions buildMenu(Client *client, const Session &state, const Located &located) {
       const bool inItemZone = inItemZoneOf(state, located.item);
       const bool plotExpired = located.plot && located.plot->upkeep_expired_time;
@@ -185,6 +210,10 @@ namespace housing {
       }
       if (located.item.owner_character_id && located.item.owner_character_id != client->CharacterID() && permitted(client, Permission::mailItem, *located.holder, lookup, listOf)) {
         menu.entries.push_back(mailToOwnerEntry);
+      }
+      // Live's menus never showed Swap Houses (no stored house beside a placed one was scanned); it sits before Inspect (MNU-11).
+      if (maySwap(client, state, located, plotExpired)) {
+        menu.entries.push_back(swapHousesEntry);
       }
       menu.entries.push_back(inspectEntry);
       if (house && permitted(client, Permission::manage, *carried, lookup, listOf)) {
@@ -359,6 +388,10 @@ namespace housing {
     try {
       const auto located = locate(client, *state, action->propertyId, action->recordId);
       if (!located) {
+        return;
+      }
+      if (isAuraAction(action->b) && inItemZoneOf(*state, located->item)) {
+        toggleAura(client, *state, *located->holder, located->item, action->b);
         return;
       }
       if (action->b != useEntry.b || !located->item.placed || !inItemZoneOf(*state, located->item) || !isTradeskillContainer(located->item.item_id)) {
