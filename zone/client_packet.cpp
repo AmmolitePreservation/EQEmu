@@ -446,8 +446,6 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_PollVote]                    = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateAccount]           = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateAnchorTeleport]    = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_RealEstateContainerOpen]     = &Client::Handle_OP_Housing;
-	ConnectedOpcodes[OP_RealEstateEnter]             = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateHouseSwap]         = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateInspect]           = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateInteract]          = &Client::Handle_OP_Housing;
@@ -470,6 +468,7 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_RealEstateStoreAll]          = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateTransfer]          = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateTransferOffer]     = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_RealEstateUse]               = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_TrophyGuildEditLock]         = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_TrophyGuildOptIn]            = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_TrophyGuildSave]             = &Client::Handle_OP_Housing;

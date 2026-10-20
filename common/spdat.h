@@ -1496,8 +1496,8 @@ typedef enum {
 #define SE_CriticalHealDecay			434 // implemented - increase critical heal chance, effect decays based on level of spell it effects.
 #define SE_CriticalRegenDecay			435 // implemented - increase critical heal over time chance, effect decays based on level of spell it effects.
 //#define SE_BeneficialCountDownHold	436 // not used ( 23491 | ABTest Buff Hold)
-#define SE_TeleporttoAnchor			437 // implemented - Teleport Guild Hall Anchor(33099), player housing
-#define SE_TranslocatetoAnchor		438 // implemented - Translocate Primary Anchor (27750), player housing
+#define SE_TeleporttoAnchor			437 // *not implemented - Teleport Guild Hall Anchor(33099), player housing
+#define SE_TranslocatetoAnchor		438 // *not implemented - Translocate Primary Anchor (27750), player housing
 #define SE_Assassinate					439 // implemented[AA] - Assassinate damage
 #define SE_FinishingBlowLvl				440 // implemented[AA] - Sets the level Finishing blow can be triggered on an NPC
 #define SE_DistanceRemoval				441 // implemented - Buff is removed from target when target moves X amount of distance away from where initially hit.
