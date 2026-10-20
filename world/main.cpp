@@ -91,6 +91,7 @@
 #include "../common/skill_caps.h"
 #include "../common/repositories/character_parcels_repository.h"
 #include "../common/ip_util.h"
+#include "housingNeighborhoods.h"
 #include "housingUpkeep.h"
 
 GroupLFPList        LFPGroupList;
@@ -194,6 +195,14 @@ int main(int argc, char **argv)
 		->ReloadContentFlags();
 
 	SkillCaps::Instance()->SetContentDatabase(&content_db)->LoadSkillCaps();
+
+	if (RuleB(Housing, EnableHousing)) {
+		if (!housing::startUpkeep()) {
+			LogError("Player housing's upkeep rules are out of range; world does not start");
+			return 1;
+		}
+		housing::balanceNeighborhoods();
+	}
 
 	std::unique_ptr<EQ::Net::ServertalkServer> server_connection;
 	server_connection = std::make_unique<EQ::Net::ServertalkServer>();
