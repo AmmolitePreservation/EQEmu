@@ -48,6 +48,7 @@ SET(common_sources
     file.cpp
     guild_base.cpp
     guilds.cpp
+    housingLedger.cpp
     inventory_profile.cpp
     inventory_slot.cpp
     ipc_mutex.cpp
@@ -641,7 +642,13 @@ SET(common_headers
     global_define.h
     guild_base.h
     guilds.h
+    housingAccessRules.h
+    housingEventTypes.h
+    housingLedger.h
+    housingNames.h
     housingPropertyItem.h
+    housingTransferOffers.h
+    housingUpkeepMath.h
     http/httplib.h
     http/uri.h
     inventory_profile.h

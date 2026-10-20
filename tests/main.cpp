@@ -32,6 +32,7 @@
 #include "data_verification_test.h"
 #include "skills_util_test.h"
 #include "task_state_test.h"
+#include "housingTest.h"
 
 const EQEmuConfig *Config;
 
@@ -56,6 +57,7 @@ int main()
 		tests.add(new DataVerificationTest());
 		tests.add(new SkillsUtilsTest());
 		tests.add(new TaskStateTest());
+		tests.add(new HousingTest());
 		tests.run(*output, true);
 	}
 	catch (std::exception &ex) {
