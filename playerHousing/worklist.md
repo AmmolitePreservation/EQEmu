@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 172, liveCheck 13, clientAnalysis 26, peridotTest 38, question 29, done 44; 322 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 173, liveCheck 13, clientAnalysis 26, peridotTest 38, question 29, done 44; 323 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -30,6 +30,7 @@
 - **Item adoption (2026-10-20):** every item in Peridot's table that Live lists as placeable takes Live's housing columns, whatever Peridot's own mask (11,095 items, 9,119 newly placeable); stats and other columns never change; Live items Peridot lacks are not added (ITM-1).
 - **Mass item reconciliation with Live:** a polish item, after the standard system. Source: the full items.txt (144,616 Live items, 315 columns; itemsTxt/SOURCE.txt has the URL and checksum; only the housing extract is kept), checked against our full client records (7,055 of Peridot's 117,944 items). Our dumps cover 17,889 Peridot items (15.2%), most with housing columns only.
 - **Live research method:** every Live check, timed or not, runs through a Live build of claudelink driving a copy of the Live client, on the owner's non-GM test accounts (MacroQuest for movement, screenshots and purchases). Building it is PRC-6.
+- **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (INT-16, RCL-2, UPK-6) are the only exceptions.
 
 ## Questions to work through
 
@@ -1058,6 +1059,7 @@ Questions: Q1.
   <sub>Sources: owner:live-research-method</sub>
 
 - **PRC-7** `done` **Training dummies predate RoF2; their menus don't.** Items 66700-66716 were sold by Brent Harnak as 'Decorative Dummy: Azia'..'Qela' by 2011-11-19 (Veil of Alaris; Allakhazam NPC 38576, prices equal Live's vendorItems.tsv to the copper), and Peridot's data holds them under those names. The menus came later: Modify Level, Armor Class and Body Type plus house placement and ranks 66717-66719 on 2015-02-25 (ZAM patch notes); the 'Training Dummy: <expansion>' names, Modify HP, larger level steps and 66720-66730 on 2026-04-15 (everquest.com update notes). RoF2 eqgame.exe is 2013-05-10. Per Q25 the dbstr rows ship, and the menus are Live's (MNU).
+- **PRC-8** `fix` **Coordinate sweep (polish).** Research and processing mixed axis orders and signs: Live's dumps and the wire put y first, MQ's /loc prints y first, EQEmu and the zone files swap x and y, headings run in opposite directions between MQ's degrees and the client's 0-512, and some values were inverted along the way. After the standard system works, sweep every coordinate and heading in the generators, content files, SQL and code (catalog switches, regions, exit and arrival points, zone headers, doors, placed-item transforms, region matrices, NPC item spawns) against its Live source, naming each value's axis order and heading convention at the point it enters, and check in game on Peridot that each lands where Live's does.
   <sub>Sources: owner:Q25 · workflow wf_4ade3261-801</sub>
 
 ## Indexes
