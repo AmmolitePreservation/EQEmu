@@ -17,6 +17,7 @@
 #include "lua_packet.h"
 #include "dialogue_window.h"
 #include "titles.h"
+#include "housing/housing.h"
 
 struct InventoryWhere { };
 
@@ -988,6 +989,21 @@ void Lua_Client::BreakInvis() {
 void Lua_Client::LeaveGroup() {
 	Lua_Safe_Call_Void();
 	self->LeaveGroup();
+}
+
+bool Lua_Client::EnterRealEstate(uint32 property_id) {
+	Lua_Safe_Call_Bool();
+	return housing::questEnter(self, property_id);
+}
+
+void Lua_Client::LeaveRealEstate() {
+	Lua_Safe_Call_Void();
+	housing::questLeave(self);
+}
+
+bool Lua_Client::OpenRealEstatePurchase(uint32 property_id) {
+	Lua_Safe_Call_Bool();
+	return housing::questOpenPurchase(self, property_id);
 }
 
 bool Lua_Client::IsGrouped() {
@@ -3715,6 +3731,7 @@ luabind::scope lua_register_client() {
 	.def("EnableTitleSet", &Lua_Client::EnableTitleSet)
 	.def("EndSharedTask", (void(Lua_Client::*)(void))&Lua_Client::EndSharedTask)
 	.def("EndSharedTask", (void(Lua_Client::*)(bool))&Lua_Client::EndSharedTask)
+	.def("EnterRealEstate", (bool(Lua_Client::*)(uint32))&Lua_Client::EnterRealEstate)
 	.def("Escape", (void(Lua_Client::*)(void))&Lua_Client::Escape)
 	.def("FailTask", (void(Lua_Client::*)(int))&Lua_Client::FailTask)
 	.def("FilteredMessage", &Lua_Client::FilteredMessage)
@@ -3937,6 +3954,7 @@ luabind::scope lua_register_client() {
 	.def("LearnDisciplines", (uint16(Lua_Client::*)(uint8,uint8))&Lua_Client::LearnDisciplines)
 	.def("LearnRecipe", (void(Lua_Client::*)(uint32))&Lua_Client::LearnRecipe)
 	.def("LeaveGroup", (void(Lua_Client::*)(void))&Lua_Client::LeaveGroup)
+	.def("LeaveRealEstate", (void(Lua_Client::*)(void))&Lua_Client::LeaveRealEstate)
 	.def("LoadPEQZoneFlags", (void(Lua_Client::*)(void))&Lua_Client::LoadPEQZoneFlags)
 	.def("LoadZoneFlags", (void(Lua_Client::*)(void))&Lua_Client::LoadZoneFlags)
 	.def("LockSharedTask", &Lua_Client::LockSharedTask)
@@ -3980,6 +3998,7 @@ luabind::scope lua_register_client() {
 	.def("NukeItem", (void(Lua_Client::*)(uint32))&Lua_Client::NukeItem)
 	.def("NukeItem", (void(Lua_Client::*)(uint32,int))&Lua_Client::NukeItem)
 	.def("OpenLFGuildWindow", (void(Lua_Client::*)(void))&Lua_Client::OpenLFGuildWindow)
+	.def("OpenRealEstatePurchase", (bool(Lua_Client::*)(uint32))&Lua_Client::OpenRealEstatePurchase)
 	.def("PlayMP3", (void(Lua_Client::*)(std::string))&Lua_Client::PlayMP3)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*))&Lua_Client::Popup)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*,uint32))&Lua_Client::Popup)

@@ -2,6 +2,7 @@
 
 #include "housingAccess.h"
 #include "housingCatalog.h"
+#include "housingItems.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -56,12 +57,22 @@ namespace housing {
       };
     }
 
+    // A house stored in its yard's shed or swapped out stands in no yard, so it can't be entered and its occupants leave
+    // (INT-25); a definition's fixed house (an apartment's) has no item carrying it.
     std::optional<Property> yardOf(const Property &house, const std::map<uint32, Property> &chain) {
       if (house.contained_in_item) {
         return std::nullopt;
       }
       const Property *plot = ancestorOfType(house, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookupIn(chain));
-      return plot ? std::optional<Property>(*plot) : std::nullopt;
+      if (!plot) {
+        return std::nullopt;
+      }
+      for (const auto &row : itemsOf({house.parent_id})) {
+        if (carriedPropertyId(row.custom_data) == house.id && !row.placed) {
+          return std::nullopt;
+        }
+      }
+      return *plot;
     }
 
     const ZoneTemplate &templateOf(const Property &property) {
@@ -182,6 +193,10 @@ namespace housing {
     return root;
   }
 
+  std::optional<Property> hostedRootYard() {
+    return rootPlot;
+  }
+
   bool hostsInterior() {
     return root && isInterior(*root);
   }
@@ -289,6 +304,11 @@ namespace housing {
     catch (const std::exception &error) {
       LogError("Housing: [{}] could not enter property [{}]: {}", client->GetCleanName(), requested.id, error.what());
     }
+  }
+
+  // A plot is reached at its exit point, where its house's front door leaves to (a poll's teleport, S11).
+  void moveToPlot(Client *client, const Property &plot) {
+    moveToExit(client, plot);
   }
 
   void leaveForExitPoint(Client *client) {

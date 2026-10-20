@@ -10,7 +10,8 @@ namespace housing {
     accessChanged = 3,
     itemListChanged = 4,
     writUsed = 5,
-    guildNeighborhoodCreated = 6
+    guildNeighborhoodCreated = 6,
+    pollsChanged = 7
   };
 
   enum class EventTarget : uint32 {

@@ -41,7 +41,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 	ManifestEntry{
 		.version = 2,
 		.description = "2026_09_26_real_estate_catalog",
-		.check = "SHOW TABLES LIKE 'real_estate_npc_item_actions'",
+		.check = "SHOW TABLES LIKE 'real_estate_teleport_keys'",
 		.condition = "empty",
 		.match = "",
 		.sql =
@@ -168,9 +168,11 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `mount_npc_type_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
   `race_tag` CHAR(3) NOT NULL,
   `training_dummy` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `teleport_role` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`item_id`),
   CONSTRAINT `real_estate_npc_item_race_tag` CHECK (CHAR_LENGTH(`race_tag`) = 3),
-  CONSTRAINT `real_estate_npc_item_dummy` CHECK (`training_dummy` IN (0, 1))
+  CONSTRAINT `real_estate_npc_item_dummy` CHECK (`training_dummy` IN (0, 1)),
+  CONSTRAINT `real_estate_npc_item_teleport_role` CHECK (`teleport_role` IN (0, 1, 2))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_npc_item_actions` (
@@ -179,6 +181,31 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   PRIMARY KEY (`item_id`, `action_id`),
   CONSTRAINT `real_estate_npc_item_action_item` FOREIGN KEY (`item_id`) REFERENCES `real_estate_npc_items` (`item_id`) ON DELETE CASCADE,
   CONSTRAINT `real_estate_npc_item_action_id` CHECK (`action_id` IN (16175, 16176, 16177, 16178, 16179, 16394, 16492))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_auras` (
+  `item_id` INT(11) UNSIGNED NOT NULL,
+  `spell_id` INT(10) UNSIGNED NOT NULL,
+  `radius` FLOAT NOT NULL,
+  `near_message` VARCHAR(128) NOT NULL,
+  `leave_message` VARCHAR(128) NOT NULL,
+  PRIMARY KEY (`item_id`),
+  CONSTRAINT `real_estate_aura_radius` CHECK (`radius` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_teleport_keys` (
+  `item_id` INT(11) UNSIGNED NOT NULL,
+  `destination` VARCHAR(64) NOT NULL,
+  `guild_standard` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+  `x` FLOAT NOT NULL DEFAULT 0,
+  `y` FLOAT NOT NULL DEFAULT 0,
+  `z` FLOAT NOT NULL DEFAULT 0,
+  `heading` FLOAT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`item_id`),
+  CONSTRAINT `real_estate_teleport_key_standard` CHECK (`guild_standard` IN (0, 1)),
+  CONSTRAINT `real_estate_teleport_key_landing` CHECK ((`guild_standard` = 1) = (`zone_id` = 0)),
+  CONSTRAINT `real_estate_teleport_key_heading` CHECK (`heading` >= 0 AND `heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )",
 		.content_schema_update = true,
@@ -285,6 +312,19 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   CONSTRAINT `real_estate_item_look_item` FOREIGN KEY (`real_estate_item_id`) REFERENCES `real_estate_items` (`id`) ON DELETE CASCADE,
   CONSTRAINT `real_estate_item_look_race` CHECK (`race` > 0),
   CONSTRAINT `real_estate_item_look_gender` CHECK (`gender` <= 2)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_inactive_auras` (
+  `real_estate_item_id` INT(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`real_estate_item_id`),
+  CONSTRAINT `real_estate_inactive_aura_item` FOREIGN KEY (`real_estate_item_id`) REFERENCES `real_estate_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+)"
+			R"(CREATE TABLE IF NOT EXISTS `real_estate_teleport_alignments` (
+  `property_id` INT(10) UNSIGNED NOT NULL,
+  `key_item_id` INT(11) UNSIGNED NOT NULL,
+  PRIMARY KEY (`property_id`),
+  CONSTRAINT `real_estate_teleport_alignment_property` FOREIGN KEY (`property_id`) REFERENCES `real_estate_properties` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_access_groups` (

@@ -6,7 +6,9 @@
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingPlacementRules.h"
 #include "../../common/rulesys.h"
+#include "../../common/spdat.h"
 #include "../../common/strings.h"
+#include "../../common/zone_store.h"
 #include "../../common/repositories/alternate_currency_repository.h"
 #include "../../common/repositories/criteria/content_filter_criteria.h"
 #include "../../common/repositories/real_estate_cost_options_repository.h"
@@ -219,7 +221,10 @@ namespace housing {
       if (row.race_tag.size() != 3 || !std::all_of(row.race_tag.begin(), row.race_tag.end(), [](unsigned char c) { return std::isupper(c) || std::isdigit(c); })) {
         problems.push_back(fmt::format("NPC item [{}] has race tag [{}]; RoF2 reads three upper-case characters", row.item_id, row.race_tag));
       }
-      npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, {}};
+      if (row.teleport_role > static_cast<uint8>(TeleportRole::device)) {
+        problems.push_back(fmt::format("NPC item [{}] has teleport role [{}]; 0 none, 1 assistant, 2 device", row.item_id, row.teleport_role));
+      }
+      npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, static_cast<TeleportRole>(row.teleport_role), {}};
     }
     auto actions = content_db.QueryDatabase("SELECT item_id, action_id FROM real_estate_npc_item_actions ORDER BY item_id, action_id");
     if (!actions.Success()) {
@@ -243,6 +248,42 @@ namespace housing {
       if (!npcItems.count(itemId)) {
         problems.push_back(fmt::format("NPC item [{}] has no real_estate_npc_items row naming the NPC it spawns", itemId));
       }
+    }
+
+    auraItems.clear();
+    auto auras = content_db.QueryDatabase("SELECT item_id, spell_id, radius, near_message, leave_message FROM real_estate_auras");
+    if (!auras.Success()) {
+      problems.push_back(fmt::format("the aura items could not be read: {}", auras.ErrorMessage()));
+    }
+    for (auto row : auras) {
+      const uint32 itemId = Strings::ToUnsignedInt(row[0]);
+      const uint32 spellId = Strings::ToUnsignedInt(row[1]);
+      const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
+      if (!tail || !tail->placeable || npcItemIdSet.count(itemId)) {
+        problems.push_back(fmt::format("aura item [{}] is not a placeable item outside the NPC items", itemId));
+      }
+      if (!IsValidSpell(spellId)) {
+        problems.push_back(fmt::format("aura item [{}] keeps spell [{}], which does not exist", itemId, spellId));
+      }
+      auraItems[itemId] = AuraItem{spellId, Strings::ToFloat(row[2]), row[3], row[4]};
+    }
+
+    teleportKeys.clear();
+    auto keys = content_db.QueryDatabase("SELECT item_id, destination, guild_standard, zone_id, x, y, z, heading FROM real_estate_teleport_keys");
+    if (!keys.Success()) {
+      problems.push_back(fmt::format("the teleport keys could not be read: {}", keys.ErrorMessage()));
+    }
+    for (auto row : keys) {
+      const uint32 itemId = Strings::ToUnsignedInt(row[0]);
+      TeleportKey key{row[1], Strings::ToUnsignedInt(row[2]) != 0, Strings::ToUnsignedInt(row[3]), Strings::ToFloat(row[4]), Strings::ToFloat(row[5]),
+                      Strings::ToFloat(row[6]), Strings::ToFloat(row[7])};
+      if (!database.GetItem(itemId)) {
+        problems.push_back(fmt::format("teleport key [{}] is not an item", itemId));
+      }
+      if (!key.guildStandard && !ZoneName(key.zoneId)) {
+        problems.push_back(fmt::format("teleport key [{}] lands in zone [{}], which has no zone row", itemId, key.zoneId));
+      }
+      teleportKeys[itemId] = key;
     }
 
     const int maxChildrenOverride = RuleI(Housing, MaxHousesOverride);
@@ -321,6 +362,32 @@ namespace housing {
   const NpcItem *Catalog::npcItem(uint32 itemId) const {
     auto found = npcItems.find(itemId);
     return found == npcItems.end() ? nullptr : &found->second;
+  }
+
+  const AuraItem *Catalog::auraItem(uint32 itemId) const {
+    auto found = auraItems.find(itemId);
+    return found == auraItems.end() ? nullptr : &found->second;
+  }
+
+  std::set<uint32> Catalog::auraSpellIds() const {
+    std::set<uint32> spellIds;
+    for (const auto &[itemId, aura] : auraItems) {
+      spellIds.insert(aura.spellId);
+    }
+    return spellIds;
+  }
+
+  std::set<uint32> Catalog::auraItemIds() const {
+    std::set<uint32> itemIds;
+    for (const auto &[itemId, aura] : auraItems) {
+      itemIds.insert(itemId);
+    }
+    return itemIds;
+  }
+
+  const TeleportKey *Catalog::teleportKey(uint32 itemId) const {
+    auto found = teleportKeys.find(itemId);
+    return found == teleportKeys.end() ? nullptr : &found->second;
   }
 
   WireWriter Catalog::message() const {

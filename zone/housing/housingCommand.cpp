@@ -13,6 +13,7 @@
 #include "../zonedb.h"
 
 #include <charconv>
+#include <regex>
 #include <cstdlib>
 #include <cstring>
 #include <set>
@@ -331,11 +332,117 @@ namespace housing {
         "UPDATE real_estate_cost_items SET amount = {} WHERE cost_id = {} AND currency = {}", amount, id, currency)});
     }
 
+    bool isDate(const char *text) {
+      static const std::regex date("[0-9]{4}-[0-9]{2}-[0-9]{2}");
+      return std::regex_match(text, date);
+    }
+
+    bool pollEdit(Client *client, const std::string &done, const std::vector<std::string> &statements) {
+      database.TransactionBegin();
+      for (const auto &statement : statements) {
+        auto results = database.QueryDatabase(statement);
+        if (!results.Success()) {
+          database.TransactionRollback();
+          refuse(client, fmt::format("Refused: {}", results.ErrorMessage()));
+          return false;
+        }
+        if (results.RowsAffected() == 0) {
+          database.TransactionRollback();
+          refuse(client, "Refused: no such poll.");
+          return false;
+        }
+      }
+      if (!database.TransactionCommit().Success()) {
+        refuse(client, "Refused: the database did not commit the change.");
+        return false;
+      }
+      sendEvent(EventType::pollsChanged, EventTarget::allZones, 0, 0, {});
+      say(client, done + "; every zone sends the polls again.");
+      return true;
+    }
+
+    // Polls are Peridot's own: Live runs none (POL-3), so they are made here or by content SQL.
+    void pollCommand(Client *client, const Seperator *sep) {
+      const std::string action = Strings::ToLower(sep->arg[2]);
+      const std::string usage = "Usage: #realestate poll list | create <kind: 1 property, 2 question> <selection: 1 property button, 2 one choice, 3 several> "
+        "<most ticks> <opens YYYY-MM-DD> <closes YYYY-MM-DD> <question> | location <id> <text> | option <id> <key> <position> <label> | "
+        "unoption <id> <key> | prompt <id> 0|1 | hideresults <id> 0|1 | publish <id> | close <id> | archive <id>";
+      int64 id = 0;
+      if (action == "list") {
+        auto rows = database.QueryDatabase("SELECT id, kind, selection_type, published, archived, opens_at, closes_at, question FROM real_estate_polls ORDER BY id");
+        for (auto row : rows) {
+          say(client, fmt::format("Poll {}: kind {}, selection {}, {}{}, {} to {}: {}", row[0], row[1], row[2], Strings::ToInt(row[3]) ? "published" : "unpublished",
+            Strings::ToInt(row[4]) ? ", archived" : "", row[5], row[6], row[7]));
+        }
+        say(client, fmt::format("{} polls.", rows.RowCount()));
+        return;
+      }
+      if (action == "create") {
+        int64 kind = 0;
+        int64 selection = 0;
+        int64 ticks = 0;
+        if (!parseInteger(sep->arg[3], kind) || (kind != 1 && kind != 2) || !parseInteger(sep->arg[4], selection) || selection < 1 || selection > 3 ||
+            (kind == 1) != (selection == 1) || !parseInteger(sep->arg[5], ticks) || ticks < 1 || !isDate(sep->arg[6]) || !isDate(sep->arg[7]) || !*sep->argplus[8]) {
+          refuse(client, usage + " (a property poll takes selection 1, a question poll 2 or 3)");
+          return;
+        }
+        auto results = database.QueryDatabase(fmt::format(
+          "INSERT INTO real_estate_polls (kind, selection_type, max_selections, opens_at, closes_at, question) VALUES ({}, {}, {}, '{}', '{}', '{}')",
+          kind, selection, ticks, sep->arg[6], sep->arg[7], Strings::Escape(sep->argplus[8])));
+        if (!results.Success()) {
+          refuse(client, fmt::format("Refused: {}", results.ErrorMessage()));
+          return;
+        }
+        say(client, fmt::format("Poll {} created, unpublished.", results.LastInsertedID()));
+        return;
+      }
+      if (!parseInteger(sep->arg[3], id) || id <= 0) {
+        refuse(client, usage);
+        return;
+      }
+      int64 value = 0;
+      if (action == "location" && *sep->argplus[4]) {
+        pollEdit(client, fmt::format("Poll {}'s location set", id), {fmt::format(
+          "UPDATE real_estate_polls SET polling_location = '{}' WHERE id = {}", Strings::Escape(sep->argplus[4]), id)});
+      }
+      else if (action == "option" && parseInteger(sep->arg[4], value) && value > 0 && *sep->arg[5] && *sep->argplus[6]) {
+        int64 position = 0;
+        if (!parseInteger(sep->arg[5], position) || position < 0 || position > 255) {
+          refuse(client, usage);
+          return;
+        }
+        pollEdit(client, fmt::format("Poll {} offers option {}", id, value), {
+          fmt::format("REPLACE INTO real_estate_poll_options (poll_id, option_key, position) SELECT id, {}, {} FROM real_estate_polls WHERE id = {} AND kind = 2", value, position, id),
+          fmt::format("REPLACE INTO real_estate_poll_labels (id, text) VALUES ({}, '{}')", value, Strings::Escape(sep->argplus[6]))});
+      }
+      else if (action == "unoption" && parseInteger(sep->arg[4], value)) {
+        pollEdit(client, fmt::format("Poll {} no longer offers option {}", id, value), {fmt::format(
+          "DELETE FROM real_estate_poll_options WHERE poll_id = {} AND option_key = {}", id, value)});
+      }
+      else if ((action == "prompt" || action == "hideresults") && parseInteger(sep->arg[4], value) && (value == 0 || value == 1)) {
+        pollEdit(client, fmt::format("Poll {}'s {} set to {}", id, action, value), {fmt::format(
+          "UPDATE real_estate_polls SET {} = {} WHERE id = {}", action == "prompt" ? "prompt_players" : "results_unpublished", value, id)});
+      }
+      else if (action == "publish") {
+        pollEdit(client, fmt::format("Poll {} published", id), {fmt::format("UPDATE real_estate_polls SET published = 1 WHERE id = {} AND published = 0", id)});
+      }
+      else if (action == "close") {
+        pollEdit(client, fmt::format("Poll {} closed", id), {fmt::format("UPDATE real_estate_polls SET closes_at = NOW() WHERE id = {} AND opens_at < NOW() AND closes_at > NOW()", id)});
+      }
+      else if (action == "archive") {
+        pollEdit(client, fmt::format("Poll {} archived", id), {fmt::format("UPDATE real_estate_polls SET archived = 1 WHERE id = {} AND archived = 0", id)});
+      }
+      else {
+        refuse(client, usage);
+      }
+    }
+
     void help(Client *client) {
       say(client, "#realestate info: the properties and regions where you stand");
       say(client, "#realestate region create <across> <along> [name] | move <id> | size <id> <across> <along> | show: a box 350 below and above your feet");
       say(client, "#realestate definition show <id> | set <id> <field> <value> | origin <id> (the switch, at you) | create <id> <type 1-8> <name> | child add|remove <parent> <child>");
       say(client, "#realestate cost set <cost id> <currency> <amount>: any cost's price in coin (currency 0, in copper) or an alternate currency; a negative amount is a reduction");
+      say(client, "#realestate poll list | create | location | option | unoption | prompt | hideresults | publish | close | archive: Peridot's polls");
       say(client, "#realestate reload: every zone reloads the catalog");
       say(client, "Edits are validated before they're kept and reach every zone; one that would break the catalog is refused.");
     }
@@ -354,6 +461,9 @@ namespace housing {
     }
     else if (subcommand == "cost") {
       costCommand(client, sep);
+    }
+    else if (subcommand == "poll") {
+      pollCommand(client, sep);
     }
     else if (subcommand == "reload") {
       sendEvent(EventType::catalogChanged, EventTarget::allZones, 0, 0, {});

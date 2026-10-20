@@ -441,7 +441,8 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_SharedTaskPlayerList]     = &Client::Handle_OP_SharedTaskPlayerList;
 
 	// player housing
-	ConnectedOpcodes[OP_PollPropertyVote]            = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_PollList]                    = &Client::Handle_OP_Housing;
+	ConnectedOpcodes[OP_PollVotingOptOut]            = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_PollTeleport]                = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_PollVote]                    = &Client::Handle_OP_Housing;
 	ConnectedOpcodes[OP_RealEstateAccount]           = &Client::Handle_OP_Housing;
@@ -914,7 +915,8 @@ void Client::CompleteConnect()
 	CalcItemScale();
 	DoItemEnterZone();
 
-	if (zone->GetZoneID() == Zones::GUILDHALL && GuildBanks)
+	if ((zone->GetZoneID() == Zones::GUILDHALL || housing::guildHallGuildId()) && GuildBanks &&
+		(!housing::guildHallGuildId() || GuildID() == housing::guildHallGuildId()))
 		GuildBanks->SendGuildBank(this);
 
 	if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
@@ -7713,7 +7715,7 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (zone->GetZoneID() != Zones::GUILDHALL) {
+	if (zone->GetZoneID() != Zones::GUILDHALL && !housing::guildHallGuildId()) {
 		Message(Chat::Red, "The Guild Bank is not available in this zone.");
 		GuildBankAck();
 		return;
@@ -7732,6 +7734,18 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 
 	if (!IsInAGuild()) {
 		Message(Chat::Red, "You must be in a Guild to use the Guild Bank.");
+		if (Action == GuildBankDeposit) {
+			GuildBankDepositAck(true, sentAction);
+		}
+		else {
+			GuildBankAck();
+		}
+
+		return;
+	}
+
+	// RoF2 opens the guild bank for any guilded player in a hall, since EQEmu's zone id lacks Live's hall bit (ACC-6, ACC-7).
+	if (housing::refuseGuildBank(this)) {
 		if (Action == GuildBankDeposit) {
 			GuildBankDepositAck(true, sentAction);
 		}
@@ -12045,6 +12059,10 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 	/**
 	 * Handle any EQEmu defined popup Ids first
 	 */
+	if (housing::handlePopupResponse(this, popup_response->popupid)) {
+		return;
+	}
+
 	std::string response;
 	switch (popup_response->popupid) {
 		case POPUPID_REPLACE_SPELLWINDOW:

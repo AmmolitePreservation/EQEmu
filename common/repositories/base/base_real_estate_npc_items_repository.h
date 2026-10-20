@@ -24,6 +24,7 @@ public:
 		uint32_t    mount_npc_type_id;
 		std::string race_tag;
 		uint8_t     training_dummy;
+		uint8_t     teleport_role;
 	};
 
 	static std::string PrimaryKey()
@@ -39,6 +40,7 @@ public:
 			"mount_npc_type_id",
 			"race_tag",
 			"training_dummy",
+			"teleport_role",
 		};
 	}
 
@@ -50,6 +52,7 @@ public:
 			"mount_npc_type_id",
 			"race_tag",
 			"training_dummy",
+			"teleport_role",
 		};
 	}
 
@@ -95,6 +98,7 @@ public:
 		e.mount_npc_type_id = 0;
 		e.race_tag          = "";
 		e.training_dummy    = 0;
+		e.teleport_role     = 0;
 
 		return e;
 	}
@@ -136,6 +140,7 @@ public:
 			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.race_tag          = row[3] ? row[3] : "";
 			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.teleport_role     = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -174,6 +179,7 @@ public:
 		v.push_back(columns[2] + " = " + std::to_string(e.mount_npc_type_id));
 		v.push_back(columns[3] + " = '" + Strings::Escape(e.race_tag) + "'");
 		v.push_back(columns[4] + " = " + std::to_string(e.training_dummy));
+		v.push_back(columns[5] + " = " + std::to_string(e.teleport_role));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -200,6 +206,7 @@ public:
 		v.push_back(std::to_string(e.mount_npc_type_id));
 		v.push_back("'" + Strings::Escape(e.race_tag) + "'");
 		v.push_back(std::to_string(e.training_dummy));
+		v.push_back(std::to_string(e.teleport_role));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -234,6 +241,7 @@ public:
 			v.push_back(std::to_string(e.mount_npc_type_id));
 			v.push_back("'" + Strings::Escape(e.race_tag) + "'");
 			v.push_back(std::to_string(e.training_dummy));
+			v.push_back(std::to_string(e.teleport_role));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -272,6 +280,7 @@ public:
 			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.race_tag          = row[3] ? row[3] : "";
 			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.teleport_role     = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -301,6 +310,7 @@ public:
 			e.mount_npc_type_id = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.race_tag          = row[3] ? row[3] : "";
 			e.training_dummy    = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.teleport_role     = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -380,6 +390,7 @@ public:
 		v.push_back(std::to_string(e.mount_npc_type_id));
 		v.push_back("'" + Strings::Escape(e.race_tag) + "'");
 		v.push_back(std::to_string(e.training_dummy));
+		v.push_back(std::to_string(e.teleport_role));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -407,6 +418,7 @@ public:
 			v.push_back(std::to_string(e.mount_npc_type_id));
 			v.push_back("'" + Strings::Escape(e.race_tag) + "'");
 			v.push_back(std::to_string(e.training_dummy));
+			v.push_back(std::to_string(e.teleport_role));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

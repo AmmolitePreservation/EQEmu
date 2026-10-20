@@ -1776,6 +1776,10 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 		DeleteChargeFromSlot = -1;
 	}
 
+	if (IsClient() && slot == CastingSlot::Item && inventory_slot != 0xFFFFFFFF) {
+		housing::handleItemCastFinished(CastToClient(), spell_id, inventory_slot);
+	}
+
 	if (IsClient() && DeleteChargeFromSlot >= 0) {
 		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);
 	}

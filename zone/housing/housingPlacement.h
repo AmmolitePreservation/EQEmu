@@ -30,8 +30,12 @@ namespace housing {
   void handleMoveToStorage(Client *client, WireReader &reader);
   void handleStoreAll(Client *client, WireReader &reader);
   void handlePack(Client *client, WireReader &reader);
+  void handleHouseSwap(Client *client, WireReader &reader);
+  void handleLoadLayout(Client *client, WireReader &reader);
 
   void sendItemResult(Client *client, ItemResult result);
+  // The plot whose region holds the player, else the current property (the client's +0x94).
+  uint32 standingProperty(Client *client, const Session &state);
   void cancelPlacement(Client *client, const std::string &reason);
   // A placed or stored row leaves its place: its world object or spawn goes, an open container closes, editors stop editing it.
   void withdrawRow(const PlacedItem &row);

@@ -3,9 +3,11 @@
 
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
+#include "../common/housingAugmentaterRules.h"
 #include "../common/housingInstanceNumbers.h"
 #include "../common/housingNames.h"
 #include "../common/housingPlacementRules.h"
+#include "../common/housingPollRules.h"
 #include "../common/housingTransferOffers.h"
 #include "../common/housingUpkeepMath.h"
 
@@ -61,6 +63,18 @@ public:
     TEST_ADD(HousingTest::copiesCountUpPastIdsInUse);
     TEST_ADD(HousingTest::copyNumbersWrapAboveTheReservedIds);
     TEST_ADD(HousingTest::noCopyWhenEveryIdIsInUse);
+    TEST_ADD(HousingTest::augmentaterModesStepInLivesOrder);
+    TEST_ADD(HousingTest::raceStepsFromEruditeToWoodElfAndWraps);
+    TEST_ADD(HousingTest::featureCountsMatchLivesRuns);
+    TEST_ADD(HousingTest::eruditeHairAndElfBeardRideTheFace);
+    TEST_ADD(HousingTest::armorColorsAndMaterialsCycleAsOnLive);
+    TEST_ADD(HousingTest::modeWithoutOptionChangesNothing);
+    TEST_ADD(HousingTest::raceChangeKeepsFeaturesTheNewBodyHas);
+    TEST_ADD(HousingTest::lookOutsideTheOptionsIsRefused);
+    TEST_ADD(HousingTest::pollStateFollowsPublishingAndDates);
+    TEST_ADD(HousingTest::voteKeysFitTheSelectionType);
+    TEST_ADD(HousingTest::pollResultsRankTiesTogether);
+    TEST_ADD(HousingTest::houseSwapNeedsRoomForThePlacedHousesItems);
   }
 
 private:
@@ -602,6 +616,187 @@ private:
     TEST_ASSERT(!housing::nextInstanceId(31995, range, used).has_value());
     used.erase(31993);
     TEST_ASSERT(housing::nextInstanceId(31995, range, used) == std::optional<uint32>(31993));
+  }
+  static housing::AssistantLook erudite() {
+    return housing::AssistantLook{3, 0, 1, 2, 1, 0, 0, 0xFFFEFEFE};
+  }
+
+  void augmentaterModesStepInLivesOrder() {
+    std::vector<std::string> names;
+    housing::AugmentaterMode mode = housing::AugmentaterMode::race;
+    for (int index = 0; index < 10; index++) {
+      names.push_back(housing::augmentaterModeName(mode));
+      mode = housing::nextAugmentaterMode(mode);
+    }
+    TEST_ASSERT(names == std::vector<std::string>({"RACE", "GENDER", "FACE", "HAIR", "BEARD", "HAIR COLOR", "ARMOR STYLE", "ARMOR COLOR", "RESET", "RACE"}));
+    TEST_ASSERT(housing::augmentaterModeLine(housing::AugmentaterMode::race) == "The Augmentater whirrs: You will now modify the -- RACE -- of a targeted guild assistant.");
+    TEST_ASSERT(housing::augmentaterModeLine(housing::AugmentaterMode::reset) ==
+      "The Augmentater whirrs: You will now -- RESET -- a targeted guild assistant back to their standard appearance.");
+    TEST_ASSERT(std::string(housing::augmentaterFeatureName(housing::AugmentaterMode::armorStyle)) == "armor material");
+  }
+
+  void raceStepsFromEruditeToWoodElfAndWraps() {
+    housing::AssistantLook look = erudite();
+    std::vector<uint16> races;
+    for (int index = 0; index < 16; index++) {
+      TEST_ASSERT(housing::stepLook(look, housing::AugmentaterMode::race));
+      races.push_back(look.race);
+    }
+    TEST_ASSERT(races == std::vector<uint16>({4, 5, 6, 7, 8, 9, 10, 11, 12, 128, 130, 330, 522, 1, 2, 3}));
+  }
+
+  void featureCountsMatchLivesRuns() {
+    TEST_ASSERT(housing::hairOptions(3, 0).size() == 6);
+    TEST_ASSERT(housing::hairOptions(3, 1).size() == 9);
+    TEST_ASSERT(housing::hairOptions(4, 1) == std::vector<uint8>({0, 1, 2, 255}));
+    TEST_ASSERT(housing::hairOptions(522, 0) == std::vector<uint8>({0, 1, 2, 3}));
+    TEST_ASSERT(housing::hairOptions(9, 0).empty() && housing::hairOptions(10, 0).empty() && housing::hairOptions(128, 1).empty());
+    TEST_ASSERT(housing::hairOptions(9, 1).size() == 4 && housing::hairOptions(10, 1).size() == 4);
+    TEST_ASSERT(housing::beardOptionCount(8, 1) == 6 && housing::beardOptionCount(522, 1) == 6 && housing::beardOptionCount(12, 0) == 6);
+    TEST_ASSERT(housing::beardOptionCount(5, 1) == 5 && housing::beardOptionCount(6, 0) == 5 && housing::beardOptionCount(7, 1) == 5);
+    TEST_ASSERT(housing::beardOptionCount(4, 0) == 0 && housing::beardOptionCount(1, 1) == 0 && housing::beardOptionCount(128, 0) == 0);
+    TEST_ASSERT(!housing::hasHairColor(3, 1) && !housing::hasHairColor(5, 1) && !housing::hasHairColor(10, 1) && !housing::hasHairColor(9, 0));
+    TEST_ASSERT(housing::hasHairColor(9, 1) && housing::hasHairColor(6, 1));
+  }
+
+  void eruditeHairAndElfBeardRideTheFace() {
+    const housing::AssistantSpawnLook man = housing::spawnLook(erudite());
+    TEST_ASSERT(man.face == 21 && man.hairStyle == 255 && man.hairColor == 255 && man.beard == 1 && man.beardColor == 0);
+    housing::AssistantLook look = erudite();
+    std::vector<uint8> faces;
+    for (int index = 0; index < 6; index++) {
+      housing::stepLook(look, housing::AugmentaterMode::hair);
+      faces.push_back(housing::spawnLook(look).face);
+    }
+    TEST_ASSERT(faces == std::vector<uint8>({31, 41, 51, 1, 11, 21}));
+    const housing::AssistantSpawnLook highElfWoman = housing::spawnLook(housing::AssistantLook{5, 1, 3, 0, 2, 4, 0, 0});
+    TEST_ASSERT(highElfWoman.face == 23 && highElfWoman.beard == 255 && highElfWoman.hairColor == 255);
+    const housing::AssistantSpawnLook darkElfMan = housing::spawnLook(housing::AssistantLook{6, 0, 6, 1, 1, 9, 0, 0});
+    TEST_ASSERT(darkElfMan.face == 16 && darkElfMan.beard == 1 && darkElfMan.beardColor == 9 && darkElfMan.hairColor == 9);
+    const housing::AssistantSpawnLook bald = housing::spawnLook(housing::AssistantLook{4, 0, 0, 255, 255, 17, 0, 0});
+    TEST_ASSERT(bald.hairStyle == 255 && bald.hairColor == 255);
+  }
+
+  void armorColorsAndMaterialsCycleAsOnLive() {
+    housing::AssistantLook look = erudite();
+    std::vector<uint32> tints;
+    for (int index = 0; index < 3; index++) {
+      housing::stepLook(look, housing::AugmentaterMode::armorColor);
+      tints.push_back(look.bodyTint);
+    }
+    TEST_ASSERT(tints == std::vector<uint32>({0xFFBFBFBF, 0xFF808080, 0xFF00000A}));
+    TEST_ASSERT(housing::augmentaterTints().size() == 17);
+    look.bodyMaterial = 8;
+    housing::stepLook(look, housing::AugmentaterMode::armorStyle);
+    TEST_ASSERT(look.bodyMaterial == 10);
+    look.bodyMaterial = 23;
+    housing::stepLook(look, housing::AugmentaterMode::armorStyle);
+    TEST_ASSERT(look.bodyMaterial == 0);
+    TEST_ASSERT(housing::augmentaterMaterials().size() == 23);
+  }
+
+  void modeWithoutOptionChangesNothing() {
+    housing::AssistantLook iksar{128, 0, 3, 255, 255, 0, 0, 0};
+    const housing::AssistantLook before = iksar;
+    TEST_ASSERT(!housing::stepLook(iksar, housing::AugmentaterMode::hair));
+    TEST_ASSERT(!housing::stepLook(iksar, housing::AugmentaterMode::beard));
+    TEST_ASSERT(!housing::stepLook(iksar, housing::AugmentaterMode::hairColor));
+    TEST_ASSERT(iksar == before);
+    housing::AssistantLook woman = erudite();
+    woman.gender = 1;
+    woman = housing::fitLook(woman);
+    TEST_ASSERT(!housing::stepLook(woman, housing::AugmentaterMode::hairColor));
+  }
+
+  void raceChangeKeepsFeaturesTheNewBodyHas() {
+    housing::AssistantLook look = erudite();
+    housing::stepLook(look, housing::AugmentaterMode::race);
+    TEST_ASSERT(look.race == 4 && look.hairStyle == 2 && look.beard == 255 && look.face == 1);
+    housing::stepLook(look, housing::AugmentaterMode::race);
+    TEST_ASSERT(look.race == 5 && look.beard == 0);
+    housing::AssistantLook troll{9, 1, 0, 2, 255, 13, 0, 0};
+    housing::stepLook(troll, housing::AugmentaterMode::gender);
+    TEST_ASSERT(troll.gender == 0 && troll.hairStyle == 255 && troll.hairColor == 13);
+  }
+
+  void lookOutsideTheOptionsIsRefused() {
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{3, 0, 1, 6, 1, 0, 0, 0}));
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{4, 0, 8, 0, 255, 0, 0, 0}));
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{4, 0, 0, 0, 0, 0, 0, 0}));
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{4, 0, 0, 0, 255, 19, 0, 0}));
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{4, 0, 0, 0, 255, 0, 9, 0}));
+    TEST_ASSERT(!housing::lookValid(housing::AssistantLook{75, 0, 0, 0, 255, 0, 0, 0}));
+    TEST_ASSERT(housing::lookValid(housing::AssistantLook{3, 1, 7, 8, 255, 0, 23, 0}));
+    bool refused = false;
+    try {
+      housing::spawnLook(housing::AssistantLook{3, 0, 1, 6, 1, 0, 0, 0});
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
+  }
+
+  void pollStateFollowsPublishingAndDates() {
+    TEST_ASSERT(housing::pollState(false, false, 100, 200, 150) == housing::PollState::initialized);
+    TEST_ASSERT(housing::pollState(true, false, 100, 200, 99) == housing::PollState::upcoming);
+    TEST_ASSERT(housing::pollState(true, false, 100, 200, 100) == housing::PollState::open);
+    TEST_ASSERT(housing::pollState(true, false, 100, 200, 200) == housing::PollState::closed);
+    TEST_ASSERT(housing::pollState(true, true, 100, 200, 150) == housing::PollState::archived);
+    bool refused = false;
+    try {
+      housing::pollState(true, false, 200, 200, 150);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
+  }
+
+  void voteKeysFitTheSelectionType() {
+    using housing::PollKind;
+    using housing::PollSelection;
+    const std::set<uint32> options{10, 11, 12};
+    TEST_ASSERT(housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {11}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {10, 11}));
+    TEST_ASSERT(housing::voteKeysAllowed(PollKind::question, PollSelection::multiple, 2, options, {10, 12}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::multiple, 2, options, {10, 11, 12}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::multiple, 3, options, {10, 10}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {13}));
+    TEST_ASSERT(housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {}));
+    TEST_ASSERT(housing::voteKeysAllowed(PollKind::property, PollSelection::propertyButton, 1, {}, {117730767}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::property, PollSelection::single, 1, {}, {117730767}));
+  }
+
+  void pollResultsRankTiesTogether() {
+    const auto ranked = housing::rankPollResults({{10, 3}, {11, 5}, {12, 3}, {13, 1}});
+    TEST_ASSERT(ranked.size() == 4);
+    TEST_ASSERT(ranked[0].key == 11 && ranked[0].rank == 1);
+    TEST_ASSERT(ranked[1].key == 10 && ranked[1].rank == 2 && ranked[2].key == 12 && ranked[2].rank == 2);
+    TEST_ASSERT(ranked[3].key == 13 && ranked[3].rank == 4);
+  }
+
+  void houseSwapNeedsRoomForThePlacedHousesItems() {
+    housing::SwapCapacity space;
+    space.maxItems = 100;
+    space.maxVault = 10;
+    space.realEstateHeld = 40;
+    space.realEstateMoving = 60;
+    TEST_ASSERT(housing::swapCapacityResult(space) == housing::ItemResult::success);
+    space.realEstateMoving = 61;
+    TEST_ASSERT(static_cast<uint32>(housing::swapCapacityResult(space)) == 48);
+    space.realEstateMoving = 60;
+    space.vaultMoving = 11;
+    TEST_ASSERT(static_cast<uint32>(housing::swapCapacityResult(space)) == 49);
+    space.vaultMoving = 10;
+    space.npcCap = 2;
+    space.npcHeld = 1;
+    space.npcMoving = 2;
+    TEST_ASSERT(static_cast<uint32>(housing::swapCapacityResult(space)) == 50);
+    space.npcCap = -1;
+    TEST_ASSERT(housing::swapCapacityResult(space) == housing::ItemResult::success);
+    TEST_ASSERT(static_cast<uint32>(housing::ItemResult::swapNoHousePlaced) == 53 && static_cast<uint32>(housing::ItemResult::swapAlreadyPlaced) == 55 &&
+      static_cast<uint32>(housing::ItemResult::swapPlacedCrate) == 59);
   }
 };
 

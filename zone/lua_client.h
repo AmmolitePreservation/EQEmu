@@ -261,6 +261,9 @@ public:
 	void DropItem(int slot_id);
 	void BreakInvis();
 	void LeaveGroup();
+	bool EnterRealEstate(uint32 property_id);
+	void LeaveRealEstate();
+	bool OpenRealEstatePurchase(uint32 property_id);
 	bool IsGrouped();
 	bool IsRaidGrouped();
 	bool Hungry();

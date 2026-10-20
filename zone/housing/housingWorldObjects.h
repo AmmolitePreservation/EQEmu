@@ -53,6 +53,7 @@ namespace housing {
   // Whose placed items stand in this zone: the outdoor properties hosted here, and the current property inside an interior.
   bool standsOutdoors(const Property &property);
   bool shownHere(const Property &property, const Session &state);
+  std::set<uint32> propertiesShownInZone();
   void sendWorldObjects(Client *client, const Session &state);
   void broadcastWorldObject(const PlacedItem &row);
   void broadcastWorldObjectRemove(const PlacedItem &row);

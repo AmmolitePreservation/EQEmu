@@ -29,6 +29,7 @@
 
 #include "client.h"
 #include "entity.h"
+#include "housing/housing.h"
 #include "mob.h"
 
 #include "quest_parser_collection.h"
@@ -525,6 +526,8 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 
 		// copy to be filtered by task updates, null trade slots preserved for quest event arg
 		std::vector<EQ::ItemInstance*> items(insts, insts + std::size(insts));
+
+		housing::handleTrade(this, tradingWith->CastToNPC(), items);
 
 		if (RuleB(TaskSystem, EnableTaskSystem)) {
 			if (UpdateTasksOnDeliver(items, *trade, tradingWith->CastToNPC())) {

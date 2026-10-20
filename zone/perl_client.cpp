@@ -8,6 +8,7 @@
 #include "dynamic_zone.h"
 #include "titles.h"
 #include "dialogue_window.h"
+#include "housing/housing.h"
 
 void Perl_Client_SendSound(Client* self) // @categories Script Utility
 {
@@ -872,6 +873,21 @@ Group* Perl_Client_GetGroup(Client* self) // @categories Account and Character, 
 void Perl_Client_LeaveGroup(Client* self) // @categories Account and Character, Group
 {
 	self->LeaveGroup();
+}
+
+bool Perl_Client_EnterRealEstate(Client* self, uint32 property_id) // @categories Account and Character, Zones
+{
+	return housing::questEnter(self, property_id);
+}
+
+void Perl_Client_LeaveRealEstate(Client* self) // @categories Account and Character, Zones
+{
+	housing::questLeave(self);
+}
+
+bool Perl_Client_OpenRealEstatePurchase(Client* self, uint32 property_id) // @categories Account and Character
+{
+	return housing::questOpenPurchase(self, property_id);
 }
 
 Raid* Perl_Client_GetRaid(Client* self) // @categories Account and Character, Raid
@@ -3453,6 +3469,7 @@ void perl_register_client()
 	package.add("DyeArmorBySlot", (void(*)(Client*, uint8, uint8, uint8, uint8, uint8))&Perl_Client_DyeArmorBySlot);
 	package.add("EndSharedTask", (void(*)(Client*))&Perl_Client_EndSharedTask);
 	package.add("EndSharedTask", (void(*)(Client*, bool))&Perl_Client_EndSharedTask);
+	package.add("EnterRealEstate", &Perl_Client_EnterRealEstate);
 	package.add("Escape", &Perl_Client_Escape);
 	package.add("ExpeditionMessage", &Perl_Client_ExpeditionMessage);
 	package.add("FailTask", &Perl_Client_FailTask);
@@ -3681,6 +3698,7 @@ void perl_register_client()
 	package.add("LearnDisciplines", &Perl_Client_LearnDisciplines);
 	package.add("LearnRecipe", &Perl_Client_LearnRecipe);
 	package.add("LeaveGroup", &Perl_Client_LeaveGroup);
+	package.add("LeaveRealEstate", &Perl_Client_LeaveRealEstate);
 	package.add("LoadPEQZoneFlags", &Perl_Client_LoadPEQZoneFlags);
 	package.add("LoadZoneFlags", &Perl_Client_LoadZoneFlags);
 	package.add("LockSharedTask", &Perl_Client_LockSharedTask);
@@ -3724,6 +3742,7 @@ void perl_register_client()
 	package.add("NukeItem", (uint32_t(*)(Client*, uint32))&Perl_Client_NukeItem);
 	package.add("NukeItem", (uint32_t(*)(Client*, uint32, uint8))&Perl_Client_NukeItem);
 	package.add("OpenLFGuildWindow", &Perl_Client_OpenLFGuildWindow);
+	package.add("OpenRealEstatePurchase", &Perl_Client_OpenRealEstatePurchase);
 	package.add("PlayMP3", &Perl_Client_PlayMP3);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*))&Perl_Client_Popup2);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*, uint32))&Perl_Client_Popup2);
