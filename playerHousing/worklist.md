@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 173, liveCheck 13, clientAnalysis 26, peridotTest 38, question 29, done 43; 322 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
+**Counts.** fix 172, liveCheck 13, clientAnalysis 26, peridotTest 38, question 29, done 44; 322 in all. Of the 29 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 1 is open (STT-13). **BLOCKING:** 7 (BLD-1, BLD-2, SCH-1, ITM-1, REC-1, REC-2, REC-3).
 
 ## Owner decisions
 
@@ -505,7 +505,7 @@ Questions: Q19, Q20.
 - **CAT-7** `clientAnalysis` **World 0x2698 at character select.** Zoning keeps definitions and costs (teardown 0x5aff20 clears only +0x8c/+0x90 and item lists; XA:Z9), so the zone-in send (ZIN-4) stands. Left: what character select uses the catalog for (OnRoutePacket 0x5629c0 passes 0x2698 to the manager at 0x562d03), to decide whether world also sends it.
 - **CAT-8** `done` **The Town root's name (definition 1, type 6).** **Live (livedumps master, 2026-10-20):** Live never sends the Town property: definition 1 has no name, address, zone or dz id, and the 7,808 neighborhood records captured name 15 distinct parents, none of which ever arrived as a record. No name rule is needed; if CAT-4 adopts definition 1, Peridot sends no Town record either.
 - **CAT-9** `done` **Check the name-segment load rule against Live.** **Live (livedumps master, 2026-10-20):** every captured property of a hall (4 definitions), house (22 of 37 seen) and crate (6 of 17 seen) has a name segment after its plot's address; plots (types 4, 8) end in their address and neighborhoods (type 5) carry their own name. Build step 2's rule (housingCatalog.cpp: halls, houses and crates need a name_segment) matches Live.
-- **CAT-10** `fix` **Plot exit z from the ground at the corner.** makeHousingCatalogSql.py took an unmeasured plot's exit z from the plot's center, but Sunrise Hills' plot centers range z -99.8 to 150.7 and Live's two measured exits stand 2.75 and 4.15 above their centers. Derive each unmeasured exit's z as the floor under its corner + 2.95 from the neighborhood's geometry, validated against the two measured exits; fail when a corner has no floor or lies inside another plot.
+- **CAT-10** `done` **Plot exit z.** An unmeasured plot's exit takes the plot center's z (makeHousingCatalogSql.py). **Owner (2026-10-20):** don't measure exit heights; the center's z is fine.
 - **CAT-11** `fix` **Neighborhood arrival point from Live.** The zone template for the neighborhood used its header's safe point (2035, -2940, 6, heading 0); 4,809 Live neighborhood zone dumps arrive at (2042, -2958), z 3.19, heading 481.
   <sub>Sources: report:clientanalysis-7 · chunk2-missed-4 · pending:0x2698-timing · summary:s6-owner-decisions-0x2698 · opcode2698DefinitionsAndCosts.md:118 · serverPlan:347-timing · overlap: audit G21 and client analysis 7 · XA:Z9</sub>
 
