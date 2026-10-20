@@ -47,11 +47,11 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T9 | the `items` table (migration, decision D1) | rename `UNK224`-`UNK241` and `placeable` to their true names; re-slice the shifted rows | the housing tail's values already exist there, unlabeled |
 | T10 | `common/repositories/base/base_items_repository.h` | regenerated for the renamed columns | the only EQEmu code that names them (used by `#find item`) |
 | T11 | `common/servertalk.h` | `ServerOP_Housing` and its envelope | cross-zone housing events (D2) |
-| T12 | `world/zoneserver.cpp` | one `case` in the list world forwards to every zone | delivery |
+| T12 | `world/zoneserver.cpp` | one `case` in the list world forwards to every zone, which also hands the event to world's neighborhood balance (`world/housingNeighborhoods`) | delivery; D11 grows on ownership changes (NBH-1) |
 | T13 | `zone/worldserver.cpp` | one `case` handing the envelope to the housing module | receiving |
 | T14 | `common/ruletypes.h` | the `Housing` rule category | configuration through EQEmu rules |
-| T15 | `world/main.cpp` | one call per main-loop iteration to world's housing upkeep component (`world/housingUpkeep`), which keeps its own timer: a catch-up run at startup, then the properties whose next charge is due | the per-property upkeep clock (D4) |
-| T16 | `world/CMakeLists.txt` | the world-side housing sources | build |
+| T15 | `world/main.cpp` | at boot, the upkeep rules' range check (out of range: world does not start) and the neighborhood balance (D11); then one call per main-loop iteration to world's housing upkeep component (`world/housingUpkeep`), which keeps its own timer: a catch-up run on its first call, then every 10 s the properties whose next charge is due | the per-property upkeep clock (D4) |
+| T16 | `world/CMakeLists.txt` | the world-side housing sources (`housingUpkeep`, `housingNeighborhoods`) | build |
 | T17 | `zone/command.cpp`, `zone/command.h` | one `#realestate` GM command registration | plot and catalog authoring |
 | T18 | `zone/object.h`, `zone/object.cpp` | a transient flag (`Save`, `VarSave` and `PutItem`'s container save skip the database) and `SetUser`; housing owns the object while it's open (not an entity) and deletes it once closed | housing tradeskill containers reuse EQEmu's world containers |
 | T19 | `common/eq_packet_structs.h` | `ClickObjectActionHousing_Struct` and `FindPersonRequestHousing_Struct` wrap the unchanged structs with the housing ids (clients before RoF use the originals untranslated, so their sizes can't change) | the RoF2 encoder / decoder (T6) carry them |
@@ -126,17 +126,15 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 
 | Event | Target | Receiving zone does |
 |---|---|---|
-| Transfer offer | the recipient character | shows the offer (game dialog `0x89`); the answer (`0x5a63`) completes the transfer there (the recipient is in the owner's zone, S7) |
-| Transfer resolved | the offering character | tells the owner the result |
-| Property changed (owner, balances, upkeep, name, children) | the property; the owner and previous owner | re-sends the records (`0x63fd`, `0x6fd0` for a current property, `0x4f09` for one that is gone) and the owners' property lists |
-| Upkeep expired | the owner | prints the two expiry lines to an online owner (S8) |
+| Property changed (owner, balances, upkeep, name, children; its payload names the owner and guild before and after) | the property; the owner and previous owner | re-sends the records (`0x63fd`, `0x6fd0` for a current property, `0x4f09` for one that is gone), the property lists `0x2aa7` / `0x3e00` / `0x66df` and the access lists of the players who know it; world's neighborhood balance (D11) runs when the owner or guild changed |
 | Item list changed | the property | re-sends the changed entries and world objects |
 | Access list changed | the property | re-sends `0x485d`; applies the new permissions to players present |
-| Character property lists changed | the character | re-sends `0x2aa7` / `0x3e00` / `0x66df` |
 | Personal trophy benefits changed | the owner | recomputes the available benefits (they come from trophies placed in the owner's plots) |
 | Guild neighborhood created | the guild | `0x1d3c` |
 | Polls changed | all zones | re-sends the affected poll messages to players with the vote windows' data |
 | Catalog changed (a kept `#realestate` edit, `reload`) | all zones | reloads the catalog and re-sends it, and the state that depends on it, to everyone present |
+
+A transfer offer needs no event: the recipient is in the owner's zone, which holds the offer (S7). The expiry lines go from world to an online owner as an ordinary chat message, and the notice mail straight into the `mail` table (S8).
 
 **Consistency:** every change runs inside a database **transaction** (`TransactionBegin` / `Commit` / `Rollback`, `common/dbcore.h`), and each property carries a **revision** checked and incremented by every change (`UPDATE ... WHERE id = ? AND revision = ?`). When two zones change the same property at once, the second change fails cleanly, and that player gets a result code and the fresh state. A transfer offer waits in the owner's zone, where its recipient is (S7), with its expiry, and its answer is checked against the property's revision, so it can't be accepted twice.
 
@@ -157,10 +155,10 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | `Housing:EnableHousing` | bool | true | master switch: when off, a zone sends RoF2 clients only the empty `0x49df` (chunk 4) and refuses housing requests with a result code |
 | `Housing:EnableUpkeep` | bool | true | the upkeep clock (D4) |
 | `Housing:UpkeepIntervalSeconds` | int | 43200 | seconds from one of a property's charges to its next (Live: 10.8 to 13.2 hours apart, mean 12.3) |
-| `Housing:UpkeepJitterSeconds` | int | 4320 | each interval is longer or shorter by up to this, at random (D4) |
+| `Housing:UpkeepJitterSeconds` | int | 4320 | each interval is longer or shorter by up to this, at random (D4); 0 or more and below the interval, or world does not start |
 | `Housing:UpkeepPercent` | int | 100 | percent of every daily upkeep charged, read from the host zone's ruleset (X3) |
 | `Housing:UnpaidUpkeepEvictionDays` | int | 90 | days after a charge found a plot's escrow empty (player or guild plot) before world reclaims it into a Crate of Eviction (D7; Live: 90); 0 = never |
-| `Housing:SellRefundPercent` | int | 0 | percent of the purchase price refunded on a sale (D6) |
+| `Housing:SellRefundPercent` | int | 0 | percent of the purchase price refunded on a sale (D6); only 0 is supported, since no column records the price paid, and another value refuses every sale with an error |
 | `Housing:SellRefundsEscrow` | bool | true | a sale withdraws the whole escrow to the seller, floored to copper (D6; Live) |
 | `Housing:MaxPlotsPerCharacter` | int | 3 | Live's value (owner's decision) |
 | `Housing:MaxHousesOverride` | int | -1 | houses and guild halls every plot and guild plot holds, replacing each plot's own `max_children`; -1 = each plot's own (D14) |
@@ -457,7 +455,7 @@ Requests (224 bytes): **type 0** name search (neighborhood, player or guild name
 - **Reductions never pay out** (owner's rule): each currency's net daily cost is **clamped at 0** before charging, so a reduction lowers what is charged but never adds to escrow. The client computes the Manage window's daily cost itself, so it shows 0c at the lowest only if what the server sends never nets below zero; the only reductions are special houses' (`serverWork.md` S13), whose rules keep that true.
 - **Each property is charged on its own clock (D4)**: when its `next_upkeep_at` comes, world charges the plot's daily total at that moment (its own upkeep and every placed item's under it), per currency and net of reductions, times the whole seconds since `upkeep_settled_at` over 86,400; then `upkeep_settled_at` is now and `next_upkeep_at` one interval later. Balances are therefore fractional (the schema keeps them exact; the client shows f64). Only placed items cost upkeep, not items in the shed or closet, and a placement settles nothing (the next charge or deposit takes the new total over the whole time since the last one). **A charge the escrow can't cover takes what's left and expires nothing; the next charge, finding the escrow empty, stamps** the property's `upkeep_expired_time` and the `upkeep_expired_at` of every placed item with an upkeep id with its own second, and stores the stamped items but houses (crates too: entry update, `0x2a9e`; a player editing one gets `0x1baf`, which ends the edit cleanly), leaving houses placed but stamped; it mails the owner Live's notice ("Escrow expired on personal plot - First Notice", its body the two lines below) and prints to an online owner "Your player plot at <neighborhood>, <address>'s escrow has expired!" and "Plots will pack up all items, send them to the owner, and become available for purchase again if its escrow has been expired for 90 days." (Live's server composes both; mail dates in Los Angeles wall time are polish). While stamped, nothing can be placed on the plot (`0x18` / `0x19`) and its houses are locked (`0x1920`). Upkeep pauses under a dormant X3 root.
 - **Deposits are open to anyone**: this client's permission list has no deposit permission (Live's 2010 list did), and a deposit only helps the owner.
-- **A deposit settles first**: it charges the time since the last charge or deposit at the current daily total, then credits, and clears the stamps on the property and its placed items (stored items keep theirs); it doesn't move the next charge (owner's decision).
+- **A deposit credits, then settles**: the deposit is added, then the time since the last charge or deposit is charged at the current daily total, so on an empty escrow that time comes out of the deposit (Live: 1 pp into a plot expired 1,782 s earlier at 2 pp 1 gp a day left 956.6875 copper, UPK-8); the stamps on the property, its placed houses and its placed items clear (stored items keep theirs); it doesn't move the next charge (owner's decision). Add Day and Add Week deposit the same way from the clicker's purse.
 - **Reclaim** (D7): `Housing:UnpaidUpkeepEvictionDays` (90) after a charge stamped a player or guild plot, world reclaims it: everything on it goes into a **Crate of Eviction** (definition 31, filled whatever its caps) for the owner, and the plot is released; the price isn't refunded. The crate is **an archived property the character owns** (list C, which the client shows them) and **becomes a crate item at their next zone-in** (chunk 4). EQEmu parcels can't carry it: they keep an item's id, augments and quantity but not its custom data, which links a crate to its contents. **A deleted owner's expired plot is reclaimed at its next charge**, its items lost (Live reclaimed one within about 30 hours of the deletion, its placed item reaching nobody). An expired house on a paid plot is never reclaimed; it stays locked. **An item carrying a property (a house holding items, a packed crate) is No Trade and No Drop for as long as it carries it**, per instance, which also bars parcels and the bazaar; picked up empty, a house's property is deleted and the item is plain again (Live).
 
 ### S9, access (`0x3146`, `0x485d`, `0x3968`)
