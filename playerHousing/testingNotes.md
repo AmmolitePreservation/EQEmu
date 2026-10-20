@@ -37,7 +37,7 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 | **A long press doesn't commit** | only a quick click (< 500 ms) commits | `placementMode.md` |
 | **The preview is always red** | no `0x49df` regions, region ids ≠ definition `+0x1c`, or no code-0 region in `0x626e` | `placementMode.md`, *Validation* |
 | **Walking off the plot doesn't cancel placement** | player movement never cancels it; validity follows the item, not the player | *Scenario* |
-| **Left-clicking a placed item does nothing** | a left click sends `0x218c`/`0x050c`, which Peridot only logs except on a house (Enter); the menu comes from a right click (`0x21ec`), which the server answers with the `0x21ec` menu | `flows/editPlacedItem.md` |
+| **Left-clicking a placed item does nothing** | a left click sends `0x218c`/`0x050c`, which Peridot only logs; a house enters only from its door or the menu's Enter; the menu comes from a right click (`0x21ec`), which the server answers with the `0x21ec` menu | `flows/editPlacedItem.md` |
 | **Layouts appear for every character** | layout files (`.\userdata\RE_Layout_*.xml`) have no character in the name | *Layouts* |
 | **A loaded layout lands in the wrong place** | positions are relative to the plot definition's layout origin/heading (definition fields 15–18) | `flows/layouts.md` |
 | **Use Inventory has no effect when loading a layout** | it's silently turned off without permission 9, 6 or 4 (or GM) | *How Load plans* |
