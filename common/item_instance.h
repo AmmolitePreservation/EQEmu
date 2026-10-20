@@ -186,6 +186,7 @@ namespace EQ
 		std::string GetCustomDataString() const;
 		std::string GetCustomData(const std::string &identifier);
 		void SetCustomDataString(const std::string& str);
+		static std::map<std::string, std::string> ParseCustomDataString(const std::string& str);
 		void SetCustomData(const std::string &identifier, const std::string& value);
 		void SetCustomData(const std::string &identifier, int value);
 		void SetCustomData(const std::string &identifier, float value);
