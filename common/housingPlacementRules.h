@@ -30,6 +30,7 @@ namespace housing {
     itemLimit = 31,
     nonEmptyIntoStorage = 32,
     pickUpLimit = 33,
+    notPlaceableZone = 35,
     notPlaceable = 36,
     npcLimit = 38,
     crateHoldsNonEmptyHouse = 39,
