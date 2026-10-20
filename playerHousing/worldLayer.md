@@ -6,8 +6,8 @@ How placed items exist, render and are interacted with in the world. **Status: d
 
 | Representation | What | Fed by | Code |
 |---|---|---|---|
-| **World objects** | placement objects (the 0xc0-byte layout that `0x626e` also carries) held in a client-side manager | **`0x1045`** (add/update: find by GUID, then insert) and **`0x2a9e`** (remove: iterate, then remove by GUID); neither is named in EQEmu's RoF2 table | manager singleton `0x5061e0` (`[0xdcfc70]`, a list head) |
-| **NPC items** (the client's term: placed items backed by an NPC spawn) | ordinary spawns tagged with a placed item | the normal spawn messages, then **`0x21ea`** (spawn id, GUID → spawn `+0x378`, `+0x198`, `+0x420`) | spawn fields read by the functions below |
+| **World objects** | placement objects (the 0xc0-byte layout that `0x626e` also carries) held in a client-side manager | **`0x1045`** (add/update: find by GUID, then insert) and **`0x2a9e`** (remove: iterate, then remove by GUID); Peridot names them `OP_RealEstateWorldObject` and `OP_RealEstateWorldObjectRemove` | manager singleton `0x5061e0` (`[0xdcfc70]`, a list head) |
+| **NPC items** (the client's term: placed items backed by an NPC spawn) | ordinary spawns tagged with a placed item | the normal spawn messages, whose own fields carry the binding (GUID, property id, record id; the spawn parser `0x590dd0` reads it at `0x591d58`); **`0x21ea`** (spawn id, GUID → spawn `+0x378`, `+0x198`, `+0x420`) binds only the item being placed | spawn fields read by the functions below |
 
 (The earlier note "placed items render as spawns" is only half the picture; see `placedItemsAndProperties.md`.)
 
@@ -45,7 +45,7 @@ The distinctive spawn field **`+0x1e54`** is read by: `0x504b60` (the anchor fun
 | 2 | u8 | `+0x2c` | **NPC item** (the item is drawn as a spawn) | `0x504b60`; `0x4b3940` |
 | 3 | f32 (read as u32) | `+0xbc` | **the NPC's size** (0 = default) | `0x5a4ec0` on the NPC item's spawn |
 | 4 | u32 | `+0x0c` | **not used by the client**: only read (`0x505400`) and copied (`0x504fd0`, `0x5056b0`); a server-defined value | |
-| 5 | GUID (16 hex) | `+0x10` | the item's GUID | |
+| 5 | GUID (16 hex) | `+0x10` | the item's GUID: the server's one per placed row, derived from the row id and the same in every message about the item (world objects, item lists, the begin placement, the spawn binding, menus), since the client matches by it | |
 | 6, 7 | u32, u32 | `+0x24`, `+0x28` | property id, record id | |
 | 8 | f32 ×7 | `+0x7c`–`+0x94` | **scale, heading, pitch, roll, then position (three coordinates)** | scale: `0x504830(+0x7c)` (resize); rotation: actor `+0x74`(`+0x80`, `+0x84`, `+0x88`); heading `+0x80` also sets an NPC item's spawn heading (`0x5024b0`) |
 | 9 | u8 ×3 | `+0x98`, `+0x99`, `+0x9a` | `+0x98`: set for NPC items (the actor's flags get `|= 5`); `+0x99`/`+0x9a`: allowed placement sub-modes (`placementMode.md`) | `0x504b60`; `0x5ae160` |
@@ -68,7 +68,7 @@ Runtime-only fields: **`+0x30`** spawn id (an NPC item's spawn), **`+0x34`** the
 
 **Update in place** (`0x504fd0`): copies every wire field from the new object and re-applies position, rotation and scale to the existing actor.
 
-**So placed NPC items can be drawn by a spawn the client creates itself** (from the model name's race tag), which is separate from a server spawn bound by `0x21ea` (step 3).
+**So placed NPC items can be drawn by a spawn the client creates itself** (from the model name's race tag), which is separate from a server spawn bound to its entry (step 3).
 
 ### Lifecycle
 
@@ -90,12 +90,12 @@ Runtime-only fields: **`+0x30`** spawn id (an NPC item's spawn), **`+0x34`** the
 
 | Situation | Body | Evidence |
 |---|---|---|
-| **a placed NPC item in the world** | **the server's spawn** (an ordinary spawn from the spawn messages, instantiated from an NPC type like any other), **bound to the item by `0x21ea`**; the item's world object (`0x1045`, `+0x2c` = 1) creates **no body** of its own | `0x1045` calls `0x504b60`(isBeingPlaced, **0**, 0, 0) |
+| **a placed NPC item in the world** | **the server's spawn** (an ordinary spawn from the spawn messages, instantiated from an NPC type like any other), **bound to the item through the spawn's own fields**; a world object for it (`0x1045`, `+0x2c` = 1) would create **no body** of its own, so the server sends none (Live: 54,509 bound spawns, none with an object) | `0x1045` calls `0x504b60`(isBeingPlaced, **0**, 0, 0) |
 | **placing or editing an NPC item** | the preview: **a clone of the server spawn** (`0x599d00`), or, with no spawn yet, **a client-created spawn of the model name's race tag** (`0x599bd0`), marked **`+0x1e54` = 1** | placement begin `0x5056b0` -> `0x504b60`(0, **1**, spawnID, 0) |
 
-The world object and the server spawn are **correlated only by the item's GUID** (`0x21ea` never touches the world-object manager).
+While an NPC item is placed or edited, its placement object and the server spawn are **correlated only by the item's GUID** (`0x21ea` never touches the world-object manager).
 
-**`0x21ea` fields, now named:** payload `+0x18` -> spawn **`+0x198` = property id**; payload `+0x1c` -> spawn **`+0x420` = record id** (verified: the world right-click builds the `0x21ec` menu request from exactly these two). Spawns start unbound (`0x590dd0`, `0x5a0000` reset them) and clones copy them (`0x598480`).
+**`0x21ea` fields, now named:** payload `+0x18` -> spawn **`+0x198` = property id**; payload `+0x1c` -> spawn **`+0x420` = record id** (verified: the world right-click builds the `0x21ec` menu request from exactly these two). The spawn parser `0x590dd0` reads the same binding from the spawn message (`0x591d58`), `0x5a0000` resets it, and clones copy it (`0x598480`).
 
 **Client-created preview spawns (`+0x1e54`):** exempt from the **12-second staleness check** (`0x2ee0` ms without an update; `0x58f750`, `0x4877e0`; `+0x1e55` exempts too), since they never get server updates; **removing one ends placement** (spawn cleanup `0x590a60`). Removing a *bound* spawn that is the item being edited only unlinks it from placement.
 
@@ -127,12 +127,12 @@ The world object and the server spawn are **correlated only by the item's GUID**
 
 **So a housing forge needs no new message: the server sends `OP_ClickObjectAction` with the placed item's property and record ids instead of EQEmu's hardcoded -1s** (a small encoder change).
 
-2. **Opened:** the client sends **`0x06c8`** (12 bytes: the container's location; a world container is location type 4; not named in EQEmu's table).
+2. **Opened:** the client sends **`0x06c8`**, EQEmu's `OP_OpenContainer` (RoF2's 12-byte form: the container's location; a world container is location type 4), which the server hands to housing while a housing container is open.
 3. **Combine:** **`OP_TradeSkillCombine`** (24 bytes) carries the container's **location**, not the placed-item ids.
 4. **Close:** the client sends **`OP_ClickObjectAction` with no payload** (`0x65d180`).
 5. **Auto-close:** every 500 ms the container manager (`0x65d740`, from the per-frame code) checks the world container still exists and the player is in range: **for a placed container, the world object must still exist (found by property and record id) and the player must be within 20 units of it** (`0x5051b0`); otherwise it closes (and sends the close).
 
-**Server obligations:** decide when a placed item opens as a container (for example in reply to `0x218c` / a menu entry); send `OP_ClickObjectAction` with the ids; **remember which container each player has open**, since combine and close don't say.
+**Server obligations:** open a placed container from its menu entry or a world click as a transient `Object` holding the container item (combines run through EQEmu's own code and nothing persists inside); send `OP_ClickObjectAction` with the ids; **remember which container each player has open**, since combine and close don't say.
 
 **Edit mode:** while placing, world clicks go to placement, so a forge can't be clicked open then. Editing an open forge keeps it open (its world object stays, hidden, with the same ids), but the range check uses the world object's position, which only changes when the server confirms the move (`0x1045` update); **moving it more than 20 units away, storing it or removing it closes the container** at the next check. *(The range-during-edit detail is inferred from the check's inputs.)*
 
@@ -144,7 +144,7 @@ The world object and the server spawn are **correlated only by the item's GUID**
 1. placing: a quick click **confirms** (`0x5572e0`);
 2. **a spawn under the cursor** (`0x5190a0`) -> **target it** (`0x536310`, `[0xdd2648]`); placed NPC items are spawns, so they're targeted like any NPC;
 3. **the item on the cursor** (type from item definition `+0x1d4`, `0x7affa0`): types **12, 33 (key), 39** -> use it on the world (`0x51ecb0`: a key on a door -> `OP_ClickDoor`); a placeable item -> **place it** (`0x626e`);
-4. **placed items** (`0x5428c0` / `0x542a20`, ray-box test `0x5423e0`): a hit -> **`0x218c`**; otherwise within 20 units -> **`0x050c`**;
+4. **placed items** (`0x5428c0` / `0x542a20`, ray-box test `0x5423e0`): a hit -> **`0x218c`** (`OP_RealEstateInteract`, `b` 0); otherwise within 20 units -> **`0x050c`** (`OP_RealEstateUse`, `b` -1);
 5. **ground objects** (object manager) -> **`OP_ClickObject`** (`0x4aa1`).
 
 **Right click** (`0x537d30`): **placed world objects first** (manager pick `0x506160`): a hit -> **`0x21ec` menu request** with the object's ids; **then spawns** (`0x5190a0`): a bound NPC item follows the rules in *Step 3* (beyond **60 units** (`[0x9c57f4]`) only from inside the same property).
@@ -163,9 +163,9 @@ The camera (`[0xde0d7c]`, distance at `+0x34`) allows **a maximum distance of 21
 
 **Houses are placed items outside and ordinary zones inside.** The client has **no house-interior-specific code**: the only compares against the interior / guild-hall zone ids are zone-table bounds checks (ids 1–767, `0x7fe300`, `0x7fefe0`, `0x606280`) and one short list of special zones that includes guild hall 738 (`0x4326b0`, unrelated rule). The client's zone table (`0x7e0de0`) gives the housing zones exactly: neighborhood 712; house interiors **714–720, 723, 739–750, 766** (721/722 unregistered; 724–736 and 752–765 are ordinary zones); guild halls 737/738/751 (`robustness.md`). The prior research's "714–766" range is too broad.
 - **Outside:** a house is a placed item (house category) whose body is built from its model like any world object (`0x1045`).
-- **Entering:** a **server action** (zoning the player into an interior zone), triggered however the server chooses, for example from `0x218c` on the house or a menu entry (or an ordinary door by server choice). The client has entry messages the server can use: `0x1920` "You cannot enter %1 because the upkeep on it has expired."; guild halls: `0x17e1` "Your Guild Hall is loading, please try again in 10-15 seconds.", `0x17e2` "You are unable to enter the Guild Hall at this time."
+- **Entering:** a **server action**: the menu's Enter (type 1, `b` -1, eqstr 723) or a left click on the house, both `0x218c`, moves the player into the interior's running copy (a plain instance of the template zone the house's `dz_id` names, shared by everyone inside), or a new one, at the template's zone-in point. It needs Enter permission (1) and current upkeep on the house and its plot; a crate never offers Enter. The client has entry messages the server can use: `0x1920` "You cannot enter %1 because the upkeep on it has expired."; guild halls: `0x17e1` "Your Guild Hall is loading, please try again in 10-15 seconds.", `0x17e2` "You are unable to enter the Guild Hall at this time."
 - **Inside:** an ordinary zone for the client, so **the real-estate data must be sent there too**: the current property (`0x6fd0`, the house, which gives "You have entered %1."), the regions (`0x49df`), the definitions and records, and the item lists. Houses also hold **teleport anchors** (strings `0x14e1`–`0x14e7`, `0x154a`/`0x154c`: an anchor's house must be placed in a yard; teleports only from zones connected to its neighborhood).
-- **Q11 (the interior zone-in crash from the prior research) can't be resolved statically**: there's no interior-specific client path, so the likely cause is data the client expects but didn't get (or inconsistent data) in the interior zone. **Capture the crash address during testing** and map it to the code documented here.
+- **The interior zone-in crash from the prior research can't be resolved statically**: there's no interior-specific client path, so the likely cause is data the client expects but didn't get (or inconsistent data) in the interior zone. The zone level is proven on Peridot (`phinterior3a3` loads with no housing messages); ZIN-7 adds the housing messages one at a time and **takes the crash address** to map it to the code documented here.
 
 **Guild halls:** zones 737 / 738 / 751. `/outputfile realestate` writes the real-estate export (`0x5b37d0`, "%s-RealEstate.txt"); `/outputfile guildhall` requires being in a guild (character `+0x204c` ≠ -1) (`0x4febd0`). Dumping the real-estate guild hall has client messages `0x153e`–`0x1540` (in a guild, on the guild plot or in the hall, modify item access).
 
@@ -179,13 +179,13 @@ The camera (`[0xde0d7c]`, distance at `+0x34`) allows **a maximum distance of 21
 
 | Stage | Server -> client | Client result | Client -> server |
 |---|---|---|---|
-| **zone-in** | property data (`0x6fd0` current property, definitions `0x2698`, records, regions `0x49df`, item lists `0x1cef`) | "You have entered %1."; camera distance 212 in neighborhoods / 53 elsewhere | |
-| **ordinary placed items** | **`0x1045`** per item (the placement object: model name, transform (scale-first), scale limits, mounting angles, light) | a display actor from the model name, plus a light if `+0xb8` ≠ 0; **re-sent after every zone-in** (zoning clears them) | |
-| **NPC items** | the **server spawn** (ordinary spawn messages) + **`0x21ea`** (GUID, property id, record id); `0x1045` with `+0x2c` = 1 for the item | the spawn is the body (the world object makes none); correlated by GUID | |
+| **zone-in** | property data, before `OP_WorldObjectsSent`: definitions `0x2698`, records (`0x63fd`), the current property `0x6fd0`; after it the character's lists, regions `0x49df` (empty in a zone without housing), item lists `0x1cef` and access lists | "You have entered %1."; camera distance 212 in neighborhoods / 53 elsewhere | |
+| **ordinary placed items** | **`0x1045`** per item, after the item lists (the placement object: model name, transform (scale-first), scale limits, mounting angles, light) | a display actor from the model name, plus a light if `+0xb8` ≠ 0; **re-sent after every zone-in** (zoning clears them) | |
+| **NPC items** | the **server spawn** (ordinary spawn messages), carrying the binding (GUID, property id, record id) in its own fields; no `0x1045`; `0x21ea` only for the item being placed | the spawn is the body | |
 | **changes** | `0x1045` (update in place by GUID), `0x2a9e` (remove by ids), `0x2523` (item being placed moved) | actor updated / destroyed; placement's "editing existing" flag follows (`0x4b3950`) | |
-| **left click** | | target a spawn; place the cursor item; **placed item: `0x218c` (hit) / `0x050c` (≤ 20 units)**; ground object: `OP_ClickObject` | `0x218c`, `0x050c`, `0x626e`, `OP_ClickObject` |
+| **left click** | | target a spawn; place the cursor item; **placed item: `0x218c` (hit) / `0x050c` (≤ 20 units)**; ground object: `OP_ClickObject` | `0x218c` (`OP_RealEstateInteract`), `0x050c` (`OP_RealEstateUse`), `0x626e`, `OP_ClickObject` |
 | **right click** | `0x21ec` menu (entries; **`+0x2fc` = the NPC spawn id** for NPC items) | placed item -> menu request; NPC item: service classes within 20 units -> their NPC interaction, others -> menu | `0x21ec` |
-| **tradeskill container** | **`OP_ClickObjectAction`** with **`+0x04`/`+0x08` = property id / record id** (EQEmu sends -1) | a temporary world container, closed beyond 20 units or when the item disappears | `0x06c8` (opened), `OP_TradeSkillCombine` (location only), `OP_ClickObjectAction` (close, no payload) |
+| **tradeskill container** | **`OP_ClickObjectAction`** with **`+0x04`/`+0x08` = property id / record id** (EQEmu sends -1) | a temporary world container, closed beyond 20 units or when the item disappears | `OP_OpenContainer` `0x06c8` (opened), `OP_TradeSkillCombine` (location only), `OP_ClickObjectAction` (close, no payload) |
 | **placement preview** | (begin `0x626e`) | a clone of the NPC item's spawn or a client-created spawn (`+0x1e54`), tinted green/red | `0x711a` |
 
 **Resolved in the close-out:**
@@ -200,7 +200,7 @@ The camera (`[0xde0d7c]`, distance at `+0x34`) allows **a maximum distance of 21
 **So a placed NPC item's spawn (flags `|= 5`) neither blocks movement nor acts as a surface; ordinary placed items get neither bit, so they collide and can be stood on.** (Bit 1, cleared by doors, and bit 3 aren't used for placed items and stay unnamed.)
 
 **Open items:**
-- **Q11** (the house-interior crash) needs a crash address from testing.
+- **The house-interior crash** needs a crash address from testing (ZIN-7).
 
 ## All world-entity paths (for comparison)
 
@@ -225,8 +225,8 @@ Every path the client uses to put something in the world, with its handler and m
 
 | Group | Functions | Step |
 |---|---|---|
-| message dispatch | `0x4cb870` (forwards the real-estate opcodes), `0x4d0050` (`0x626e`), **`0x4d2820` (`0x7bb1`, unknown: Q23)** | 2 / Q23 |
-| world clicks and interaction | **`0x537d30`**, **`0x5384d0`** (world click), **`0x577f60`** (placed-item interaction check), **`0x518a70`** (unknown) | 4 |
+| message dispatch | `0x4cb870` (forwards the real-estate opcodes), `0x4d0050` (`0x626e`), **`0x4d2820` (`0x7bb1`, the anchor teleport offer, `OP_RealEstateAnchorTeleport`)** | 2 |
+| world clicks and interaction | **`0x537d30`**, **`0x5384d0`** (world click), **`0x577f60`** (placed-item interaction check), **`0x518a70`** (the camera distance limit, *Neighborhood camera*) | 4 |
 | zone and game lifecycle | **`0x53cca0`** (zone loading), `0x540d30` (main loop / cleanup), `0x5629c0` (login) | 2 |
 | guild halls | **`0x4febd0`** ("guild", "guildbank", "guildhall") | 5 |
 | items and inventory | `0x5b83f0` (item display "Placed"/"Stored"), `0x6a06b0`, `0x6a0880`, `0x57a890`–`0x57ae80`, `0x788a10`, `0x788e40`, `0x793f00`, `0x67e560` | (item display; not rendering) |
