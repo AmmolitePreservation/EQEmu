@@ -24,7 +24,7 @@ Columns: **Enabled when** / **Shown when** (the conditions feeding `0x866610` an
 | `REPW_VotingOptOut_Label` | Label | `+0x274` | — | `+0x22d` = `!canPurchase && (0x4ff6c0(0xc, record, character) \|\| isOwner)` | — | done | — | done |
 | `REPW_VotingOptOut_Checkbox` | Button (checkbox) | `+0x278` | **per frame** (`0x74d380`): `+0x22d` AND the player is on this plot (manager `+0x98`/`+0x9c` == window `+0x228`) | `+0x22d` | property = manager `+0x98` (the plot you are on); record must exist; new state = checkbox `+0x1e4`; `0x5b09d0(property, state)` **sets record `+0x44` locally** (true if the record exists) → send **`0x6573`** (8 bytes: `u32 propertyID`, then a u32 whose **low byte** is the opt-out flag; the upper 3 bytes are **uninitialized stack**) → the checkbox is refreshed from record `+0x44` (now the new value) | checked = property record `+0x44` | property voting opt-out flag | done |
 | `REPW_Vote_Button` | Button | `+0x270` | **live** (`0x74d380`, every frame while visible): **onThisPlot** (window `+0x228` == manager `+0x98` or `+0x9c`) AND the record for manager `+0x98` exists AND is **occupied** AND its voting opt-out `+0x44` == 0 | always (no visibility logic) | requires the poll window `[0xd1fd50]`; `0x795fc0(manager +0x98)` (poll window mode 1) → the poll manager has polls → show the poll window; none: `0x1de2` "There are no active polls to vote on." | poll data: the poll manager, loaded by `0x15e2`, `0x3311`, `0x39bb`, `0x52b5`, `0x6860`, `0x7497` (`0x593a` separately); see *Poll window* | polls per property (poll subsystem, Q24) | done (control); the poll payload formats are tracked as the separate poll subsystem (Q24) |
-| `REPW_Eviction_Label` | Label | `+0x27c` | — | — | — | only if the control exists: definition type Guild Plot → `0x3416` "Plots will pack up all items, send them to the owner, and become available for purchase again if no member of [the guild…]"; otherwise → `0x3415` "…if the owner of [the plot has not logged in within 90 days]" (`0x74e3f4`–`0x74e4fc`) | — | done |
+| `REPW_Eviction_Label` | Label | `+0x27c` | — | — | — | only if the control exists: definition type Guild Plot → `0x3416` "Plots will pack up all items, send them to the owner, and become available for purchase again if no member of [the guild…]"; otherwise → `0x3415` "…if the owner of [the plot has not logged in within 90 days]" (`0x74e3f4`–`0x74e4fc`); the patcher replaces both with Live's escrow wording (Q24) | the 90-day reclaim after the escrow expired (RCL-1) | done |
 
 ## Fill routine `0x74dcb0(record)`
 
@@ -118,7 +118,7 @@ Checks in order. Messages print (chat, color `0xd`) only when `showMessages` ≠
 | **no permission 3 "Remove Crate"** (`0x4ff6c0(3, …)`) | 6 | "…you do not have permission to remove…" |
 | active moving crate conditions (`0x5b7e10(6, …)` -> `0x5b7930`, `0x4234e0`, `0x7b4b70`; internals not expanded) | 11 / 12 | "You may not sell this plot currently because the active moving crate on it…" |
 
-Selling depends on **moving-crate state** (a placed crate on the plot with room, and no non-empty crate already held), **the plot's item list being loaded**, **permission 3 (Remove Crate)**, and on guild plots an **empty escrow or permission 2**. The server enforces the same rules and answers with `0x66bf` codes.
+Selling depends on **moving-crate state** (a placed crate on the plot with room, and no non-empty crate already held), **the plot's item list being loaded**, **permission 3 (Remove Crate)**, and on guild plots an **empty escrow or permission 2**. The server enforces the same rules (Live: codes 3, 4, 5, 6 and 10, then the confirmation 7634), packs the placed crate with the plot's items into the seller's inventory, pays out the whole escrow and refunds no price (STT-1), and answers with `0x66bf` codes.
 
 **Transfer gate:**
 1. Local player present, request latch clear, and a record for `+0x94` exists.
@@ -127,6 +127,8 @@ Selling depends on **moving-crate state** (a placed crate on the plot with room,
 4. Allow → dialog `0x65` with the target's name → yes → `0x507f`.
 
 **Local transfer check `0x5b50b0`:** requires a target and a record, a **player Plot** (type 4; **guild plots cannot be transferred**), `0x57bfb0(…)` ≠ 0 (**the plot has an item container on the client**, a manager map lookup), and the character to be the owner (`0x4d6b10`); otherwise code 1.
+
+**The server's transfer (Live, STT-7 and STT-8):** the target is a client in the owner's zone and the owner stands in the plot; the offer (`0x5a63`, eqstr 7636) waits 300 s in the zone; refusals are eqstr 5279, 7637, 761, 5316, 5318, 8081 and 5280; the escrow, the items, the upkeep option and the access list stay with the plot.
 
 ### Manage and Items buttons: real-estate subcommands `0x4e4e60`
 
@@ -229,7 +231,7 @@ What the client does with each possible reply (the order a server sends them in 
 | **`0x68ba`** transfer result code | chat line from the transfer table | `0x5adad0` |
 | **`0x1228`** item request result | chat line; code 0 ends placement mode | `0x5ae1f0` |
 | **`0x63fd`** property update | merges into the known record (compares owner name and `+0x40`); marks the Trophy window `[0xf75ad8] +0x28c` dirty when the owner matches the local character or ownership changes; refreshes the Items, Manage and Purchase windows | case `0x5b2dd8` |
-| **`0x4f09`** / **`0x6fd0`** property record | refresh Manage (owner-dirty flag) / set the current property | `placedItemsAndProperties.md` |
+| **`0x4f09`** / **`0x6fd0`** property record | refresh Manage (owner-dirty flag) and **remove the property**, so the server sends it only for a property that is gone / set the current property | `placedItemsAndProperties.md` |
 | **`0x2aa7`, `0x3e00`, `0x66df`, `0x0c13`, `0x76c6`** character property lists | update the character's lists | `placedItemsAndProperties.md` |
 | **`0x5a63`** transfer offer (to the recipient) | the accept dialog, whose answer is `0x5a63` | README |
 
@@ -242,7 +244,7 @@ After a purchase the client itself **doesn't** change the record's owner. The Pu
   - **1**: the polls for a property; set by the Vote button through `0x795fc0(property)` (property → window `+0x22c`).
   - **3**: server-pushed; set by `0x795b00(u32, string)` (u32 → window `+0x230`).
 - `0x7957c0` reads the **poll manager**, a lazily created singleton (`0x5a72a0`, a 0x294-byte object at `[0xe643ec]`). An empty list → returns false → the Vote button prints `0x1de2` "There are no active polls to vote on."
-- **Server → client `0x7a4d`** (not in EQEmu's conf): `u32`, then a length-prefixed string. Requires the poll window to exist; calls `0x795b00(u32, string)` (mode 3), and a true result shows the window.
+- **Server → client `0x7a4d`** (`OP_PollOpen`): `u32`, then a length-prefixed string. Requires the poll window to exist; calls `0x795b00(u32, string)` (mode 3), and a true result shows the window.
 - **Poll data loading** (second dispatcher switch):
   - handler `0x4d36bb` for **`0x15e2`, `0x3311`, `0x39bb`, `0x52b5`, `0x6860`, `0x7497`** → poll manager `0x5a7a20(opcode, stream)`, which has its own sub-switch: `0x39bb` → `0x5a70c0`, `0x3311` → `0x7fb780`, `0x15e2` → `0x5a7440`, `0x52b5` → `0x5a75f0`, `0x6860` → `0x7fb020` (then sets flag `+0x28e` and refreshes via `0x5a7360`), `0x7497` → `0x5a7840`
   - handler `0x4d3e44` for **`0x593a`** → `0x5a7420(payload byte 0)`

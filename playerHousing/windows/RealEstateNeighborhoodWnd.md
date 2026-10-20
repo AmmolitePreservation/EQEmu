@@ -21,9 +21,9 @@ Columns: **Enabled when** / **Shown when** (the conditions feeding `0x866610` an
 | `RENW_ShowFullGPlots_Btn` | Used == GPlots |
 | `RENW_ShowOpenGPlots_Btn` | Used ≠ GPlots |
 
-**No code sets the checkboxes' initial state, and the XML gives none of them `<Checked>`, so all six start unchecked and every row is hidden** (each row is either guild or non-guild, and one of those two boxes is always unchecked). **With this XML the list looks empty until the player ticks boxes**; a row shows only when its guild/non-guild, player-plot full/open and guild-plot full/open categories are all checked. Setting `<Checked>true</Checked>` on the six buttons in the XML would show everything by default.
+**No code sets the checkboxes' initial state, and the XML gives none of them `<Checked>`, so all six start unchecked and every row is hidden** (each row is either guild or non-guild, and one of those two boxes is always unchecked). **With this XML the list looks empty until the player ticks boxes**; a row shows only when its guild/non-guild, player-plot full/open and guild-plot full/open categories are all checked. Live's client starts all six checked, so the patcher sets `<Checked>true</Checked>` on the six buttons (PAT-2).
 
-**Go** (`RENW_Go_Button`): **enabled only while a neighborhood row is selected**; needs the selection (`+0x228` ≠ -1) and sends **`0x218c` `{u32 neighborhood id, u32 -1, u32 0}`** (12 bytes). **`0x218c` is the client's general "interact / enter" request**: the same layout the Items window sends for a placed item (`{property id, record id, b}`); **record id -1 means the property itself**, here "take me to this neighborhood". The server should move the player there.
+**Go** (`RENW_Go_Button`): **enabled only while a neighborhood row is selected**; needs the selection (`+0x228` ≠ -1) and sends **`0x218c` `{u32 neighborhood id, u32 -1, u32 0}`** (12 bytes). **`0x218c` (`OP_RealEstateInteract`) is the client's general interact request**: the same layout the Items window sends for a placed item (`{property id, record id, b}`); **record id -1 means the property itself**, here "take me to this neighborhood". The server moves the player into the neighborhood's running copy, or a new one, at its template's zone-in point.
 
 ## Search and results (chunk 2)
 
