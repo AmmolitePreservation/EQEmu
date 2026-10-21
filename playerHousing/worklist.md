@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 139, liveCheck 26, clientAnalysis 27, peridotTest 52, question 30, done 94; 368 in all. Of the 30 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 2 are open (STT-13, POL-4). **BLOCKING:** none.
+**Counts.** fix 139, liveCheck 27, clientAnalysis 27, peridotTest 52, question 30, done 94; 369 in all. Of the 30 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 2 are open (STT-13, POL-4). **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -950,6 +950,7 @@ Questions: Q2, Q14.
   <sub>Sources: build step 5 doors generator</sub>
 - **DOR-14** `peridotTest` **Housing doors on Peridot.** Load housingDoors.sql; the Guild Lobby gate (now type 159) and the neighborhood portal open the neighborhood list; a lot square and a guild square open the Purchase window; each interior's front door leaves for the plot's exit; guildhalllrg's inner doors open as ordinary doors; the RoF2 spawn carries RealEstateDoorID (MQ: EQSwitch +0xdc). **Loaded against Peridot's doors table (a dump of peridot's doors and zone, in a throwaway MariaDB):** guildBorderDoors.sql (rewritten: PEQ already has the four guild borders as 199-202) loads and refuses a second load; housingDoors.sql stops at its portal check (DOR-15).
 - **DOR-15** `fix` **housingDoors.sql's portal and Guild Lobby gate checks do not fit Peridot's doors.** Peridot's neighborhood door 130 is already a closed type-159 OBJ_VOIDPORTAL but at (1952.1, -2908.32, 3.83), 8.3 units from Live's (1955.43, -2900.76, 3.24); the check requires 1 unit. Peridot's guildlobby runs version 0 (zone row), whose 35 doors are Live's ids plus one with the old names (AFRAME_, GUILD_DOOR_, TRANS_ENTRY), door 38 an AFRAME_, and no gate; version 1 holds Live's names with ids plus 39 and the gate as door 77, already type 159 at Live's exact position. Live's guildlobby is doors 1-38 with the OBJ_ names, the gate 38. The RoF2 client's guildlobby.zon names the OBJ_ models (OBJ_IRONGATESWITCH, OBJ_AFRAME). Decide how version 0 gets Live's gate (owner), then set the portal to Live's position and key the gate's map row to the row Peridot serves.
+- **DOR-16** `liveCheck` **Which Guild Lobby guild door goes where.** Live's guildlobby doors 1 and 3 are both OBJ_GUILD_DOOR, type 58, RealEstateDoorID 0, mirrored at x +/-48.4. The one plausible difference in the dump is DynDoorID 100 on door 1 and 0 on door 3 (the other nonzero DynDoorIDs on Live, 2147-2155, are dragonscale and kattacastrum mission doors, which suggests a dynamic-zone switch id like EQEmu's dz_switch_id); the other differing fields (SelfActivated, Difficulty, combinations, TargetID, Script) read as uninitialized bytes. Click each on Live, record where it sends you and any prompt, and whether one leads to the guild's housing hall.
   <sub>Sources: DOR-3 · DOR-9 · build step 5</sub>
 
 ### neighborhoods (NBH)
