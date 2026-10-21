@@ -62,7 +62,7 @@ The existing housing code (written through 2026-09-30) against serverPlan.md, th
 | **zone/CMakeLists.txt, world/CMakeLists.txt** | List the new files | BLD-1 |
 | **pH/tools/makeHousingCatalogSql.py → pH/sql/housingCatalog.sql** | Pets -1 on houses, halls and crates; def 2 houses 1711; origins from Live's switchCoords; renamed columns and segments; template rows by dz_id (35633 → 345 v2 ...); exit points; alternate currencies; Live-only defs and costs (blocked, CAT-4) | SCH-1, CAT-1, CAT-3, SCH-4, REC-5, INT-12, INT-1, INT-11, EXT-31 |
 | **pH/tools/makeHousingZonesSql.py → housingZones.sql, housingZoneSettings.sql** | 345 version 2; Live's safe and entry points; shutdowndelay ~31-33 min; Live's header values (bNoBind 1, ZoneType, clip, fog) | INT-1, INT-2, INT-3, INT-13, INT-14, ZIN-9, EXT-8 |
-| **pH/tools/makeGuildBorderDoorsSql.py** | Ids 226-229, Live's z and headings, the door rules | DOR-2, DOR-10 |
+| **pH/tools/makeGuildBorderDoorsSql.py** | PEQ's four guild borders become Live's 226-229 (ids, z, headings), the door rules | DOR-2, DOR-10 |
 | **pH/tools/test*.py** | testHousingCatalog (pets, def 2, origins, templates), testHousingSchema (renames, drops, 3-level name, id floor, PRC-3 negatives), testItemHousingTail (adopted counts), testItemTailSerializer (:98 maxPer -1) | as above, PRC-3 |
 
 ## Write new

@@ -1,32 +1,22 @@
-"""Writes sql/guildBorderDoors.sql: the neighborhood's four guild plot borders (OBP_GUILDSQUARE) as doors rows.
+"""Writes sql/guildBorderDoors.sql: the neighborhood's four guild plot borders (OBP_GUILDSQUARE) become Live's doors 226-229.
 
-Ids, positions and headings are Live's doors 226-229 (a livedumps clone's master/doors.tsv), each matched to its guild plot in
-content/sunriseHillsPlots.json. Every other column is copied from one of PEQ's player plot borders (OBP_LOTSQUARE, open
-type 160), so nothing about door behavior is chosen here. The door rules hold (DOR-10): ids below 256 and at most 500 doors
-in the zone version, the client keeps door ids in a byte and spawns no doors past 500; a model name longer than 3 characters
-and upper case, as the client's lookup needs; and the copied door closed with its state not inverted, or the click is
-stopped. The neighborhood loads the model through its own asset list (stonesquare.eqg).
+PEQ ships the four guild borders as OBP_GUILDSQUARE doors (199-202 on Peridot), each within a unit of Live's. The SQL matches
+every one to its Live door by position and sets Live's id, position, heading and size; every other column stays PEQ's, so
+nothing about door behavior is chosen here. Each Live door is matched to its guild plot in content/sunriseHillsPlots.json.
+The door rules hold (DOR-10): ids below 256, the client keeps door ids in a byte; a model name longer than 3 characters and
+upper case, as the client's lookup needs; and each door closed with its state not inverted, or the click is stopped. The
+neighborhood loads the model through its own asset list (stonesquare.eqg).
 
 Usage: python makeGuildBorderDoorsSql.py --live <livedumps clone>
 """
 import argparse, csv, json, math, os, re
 
 here = os.path.dirname(os.path.abspath(__file__))
-overridden = ['doorid', 'name', 'pos_x', 'pos_y', 'pos_z', 'heading', 'size']
 doorIds = [226, 227, 228, 229]
 modelName = 'OBP_GUILDSQUARE'
 plotMatchUnits = 1.0
-maxDoorId, maxDoors = 255, 500
-
-
-def doorsColumns():
-  path = os.path.join(here, '..', '..', 'common', 'repositories', 'base', 'base_doors_repository.h')
-  text = open(path, encoding='utf-8').read()
-  body = text[text.index('static std::vector<std::string> Columns()'):]
-  columns = re.findall(r'"([a-z_0-9]+)"', body[:body.index('};')])
-  if columns[0] != 'id' or any(column not in columns for column in overridden + ['zone', 'version', 'doorisopen', 'invert_state']):
-    raise ValueError(f'unexpected doors columns: {columns}')
-  return columns[1:]
+idList = ', '.join(map(str, doorIds))
+maxDoorId = 255
 
 
 def liveDoors(live):
@@ -45,15 +35,18 @@ def guildPlot(door, plots):
   return plot
 
 
-def insertStatement(columns, door, address):
-  values = dict(doorid=door['id'], name=f"'{modelName}'", pos_x=repr(float(door['x'])), pos_y=repr(float(door['y'])), pos_z=repr(float(door['z'])),
-                heading=repr(float(door['heading'])), size=str(int(door['scaleFactor'])))
+def updateStatement(door, address):
   if not 0 <= float(door['heading']) < 512:
     raise ValueError(f"Live door {door['id']}: heading {door['heading']} is outside [0, 512)")
-  selected = ', '.join(values.get(column, f'`{column}`') for column in columns)
+  x, y = float(door['x']), float(door['y'])
+  match = (f"zone = 'neighborhood' AND name = '{modelName}' AND doorid NOT IN ({idList}) "
+           f"AND ABS(pos_x - {x!r}) < {plotMatchUnits} AND ABS(pos_y - {y!r}) < {plotMatchUnits}")
   return (f"  -- {address}\n"
-          f"  INSERT INTO doors ({', '.join(f'`{column}`' for column in columns)})\n"
-          f"    SELECT {selected} FROM doors WHERE id = templateId;\n")
+          f"  IF (SELECT COUNT(*) FROM doors WHERE {match}) <> 1 THEN\n"
+          f"    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'not exactly one PEQ {modelName} door within {plotMatchUnits} unit of Live door {door['id']}';\n"
+          f"  END IF;\n"
+          f"  UPDATE doors SET doorid = {door['id']}, pos_x = {x!r}, pos_y = {y!r}, pos_z = {float(door['z'])!r}, "
+          f"heading = {float(door['heading'])!r}, size = {int(door['scaleFactor'])} WHERE {match};\n")
 
 
 def main():
@@ -64,39 +57,32 @@ def main():
     raise ValueError('the guild border doors break the door rules')
   if 'stonesquare.eqg' not in open(os.path.join(here, '..', 'content', 'neighborhoodAssets.txt')).read().split():
     raise ValueError(f'the neighborhood does not load {modelName} (stonesquare.eqg)')
-  columns = doorsColumns()
   plots = [row for row in json.load(open(os.path.join(here, '..', 'content', 'sunriseHillsPlots.json'))) if row['kind'] == 'guild plot']
   doors = liveDoors(live)
   addresses = [guildPlot(door, plots) for door in doors]
   if sorted(addresses) != sorted(plot['address'] for plot in plots):
     raise ValueError("Live's guild border doors and the template's guild plots do not match one to one")
-  inserts = ''.join(insertStatement(columns, door, address) for door, address in zip(doors, addresses))
-  idList = ', '.join(map(str, doorIds))
+  updates = ''.join(updateStatement(door, address) for door, address in zip(doors, addresses))
   sql = f"""-- Generated by playerHousing/tools/makeGuildBorderDoorsSql.py from Live's doors and content/sunriseHillsPlots.json.
 DELIMITER //
 BEGIN NOT ATOMIC
-  DECLARE templateId INT DEFAULT NULL;
-  DECLARE templateVersion INT DEFAULT NULL;
-  SELECT id, version INTO templateId, templateVersion FROM doors WHERE zone = 'neighborhood' AND name = 'OBP_LOTSQUARE' AND opentype = 160 ORDER BY version, doorid LIMIT 1;
-  IF templateId IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'no OBP_LOTSQUARE door with open type 160 to copy';
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+  START TRANSACTION;
+  IF EXISTS (SELECT 1 FROM doors WHERE zone = 'neighborhood' AND doorid IN ({idList})) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the neighborhood already has doors {idList}';
   END IF;
-  IF (SELECT doorisopen <> 0 OR invert_state <> 0 FROM doors WHERE id = templateId) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the OBP_LOTSQUARE door to copy is not closed and uninverted';
+  IF (SELECT COUNT(*) FROM doors WHERE zone = 'neighborhood' AND name = '{modelName}' AND opentype = 160 AND doorisopen = 0 AND invert_state = 0) <> {len(doorIds)}
+     OR (SELECT COUNT(*) FROM doors WHERE zone = 'neighborhood' AND name = '{modelName}') <> {len(doorIds)} THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the neighborhood does not have exactly {len(doorIds)} closed, uninverted type-160 {modelName} doors';
   END IF;
-  IF EXISTS (SELECT 1 FROM doors WHERE zone = 'neighborhood' AND version = templateVersion AND (name = '{modelName}' OR doorid IN ({idList}))) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'neighborhood already has {modelName} doors or doors {idList}';
-  END IF;
-  IF (SELECT COUNT(*) + {len(doorIds)} > {maxDoors} OR MAX(doorid) > {maxDoorId} FROM doors WHERE zone = 'neighborhood' AND version = templateVersion) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the neighborhood would pass {maxDoors} doors or already has a door id above {maxDoorId}';
-  END IF;
-{inserts}END //
+{updates}  COMMIT;
+END //
 DELIMITER ;
 SELECT doorid, name, pos_x, pos_y, pos_z, heading, opentype, size FROM doors WHERE zone = 'neighborhood' AND name = '{modelName}' ORDER BY doorid;
 """
   path = os.path.join(here, '..', 'sql', 'guildBorderDoors.sql')
   open(path, 'w', encoding='ascii').write(sql)
-  print(f'wrote {os.path.relpath(path)}: {len(doors)} guild borders, {len(columns)} columns each')
+  print(f'wrote {os.path.relpath(path)}: {len(doors)} guild borders')
 
 
 if __name__ == '__main__':
