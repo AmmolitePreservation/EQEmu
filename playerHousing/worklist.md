@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 147, liveCheck 27, clientAnalysis 27, peridotTest 52, question 33, done 102; 388 in all. Of the 33 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 5 are open (STT-13, POL-4, REU-6-REU-8). **BLOCKING:** none.
+**Counts.** fix 148, liveCheck 27, clientAnalysis 27, peridotTest 52, question 32, done 103; 389 in all. Of the 32 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 4 are open (STT-13, POL-4, REU-7, REU-8). **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -36,6 +36,7 @@
 - **Housing doors (2026-10-22, REU-3):** a column on EQEmu's doors table, as dz_switch_id is, not housing's own real_estate_doors table: each door row carries Live's RealEstateDoorID, and housing answers a door by its open type (159-161) or a non-zero id (DOR-19).
 - **Neighborhood writs (2026-10-22, REU-4):** an EQEmu item script, not housing's own writ table and spell hook. The writ's script checks the guild and rank and calls a housing quest API call that makes the village (EXT-36). Not a spell script: the writ casts Live's shared 'Use Ability' (7652, 69 items on Peridot), whose event can't tell the writ from the others and fires after the charge is spent.
 - **A character saved in a discarded copy (2026-10-22, REU-5):** EQEmu's character_instance_safereturns, its per-character record of where to go when the instance you logged out in is gone, gains a property id; not housing's own table and not a data bucket (each process caches buckets apart, so a zone's write misses world's login read). The row is written at zone-in, as EQEmu writes its own (INT-32).
+- **Housing's on switch (2026-10-22, REU-6):** no Housing:EnableHousing rule. Housing's background systems (upkeep, the copy sweep, the neighborhood balance) always run, and the min/max expansion on its rows gates everything a player can reach (BLD-4).
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
 
 ## Questions to work through
@@ -486,6 +487,8 @@ Questions are in their own section above, the extras items in the section before
   <sub>Sources: C1-67 · G1-16 · report:contradiction-30</sub>
 - **BLD-3** `done` **handleFindRequest belongs to no build step.** Locate (OP_FindPersonRequest type 3: a path to a placed item, or to an NPC item's spawn) and plot finding (type 4, Plot Search's Go) are housing.h's handleFindRequest, which codeReconciliation.md gives housing.cpp but no step; after step 4 the zone link still lacks it. Build step 5 implements it, beside the interiors and doors that build the same paths. **Result (build step 5):** zone/housing/housingFind.cpp: type 3 paths to a placed item, or an NPC item's spawn, shown in this zone; type 4 to the hosted plot's region center (the row value is its property id); anything else gets the empty reply RoF2 answers with "Mysterious forces prevent you" (0x59c8d3). Client::SendPath gained a position form.
   <sub>Sources: codeReconciliation.md · build step 4</sub>
+- **BLD-4** `fix` **Housing:EnableHousing goes; expansion gating is housing's switch.** The owner's decision (2026-10-22, REU-6). Housing's background systems always run, and the min/max expansion on its rows gates its front end (Owner decisions, Expansion gating): every housing request needs a plot door, a house or furniture item, a property or the Guild Lobby's version 1 gate, and each is expansion-gated. **Remove** the rule (common/ruletypes.h:1182) and its checks: world/main.cpp:200 (startUpkeep, startHousingInstances and balanceNeighborhoods always run at world start), world/housingUpkeep.cpp:374 (Housing:EnableUpkeep stays, the upkeep clock's own switch), world/housingInstances.cpp:116, world/housingNeighborhoods.cpp:237, world/client.cpp:936, zone/housing/housing.cpp:407 (housingActive is the catalog's readiness) and :439-442 (the catalog always loads), zone/housing/housingEvents.cpp:54. With no properties the background passes do nothing; on a server set before House of Thule, world still makes the random neighborhoods' rows at start (rows only: copies start on entry, and the portal is gated). The `#housing` command is gated by account status only. **Docs:** serverPlan.md:155 (the rule's row), :367 ('with housing off') and :388; codeReconciliation.md:32 ('even with housing off').
+  <sub>Sources: owner:2026-10-22 · REU-6 · ITM-5</sub>
 
 ### schema (SCH)
 
@@ -532,7 +535,7 @@ Questions: Q19, Q20.
   <sub>Sources: G2-11 · report:peridottest-4</sub>
 - **ITM-4** `fix` **Default tail MaxPerRealEstate -1.** common/itemHousingTail.h maxPerRealEstate = -1 (today 0); testItemTailSerializer.py maxPer=-1; serverPlan.md:226 agrees with :99. Live: -1 on 4,524/4,524 non-placeable items.
   <sub>Sources: G2-07 · C2-13 · report:contradiction-23 · report:question-12 · report:planfix-maxPerRealEstateDefault</sub>
-- **ITM-5** `fix` **Tail load failure fails zone boot; provider in every zone.** housing.cpp:282 onZoneBoot fails boot when loadItemHousingTails() fails; load tails and register the provider before the EnableHousing early return (:276-283). State both in F1 / serverPlan.md:226.
+- **ITM-5** `fix` **Tail load failure fails zone boot; provider in every zone.** housing.cpp:282 onZoneBoot fails boot when loadItemHousingTails() fails; load tails and register the provider before the catalog loads (the EnableHousing early return goes, BLD-4). State both in F1 / serverPlan.md:226.
   <sub>Sources: G2-12 · C2-15 · chunk2-missed-3 · report:crosschunk-22 · report:question-11 · report:planfix-tailLoadResult</sub>
 - **ITM-6** `peridotTest` **Tail failure stops the zone.** Rename the tail column on a scratch DB copy: the zone refuses to boot, loudly. *After:* ITM-5.
   <sub>Sources: report:peridottest-15</sub>
@@ -1193,7 +1196,7 @@ Housing systems that rebuild something EQEmu already has, worked through with th
 - **REU-3** `done` **real_estate_doors vs a column on doors.** The side table (housingDoors.cpp, sql/housingDoors.sql) against a column on EQEmu's doors table, as dz_switch_id is. Decided (owner, 2026-10-22): the column, EQEmu's way (DOR-19).
 - **REU-4** `done` **real_estate_writs vs an item script.** housingWrits.cpp against an item script that calls the housing quest API. Decided (owner, 2026-10-22): the item script (EXT-36); a spell script can't tell the writ from the other 69 items casting 7652.
 - **REU-5** `done` **character_real_estate_interiors vs a character data bucket.** world/housingInstances.cpp and common/housingCopies.cpp keep each character's interior copies in their own table. Decided (owner, 2026-10-22): neither; a property id on EQEmu's character_instance_safereturns, written at zone-in (INT-32). A bucket would miss: each process caches buckets apart, and world caches an account's characters' buckets at character select.
-- **REU-6** `question` **Housing:EnableHousing vs expansion gating.** Since the expansion gating decision, a housing row's min/max expansion turns housing on and off, so the rule overlaps it (housing.cpp, housingEvents.cpp, world/client.cpp, world/housingInstances.cpp).
+- **REU-6** `done` **Housing:EnableHousing vs expansion gating.** Since the expansion gating decision, a housing row's min/max expansion turns housing on and off, so the rule overlaps it (housing.cpp, housingEvents.cpp, world/client.cpp, world/housingInstances.cpp). Decided (owner, 2026-10-22): the rule goes (BLD-4); the background systems always run and expansion gating is the front end's switch.
 - **REU-7** `question` **The world's copy sweep vs instance expiry.** world/housingInstances.cpp's sweepCopies discards unused copies every 60 s after a 300 s grace, against EQEmu's instance duration and never_expires.
 - **REU-8** `question` **The trophy tribute tables vs EQEmu's tribute tables.** character_trophy_tribute, character_trophy_tribute_state, guild_trophy_tribute and guild_trophy_tribute_state against EQEmu's own tribute tables; decided with the trophies (build step 8).
 
