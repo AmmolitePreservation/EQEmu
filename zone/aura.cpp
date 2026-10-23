@@ -3,6 +3,7 @@
 
 #include "aura.h"
 #include "client.h"
+#include "quest_parser_collection.h"
 #include "string_ids.h"
 #include "raids.h"
 
@@ -13,7 +14,21 @@ Aura::Aura(NPCType *type_data, Mob *owner, AuraRecord &record)
 {
 	GiveNPCTypeData(type_data); // we will delete this later on
 	m_owner = owner->GetID();
+	Configure(record);
+}
 
+Aura::Aura(NPCType *type_data, const glm::vec4 &position, AuraRecord &record)
+	: NPC(type_data, 0, position, GravityBehavior::Flying), spell_id(record.spell_id),
+	  distance(record.distance),
+	  remove_timer(record.duration), movement_timer(1000), process_timer(1000), aura_id(-1)
+{
+	GiveNPCTypeData(type_data);
+	m_owner = 0;
+	Configure(record);
+}
+
+void Aura::Configure(AuraRecord &record)
+{
 	if (record.cast_time) {
 		cast_timer.SetTimer(record.cast_time);
 		cast_timer.Disable(); // we don't want to be enabled yet
@@ -58,6 +73,9 @@ Aura::Aura(NPCType *type_data, Mob *owner, AuraRecord &record)
 			break;
 		case AuraType::ExitTrap:
 			process_func = &Aura::ProcessExitTrap;
+			break;
+		case AuraType::FullyScripted:
+			process_func = &Aura::ProcessFullyScripted;
 			break;
 		default:
 			process_func = nullptr;
@@ -683,6 +701,36 @@ void Aura::ProcessExitTrap(Mob *owner)
 
 // this is less than ideal, but other solutions are a bit all over the place
 // and hard to reason about
+// Tracks who is within the distance, as OnAllFriendlies does, and hands the aura's script an event as each one comes in
+// (EVENT_AURA_ENTER) and goes out (EVENT_AURA_LEAVE); the script decides what happens.
+void Aura::ProcessFullyScripted(Mob *owner)
+{
+	for (auto it = casted_on.begin(); it != casted_on.end();) {
+		auto mob = entity_list.GetMob(*it);
+		if (mob && DistanceSquared(GetPosition(), mob->GetPosition()) <= distance) {
+			++it;
+			continue;
+		}
+		if (mob && parse->HasQuestSub(GetNPCTypeID(), EVENT_AURA_LEAVE)) {
+			parse->EventNPC(EVENT_AURA_LEAVE, this, mob, "", 0);
+		}
+		it = casted_on.erase(it);
+	}
+
+	for (auto &e : GetCloseMobList(distance)) {
+		auto mob = e.second;
+		if (!mob || !(mob->IsOfClientBotMerc() || mob->IsPetOwnerOfClientBot()) || casted_on.count(mob->GetID())) {
+			continue;
+		}
+		if (DistanceSquared(GetPosition(), mob->GetPosition()) <= distance) {
+			casted_on.insert(mob->GetID());
+			if (parse->HasQuestSub(GetNPCTypeID(), EVENT_AURA_ENTER)) {
+				parse->EventNPC(EVENT_AURA_ENTER, this, mob, "", 0);
+			}
+		}
+	}
+}
+
 void Aura::ProcessSpawns()
 {
 	for (auto &e: GetCloseMobList(distance)) {
@@ -727,17 +775,22 @@ bool Aura::Process()
 	}
 
 	auto owner = entity_list.GetMob(m_owner);
-	if (owner == nullptr) {
+	if (m_owner && owner == nullptr) {
 		Depop();
 		return true;
 	}
 
 	if (remove_timer.Check()) {
-		owner->RemoveAura(GetID(), false, true);
+		if (owner) {
+			owner->RemoveAura(GetID(), false, true);
+		}
+		else {
+			Depop();
+		}
 		return true;
 	}
 
-	if (movement_type == AuraMovement::Follow && GetPosition() != owner->GetPosition() && movement_timer.Check()) {
+	if (movement_type == AuraMovement::Follow && owner && GetPosition() != owner->GetPosition() && movement_timer.Check()) {
 		m_Position = owner->GetPosition();
 
 		static EQApplicationPacket packet(OP_ClientUpdate, sizeof(PlayerPositionUpdateServer_Struct));
@@ -842,6 +895,14 @@ bool Aura::ShouldISpawnFor(Client *c)
 
 void Aura::Depop(bool skip_strip)
 {
+	if (type == AuraType::FullyScripted && parse->HasQuestSub(GetNPCTypeID(), EVENT_AURA_LEAVE)) {
+		for (auto &e : casted_on) {
+			auto mob = entity_list.GetMob(e);
+			if (mob != nullptr) {
+				parse->EventNPC(EVENT_AURA_LEAVE, this, mob, "", 0);
+			}
+		}
+	}
 	// NEC trap casts a dot, so we need some way to not strip :P
 	if (!skip_strip && IsBuffSpell(spell_id)) {
 		for (auto &e : casted_on) {

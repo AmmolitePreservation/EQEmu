@@ -6,21 +6,18 @@
 #include "housingCatalog.h"
 #include "housingInteriors.h"
 #include "housingMenus.h"
-#include "housingNpcItems.h"
 #include "housingWorldObjects.h"
 
 #include "../../common/classes.h"
 #include "../../common/eqemu_logsys.h"
-#include "../../common/item_instance.h"
-#include "../../common/spdat.h"
 #include "../../common/strings.h"
 #include "../../common/timer.h"
+#include "../aura.h"
 #include "../client.h"
 #include "../entity.h"
 #include "../npc.h"
 #include "../zonedb.h"
 
-#include <cmath>
 #include <cstring>
 #include <map>
 #include <set>
@@ -37,64 +34,18 @@ namespace housing {
     constexpr MenuEntry deactivateAuraEntry{8, deactivateAuraAction, 5340, none};
     constexpr MenuEntry activateAuraEntry{8, activateAuraAction, 5324, none};
     constexpr uint32 notGuildMemberBank = 5427;
-    // Live aligned the portal about 8 s after a key was handed in (NPC-15).
-    constexpr uint32 alignmentDelayMilliseconds = 8000;
-    // Live opened the geode's dialog on its platform and not from 12.7 units off; the platform's own radius is not measured (NPC-25).
-    constexpr float platformRadius = 5.0f;
-    constexpr float platformHeight = 10.0f;
-    constexpr uint16 invisibleMan = 127;
-    constexpr uint8 noTargetBodyType = 11;
-
-    // Live's aura NPC is server-only: the client's spawn list never holds it (NPC-6).
-    class AuraSpawn : public NPC {
-    public:
-      AuraSpawn(NPCType *type, const glm::vec4 &position) : NPC(type, nullptr, position, GravityBehavior::Flying) {
-        GiveNPCTypeData(type);
-      }
-      bool ShouldISpawnFor(Client *client) override { return false; }
-    };
+    // The aura's quest script reads the pool's property from this entity variable.
+    constexpr const char *auraPropertyVariable = "housing_property_id";
 
     struct AuraState {
       PlacedItem row;
       bool active = false;
       uint16 npcId = 0;
-      std::set<uint32> inside;
-    };
-
-    struct PendingAlignment {
-      uint32 propertyId;
-      uint32 keyItemId;
-      uint16 npcId;
-      uint32 dueAt;
     };
 
     std::map<uint32, AuraState> auras;
-    std::vector<PendingAlignment> alignments;
-    std::map<uint32, uint32> platformOf;
-    std::map<uint32, uint32> geodeOffers;
-    Timer serviceTimer(1000);
     Timer auraSyncTimer(5000);
     bool syncedAtBoot = false;
-
-    NPCType *auraNpcType(uint32 spellId) {
-      auto type = new NPCType;
-      memset(type, 0, sizeof(NPCType));
-      strn0cpy(type->name, spells[spellId].name, sizeof(type->name));
-      type->current_hp = 2000000000;
-      type->max_hp = 2000000000;
-      type->race = invisibleMan;
-      type->size = 0.1f;
-      type->gender = 2;
-      type->class_ = Class::Warrior;
-      type->level = 100;
-      type->bodytype = noTargetBodyType;
-      type->findable = 0;
-      type->trackable = 0;
-      type->untargetable = true;
-      type->skip_global_loot = true;
-      strcpy(type->special_abilities, "12,1^14,1^16,1^18,1^19,1^20,1^21,1^22,1^23,1^24,1^25,1^35,1^46,1^47,1");
-      return type;
-    }
 
     const AuraItem &auraOf(const PlacedItem &row) {
       const AuraItem *aura = catalog().auraItem(row.item_id);
@@ -108,29 +59,31 @@ namespace housing {
       return state.npcId ? entity_list.GetNPCByID(state.npcId) : nullptr;
     }
 
+    // The pool's aura is one of EQEmu's (NPC-34): a stationary FullyScripted aura with no owner, from its auras row, whose quest
+    // script gets an event as each one comes within its distance and goes out; the client is never sent it (NPC-6).
     void spawnAura(AuraState &state) {
       const AuraItem &aura = auraOf(state.row);
-      auto npc = new AuraSpawn(auraNpcType(aura.spellId), glm::vec4(state.row.x, state.row.y, state.row.z, state.row.heading));
-      npc->MarkHousingSpawn();
-      entity_list.AddNPC(npc, false, false);
-      state.npcId = npc->GetID();
-      LogHousing("Aura of record [{}] runs as server-only spawn [{}]", state.row.id, state.npcId);
-    }
-
-    // Leaving the circle and losing the aura print the same line (Live: Deactivate printed the leave line to those inside).
-    void fadeFrom(AuraState &state, Client *client) {
-      const AuraItem &aura = auraOf(state.row);
-      client->BuffFadeBySpellID(static_cast<uint16>(aura.spellId));
-      client->Message(Chat::White, aura.leaveMessage.c_str());
-    }
-
-    void stopAura(AuraState &state) {
-      for (uint32 characterId : state.inside) {
-        if (Client *client = entity_list.GetClientByCharID(characterId)) {
-          fadeFrom(state, client);
-        }
+      AuraRecord record{};
+      if (!content_db.GetAuraEntry(static_cast<uint16>(aura.auraType), record)) {
+        throw std::runtime_error(fmt::format("aura [{}] of item [{}] has no auras row", aura.auraType, state.row.item_id));
       }
-      state.inside.clear();
+      const NPCType *base = content_db.LoadNPCTypesData(record.npc_type);
+      if (!base) {
+        throw std::runtime_error(fmt::format("aura [{}] names NPC type [{}], which does not exist", aura.auraType, record.npc_type));
+      }
+      auto type = new NPCType;
+      memcpy(type, base, sizeof(NPCType));
+      strn0cpy(type->name, record.name, sizeof(type->name));
+      auto npc = new Aura(type, glm::vec4(state.row.x, state.row.y, state.row.z, state.row.heading), record);
+      npc->MarkHousingSpawn();
+      npc->SetEntityVariable(auraPropertyVariable, std::to_string(state.row.property_id));
+      entity_list.AddNPC(npc, false);
+      state.npcId = npc->GetID();
+      LogHousing("Aura of record [{}] runs as aura spawn [{}]", state.row.id, state.npcId);
+    }
+
+    // The depop hands the script a leave event for everyone inside (Live: Deactivate printed the leave line to those inside).
+    void stopAura(AuraState &state) {
       if (NPC *npc = auraNpc(state)) {
         npc->Depop(false);
       }
@@ -189,111 +142,6 @@ namespace housing {
         }
         auras[id] = state;
       }
-    }
-
-    bool receivesAura(Client *client, const AuraState &state, const AuraItem &aura, NPC *npc) {
-      Session *viewer = session(client);
-      if (!viewer || client->GetHP() <= 0) {
-        return false;
-      }
-      auto holder = viewer->properties.find(state.row.property_id);
-      if (holder == viewer->properties.end() || Distance(client->GetPosition(), npc->GetPosition()) > aura.radius) {
-        return false;
-      }
-      return permitted(client, Permission::receiveBuffs, holder->second, viewer->lookup(), viewer->accessLookup());
-    }
-
-    void tickAuras() {
-      for (auto &[id, state] : auras) {
-        NPC *npc = auraNpc(state);
-        if (!state.active || !npc) {
-          continue;
-        }
-        const AuraItem &aura = auraOf(state.row);
-        std::set<uint32> now;
-        for (const auto &[entityId, client] : entity_list.GetClientList()) {
-          if (!receivesAura(client, state, aura, npc)) {
-            continue;
-          }
-          now.insert(client->CharacterID());
-          if (!state.inside.count(client->CharacterID())) {
-            npc->SpellFinished(static_cast<uint16>(aura.spellId), client);
-            client->Message(Chat::White, aura.nearMessage.c_str());
-          }
-        }
-        for (uint32 characterId : state.inside) {
-          if (!now.count(characterId)) {
-            if (Client *client = entity_list.GetClientByCharID(characterId)) {
-              fadeFrom(state, client);
-            }
-          }
-        }
-        state.inside = now;
-      }
-    }
-
-    std::optional<uint32> alignmentOf(uint32 propertyId) {
-      auto rows = query(database, fmt::format("SELECT key_item_id FROM real_estate_teleport_alignments WHERE property_id = {}", propertyId));
-      if (rows.RowCount() == 0) {
-        return std::nullopt;
-      }
-      return Strings::ToUnsignedInt(rows.begin()[0]);
-    }
-
-    void tickAlignments() {
-      const uint32 now = Timer::GetCurrentTime();
-      for (auto pending = alignments.begin(); pending != alignments.end();) {
-        if (now < pending->dueAt) {
-          ++pending;
-          continue;
-        }
-        const TeleportKey *key = catalog().teleportKey(pending->keyItemId);
-        if (key) {
-          query(database, fmt::format("REPLACE INTO real_estate_teleport_alignments (property_id, key_item_id) VALUES ({}, {})", pending->propertyId, pending->keyItemId));
-          if (NPC *npc = entity_list.GetNPCByID(pending->npcId)) {
-            npc->Say("The Guildhall Portal has been aligned to %s.", key->destination.c_str());
-          }
-          LogHousing("Property [{}]'s teleportation device is aligned to key [{}]", pending->propertyId, pending->keyItemId);
-        }
-        pending = alignments.erase(pending);
-      }
-    }
-
-    void tickPlatforms() {
-      std::map<uint32, uint32> standing;
-      forEachNpcItemSpawn([&](const PlacedItem &row, NPC *npc) {
-        const NpcItem *npcItem = catalog().npcItem(row.item_id);
-        if (!npcItem || npcItem->teleportRole != TeleportRole::device) {
-          return;
-        }
-        for (const auto &[entityId, client] : entity_list.GetClientList()) {
-          if (DistanceNoZ(client->GetPosition(), npc->GetPosition()) <= platformRadius && std::fabs(client->GetZ() - npc->GetZ()) <= platformHeight) {
-            standing[client->CharacterID()] = row.id;
-          }
-        }
-      });
-      for (const auto &[characterId, recordId] : standing) {
-        auto previous = platformOf.find(characterId);
-        if (previous != platformOf.end() && previous->second == recordId) {
-          continue;
-        }
-        Client *client = entity_list.GetClientByCharID(characterId);
-        NPC *device = npcItemSpawn(recordId);
-        if (!client || !device) {
-          continue;
-        }
-        const auto aligned = alignmentOf(device->GetHousingPropertyID());
-        const TeleportKey *key = aligned ? catalog().teleportKey(*aligned) : nullptr;
-        if (!key) {
-          LogHousing("[{}] stepped onto device record [{}], which is aligned nowhere", client->GetCleanName(), recordId);
-          continue;
-        }
-        geodeOffers[characterId] = *aligned;
-        client->SendFullPopup("The Crystal Geode",
-          fmt::format("The crystal geode is set to go to {}.  Would you like to travel there now?", key->destination).c_str(),
-          geodePopupId, 0, 1, 0, "Yes", "No");
-      }
-      platformOf = standing;
     }
 
     std::string guildBankerName(Client *client) {
@@ -385,24 +233,10 @@ namespace housing {
         LogError("Housing: the placed auras could not be read: {}", error.what());
       }
     }
-    if (!serviceTimer.Check()) {
-      return;
-    }
-    try {
-      tickAuras();
-      tickAlignments();
-      tickPlatforms();
-    }
-    catch (const std::exception &error) {
-      LogError("Housing: the guild services' tick failed: {}", error.what());
-    }
   }
 
   void resetGuildServices() {
     auras.clear();
-    alignments.clear();
-    platformOf.clear();
-    geodeOffers.clear();
     syncedAtBoot = false;
   }
 
@@ -411,67 +245,6 @@ namespace housing {
     for (uint32 spellId : catalog().auraSpellIds()) {
       client->BuffFadeBySpellID(static_cast<uint16>(spellId));
     }
-  }
-
-  void forgetGuildServiceClient(Client *client) {
-    platformOf.erase(client->CharacterID());
-    geodeOffers.erase(client->CharacterID());
-    for (auto &[id, state] : auras) {
-      state.inside.erase(client->CharacterID());
-    }
-  }
-
-  void handleTrade(Client *client, NPC *npc, std::vector<EQ::ItemInstance *> &items) {
-    if (!housingActive() || !npc->IsHousingNpcItem()) {
-      return;
-    }
-    try {
-      auto row = placedItem(npc->GetHousingPropertyID(), npc->GetHousingRecordID());
-      const NpcItem *npcItem = row ? catalog().npcItem(row->item_id) : nullptr;
-      if (!npcItem || npcItem->teleportRole != TeleportRole::assistant) {
-        return;
-      }
-      // He consumes every key he is handed, a whole stack included, and aligns the portal once for each (Live, NPC-15).
-      for (auto &inst : items) {
-        if (!inst || !inst->GetItem() || !catalog().teleportKey(inst->GetID())) {
-          continue;
-        }
-        const int16 count = inst->IsStackable() ? std::max<int16>(inst->GetCharges(), 1) : 1;
-        for (int16 index = 0; index < count; index++) {
-          alignments.push_back(PendingAlignment{row->property_id, inst->GetID(), npc->GetID(), Timer::GetCurrentTime() + alignmentDelayMilliseconds});
-        }
-        LogHousing("[{}] handed [{}] of key [{}] to the teleportation assistant of property [{}]", client->GetCleanName(), count, inst->GetID(), row->property_id);
-        inst = nullptr;
-      }
-    }
-    catch (const std::exception &error) {
-      LogError("Housing: [{}]'s trade with [{}] failed: {}", client->GetCleanName(), npc->GetCleanName(), error.what());
-    }
-  }
-
-  bool handlePopupResponse(Client *client, uint32 popupId) {
-    if (popupId != geodePopupId) {
-      return false;
-    }
-    auto offer = geodeOffers.find(client->CharacterID());
-    if (offer == geodeOffers.end()) {
-      LogHousing("[{}] answered a geode dialog the server did not open", client->GetCleanName());
-      return true;
-    }
-    const TeleportKey *key = catalog().teleportKey(offer->second);
-    geodeOffers.erase(offer);
-    if (!key) {
-      LogError("Housing: [{}]'s geode is aligned to a key the catalog no longer has", client->GetCleanName());
-      return true;
-    }
-    // EQEmu has no planted guild standards, so a standard key's Yes moves nobody, as Live's did for a guild with none planted.
-    if (key->guildStandard) {
-      LogHousing("[{}]'s geode goes to the guild's standard, which EQEmu has none of; nothing happens", client->GetCleanName());
-      return true;
-    }
-    LogHousing("[{}] takes the crystal geode to {}", client->GetCleanName(), key->destination);
-    client->MovePC(key->zoneId, 0, key->x, key->y, key->z, key->heading);
-    return true;
   }
 
   uint32 guildHallGuildId() {

@@ -12070,10 +12070,6 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 	/**
 	 * Handle any EQEmu defined popup Ids first
 	 */
-	if (housing::handlePopupResponse(this, popup_response->popupid)) {
-		return;
-	}
-
 	std::string response;
 	switch (popup_response->popupid) {
 		case POPUPID_REPLACE_SPELLWINDOW:

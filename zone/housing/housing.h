@@ -35,14 +35,13 @@ namespace housing {
   bool handleDoorClick(Client *client, Doors *door);
   void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect, uint16 spellId, int32 anchorItemId);
   void handleItemCastFinished(Client *client, uint16 spellId, uint32 inventorySlot);
-  void handleTrade(Client *client, NPC *npc, std::vector<EQ::ItemInstance *> &items);
-  bool handlePopupResponse(Client *client, uint32 popupId);
   uint32 guildHallGuildId();
   bool refuseGuildBank(Client *client);
   bool questOpenPurchase(Client *client, uint32 propertyId);
   bool questEnter(Client *client, uint32 propertyId);
   void questLeave(Client *client);
   bool questUseNeighborhoodWrit(Client *client, uint32 definitionId);
+  bool questHasPermission(Client *client, uint32 propertyId, int permission);
   void handleCommand(Client *client, const Seperator *sep);
 }
 

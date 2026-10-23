@@ -44,6 +44,8 @@ class Aura : public NPC
 	// NOTE: We may have to override more virtual functions if they're causing issues
 public:
 	Aura(NPCType *type_data, Mob *owner, AuraRecord &record);
+	// A stationary aura with no owner, at a position; it lasts until it is depopped (record.duration 0) or its duration ends.
+	Aura(NPCType *type_data, const glm::vec4 &position, AuraRecord &record);
 	~Aura() { };
 
 	bool IsAura() const { return true; }
@@ -57,6 +59,7 @@ public:
 	void ProcessTotem(Mob *owner);
 	void ProcessEnterTrap(Mob *owner);
 	void ProcessExitTrap(Mob *owner);
+	void ProcessFullyScripted(Mob *owner);
 	void ProcessSpawns();
 
 	// we only save auras that follow you, and player casted
@@ -70,6 +73,8 @@ public:
 	// This is only possible when spawn type is GroupMembers
 	inline bool JoinGroupSpawnCheck() { return spawn_type == AuraSpawns::GroupMembers; }
 private:
+	void Configure(AuraRecord &record);
+
 	int m_owner;
 	int aura_id; // spell ID of the aura spell -1 if aura isn't from a casted spell
 	int spell_id; // spell we cast

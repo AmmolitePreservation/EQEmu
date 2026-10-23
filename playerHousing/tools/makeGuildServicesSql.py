@@ -1,28 +1,40 @@
-"""Writes sql/guildServices.sql: the Guild Regeneration Pool's aura (real_estate_auras) and the Teleportation Assistant's keys
-(real_estate_teleport_keys).
+"""Writes sql/guildServices.sql, the Guild Regeneration Pool's aura, and lua_modules/guild_portal_keys.lua, the Teleportation
+Assistant's keys, in a projecteqquests clone.
 
 The aura is Live's (NPC-6): item 66645 keeps spell 31874, Aura of the Hall, on those within about 35 units of its center (it held
 at 31.2, was gone at 36.7 and came back at 34.0), and the server prints the two lines on walking in and out (the spell's own
-strings are empty). The keys are content/guildGeodeDestinations.tsv, captured on Live (NPC-15): each key's destination text, zone
-id and landing, MQ's headings in degrees clockwise from north turned into EQEmu's (360 - degrees) x 512 / 360 mod 512. Per the
-owner's decision only the keys that work natively are written: the 24 whose zones RoF2 has files for and the Guild Standard
-splinter, which goes to the guild's planted standard; the 10 keys to zones RoF2 lacks and the two Live refused (no landing) are
-left out. The SQL refuses existing rows for these items and loads in one transaction.
+strings are empty). It is one of EQEmu's auras (NPC-34): an auras row (type 31874, FullyScripted, spawn type Noone, stationary,
+distance 35, duration 0) with its NPC type (2000100, IOAuraOfTheHall, PEQ's aura NPC values), named by real_estate_auras for the
+item; the aura's quest script, global/2000100.lua, gives the buff and prints the lines. The keys are content/guildGeodeDestinations.tsv,
+captured on Live (NPC-15): each key's destination text, zone id and landing, MQ's headings in degrees clockwise from north turned
+into EQEmu's (360 - degrees) x 512 / 360 mod 512. Per the owner's decision only the keys that work natively are written: the 24
+whose zones RoF2 has files for and the Guild Standard splinter, which goes to the guild's planted standard; the 10 keys to zones
+RoF2 lacks and the two Live refused (no landing) are left out. The SQL refuses existing rows and loads in one transaction.
 
-Usage: python makeGuildServicesSql.py
+Usage: python makeGuildServicesSql.py --quests <projecteqquests clone>
 """
-import csv, os
+import argparse, csv, os
 
 here = os.path.dirname(os.path.abspath(__file__))
 destinationsPath = os.path.join(here, '..', 'content', 'guildGeodeDestinations.tsv')
 sqlPath = os.path.join(here, '..', 'sql', 'guildServices.sql')
+keysRelativePath = os.path.join('lua_modules', 'guild_portal_keys.lua')
 
-poolItem, poolSpell, poolRadius = 66645, 31874, 35.0
-nearMessage = 'You are filled with new energy as you near the healing pool.'
-leaveMessage = 'The energy fades away as you leave the healing pool.'
+poolItem, poolSpell, poolDistance = 66645, 31874, 35
+auraNpcType, auraNpcName, auraName = 2000100, 'IOAuraOfTheHall', 'Aura_of_the_Hall'
+fullyScripted, spawnForNoone, stationary = 6, 2, 1
 guildStandardKey = 88737
 zonesRoF2Lacks = {'sharvahltwo', 'maidentwo', 'overtheretwo', 'eastwastestwo', 'cobaltscartwo', 'kattacastrumb', 'ethernere', 'lceanium',
                   'stratos', 'laurioninn'}
+# PEQ's aura NPC (IOChampionsAura, 2000003) but for the id and name; EQEmu's Aura class runs it.
+auraNpcColumns = ('id', 'name', 'level', 'race', 'class', 'bodytype', 'hp', 'size', 'hp_regen_rate', 'mindmg', 'maxdmg', 'attack_count',
+                  'special_abilities', 'aggroradius', 'ammo_idfile', 'prim_melee_type', 'sec_melee_type', 'ranged_type', 'runspeed', 'MR', 'CR',
+                  'DR', 'FR', 'PR', 'Corrup', 'PhR', 'AC', 'attack_delay', 'STR', 'STA', 'DEX', 'AGI', '_INT', 'WIS', 'CHA', 'exclude', 'ATK',
+                  'Accuracy', 'slow_mitigation', 'scalerate', 'spellscale', 'healscale', 'flymode', 'exp_mod', 'keeps_sold_items')
+auraNpcValues = (auraNpcType, auraNpcName, 70, 127, 62, 11, 55309, 2, 553, 337, 1330, -1,
+                 '12,1^13,1^14,1^15,1^16,1^17,1^18,1^19,1^20,1^21,1^22,1^23,1^24,1^25,1^28,1^31,1^35,1', 70, 'IT10', 28, 28, 7, 1.25, 43, 43,
+                 43, 43, 43, 68, 72, 394, 17, 307, 307, 307, 307, 307, 307, 307, 1, 139,
+                 162, 40, 100, 100, 100, -1, 100, 1)
 
 
 def eqHeading(degrees):
@@ -33,6 +45,10 @@ def eqHeading(degrees):
 
 def quote(text):
   return "'" + text.replace('\\', '\\\\').replace("'", "''") + "'"
+
+
+def luaString(text):
+  return '"' + text.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 
 def keys(rows):
@@ -52,7 +68,7 @@ def keys(rows):
                     'y': float(row['y']), 'z': float(row['z']), 'heading': eqHeading(float(row['headingDegrees']))})
   if len({key['itemId'] for key in written}) != len(written):
     raise ValueError('a key is listed twice')
-  return written
+  return sorted(written, key=lambda key: key['itemId'])
 
 
 def readDestinations(path=destinationsPath):
@@ -60,35 +76,66 @@ def readDestinations(path=destinationsPath):
     return list(csv.DictReader(file, delimiter='\t'))
 
 
-def render(keyRows):
-  keyIds = ', '.join(str(k['itemId']) for k in keyRows)
-  values = ',\n'.join(f'    ({k["itemId"]}, {quote(k["destination"])}, {k["guildStandard"]}, {k["zoneId"]}, {k["x"]}, {k["y"]}, {k["z"]}, {k["heading"]})' for k in keyRows)
-  return f"""-- Generated by playerHousing/tools/makeGuildServicesSql.py from Live's pool aura and content/guildGeodeDestinations.tsv.
+def sqlValue(value):
+  return quote(value) if isinstance(value, str) else str(value)
+
+
+def renderSql():
+  columns = ', '.join(auraNpcColumns)
+  values = ', '.join(sqlValue(value) for value in auraNpcValues)
+  return f"""-- Generated by playerHousing/tools/makeGuildServicesSql.py: the Guild Regeneration Pool's aura on EQEmu's auras (NPC-34).
 DELIMITER //
 BEGIN NOT ATOMIC
   DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
   IF EXISTS (SELECT 1 FROM real_estate_auras WHERE item_id = {poolItem}) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the guild regeneration pool already has an aura row';
   END IF;
-  IF EXISTS (SELECT 1 FROM real_estate_teleport_keys WHERE item_id IN ({keyIds})) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'a teleport key row already exists';
+  IF EXISTS (SELECT 1 FROM auras WHERE type = {poolSpell}) OR EXISTS (SELECT 1 FROM npc_types WHERE id = {auraNpcType}) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the aura of the hall already has an auras or npc_types row';
   END IF;
   START TRANSACTION;
-  INSERT INTO real_estate_auras (item_id, spell_id, radius, near_message, leave_message) VALUES
-    ({poolItem}, {poolSpell}, {poolRadius}, {quote(nearMessage)}, {quote(leaveMessage)});
-  INSERT INTO real_estate_teleport_keys (item_id, destination, guild_standard, zone_id, x, y, z, heading) VALUES
-{values};
+  INSERT INTO npc_types ({columns}) VALUES
+    ({values});
+  INSERT INTO auras (type, npc_type, name, spell_id, distance, aura_type, spawn_type, movement, duration, icon, cast_time) VALUES
+    ({poolSpell}, {auraNpcType}, {quote(auraName)}, {poolSpell}, {poolDistance}, {fullyScripted}, {spawnForNoone}, {stationary}, 0, -1, 0);
+  INSERT INTO real_estate_auras (item_id, aura_type) VALUES ({poolItem}, {poolSpell});
   COMMIT;
 END //
 DELIMITER ;
 """
 
 
+def luaKey(key):
+  if key['guildStandard']:
+    return f"  [{key['itemId']}] = {{ destination = {luaString(key['destination'])}, guildStandard = true }},"
+  return (f"  [{key['itemId']}] = {{ destination = {luaString(key['destination'])}, zoneId = {key['zoneId']}, x = {key['x']!r}, y = {key['y']!r}, "
+          f"z = {key['z']!r}, heading = {key['heading']!r} }},")
+
+
+def renderKeys(keyRows):
+  lines = '\n'.join(luaKey(key) for key in keyRows)
+  return f"""-- Generated by playerHousing/tools/makeGuildServicesSql.py from content/guildGeodeDestinations.tsv (Live, NPC-15): the keys the
+-- Teleportation Assistant and Zeflmin Werlikanin take, each with the destination it names and its landing (EQEmu's x, y, z and
+-- heading). The Guild Standard splinter aligns the portal to the guild's standard, which EQEmu has none of (NPC-28).
+return {{
+{lines}
+}}
+"""
+
+
 def main():
+  parser = argparse.ArgumentParser(description='Write sql/guildServices.sql and the portal module keys.')
+  parser.add_argument('--quests', required=True, help='a projecteqquests clone')
+  quests = parser.parse_args().quests
+  if not os.path.isdir(os.path.join(quests, 'lua_modules')):
+    raise SystemExit(f'{quests} is not a projecteqquests clone')
   keyRows = keys(readDestinations())
   with open(sqlPath, 'w', newline='\n', encoding='utf-8') as file:
-    file.write(render(keyRows))
-  print(f'wrote {sqlPath}: the pool aura and {len(keyRows)} keys')
+    file.write(renderSql())
+  keysPath = os.path.join(quests, keysRelativePath)
+  with open(keysPath, 'w', newline='\n', encoding='utf-8') as file:
+    file.write(renderKeys(keyRows))
+  print(f'wrote {sqlPath}: the pool aura; {keysPath}: {len(keyRows)} keys')
 
 
 if __name__ == '__main__':

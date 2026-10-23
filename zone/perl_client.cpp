@@ -900,6 +900,11 @@ bool Perl_Client_HasGuildPermission(Client* self, int action) // @categories Gui
 	return self->HasGuildPermission(action);
 }
 
+bool Perl_Client_HasRealEstatePermission(Client* self, uint32 property_id, int permission) // @categories Account and Character
+{
+	return housing::questHasPermission(self, property_id, permission);
+}
+
 Raid* Perl_Client_GetRaid(Client* self) // @categories Account and Character, Raid
 {
 	return self->GetRaid();
@@ -3755,6 +3760,7 @@ void perl_register_client()
 	package.add("OpenRealEstatePurchase", &Perl_Client_OpenRealEstatePurchase);
 	package.add("UseNeighborhoodWrit", &Perl_Client_UseNeighborhoodWrit);
 	package.add("HasGuildPermission", &Perl_Client_HasGuildPermission);
+	package.add("HasRealEstatePermission", &Perl_Client_HasRealEstatePermission);
 	package.add("PlayMP3", &Perl_Client_PlayMP3);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*))&Perl_Client_Popup2);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*, uint32))&Perl_Client_Popup2);

@@ -188,7 +188,9 @@ const char *LuaEvents[_LargestEventID] = {
 	"event_entity_variable_update",
 	"event_aa_loss",
 	"event_spell_blocked",
-	"event_read_item"
+	"event_read_item",
+	"event_aura_enter",
+	"event_aura_leave"
 };
 
 extern Zone *zone;
@@ -232,6 +234,8 @@ LuaParser::LuaParser() {
 	NPCArgumentDispatch[EVENT_SLAY]                   = handle_npc_single_mob;
 	NPCArgumentDispatch[EVENT_ENTER]                  = handle_npc_single_client;
 	NPCArgumentDispatch[EVENT_EXIT]                   = handle_npc_single_client;
+	NPCArgumentDispatch[EVENT_AURA_ENTER]             = handle_npc_single_mob;
+	NPCArgumentDispatch[EVENT_AURA_LEAVE]             = handle_npc_single_mob;
 	NPCArgumentDispatch[EVENT_TASK_ACCEPTED]          = handle_npc_task_accepted;
 	NPCArgumentDispatch[EVENT_POPUP_RESPONSE]         = handle_npc_popup;
 	NPCArgumentDispatch[EVENT_WAYPOINT_ARRIVE]        = handle_npc_waypoint;

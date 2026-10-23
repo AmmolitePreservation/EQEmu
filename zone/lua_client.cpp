@@ -1016,6 +1016,11 @@ bool Lua_Client::HasGuildPermission(int action) {
 	return self->HasGuildPermission(action);
 }
 
+bool Lua_Client::HasRealEstatePermission(uint32 property_id, int permission) {
+	Lua_Safe_Call_Bool();
+	return housing::questHasPermission(self, property_id, permission);
+}
+
 bool Lua_Client::IsGrouped() {
 	Lua_Safe_Call_Bool();
 	return self->IsGrouped();
@@ -4011,6 +4016,7 @@ luabind::scope lua_register_client() {
 	.def("OpenRealEstatePurchase", (bool(Lua_Client::*)(uint32))&Lua_Client::OpenRealEstatePurchase)
 	.def("UseNeighborhoodWrit", (bool(Lua_Client::*)(uint32))&Lua_Client::UseNeighborhoodWrit)
 	.def("HasGuildPermission", (bool(Lua_Client::*)(int))&Lua_Client::HasGuildPermission)
+	.def("HasRealEstatePermission", (bool(Lua_Client::*)(uint32,int))&Lua_Client::HasRealEstatePermission)
 	.def("PlayMP3", (void(Lua_Client::*)(std::string))&Lua_Client::PlayMP3)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*))&Lua_Client::Popup)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*,uint32))&Lua_Client::Popup)
