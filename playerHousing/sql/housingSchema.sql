@@ -1,8 +1,8 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, composed property names, poll states, region matrices, the character's property lists,
 -- trophy flags, anchor targets).
--- Content tables: definitions, costs, regions, zone templates, doors, writs, neighborhood words, NPC items, auras and teleport
--- keys. The rest is player state.
+-- Content tables: definitions, costs, regions, zone templates, writs, neighborhood words, NPC items, auras and teleport keys.
+-- The rest is player state.
 
 -- Columns take the names of Live's definition fields. cost_definition_id and upkeep_definition_id name real_estate_costs
 -- (plots buy with one of five price tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their
@@ -114,14 +114,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_zone_templates` (
 -- The doors housing answers, keyed as the client keys them (a door id is a byte). real_estate_door_id is Live's RealEstateDoorID,
 -- which RoF2 keeps but never reads: the plot definition a plot border (type 160) or an apartment entrance opens, 1 on a
 -- neighborhood-list door (type 159), 0 on a front door (type 161).
-CREATE TABLE IF NOT EXISTS `real_estate_doors` (
-  `zone_id` INT(10) UNSIGNED NOT NULL,
-  `zone_version` TINYINT(3) UNSIGNED NOT NULL,
-  `door_id` TINYINT(3) UNSIGNED NOT NULL,
-  `real_estate_door_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`zone_id`, `zone_version`, `door_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- An item that creates a guild neighborhood of a definition when used (Live's Guild Writ of the Sunrise makes Sunrise Hills).
 CREATE TABLE IF NOT EXISTS `real_estate_writs` (
   `item_id` INT(11) UNSIGNED NOT NULL,
@@ -239,12 +231,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_instance_counter` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- A character saved inside a copy that was discarded, and the property it was a copy of: the next login enters a new copy.
-CREATE TABLE IF NOT EXISTS `character_real_estate_interiors` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `property_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- Charges are prorated by the second, so balances are fractional (the client keeps them as f64); coin is in copper.
 CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   `property_id` INT(10) UNSIGNED NOT NULL,

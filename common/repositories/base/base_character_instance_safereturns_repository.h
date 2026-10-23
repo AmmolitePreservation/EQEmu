@@ -28,6 +28,7 @@ public:
 		float    safe_y;
 		float    safe_z;
 		float    safe_heading;
+		uint32_t property_id;
 	};
 
 	static std::string PrimaryKey()
@@ -47,6 +48,7 @@ public:
 			"safe_y",
 			"safe_z",
 			"safe_heading",
+			"property_id",
 		};
 	}
 
@@ -62,6 +64,7 @@ public:
 			"safe_y",
 			"safe_z",
 			"safe_heading",
+			"property_id",
 		};
 	}
 
@@ -111,6 +114,7 @@ public:
 		e.safe_y           = 0;
 		e.safe_z           = 0;
 		e.safe_heading     = 0;
+		e.property_id     = 0;
 
 		return e;
 	}
@@ -156,6 +160,7 @@ public:
 			e.safe_y           = row[6] ? strtof(row[6], nullptr) : 0;
 			e.safe_z           = row[7] ? strtof(row[7], nullptr) : 0;
 			e.safe_heading     = row[8] ? strtof(row[8], nullptr) : 0;
+			e.property_id     = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -197,6 +202,7 @@ public:
 		v.push_back(columns[6] + " = " + std::to_string(e.safe_y));
 		v.push_back(columns[7] + " = " + std::to_string(e.safe_z));
 		v.push_back(columns[8] + " = " + std::to_string(e.safe_heading));
+		v.push_back(columns[9] + " = " + std::to_string(e.property_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -227,6 +233,7 @@ public:
 		v.push_back(std::to_string(e.safe_y));
 		v.push_back(std::to_string(e.safe_z));
 		v.push_back(std::to_string(e.safe_heading));
+		v.push_back(std::to_string(e.property_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -265,6 +272,7 @@ public:
 			v.push_back(std::to_string(e.safe_y));
 			v.push_back(std::to_string(e.safe_z));
 			v.push_back(std::to_string(e.safe_heading));
+			v.push_back(std::to_string(e.property_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -307,6 +315,7 @@ public:
 			e.safe_y           = row[6] ? strtof(row[6], nullptr) : 0;
 			e.safe_z           = row[7] ? strtof(row[7], nullptr) : 0;
 			e.safe_heading     = row[8] ? strtof(row[8], nullptr) : 0;
+			e.property_id     = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -340,6 +349,7 @@ public:
 			e.safe_y           = row[6] ? strtof(row[6], nullptr) : 0;
 			e.safe_z           = row[7] ? strtof(row[7], nullptr) : 0;
 			e.safe_heading     = row[8] ? strtof(row[8], nullptr) : 0;
+			e.property_id     = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -423,6 +433,7 @@ public:
 		v.push_back(std::to_string(e.safe_y));
 		v.push_back(std::to_string(e.safe_z));
 		v.push_back(std::to_string(e.safe_heading));
+		v.push_back(std::to_string(e.property_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -454,6 +465,7 @@ public:
 			v.push_back(std::to_string(e.safe_y));
 			v.push_back(std::to_string(e.safe_z));
 			v.push_back(std::to_string(e.safe_heading));
+			v.push_back(std::to_string(e.property_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

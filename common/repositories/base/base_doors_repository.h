@@ -56,6 +56,7 @@ public:
 		int8_t      max_expansion;
 		std::string content_flags;
 		std::string content_flags_disabled;
+		uint32_t    real_estate_door_id;
 	};
 
 	static std::string PrimaryKey()
@@ -103,6 +104,7 @@ public:
 			"max_expansion",
 			"content_flags",
 			"content_flags_disabled",
+			"real_estate_door_id",
 		};
 	}
 
@@ -146,6 +148,7 @@ public:
 			"max_expansion",
 			"content_flags",
 			"content_flags_disabled",
+			"real_estate_door_id",
 		};
 	}
 
@@ -223,6 +226,7 @@ public:
 		e.max_expansion          = -1;
 		e.content_flags          = "";
 		e.content_flags_disabled = "";
+		e.real_estate_door_id = 0;
 
 		return e;
 	}
@@ -296,6 +300,7 @@ public:
 			e.max_expansion          = row[34] ? static_cast<int8_t>(atoi(row[34])) : -1;
 			e.content_flags          = row[35] ? row[35] : "";
 			e.content_flags_disabled = row[36] ? row[36] : "";
+			e.real_estate_door_id = row[37] ? static_cast<uint32_t>(strtoul(row[37], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -365,6 +370,7 @@ public:
 		v.push_back(columns[34] + " = " + std::to_string(e.max_expansion));
 		v.push_back(columns[35] + " = '" + Strings::Escape(e.content_flags) + "'");
 		v.push_back(columns[36] + " = '" + Strings::Escape(e.content_flags_disabled) + "'");
+		v.push_back(columns[37] + " = " + std::to_string(e.real_estate_door_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -423,6 +429,7 @@ public:
 		v.push_back(std::to_string(e.max_expansion));
 		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
 		v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
+		v.push_back(std::to_string(e.real_estate_door_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -489,6 +496,7 @@ public:
 			v.push_back(std::to_string(e.max_expansion));
 			v.push_back("'" + Strings::Escape(e.content_flags) + "'");
 			v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
+			v.push_back(std::to_string(e.real_estate_door_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -559,6 +567,7 @@ public:
 			e.max_expansion          = row[34] ? static_cast<int8_t>(atoi(row[34])) : -1;
 			e.content_flags          = row[35] ? row[35] : "";
 			e.content_flags_disabled = row[36] ? row[36] : "";
+			e.real_estate_door_id = row[37] ? static_cast<uint32_t>(strtoul(row[37], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -620,6 +629,7 @@ public:
 			e.max_expansion          = row[34] ? static_cast<int8_t>(atoi(row[34])) : -1;
 			e.content_flags          = row[35] ? row[35] : "";
 			e.content_flags_disabled = row[36] ? row[36] : "";
+			e.real_estate_door_id = row[37] ? static_cast<uint32_t>(strtoul(row[37], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -731,6 +741,7 @@ public:
 		v.push_back(std::to_string(e.max_expansion));
 		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
 		v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
+		v.push_back(std::to_string(e.real_estate_door_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -790,6 +801,7 @@ public:
 			v.push_back(std::to_string(e.max_expansion));
 			v.push_back("'" + Strings::Escape(e.content_flags) + "'");
 			v.push_back("'" + Strings::Escape(e.content_flags_disabled) + "'");
+			v.push_back(std::to_string(e.real_estate_door_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

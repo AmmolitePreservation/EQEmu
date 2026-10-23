@@ -400,4 +400,8 @@ namespace housing {
       LogError("Housing: copy instance [{}] could not be discarded; world's sweep removes it: {}", zone->GetInstanceID(), error.what());
     }
   }
+
+  uint32 hostedCopyPropertyId() {
+    return zone->GetInstanceID() && root ? root->id : 0;
+  }
 }

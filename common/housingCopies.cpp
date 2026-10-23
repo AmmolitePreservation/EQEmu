@@ -99,11 +99,6 @@ namespace housing {
       if (!propertyId) {
         throw std::runtime_error(fmt::format("instance [{}] is no housing copy", instanceId));
       }
-      query(database, fmt::format(
-        "INSERT INTO character_real_estate_interiors (character_id, property_id) "
-        "SELECT c.id, {} FROM character_data c JOIN instance_list l ON l.id = c.zone_instance AND l.zone = c.zone_id WHERE c.zone_instance = {} "
-        "ON DUPLICATE KEY UPDATE property_id = VALUES(property_id)", propertyId, instanceId
-      ));
       query(database, fmt::format("DELETE FROM real_estate_instances WHERE instance_id = {}", instanceId));
       query(database, fmt::format("DELETE FROM instance_list WHERE id = {}", instanceId));
       transaction.commit();

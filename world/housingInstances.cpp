@@ -140,12 +140,14 @@ namespace housing {
   }
 
   bool reenterCopy(uint32 characterId, uint32 zoneId, uint32 &instanceId) {
-    auto rows = query(database, fmt::format("SELECT property_id FROM character_real_estate_interiors WHERE character_id = {}", characterId));
+    auto rows = query(database, fmt::format(
+      "SELECT property_id FROM character_instance_safereturns WHERE character_id = {} AND instance_zone_id = {} AND instance_id = {} AND property_id <> 0",
+      characterId, zoneId, instanceId
+    ));
     if (!rows.RowCount()) {
       return false;
     }
     const uint32 propertyId = Strings::ToUnsignedInt(rows.begin()[0]);
-    query(database, fmt::format("DELETE FROM character_real_estate_interiors WHERE character_id = {}", characterId));
     auto properties = RealEstatePropertiesRepository::GetWhere(database, fmt::format("id = {}", propertyId));
     if (properties.size() != 1 || properties.front().contained_in_item) {
       LogHousing("Character [{}] was in a copy of property [{}], which is gone or picked up; EQEmu's safe return applies", characterId, propertyId);

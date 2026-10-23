@@ -52,9 +52,7 @@ INSERT INTO real_estate_properties (id, parent_id, definition_id, name) VALUES (
   (100006, 100005, 903, ''), (100007, 100006, 5, ''), (100008, 100007, 192, '');
 INSERT INTO real_estate_instances VALUES (1001, 100000), (1002, 100005), (1003, 100003);
 INSERT INTO real_estate_instance_counter VALUES (1, 1004);
-INSERT INTO real_estate_doors VALUES (712, 0, 1, 101), (712, 0, 130, 1), (714, 0, 0, 0);
 INSERT INTO real_estate_writs VALUES (52656, 900);
-INSERT INTO character_real_estate_interiors VALUES (7, 100003);
 INSERT INTO real_estate_property_balances VALUES (100001, 0, 10000), (100001, 9, 3);
 INSERT INTO real_estate_items (property_id, owner_character_id, placed, scale, x, y, z, item_id) VALUES (100001, 7, 1, 1, 101, 201, 0, 61410), (100003, 7, 0, 0, 0, 0, 0, 61441),
   (100003, 7, 1, 1.5, 3, 4, 0, 66641);
@@ -81,9 +79,7 @@ check('zone-in: the property copy 1001 runs and the tree under it', """
 check("a neighborhood's zone is its definition's template's", """
   SELECT t.zone_id FROM real_estate_properties p JOIN real_estate_definitions d ON d.id = p.definition_id JOIN real_estate_zone_templates t ON t.dz_id = d.dz_id
   WHERE p.id = 100005""", '712')
-check('a door click finds its plot definition by zone, version and door id', "SELECT real_estate_door_id FROM real_estate_doors WHERE zone_id = 712 AND zone_version = 0 AND door_id = 1", '101')
 check('a writ names the neighborhood definition it creates', "SELECT definition_id FROM real_estate_writs WHERE item_id = 52656", '900')
-check('a character saved in a discarded copy names its property', "SELECT property_id FROM character_real_estate_interiors WHERE character_id = 7", '100003')
 check('inside a house: the house and its parents', """
   WITH RECURSIVE chain AS (SELECT id, parent_id FROM real_estate_properties WHERE id = 100003
     UNION ALL SELECT p.id, p.parent_id FROM real_estate_properties p JOIN chain c ON p.id = c.parent_id)
@@ -192,8 +188,6 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('a second copy of one property', "INSERT INTO real_estate_instances VALUES (1004, 100000)", "for key 'property_id'"),
                    ('a second copy on one instance id', "INSERT INTO real_estate_instances VALUES (1001, 100005)", "for key 'PRIMARY'"),
                    ('a second instance counter', "INSERT INTO real_estate_instance_counter VALUES (2, 5)", 'real_estate_instance_counter_single'),
-                   ('two map rows for one door', "INSERT INTO real_estate_doors VALUES (712, 0, 1, 102)", "for key 'PRIMARY'"),
-                   ('a door id above a byte', "INSERT INTO real_estate_doors VALUES (712, 0, 256, 1)", "Out of range value"),
                    ('neighborhood word position above 2', "INSERT INTO real_estate_neighborhood_words (position, word) VALUES (3, 'Vale')", 'neighborhood_word_position')]:
   error = sql(bad, expectError=True)
   assert reason in error, f'{label}: refused for another reason: {error[:300]}'
