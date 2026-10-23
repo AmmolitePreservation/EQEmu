@@ -29,6 +29,7 @@ public:
 		std::string public_note;
 		uint8_t     alt;
 		uint8_t     online;
+		uint8_t     trophy_tribute_enable;
 	};
 
 	static std::string PrimaryKey()
@@ -49,6 +50,7 @@ public:
 			"public_note",
 			"alt",
 			"online",
+			"trophy_tribute_enable",
 		};
 	}
 
@@ -65,6 +67,7 @@ public:
 			"public_note",
 			"alt",
 			"online",
+			"trophy_tribute_enable",
 		};
 	}
 
@@ -115,6 +118,7 @@ public:
 		e.public_note    = "";
 		e.alt            = 0;
 		e.online         = 0;
+		e.trophy_tribute_enable         = 0;
 
 		return e;
 	}
@@ -161,6 +165,7 @@ public:
 			e.public_note    = row[7] ? row[7] : "";
 			e.alt            = row[8] ? static_cast<uint8_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.online         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.trophy_tribute_enable         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -204,6 +209,7 @@ public:
 		v.push_back(columns[7] + " = '" + Strings::Escape(e.public_note) + "'");
 		v.push_back(columns[8] + " = " + std::to_string(e.alt));
 		v.push_back(columns[9] + " = " + std::to_string(e.online));
+		v.push_back(columns[9] + " = " + std::to_string(e.trophy_tribute_enable));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -235,6 +241,7 @@ public:
 		v.push_back("'" + Strings::Escape(e.public_note) + "'");
 		v.push_back(std::to_string(e.alt));
 		v.push_back(std::to_string(e.online));
+		v.push_back(std::to_string(e.trophy_tribute_enable));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -274,6 +281,7 @@ public:
 			v.push_back("'" + Strings::Escape(e.public_note) + "'");
 			v.push_back(std::to_string(e.alt));
 			v.push_back(std::to_string(e.online));
+			v.push_back(std::to_string(e.trophy_tribute_enable));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -317,6 +325,7 @@ public:
 			e.public_note    = row[7] ? row[7] : "";
 			e.alt            = row[8] ? static_cast<uint8_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.online         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.trophy_tribute_enable         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -351,6 +360,7 @@ public:
 			e.public_note    = row[7] ? row[7] : "";
 			e.alt            = row[8] ? static_cast<uint8_t>(strtoul(row[8], nullptr, 10)) : 0;
 			e.online         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.trophy_tribute_enable         = row[9] ? static_cast<uint8_t>(strtoul(row[9], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -435,6 +445,7 @@ public:
 		v.push_back("'" + Strings::Escape(e.public_note) + "'");
 		v.push_back(std::to_string(e.alt));
 		v.push_back(std::to_string(e.online));
+		v.push_back(std::to_string(e.trophy_tribute_enable));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -467,6 +478,7 @@ public:
 			v.push_back("'" + Strings::Escape(e.public_note) + "'");
 			v.push_back(std::to_string(e.alt));
 			v.push_back(std::to_string(e.online));
+			v.push_back(std::to_string(e.trophy_tribute_enable));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

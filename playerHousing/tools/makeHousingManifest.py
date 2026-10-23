@@ -3,7 +3,7 @@
 Version 1 is the item tail (sql/itemHousingTail.sql, content database); version 2 the catalog tables and version 3 the state
 tables of sql/housingSchema.sql; version 4 Live's item housing values (sql/itemHousingAdoption.sql, content database); each
 version after them adds columns to one EQEmu table (columnFiles: the zone header fields RoF2 reads, the doors' RealEstateDoorID,
-the safe return's property) and runs while the table lacks the first column it adds. Each statement becomes its own raw string
+the safe return's property, the trophy tribute columns) and runs while the table lacks the first column it adds. Each statement becomes its own raw string
 literal (MSVC limits one literal to about 16 KB). A schema migration checks for the last table it creates, so one stopped part
 way runs again (every table is IF NOT EXISTS); version 4 runs whenever it is pending, every statement in it repeatable.
 
@@ -52,6 +52,10 @@ columnFiles = [
   (5, '2026_10_20_zone_header_columns', 'zoneHeaderColumns.sql', 'zone', 'ceiling', 'true'),
   (6, '2026_10_23_doors_real_estate_door_id', 'doorColumns.sql', 'doors', 'real_estate_door_id', 'true'),
   (7, '2026_10_23_safe_return_property_id', 'safeReturnColumns.sql', 'character_instance_safereturns', 'property_id', 'false'),
+  (8, '2026_10_23_character_tribute_trophy_columns', 'characterTributeColumns.sql', 'character_tribute', 'kind', 'false'),
+  (9, '2026_10_23_character_data_trophy_columns', 'characterDataColumns.sql', 'character_data', 'trophy_tribute_active', 'false'),
+  (10, '2026_10_23_guild_members_trophy_column', 'guildMembersColumns.sql', 'guild_members', 'trophy_tribute_enable', 'false'),
+  (11, '2026_10_23_guild_tributes_trophy_columns', 'guildTributesColumns.sql', 'guild_tributes', 'trophy_id_1', 'false'),
 ]
 
 itemTail = statements(open(os.path.join(here, '..', 'sql', 'itemHousingTail.sql')).read())

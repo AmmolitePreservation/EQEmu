@@ -342,7 +342,8 @@ bool BaseGuildManager::_StoreGuildDB(uint32 guild_id)
 		}
 		LogGuilds("Stored guild [{}] permissions in the database", guild_id);
 
-		GuildTributesRepository::GuildTributes gt{};
+		auto gt = GuildTributesRepository::FindOne(*m_db, guild_id);
+		gt.guild_id          = guild_id;
 		gt.tribute_id_1      = in->tribute.id_1;
 		gt.tribute_id_2      = in->tribute.id_2;
 		gt.tribute_id_1_tier = in->tribute.id_1_tier;

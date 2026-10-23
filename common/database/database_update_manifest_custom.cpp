@@ -205,7 +205,7 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 	ManifestEntry{
 		.version = 3,
 		.description = "2026_09_26_real_estate_state",
-		.check = "SHOW TABLES LIKE 'guild_trophy_tribute_state'",
+		.check = "SHOW TABLES LIKE 'real_estate_poll_votes'",
 		.condition = "empty",
 		.match = "",
 		.sql =
@@ -363,45 +363,10 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_poll_votes` (
   `poll_id` INT(10) UNSIGNED NOT NULL,
-  `character_id` INT(10) UNSIGNED NOT NULL,
+  `account_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`poll_id`, `character_id`, `option_key`),
-  KEY `character_id` (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `character_trophy_tribute` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `slot` TINYINT(3) UNSIGNED NOT NULL,
-  `tribute_id` INT(10) UNSIGNED NOT NULL,
-  `tier` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`character_id`, `slot`),
-  CONSTRAINT `character_trophy_tribute_slot` CHECK (`slot` <= 9)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `character_trophy_tribute_state` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `active` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `time_remaining` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `guild_opt_in` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `guild_trophy_tribute` (
-  `guild_id` INT(10) UNSIGNED NOT NULL,
-  `slot` TINYINT(3) UNSIGNED NOT NULL,
-  `tribute_id` INT(10) UNSIGNED NOT NULL,
-  `tier` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`guild_id`, `slot`),
-  CONSTRAINT `guild_trophy_tribute_slot` CHECK (`slot` <= 3)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `guild_trophy_tribute_state` (
-  `guild_id` INT(10) UNSIGNED NOT NULL,
-  `active` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `time_remaining` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `edit_lock_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `edit_lock_at` DATETIME NULL DEFAULT NULL,
-  PRIMARY KEY (`guild_id`)
+  PRIMARY KEY (`poll_id`, `account_id`, `option_key`),
+  KEY `account_id` (`account_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )",
 		.content_schema_update = false,
@@ -522,6 +487,67 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 		.sql =
 			R"(ALTER TABLE `character_instance_safereturns`
   ADD COLUMN `property_id` INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER `safe_heading`;
+)",
+		.content_schema_update = false,
+	},
+	ManifestEntry{
+		.version = 8,
+		.description = "2026_10_23_character_tribute_trophy_columns",
+		.check = "SHOW COLUMNS FROM `character_tribute` LIKE 'kind'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `character_tribute`
+  ADD COLUMN `kind` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER `character_id`,
+  ADD COLUMN `slot` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER `kind`,
+  ADD CONSTRAINT `character_tribute_kind` CHECK (`kind` IN (0, 1)),
+  ADD CONSTRAINT `character_tribute_slot` CHECK (`slot` <= 9);
+)",
+		.content_schema_update = false,
+	},
+	ManifestEntry{
+		.version = 9,
+		.description = "2026_10_23_character_data_trophy_columns",
+		.check = "SHOW COLUMNS FROM `character_data` LIKE 'trophy_tribute_active'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `character_data`
+  ADD COLUMN `trophy_tribute_active` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `tribute_active`,
+  ADD COLUMN `trophy_tribute_time_remaining` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_tribute_active`;
+)",
+		.content_schema_update = false,
+	},
+	ManifestEntry{
+		.version = 10,
+		.description = "2026_10_23_guild_members_trophy_column",
+		.check = "SHOW COLUMNS FROM `guild_members` LIKE 'trophy_tribute_enable'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `guild_members`
+  ADD COLUMN `trophy_tribute_enable` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0 AFTER `tribute_enable`;
+)",
+		.content_schema_update = false,
+	},
+	ManifestEntry{
+		.version = 11,
+		.description = "2026_10_23_guild_tributes_trophy_columns",
+		.check = "SHOW COLUMNS FROM `guild_tributes` LIKE 'trophy_id_1'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `guild_tributes`
+  ADD COLUMN `trophy_id_1` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `enabled`,
+  ADD COLUMN `trophy_id_1_tier` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_1`,
+  ADD COLUMN `trophy_id_2` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_1_tier`,
+  ADD COLUMN `trophy_id_2_tier` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_2`,
+  ADD COLUMN `trophy_id_3` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_2_tier`,
+  ADD COLUMN `trophy_id_3_tier` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_3`,
+  ADD COLUMN `trophy_id_4` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_3_tier`,
+  ADD COLUMN `trophy_id_4_tier` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_4`,
+  ADD COLUMN `trophy_time_remaining` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_id_4_tier`,
+  ADD COLUMN `trophy_enabled` INT(11) UNSIGNED NOT NULL DEFAULT 0 AFTER `trophy_time_remaining`;
 )",
 		.content_schema_update = false,
 	},

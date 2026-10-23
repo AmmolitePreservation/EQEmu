@@ -161,8 +161,6 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('access group above 6', "INSERT INTO real_estate_access_groups VALUES (100001, 7, 1)", 'real_estate_access_group_number'),
                    ('access name in the Owner group (6)', "INSERT INTO real_estate_access_names VALUES (100001, 'Stranger', 6)", 'real_estate_access_name_group'),
                    ('access name in the Everyone group (0)', "INSERT INTO real_estate_access_names VALUES (100001, 'Stranger', 0)", 'real_estate_access_name_group'),
-                   ('personal trophy slot above 9', "INSERT INTO character_trophy_tribute VALUES (7, 10, 100, 0)", 'character_trophy_tribute_slot'),
-                   ('guild trophy slot above 3', "INSERT INTO guild_trophy_tribute VALUES (1, 4, 100, 0)", 'guild_trophy_tribute_slot'),
                    ('poll kind 3', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (3, 2, NOW(), NOW() + INTERVAL 1 DAY)", 'real_estate_poll_kind'),
                    ('poll selection type 4', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 4, NOW(), NOW() + INTERVAL 1 DAY)", 'real_estate_poll_selection_type'),
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)", 'real_estate_poll_dates'),

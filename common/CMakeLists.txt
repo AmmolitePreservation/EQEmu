@@ -199,8 +199,6 @@ SET(repositories
     repositories/base/base_character_skills_repository.h
     repositories/base/base_character_spells_repository.h
     repositories/base/base_character_tasks_repository.h
-    repositories/base/base_character_trophy_tribute_repository.h
-    repositories/base/base_character_trophy_tribute_state_repository.h
     repositories/base/base_character_task_timers_repository.h
     repositories/base/base_char_create_combinations_repository.h
     repositories/base/base_char_create_point_allocations_repository.h
@@ -242,8 +240,6 @@ SET(repositories
     repositories/base/base_guild_members_repository.h
     repositories/base/base_guild_bank_repository.h
     repositories/base/base_guild_relations_repository.h
-    repositories/base/base_guild_trophy_tribute_repository.h
-    repositories/base/base_guild_trophy_tribute_state_repository.h
     repositories/base/base_horses_repository.h
     repositories/base/base_instance_list_repository.h
     repositories/base/base_instance_list_player_repository.h
@@ -417,8 +413,6 @@ SET(repositories
     repositories/character_skills_repository.h
     repositories/character_spells_repository.h
     repositories/character_tasks_repository.h
-    repositories/character_trophy_tribute_repository.h
-    repositories/character_trophy_tribute_state_repository.h
     repositories/character_task_timers_repository.h
     repositories/char_create_combinations_repository.h
     repositories/char_create_point_allocations_repository.h
@@ -460,8 +454,6 @@ SET(repositories
     repositories/guild_members_repository.h
     repositories/guild_bank_repository.h
     repositories/guild_relations_repository.h
-    repositories/guild_trophy_tribute_repository.h
-    repositories/guild_trophy_tribute_state_repository.h
     repositories/horses_repository.h
     repositories/instance_list_repository.h
     repositories/instance_list_player_repository.h

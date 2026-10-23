@@ -20,7 +20,7 @@ class BaseRealEstatePollVotesRepository {
 public:
 	struct RealEstatePollVotes {
 		uint32_t poll_id;
-		uint32_t character_id;
+		uint32_t account_id;
 		uint32_t option_key;
 	};
 
@@ -33,7 +33,7 @@ public:
 	{
 		return {
 			"poll_id",
-			"character_id",
+			"account_id",
 			"option_key",
 		};
 	}
@@ -42,7 +42,7 @@ public:
 	{
 		return {
 			"poll_id",
-			"character_id",
+			"account_id",
 			"option_key",
 		};
 	}
@@ -85,7 +85,7 @@ public:
 		RealEstatePollVotes e{};
 
 		e.poll_id      = 0;
-		e.character_id = 0;
+		e.account_id = 0;
 		e.option_key   = 0;
 
 		return e;
@@ -124,7 +124,7 @@ public:
 			RealEstatePollVotes e{};
 
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.account_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 
 			return e;
@@ -160,7 +160,7 @@ public:
 		auto columns = Columns();
 
 		v.push_back(columns[0] + " = " + std::to_string(e.poll_id));
-		v.push_back(columns[1] + " = " + std::to_string(e.character_id));
+		v.push_back(columns[1] + " = " + std::to_string(e.account_id));
 		v.push_back(columns[2] + " = " + std::to_string(e.option_key));
 
 		auto results = db.QueryDatabase(
@@ -184,7 +184,7 @@ public:
 		std::vector<std::string> v;
 
 		v.push_back(std::to_string(e.poll_id));
-		v.push_back(std::to_string(e.character_id));
+		v.push_back(std::to_string(e.account_id));
 		v.push_back(std::to_string(e.option_key));
 
 		auto results = db.QueryDatabase(
@@ -216,7 +216,7 @@ public:
 			std::vector<std::string> v;
 
 			v.push_back(std::to_string(e.poll_id));
-			v.push_back(std::to_string(e.character_id));
+			v.push_back(std::to_string(e.account_id));
 			v.push_back(std::to_string(e.option_key));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
@@ -252,7 +252,7 @@ public:
 			RealEstatePollVotes e{};
 
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.account_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
@@ -279,7 +279,7 @@ public:
 			RealEstatePollVotes e{};
 
 			e.poll_id      = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.account_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.option_key   = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
@@ -356,7 +356,7 @@ public:
 		std::vector<std::string> v;
 
 		v.push_back(std::to_string(e.poll_id));
-		v.push_back(std::to_string(e.character_id));
+		v.push_back(std::to_string(e.account_id));
 		v.push_back(std::to_string(e.option_key));
 
 		auto results = db.QueryDatabase(
@@ -381,7 +381,7 @@ public:
 			std::vector<std::string> v;
 
 			v.push_back(std::to_string(e.poll_id));
-			v.push_back(std::to_string(e.character_id));
+			v.push_back(std::to_string(e.account_id));
 			v.push_back(std::to_string(e.option_key));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
