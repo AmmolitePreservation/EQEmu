@@ -52,8 +52,13 @@ def check(label, query, expected):
   print(f'{label}: {got!r}')
 
 
+def same(label, actual, expected):
+  assert actual == expected, f'{label}: expected {expected!r}, got {actual!r}'
+  print(f'{label}: {actual!r}')
+
+
 def columns(table):
-  return sql(f"SELECT GROUP_CONCAT(CONCAT(COLUMN_NAME, ' ', COLUMN_TYPE, ' ', COLUMN_DEFAULT) ORDER BY ORDINAL_POSITION SEPARATOR '; ') FROM information_schema.COLUMNS "
+  return sql(f"SELECT GROUP_CONCAT(CONCAT(COLUMN_NAME, ' ', COLUMN_TYPE, ' ', IFNULL(COLUMN_DEFAULT, 'none')) ORDER BY ORDINAL_POSITION SEPARATOR '; ') FROM information_schema.COLUMNS "
              f"WHERE TABLE_SCHEMA = 'peq' AND TABLE_NAME = '{table}'")
 
 
@@ -63,17 +68,17 @@ for table, create in eqemuTables.items():
   sql(open(os.path.join(here, '..', 'sql', columnFiles[table])).read())
   print(f'{table}: {columnFiles[table]} applied')
 
-check('the zone header columns', columns('zone'),
-      'id int(10) NULL; short_name varchar(32) NULL; shard_at_player_count int(11) 0; ceiling float 0; filter_id int(11) 2008; disallow_mana_stone tinyint(4) 1')
-check("the door's RealEstateDoorID follows dz_switch_id", columns('doors'),
-      'id int(11) NULL; doorid smallint(4) 0; zone varchar(32) \'\'; version smallint(5) 0; opentype smallint(4) 0; dz_switch_id int(11) 0; real_estate_door_id int(10) unsigned 0; min_expansion tinyint(4) -1')
-check("the safe return's property is its last column", columns('character_instance_safereturns').split('; ')[-1], 'property_id int(10) unsigned 0')
-check('the tribute row kind and slot follow the character', columns('character_tribute'),
-      'id int(11) NULL; character_id int(11) unsigned 0; kind tinyint(3) unsigned 0; slot tinyint(3) unsigned 0; tier tinyint(11) unsigned 0; tribute int(11) unsigned 0')
-check('the trophy flag and timer follow tribute_active', columns('character_data').split('; ')[-2:],
+same('the zone header columns', columns('zone'),
+      'id int(10) none; short_name varchar(32) NULL; shard_at_player_count int(11) 0; ceiling float 0; filter_id int(11) 2008; disallow_mana_stone tinyint(4) 1')
+same("the door's RealEstateDoorID follows dz_switch_id", columns('doors'),
+      'id int(11) none; doorid smallint(4) 0; zone varchar(32) \'\'; version smallint(5) 0; opentype smallint(4) 0; dz_switch_id int(11) 0; real_estate_door_id int(10) unsigned 0; min_expansion tinyint(4) -1')
+same("the safe return's property is its last column", columns('character_instance_safereturns').split('; ')[-1], 'property_id int(10) unsigned 0')
+same('the tribute row kind and slot follow the character', columns('character_tribute'),
+      'id int(11) none; character_id int(11) unsigned 0; kind tinyint(3) unsigned 0; slot tinyint(3) unsigned 0; tier tinyint(11) unsigned 0; tribute int(11) unsigned 0')
+same('the trophy flag and timer follow tribute_active', columns('character_data').split('; ')[-2:],
       ['trophy_tribute_active int(11) unsigned 0', 'trophy_tribute_time_remaining int(11) unsigned 0'])
-check('the trophy opt-in follows tribute_enable', columns('guild_members').split('; ')[3:5], ['tribute_enable tinyint(3) unsigned 0', 'trophy_tribute_enable tinyint(3) unsigned 0'])
-check('the four guild trophy slots, their timer and flag follow enabled', columns('guild_tributes').split('; ')[7:],
+same('the trophy opt-in follows tribute_enable', columns('guild_members').split('; ')[3:5], ['tribute_enable tinyint(3) unsigned 0', 'trophy_tribute_enable tinyint(3) unsigned 0'])
+same('the four guild trophy slots, their timer and flag follow enabled', columns('guild_tributes').split('; ')[7:],
       ['trophy_id_1 int(11) unsigned 0', 'trophy_id_1_tier int(11) unsigned 0', 'trophy_id_2 int(11) unsigned 0', 'trophy_id_2_tier int(11) unsigned 0',
        'trophy_id_3 int(11) unsigned 0', 'trophy_id_3_tier int(11) unsigned 0', 'trophy_id_4 int(11) unsigned 0', 'trophy_id_4_tier int(11) unsigned 0',
        'trophy_time_remaining int(11) unsigned 0', 'trophy_enabled int(11) unsigned 0'])
