@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 150, liveCheck 27, clientAnalysis 27, peridotTest 52, question 31, done 104; 391 in all. Of the 31 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 3 are open (STT-13, POL-4, REU-8). **BLOCKING:** none.
+**Counts.** fix 151, liveCheck 27, clientAnalysis 27, peridotTest 52, question 30, done 105; 392 in all. Of the 30 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12), 1 is a polish question (Q15) and 2 are open (POL-4, REU-8). **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -38,6 +38,7 @@
 - **A character saved in a discarded copy (2026-10-22, REU-5):** EQEmu's character_instance_safereturns, its per-character record of where to go when the instance you logged out in is gone, gains a property id; not housing's own table and not a data bucket (each process caches buckets apart, so a zone's write misses world's login read). The row is written at zone-in, as EQEmu writes its own (INT-32).
 - **Housing's on switch (2026-10-22, REU-6):** no Housing:EnableHousing rule. Housing's background systems (upkeep, the copy sweep, the neighborhood balance) always run, and the min/max expansion on its rows gates everything a player can reach (BLD-4).
 - **The copy sweep (2026-10-23, REU-7):** housing keeps its own copy lifecycle, not EQEmu's instance expiry: a copy ends when its zone shuts down after Live's empty delay, and world's sweep discards a copy whose zone crashed or never started. EQEmu's expiry is a clock that moves the players inside out, not an empty timer. The lifecycle's two bugs are fix items (INT-33, INT-34).
+- **Selling refunds no price (2026-10-23, STT-13):** no Housing:SellRefundPercent rule; a sale refunds none of the purchase price, as on Live (D6), and nothing records the price paid (STT-14).
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
 
 ## Questions to work through
@@ -885,8 +886,10 @@ Questions: Q15.
 - **STT-10** `fix` **Server checks location on purchase, sell and transfer.** The client sends Purchase (0x45be) from wherever the window opened (0x2691 replies open it anywhere) and Sell (0x792c) / Transfer (0x507f) for +0x94 (0x5b3450, 0x5b139b). The server checks the player is in the plot's zone instance; Live's exact rule is unverified.
 - **STT-11** `liveCheck` **Transfer refusal lines.** Offer a transfer each refused way (5279, 7637 and the others) and record every chat line the offerer sees. The plan sends the refusal message plus 'other', which makes the client also print 5280 ('...failed'); keep that only if Live shows both lines (zone/housing/housingTransfer.cpp).
 - **STT-12** `liveCheck` **Purchase without funds, and a crate delivery with a full inventory.** Try to buy a plot without the coin and record Live's line; sell a plot with a full inventory and record what Live says when the crate can't be given, and at the zone-in that delivers it. Peridot shows nothing for either today (logged only).
-- **STT-13** `question` **Housing:SellRefundPercent.** Live refunds no price on a sale (D6), and no column records the price paid, so the rule works only at 0 and any other value refuses every sale. Options: (a) drop the rule; (b) record the price paid on purchase so a refund can work.
+- **STT-13** `done` **Housing:SellRefundPercent.** Live refunds no price on a sale (D6), and no column records the price paid, so the rule works only at 0 and any other value refuses every sale. Options: (a) drop the rule; (b) record the price paid on purchase so a refund can work. Decided (owner, 2026-10-23): (a), the rule goes (STT-14).
   <sub>Sources: XA:PM18</sub>
+- **STT-14** `fix` **Housing:SellRefundPercent goes.** The owner's decision (2026-10-23, STT-13): Live refunds no price on a sale, and a rule that works only at 0 is a stub. Remove the rule (common/ruletypes.h:1188) and its check in zone/housing/housingSell.cpp:163-166, which refuses every sale at any other value. Housing:SellRefundsEscrow stays. **Docs:** serverPlan.md:161 (the rule's row) and D6 (:484), which names the rule.
+  <sub>Sources: owner:2026-10-23 · STT-13 · D6</sub>
 
 ### interiors (INT)
 
