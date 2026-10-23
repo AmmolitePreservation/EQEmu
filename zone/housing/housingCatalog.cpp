@@ -221,10 +221,7 @@ namespace housing {
       if (row.race_tag.size() != 3 || !std::all_of(row.race_tag.begin(), row.race_tag.end(), [](unsigned char c) { return std::isupper(c) || std::isdigit(c); })) {
         problems.push_back(fmt::format("NPC item [{}] has race tag [{}]; RoF2 reads three upper-case characters", row.item_id, row.race_tag));
       }
-      if (row.teleport_role > static_cast<uint8>(TeleportRole::device)) {
-        problems.push_back(fmt::format("NPC item [{}] has teleport role [{}]; 0 none, 1 assistant, 2 device", row.item_id, row.teleport_role));
-      }
-      npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, static_cast<TeleportRole>(row.teleport_role), {}};
+      npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, {}};
     }
     auto actions = content_db.QueryDatabase("SELECT item_id, action_id FROM real_estate_npc_item_actions ORDER BY item_id, action_id");
     if (!actions.Success()) {
@@ -251,40 +248,28 @@ namespace housing {
     }
 
     auraItems.clear();
-    auto auras = content_db.QueryDatabase("SELECT item_id, spell_id, radius, near_message, leave_message FROM real_estate_auras");
+    auto auras = content_db.QueryDatabase("SELECT r.item_id, r.aura_type, a.spell_id FROM real_estate_auras r LEFT JOIN auras a ON a.type = r.aura_type");
     if (!auras.Success()) {
       problems.push_back(fmt::format("the aura items could not be read: {}", auras.ErrorMessage()));
     }
     for (auto row : auras) {
       const uint32 itemId = Strings::ToUnsignedInt(row[0]);
-      const uint32 spellId = Strings::ToUnsignedInt(row[1]);
+      const uint32 auraType = Strings::ToUnsignedInt(row[1]);
       const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
       if (!tail || !tail->placeable || npcItemIdSet.count(itemId)) {
         problems.push_back(fmt::format("aura item [{}] is not a placeable item outside the NPC items", itemId));
       }
-      if (!IsValidSpell(spellId)) {
-        problems.push_back(fmt::format("aura item [{}] keeps spell [{}], which does not exist", itemId, spellId));
+      if (!row[2]) {
+        problems.push_back(fmt::format("aura item [{}] runs aura [{}], which has no auras row", itemId, auraType));
+        continue;
       }
-      auraItems[itemId] = AuraItem{spellId, Strings::ToFloat(row[2]), row[3], row[4]};
+      const uint32 spellId = Strings::ToUnsignedInt(row[2]);
+      if (!IsValidSpell(spellId)) {
+        problems.push_back(fmt::format("aura item [{}]'s aura [{}] casts spell [{}], which does not exist", itemId, auraType, spellId));
+      }
+      auraItems[itemId] = AuraItem{auraType, spellId};
     }
 
-    teleportKeys.clear();
-    auto keys = content_db.QueryDatabase("SELECT item_id, destination, guild_standard, zone_id, x, y, z, heading FROM real_estate_teleport_keys");
-    if (!keys.Success()) {
-      problems.push_back(fmt::format("the teleport keys could not be read: {}", keys.ErrorMessage()));
-    }
-    for (auto row : keys) {
-      const uint32 itemId = Strings::ToUnsignedInt(row[0]);
-      TeleportKey key{row[1], Strings::ToUnsignedInt(row[2]) != 0, Strings::ToUnsignedInt(row[3]), Strings::ToFloat(row[4]), Strings::ToFloat(row[5]),
-                      Strings::ToFloat(row[6]), Strings::ToFloat(row[7])};
-      if (!database.GetItem(itemId)) {
-        problems.push_back(fmt::format("teleport key [{}] is not an item", itemId));
-      }
-      if (!key.guildStandard && !ZoneName(key.zoneId)) {
-        problems.push_back(fmt::format("teleport key [{}] lands in zone [{}], which has no zone row", itemId, key.zoneId));
-      }
-      teleportKeys[itemId] = key;
-    }
 
     const int maxChildrenOverride = RuleI(Housing, MaxHousesOverride);
     const int maxChildrenAdditive = RuleI(Housing, MaxHousesAdditive);
@@ -391,10 +376,6 @@ namespace housing {
     return itemIds;
   }
 
-  const TeleportKey *Catalog::teleportKey(uint32 itemId) const {
-    auto found = teleportKeys.find(itemId);
-    return found == teleportKeys.end() ? nullptr : &found->second;
-  }
 
   WireWriter Catalog::message() const {
     WireWriter message;

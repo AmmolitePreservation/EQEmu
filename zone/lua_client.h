@@ -266,6 +266,7 @@ public:
 	bool OpenRealEstatePurchase(uint32 property_id);
 	bool UseNeighborhoodWrit(uint32 definition_id);
 	bool HasGuildPermission(int action);
+	bool HasRealEstatePermission(uint32 property_id, int permission);
 	bool IsGrouped();
 	bool IsRaidGrouped();
 	bool Hungry();

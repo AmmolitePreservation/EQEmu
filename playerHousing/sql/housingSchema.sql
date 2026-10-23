@@ -1,8 +1,8 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, composed property names, poll states, region matrices, the character's property lists,
 -- trophy flags, anchor targets). Trophy tribute lives on EQEmu's tribute tables (sql/*Columns.sql, TRO-8).
--- Content tables: definitions, costs, regions, zone templates, neighborhood words, NPC items, auras and teleport keys. The
--- rest is player state.
+-- Content tables: definitions, costs, regions, zone templates, neighborhood words, NPC items and auras. The rest is player
+-- state.
 
 -- Columns take the names of Live's definition fields. cost_definition_id and upkeep_definition_id name real_estate_costs
 -- (plots buy with one of five price tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their
@@ -136,11 +136,9 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_items` (
   `mount_npc_type_id` INT(11) UNSIGNED NOT NULL DEFAULT 0,
   `race_tag` CHAR(3) NOT NULL,
   `training_dummy` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `teleport_role` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`item_id`),
   CONSTRAINT `real_estate_npc_item_race_tag` CHECK (CHAR_LENGTH(`race_tag`) = 3),
-  CONSTRAINT `real_estate_npc_item_dummy` CHECK (`training_dummy` IN (0, 1)),
-  CONSTRAINT `real_estate_npc_item_teleport_role` CHECK (`teleport_role` IN (0, 1, 2))
+  CONSTRAINT `real_estate_npc_item_dummy` CHECK (`training_dummy` IN (0, 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `real_estate_npc_item_actions` (
@@ -155,31 +153,12 @@ CREATE TABLE IF NOT EXISTS `real_estate_npc_item_actions` (
 -- position, and the lines the server prints on walking in and out (Live's spell strings are empty).
 CREATE TABLE IF NOT EXISTS `real_estate_auras` (
   `item_id` INT(11) UNSIGNED NOT NULL,
-  `spell_id` INT(10) UNSIGNED NOT NULL,
-  `radius` FLOAT NOT NULL,
-  `near_message` VARCHAR(128) NOT NULL,
-  `leave_message` VARCHAR(128) NOT NULL,
-  PRIMARY KEY (`item_id`),
-  CONSTRAINT `real_estate_aura_radius` CHECK (`radius` > 0)
+  `aura_type` INT(10) NOT NULL,
+  PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- The keys a guild hall's Teleportation Assistant aligns its Device to: the destination's text and its landing. A guild
 -- standard key goes to the guild's planted standard instead of a fixed point.
-CREATE TABLE IF NOT EXISTS `real_estate_teleport_keys` (
-  `item_id` INT(11) UNSIGNED NOT NULL,
-  `destination` VARCHAR(64) NOT NULL,
-  `guild_standard` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `zone_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `x` FLOAT NOT NULL DEFAULT 0,
-  `y` FLOAT NOT NULL DEFAULT 0,
-  `z` FLOAT NOT NULL DEFAULT 0,
-  `heading` FLOAT NOT NULL DEFAULT 0,
-  PRIMARY KEY (`item_id`),
-  CONSTRAINT `real_estate_teleport_key_standard` CHECK (`guild_standard` IN (0, 1)),
-  CONSTRAINT `real_estate_teleport_key_landing` CHECK ((`guild_standard` = 1) = (`zone_id` = 0)),
-  CONSTRAINT `real_estate_teleport_key_heading` CHECK (`heading` >= 0 AND `heading` < 512)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- name holds only a neighborhood's generated name. Where a property is is derived, never stored: its root's definition names the
 -- zone (dz_id), a zone root runs at instance 0 and any other root in the copy real_estate_instances maps to it. upkeep_currency is 0 (coin) or an alternate currency id: the record's
 -- option key is derived from it when sent, since option positions move as the expansion enables options. Upkeep runs on a
@@ -293,13 +272,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_inactive_auras` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- The key a guild hall's Teleportation Device was last aligned to; it lasts until the next key (Live).
-CREATE TABLE IF NOT EXISTS `real_estate_teleport_alignments` (
-  `property_id` INT(10) UNSIGNED NOT NULL,
-  `key_item_id` INT(11) UNSIGNED NOT NULL,
-  PRIMARY KEY (`property_id`),
-  CONSTRAINT `real_estate_teleport_alignment_property` FOREIGN KEY (`property_id`) REFERENCES `real_estate_properties` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 CREATE TABLE IF NOT EXISTS `real_estate_access_groups` (
   `property_id` INT(10) UNSIGNED NOT NULL,
   `group_number` TINYINT(3) UNSIGNED NOT NULL,

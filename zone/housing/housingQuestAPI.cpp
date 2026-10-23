@@ -14,7 +14,8 @@
 #include <stdexcept>
 
 // Quests reach housing only through its own rules (EXT-28): the Purchase window after the property's record, entry with Enter,
-// the upkeep lockout and the shared copies, the way out /leaverealestate takes, and a writ's neighborhood for the user's guild.
+// the upkeep lockout and the shared copies, the way out /leaverealestate takes, a writ's neighborhood for the user's guild, and
+// whether a client holds a permission on a property.
 namespace housing {
   bool questOpenPurchase(Client *client, uint32 propertyId) {
     if (!session(client)) {
@@ -105,5 +106,23 @@ namespace housing {
     sendEvent(EventType::writUsed, EventTarget::guild, client->GuildID(), 0, std::string(reinterpret_cast<const char *>(&payload), sizeof(payload)));
     LogHousing("[{}] used a neighborhood writ for guild [{}]: neighborhood definition [{}]", client->GetCleanName(), client->GuildID(), definitionId);
     return true;
+  }
+
+  // Whether the client holds a permission (Permission, 0 Receive Buffs to 12 Manage) on a property this zone sent them; the
+  // pool's aura script asks for Receive Buffs (NPC-34).
+  bool questHasPermission(Client *client, uint32 propertyId, int permission) {
+    if (permission < 0 || permission > static_cast<int>(Permission::manage)) {
+      throw std::invalid_argument(fmt::format("real estate permission [{}] is outside 0-{}", permission, static_cast<int>(Permission::manage)));
+    }
+    Session *state = session(client);
+    if (!state) {
+      return false;
+    }
+    auto property = state->properties.find(propertyId);
+    if (property == state->properties.end()) {
+      LogHousing("A quest asked whether [{}] holds permission [{}] on property [{}], which this zone did not send them", client->GetCleanName(), permission, propertyId);
+      return false;
+    }
+    return permitted(client, static_cast<Permission>(permission), property->second, state->lookup(), state->accessLookup());
   }
 }

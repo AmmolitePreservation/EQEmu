@@ -492,7 +492,6 @@ namespace housing {
   void onDisconnect(Client *client) {
     closeContainerOf(client);
     forgetAnchorOffer(client);
-    forgetGuildServiceClient(client);
     sessions.erase(client);
     // A copy's discard delay runs from its last occupant's leaving, a camp included (Live kept an empty house 30.8 minutes after a camp).
     if (zone && hostedRoot() && zone->GetInstanceID()) {
