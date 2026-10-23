@@ -28,8 +28,8 @@ The existing housing code (written through 2026-09-30) against serverPlan.md, th
 | | Records go out as 0x63fd; 0x4f09 only for a property that is gone (:203) | REC-1 |
 | | upkeepOptionKey :181-196 and addTrees :93 fail loudly instead of sending 0 / a missing parent | REC-12 |
 | | currentPropertyFor :121-138: one type-1 root per zone, refuse a second; interior property from the runtime instance map; the X3 root's name from the zone's long name | ZIN-10, INT-12, EXT-9, EXT-14 |
-| | onZoneIn: an empty 0x49df to every RoF2 client in housing-off, catalog-less and dormant zones | REG-2 |
-| | onZoneBoot :306-313: load tails and register the provider first, even with housing off; fail boot on failure | ITM-5 |
+| | onZoneIn: an empty 0x49df to every RoF2 client in catalog-less and dormant zones | REG-2 |
+| | onZoneBoot :306-313: load tails and register the provider first; fail boot on failure | ITM-5 |
 | | Split zone-in: 0x2698, records and 0x6fd0 before OP_WorldObjectsSent; 0x1045 and NPC spawns after the item lists (no 0x1045 for a spawned NPC item) | ZIN-8, WOB-2, NPC-3 |
 | | :256-263 load and send access lists for neighborhoods and guild halls too; houses none | ACC-1, ACC-3 |
 | **zone/housing/housingMessages.cpp** | :9 +0x18 = -1 (0 on a vacant player plot); :14 +0x30 owner's account id as text; :18 name composed at send time ("parent, segment"); :27 upkeep_expired_time | REC-7, REC-6, REC-5, REC-2 |

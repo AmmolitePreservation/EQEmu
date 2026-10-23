@@ -387,6 +387,19 @@ namespace housing {
       LogHousing("Zone-in for [{}]: [{}] properties, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
         client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
     }
+
+  // A copy discarded between a door's hand-out and the arrival leaves the player alone in a dead instance, which EQEmu would send
+  // to bind only after 150 s while the next click starts a second copy (INT-33).
+  bool arrivedInDiscardedCopy(Client *client) {
+    const uint16 instanceId = static_cast<uint16>(zone->GetInstanceID());
+    if (!instanceId || !catalogReady || !catalog().isZoneTemplate(zone->GetZoneID(), zone->GetInstanceVersion()) || database.CheckInstanceExists(instanceId)) {
+      return false;
+    }
+    LogHousing("[{}] arrived in instance [{}], a discarded copy; they go to bind", client->GetCleanName(), instanceId);
+    client->Message(Chat::Yellow, "Instance no longer exists...");
+    client->GoToBind();
+    return true;
+  }
   }
 
   PropertyLookup Session::lookup() const {
@@ -404,7 +417,7 @@ namespace housing {
   }
 
   bool housingActive() {
-    return catalogReady && RuleB(Housing, EnableHousing);
+    return catalogReady;
   }
 
   bool reloadCatalog() {
@@ -435,10 +448,6 @@ namespace housing {
   bool onZoneBoot() {
     if (!loadItemHousingTails()) {
       return false;
-    }
-    if (!RuleB(Housing, EnableHousing)) {
-      LogHousing("Player housing is disabled by rule Housing:EnableHousing");
-      return true;
     }
     catalogReady = catalog().load();
     if (catalogReady) {
@@ -471,6 +480,9 @@ namespace housing {
   }
 
   void onZoneIn(Client *client) {
+    if (arrivedInDiscardedCopy(client)) {
+      return;
+    }
     if (isRoF2(client)) {
       sendZoneIn(client);
     }

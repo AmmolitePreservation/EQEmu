@@ -51,9 +51,6 @@ namespace housing {
       LogError("Housing: event [{}] is [{}] bytes, its header says [{}]", event->event_type, pack->size, sizeof(ServerHousingEvent_Struct) + event->payload_size);
       return;
     }
-    if (!RuleB(Housing, EnableHousing)) {
-      return;
-    }
     switch (static_cast<EventType>(event->event_type)) {
       case EventType::catalogChanged:
         reloadCatalog();

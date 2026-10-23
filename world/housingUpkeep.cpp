@@ -371,7 +371,7 @@ namespace housing {
   }
 
   void processUpkeep() {
-    if (!RuleB(Housing, EnableHousing) || !RuleB(Housing, EnableUpkeep)) {
+    if (!RuleB(Housing, EnableUpkeep)) {
       return;
     }
     if (!passTimer.Enabled()) {

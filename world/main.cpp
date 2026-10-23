@@ -197,20 +197,18 @@ int main(int argc, char **argv)
 
 	SkillCaps::Instance()->SetContentDatabase(&content_db)->LoadSkillCaps();
 
-	if (RuleB(Housing, EnableHousing)) {
-		if (!housing::startUpkeep()) {
-			LogError("Player housing's upkeep rules are out of range; world does not start");
-			return 1;
-		}
-		try {
-			housing::startHousingInstances();
-		}
-		catch (const std::exception &error) {
-			LogError("Player housing's instances could not start: {}; world does not start", error.what());
-			return 1;
-		}
-		housing::balanceNeighborhoods();
+	if (!housing::startUpkeep()) {
+		LogError("Player housing's upkeep rules are out of range; world does not start");
+		return 1;
 	}
+	try {
+		housing::startHousingInstances();
+	}
+	catch (const std::exception &error) {
+		LogError("Player housing's instances could not start: {}; world does not start", error.what());
+		return 1;
+	}
+	housing::balanceNeighborhoods();
 
 	std::unique_ptr<EQ::Net::ServertalkServer> server_connection;
 	server_connection = std::make_unique<EQ::Net::ServertalkServer>();

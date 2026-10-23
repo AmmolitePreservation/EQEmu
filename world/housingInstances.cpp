@@ -106,16 +106,14 @@ namespace housing {
     return propertyId;
   }
 
-  // Copies number from world's boot (INT-16: Live's counter appears to start over at a restart; the 2026-10-21 check settles it).
+  // Live's copy counter carries on through a restart (INT-16), so the row is made once and never reset.
   void startHousingInstances() {
-    restartInstanceCounter(database);
+    const InstanceRange range = instanceRange(RuleI(Instances, ReservedInstances));
+    query(database, fmt::format("INSERT IGNORE INTO real_estate_instance_counter (id, next_instance_id) VALUES (1, {})", range.first));
     createZoneRoots();
   }
 
   void processHousingInstances() {
-    if (!RuleB(Housing, EnableHousing)) {
-      return;
-    }
     if (!sweepTimer.Enabled()) {
       sweepTimer.Start(sweepMilliseconds);
     }
