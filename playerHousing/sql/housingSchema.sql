@@ -1,8 +1,8 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, composed property names, poll states, region matrices, the character's property lists,
 -- trophy flags, anchor targets). Trophy tribute lives on EQEmu's tribute tables (sql/*Columns.sql, TRO-8).
--- Content tables: definitions, costs, regions, zone templates, writs, neighborhood words, NPC items, auras and teleport keys.
--- The rest is player state.
+-- Content tables: definitions, costs, regions, zone templates, neighborhood words, NPC items, auras and teleport keys. The
+-- rest is player state.
 
 -- Columns take the names of Live's definition fields. cost_definition_id and upkeep_definition_id name real_estate_costs
 -- (plots buy with one of five price tiers and pay that tier's upkeep; houses pay their own upkeep); placed items pay their
@@ -115,12 +115,6 @@ CREATE TABLE IF NOT EXISTS `real_estate_zone_templates` (
 -- which RoF2 keeps but never reads: the plot definition a plot border (type 160) or an apartment entrance opens, 1 on a
 -- neighborhood-list door (type 159), 0 on a front door (type 161).
 -- An item that creates a guild neighborhood of a definition when used (Live's Guild Writ of the Sunrise makes Sunrise Hills).
-CREATE TABLE IF NOT EXISTS `real_estate_writs` (
-  `item_id` INT(11) UNSIGNED NOT NULL,
-  `definition_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`item_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- Words the server combines into names for the neighborhoods it creates as others fill, as Live does ("Maple Bridge Point",
 -- "Walnut Lake", "Circle Hills"): position 0 an optional tree, 1 an optional middle word, 2 the place word, and at least one of
 -- the first two. A name is in use while a neighborhood property has it.

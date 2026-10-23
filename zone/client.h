@@ -860,6 +860,7 @@ public:
 	inline uint8 GuildRank() const { return guildrank; }
 	inline bool GuildTributeOptIn() const { return guild_tribute_opt_in; }
 	void SetGuildTributeOptIn(bool state);
+	bool HasGuildPermission(int action) const;
 	void SendGuildTributeDonateItemReply(GuildTributeDonateItemRequest_Struct* in, uint32 favor);
 	void SendGuildTributeDonatePlatReply(GuildTributeDonatePlatRequest_Struct* in, uint32 favor);
 	void SetGuildRank(uint32 rank);

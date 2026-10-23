@@ -23,6 +23,8 @@
 #include "guild_mgr.h"
 #include "worldserver.h"
 
+#include <stdexcept>
+
 extern WorldServer worldserver;
 
 void Client::SendGuildMOTD(bool GetGuildMOTDReply) {
@@ -443,6 +445,15 @@ void Client::SetGuildRank(uint32 rank)
 void Client::SetGuildTributeOptIn(bool state)
 {
 	guild_tribute_opt_in = state;
+}
+
+// Whether this client's guild rank holds a guild action (GuildAction, 1 to GUILD_MAX_FUNCTIONS); the quest scripts' check.
+bool Client::HasGuildPermission(int action) const
+{
+	if (action < 1 || action > GUILD_MAX_FUNCTIONS) {
+		throw std::invalid_argument(fmt::format("guild action [{}] is outside 1-{}", action, GUILD_MAX_FUNCTIONS));
+	}
+	return IsInAGuild() && guild_mgr.CheckPermission(GuildID(), GuildRank(), static_cast<GuildAction>(action));
 }
 
 void Client::SetGuildID(uint32 g_id)

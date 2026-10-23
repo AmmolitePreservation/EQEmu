@@ -1772,10 +1772,6 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 
 	TryTriggerOnCastFocusEffect(focusTriggerOnCast, spell_id);
 
-	if (IsClient() && DeleteChargeFromSlot >= 0 && !housing::itemCastSpends(CastToClient(), inventory_slot)) {
-		DeleteChargeFromSlot = -1;
-	}
-
 	if (IsClient() && slot == CastingSlot::Item && inventory_slot != 0xFFFFFFFF) {
 		housing::handleItemCastFinished(CastToClient(), spell_id, inventory_slot);
 	}

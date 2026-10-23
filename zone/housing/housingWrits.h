@@ -4,7 +4,6 @@
 #include "../../common/housingEventTypes.h"
 
 namespace housing {
-  void loadWrits();
   void announceGuildNeighborhood(const GuildNeighborhoodCreatedPayload &created);
 }
 

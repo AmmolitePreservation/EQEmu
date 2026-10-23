@@ -139,12 +139,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   CONSTRAINT `real_estate_zone_template_heading` CHECK (`zone_in_heading` >= 0 AND `zone_in_heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
-			R"(CREATE TABLE IF NOT EXISTS `real_estate_writs` (
-  `item_id` INT(11) UNSIGNED NOT NULL,
-  `definition_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`item_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_neighborhood_words` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `position` TINYINT(3) UNSIGNED NOT NULL,

@@ -1,6 +1,8 @@
 #include "housing.h"
 
 #include "housingAccess.h"
+#include "housingCatalog.h"
+#include "housingEvents.h"
 #include "housingHandlers.h"
 #include "housingInteriors.h"
 #include "housingSession.h"
@@ -8,10 +10,11 @@
 #include "../../common/eqemu_logsys.h"
 #include "../client.h"
 
+#include <cstring>
 #include <stdexcept>
 
 // Quests reach housing only through its own rules (EXT-28): the Purchase window after the property's record, entry with Enter,
-// the upkeep lockout and the shared copies, and the way out /leaverealestate takes.
+// the upkeep lockout and the shared copies, the way out /leaverealestate takes, and a writ's neighborhood for the user's guild.
 namespace housing {
   bool questOpenPurchase(Client *client, uint32 propertyId) {
     if (!session(client)) {
@@ -43,7 +46,7 @@ namespace housing {
 
   bool questEnter(Client *client, uint32 propertyId) {
     if (!housingActive()) {
-      LogHousing("A quest sent [{}] into property [{}] where housing is off", client->GetCleanName(), propertyId);
+      LogHousing("A quest sent [{}] into property [{}] with no housing catalog here", client->GetCleanName(), propertyId);
       return false;
     }
     try {
@@ -70,9 +73,37 @@ namespace housing {
 
   void questLeave(Client *client) {
     if (!housingActive()) {
-      LogHousing("A quest took [{}] out of real estate where housing is off", client->GetCleanName());
+      LogHousing("A quest took [{}] out of real estate with no housing catalog here", client->GetCleanName());
       return;
     }
     handleLeave(client);
+  }
+
+  // Live's writ casts the do-nothing 7652, so the neighborhood is the server's work (EXT-33); the writ's item script checks the guild
+  // and rank and calls this before the cast (EXT-36). A client already casting would have the writ's cast refused after the village
+  // was made, and the writ would survive.
+  bool questUseNeighborhoodWrit(Client *client, uint32 definitionId) {
+    if (!housingActive()) {
+      LogHousing("A quest used a neighborhood writ for [{}] with no housing catalog here", client->GetCleanName());
+      return false;
+    }
+    const Definition *definition = catalog().definition(definitionId);
+    if (!definition || definition->row.type != static_cast<uint8>(DefinitionType::neighborhood)) {
+      LogHousing("A quest used a neighborhood writ for [{}] naming definition [{}], which is no neighborhood", client->GetCleanName(), definitionId);
+      return false;
+    }
+    if (!client->IsInAGuild()) {
+      LogHousing("A quest used a neighborhood writ for [{}], who is in no guild", client->GetCleanName());
+      return false;
+    }
+    if (client->IsCasting()) {
+      LogHousing("A quest used a neighborhood writ for [{}] while they were casting", client->GetCleanName());
+      return false;
+    }
+    WritUsedPayload payload{client->CharacterID(), client->GuildID(), definitionId, {}};
+    strncpy(payload.characterName, client->GetCleanName(), sizeof(payload.characterName) - 1);
+    sendEvent(EventType::writUsed, EventTarget::guild, client->GuildID(), 0, std::string(reinterpret_cast<const char *>(&payload), sizeof(payload)));
+    LogHousing("[{}] used a neighborhood writ for guild [{}]: neighborhood definition [{}]", client->GetCleanName(), client->GuildID(), definitionId);
+    return true;
   }
 }
