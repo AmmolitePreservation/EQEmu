@@ -59,6 +59,7 @@ public:
 		insert_values.push_back(std::to_string(character_instance_safereturns_entry.safe_y));
 		insert_values.push_back(std::to_string(character_instance_safereturns_entry.safe_z));
 		insert_values.push_back(std::to_string(character_instance_safereturns_entry.safe_heading));
+		insert_values.push_back(std::to_string(character_instance_safereturns_entry.property_id));
 
 		auto results = db.QueryDatabase(fmt::format(SQL(
 			{} VALUES ({})
@@ -69,7 +70,8 @@ public:
 				safe_x           = VALUES(safe_x),
 				safe_y           = VALUES(safe_y),
 				safe_z           = VALUES(safe_z),
-				safe_heading     = VALUES(safe_heading)
+				safe_heading     = VALUES(safe_heading),
+				property_id      = VALUES(property_id)
 		),
 			BaseInsert(),
 			Strings::Implode(",", insert_values)

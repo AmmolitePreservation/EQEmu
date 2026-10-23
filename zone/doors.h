@@ -25,6 +25,7 @@ public:
 	char *GetDoorName() { return m_door_name; }
 	const glm::vec4 &GetPosition() const { return m_position; }
 	int GetDzSwitchID() const { return m_dz_switch_id; }
+	uint32 GetRealEstateDoorID() const { return m_real_estate_door_id; }
 	int GetIncline() { return m_incline; }
 	int GetInvertState() { return m_invert_state; }
 	uint8 GetDoorID() { return m_door_id; }
@@ -110,6 +111,7 @@ private:
 	glm::vec4 m_destination;
 	uint8     m_is_ldon_door;
 	int       m_dz_switch_id = 0;
+	uint32    m_real_estate_door_id = 0;
 	uint32    m_client_version_mask;
 	bool      m_is_blacklisted_to_open = false; // is door blacklisted to open by npcs
 };

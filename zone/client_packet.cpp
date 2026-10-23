@@ -1874,6 +1874,17 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 
 		CharacterInstanceSafereturnsRepository::InsertOneOrUpdate(database, safereturn_entry);
 	}
+	else if (const uint32 copy_property_id = housing::hostedCopyPropertyId())
+	{
+		// A character saved in a housing copy logs in to a new copy of the property once the instance is gone (INT-32).
+		auto safereturn_entry = CharacterInstanceSafereturnsRepository::NewEntity();
+		safereturn_entry.character_id     = CharacterID();
+		safereturn_entry.instance_zone_id = zone->GetZoneID();
+		safereturn_entry.instance_id      = zone->GetInstanceID();
+		safereturn_entry.property_id      = copy_property_id;
+
+		CharacterInstanceSafereturnsRepository::InsertOneOrUpdate(database, safereturn_entry);
+	}
 	else
 	{
 		CharacterInstanceSafereturnsRepository::DeleteWhere(database,

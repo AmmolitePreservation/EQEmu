@@ -192,7 +192,6 @@ SET(zone_headers
     housing/housingAugmentater.h
     housing/housingCatalog.h
     housing/housingContainers.h
-    housing/housingDoors.h
     housing/housingEvents.h
     housing/housingGeometry.h
     housing/housingGuildServices.h

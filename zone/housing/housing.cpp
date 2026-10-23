@@ -4,7 +4,6 @@
 #include "housingAnchors.h"
 #include "housingCatalog.h"
 #include "housingContainers.h"
-#include "housingDoors.h"
 #include "housingGuildServices.h"
 #include "housingWrits.h"
 #include "housingHandlers.h"
@@ -388,18 +387,18 @@ namespace housing {
         client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
     }
 
-  // A copy discarded between a door's hand-out and the arrival leaves the player alone in a dead instance, which EQEmu would send
-  // to bind only after 150 s while the next click starts a second copy (INT-33).
-  bool arrivedInDiscardedCopy(Client *client) {
-    const uint16 instanceId = static_cast<uint16>(zone->GetInstanceID());
-    if (!instanceId || !catalogReady || !catalog().isZoneTemplate(zone->GetZoneID(), zone->GetInstanceVersion()) || database.CheckInstanceExists(instanceId)) {
-      return false;
+    // A copy discarded between a door's hand-out and the arrival leaves the player alone in a dead instance, which EQEmu would send
+    // to bind only after 150 s while the next click starts a second copy (INT-33).
+    bool arrivedInDiscardedCopy(Client *client) {
+      const uint16 instanceId = static_cast<uint16>(zone->GetInstanceID());
+      if (!instanceId || !catalogReady || !catalog().isZoneTemplate(zone->GetZoneID(), zone->GetInstanceVersion()) || database.CheckInstanceExists(instanceId)) {
+        return false;
+      }
+      LogHousing("[{}] arrived in instance [{}], a discarded copy; they go to bind", client->GetCleanName(), instanceId);
+      client->Message(Chat::Yellow, "Instance no longer exists...");
+      client->GoToBind();
+      return true;
     }
-    LogHousing("[{}] arrived in instance [{}], a discarded copy; they go to bind", client->GetCleanName(), instanceId);
-    client->Message(Chat::Yellow, "Instance no longer exists...");
-    client->GoToBind();
-    return true;
-  }
   }
 
   PropertyLookup Session::lookup() const {
@@ -453,7 +452,6 @@ namespace housing {
     if (catalogReady) {
       try {
         loadHostedRoot();
-        loadDoorMap();
         loadWrits();
       }
       catch (const std::exception &error) {

@@ -90,6 +90,7 @@ Doors::Doors(const DoorsRepository::Doors &door) :
 	m_destination_instance_id = door.dest_instance;
 	m_is_ldon_door            = door.is_ldon_door;
 	m_dz_switch_id            = door.dz_switch_id;
+	m_real_estate_door_id     = door.real_estate_door_id;
 	m_client_version_mask     = door.client_version_mask;
 
 	SetOpenState(false);

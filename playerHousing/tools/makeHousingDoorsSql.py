@@ -1,4 +1,4 @@
-"""Writes sql/housingDoors.sql: the housing interiors' and halls' front doors, the Palatial hall's interior doors, the Guild Lobby gate's open type, and the door map (real_estate_doors).
+"""Writes sql/housingDoors.sql: the housing interiors' and halls' front doors, the Palatial hall's interior doors, the Guild Lobby gate's open type, and every housing door's RealEstateDoorID (doors.real_estate_door_id, DOR-19).
 
 Doors are Live's (a livedumps clone's master/doors.tsv for name, type, position, heading and size; master/fields/doors.tsv for
 state, remain-open and RealEstateDoorID). Each Live zone maps to its Peridot zone through makeHousingZonesSql.py's table
@@ -7,15 +7,15 @@ left out. Every column a door row does not set is copied from one of PEQ's neigh
 type 160, version 0), as makeGuildBorderDoorsSql.py does, since PEQ has no rows in these zones; each row sets zone, version,
 door id, name, position, heading, size and open type, and is closed and uninverted (doorisopen 0, invert_state 0).
 
-The door map (DOR-3, DOR-9) holds Live's RealEstateDoorID for every housing door, checked against its rule: a lot square's
+Every housing door carries Live's RealEstateDoorID (DOR-3, DOR-9, DOR-19), checked against its rule: a lot square's
 door id plus 100, a guild square's plot (226-229 -> 187-190), 1 for the neighborhood list doors (the void portal and the
 Guild Lobby gate) and 0 for a front door. The Guild Lobby is zone 344 (common/eq_constants.h, Zones::GUILDLOBBY). Each
-mapped lot square is checked against PEQ's (content/sunriseHillsLotSquares.tsv: same door id, within 1 unit of Live's);
+lot square is checked against PEQ's (content/sunriseHillsLotSquares.tsv: same door id, within 1 unit of Live's);
 the SQL checks the borders, the portal and the gate in the loaded doors table (so guildBorderDoors.sql loads first).
 
 The door rules hold (DOR-10) for every zone version written: ids 0-255 and at most 500 doors, names longer than 3 characters
-and upper case, state 0 on types 159-161 and nothing remaining open. The SQL refuses a non-empty door map or existing rows
-at the doors it writes, and loads in one transaction.
+and upper case, state 0 on types 159-161 and nothing remaining open. The SQL refuses doors that already carry a RealEstateDoorID or
+existing rows at the doors it writes, and loads in one transaction.
 
 Usage: python makeHousingDoorsSql.py --live <livedumps clone>
 """
@@ -23,7 +23,6 @@ import argparse, collections, csv, math, os, re, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-from makeGuildBorderDoorsSql import doorsColumns
 from makeHousingZonesSql import housingZones
 from makeHousingCatalogSql import neighborhoodZoneId
 
@@ -43,6 +42,16 @@ portalDoorID, gateDoorID = 130, 38
 neighborhoodVersion, lobbyVersion = 0, 0
 lotSquareMatchUnits = 1.0
 maxDoorID, maxDoors = 255, 500
+
+
+def doorsColumns():
+  path = os.path.join(here, '..', '..', 'common', 'repositories', 'base', 'base_doors_repository.h')
+  text = open(path, encoding='utf-8').read()
+  body = text[text.index('static std::vector<std::string> Columns()'):]
+  columns = re.findall(r'"([a-z_0-9]+)"', body[:body.index('};')])
+  if columns[0] != 'id' or 'real_estate_door_id' not in columns:
+    raise ValueError(f'unexpected doors columns: {columns}')
+  return columns[1:]
 
 
 def guildLobbyZoneID():
@@ -201,8 +210,12 @@ def checkDoorRules(doorRows):
       raise ValueError(f"{label}: heading {row['heading']} is outside [0, 512)")
 
 
+def mappedZoneNames():
+  return {neighborhoodZoneId: 'neighborhood', guildLobbyZoneID(): 'guildlobby'}
+
+
 def ruleRowsForMappedDoors(liveDoors, mapRows):
-  zoneNames = {neighborhoodZoneId: 'neighborhood', guildLobbyZoneID(): 'guildlobby'}
+  zoneNames = mappedZoneNames()
   return [doorRow(liveDoors[(zoneNames[zoneID], doorID)], zoneID, version, zoneNames[zoneID])
           for zoneID, version, doorID, _ in mapRows if zoneID in zoneNames]
 
@@ -210,10 +223,17 @@ def ruleRowsForMappedDoors(liveDoors, mapRows):
 def insertStatement(columns, row):
   values = dict(zone=f"'{row['zone']}'", version=str(row['version']), doorid=str(row['doorID']), name=f"'{row['name']}'", pos_x=repr(row['x']),
                 pos_y=repr(row['y']), pos_z=repr(row['z']), heading=repr(row['heading']), size=str(row['size']), opentype=str(row['type']),
-                doorisopen='0', invert_state='0')
+                doorisopen='0', invert_state='0', real_estate_door_id=str(max(row['realEstateDoorID'], 0)))
   selected = ', '.join(values.get(column, f'`{column}`') for column in columns)
   return (f"  INSERT INTO doors ({', '.join(f'`{column}`' for column in columns)})\n"
           f"    SELECT {selected} FROM doors WHERE id = templateId;\n")
+
+
+def updateStatement(zoneName, version, doorID, value):
+  columns = f'real_estate_door_id = {value}'
+  if (zoneName, doorID) == ('guildlobby', gateDoorID):
+    columns = f'opentype = {typeNeighborhoodList}, {columns}'
+  return f"  UPDATE doors SET {columns} WHERE zone = '{zoneName}' AND version = {version} AND doorid = {doorID};\n"
 
 
 def nearCondition(door):
@@ -233,15 +253,16 @@ def buildSql(columns, liveDoors, lotIDs, doorRows, mapRows):
   borderCount = len(lotIDs) + len(guildSquarePlots)
   portal, gate = liveDoors[('neighborhood', portalDoorID)], liveDoors[('guildlobby', gateDoorID)]
   inserts = ''.join(insertStatement(columns, row) for row in doorRows)
-  mapValues = ',\n'.join(f'    ({zoneID}, {version}, {doorID}, {value})' for zoneID, version, doorID, value in mapRows)
+  zoneNames = mappedZoneNames()
+  updates = ''.join(updateStatement(zoneNames[zoneID], version, doorID, value) for zoneID, version, doorID, value in mapRows if zoneID in zoneNames)
   closed = 'doorisopen = 0 AND invert_state = 0'
   return f"""-- Generated by playerHousing/tools/makeHousingDoorsSql.py from Live's doors and content/sunriseHillsLotSquares.tsv; loads after guildBorderDoors.sql.
 DELIMITER //
 BEGIN NOT ATOMIC
   DECLARE templateId INT DEFAULT NULL;
   DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
-  IF EXISTS (SELECT 1 FROM real_estate_doors) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'real_estate_doors is not empty';
+  IF EXISTS (SELECT 1 FROM doors WHERE real_estate_door_id <> 0) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'a door already carries a RealEstateDoorID';
   END IF;
   IF EXISTS (SELECT 1 FROM doors WHERE {existing}) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'a housing front or interior door row already exists';
@@ -263,14 +284,11 @@ BEGIN NOT ATOMIC
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'no {lotSquareModel} door with open type {typePlotBorder} to copy';
   END IF;
   START TRANSACTION;
-{inserts}  UPDATE doors SET opentype = {typeNeighborhoodList} WHERE zone = 'guildlobby' AND version = {lobbyVersion} AND doorid = {gateDoorID};
-  INSERT INTO real_estate_doors (zone_id, zone_version, door_id, real_estate_door_id) VALUES
-{mapValues};
-  COMMIT;
+{inserts}{updates}  COMMIT;
 END //
 DELIMITER ;
 SELECT zone, version, doorid, name, pos_x, pos_y, pos_z, heading, opentype, size FROM doors WHERE {existing} OR (zone = 'guildlobby' AND version = {lobbyVersion} AND doorid = {gateDoorID}) ORDER BY zone, version, doorid;
-SELECT zone_id, zone_version, COUNT(*), MIN(real_estate_door_id), MAX(real_estate_door_id) FROM real_estate_doors GROUP BY zone_id, zone_version ORDER BY zone_id, zone_version;
+SELECT zone, version, COUNT(*), MIN(real_estate_door_id), MAX(real_estate_door_id) FROM doors WHERE real_estate_door_id <> 0 OR opentype IN ({typeNeighborhoodList}, {typePlotBorder}, {typeFrontDoor}) GROUP BY zone, version ORDER BY zone, version;
 """
 
 
@@ -295,7 +313,7 @@ def main():
   path = os.path.join(here, '..', 'sql', 'housingDoors.sql')
   open(path, 'w', encoding='ascii').write(sql)
   fronts = sum(row['type'] == typeFrontDoor for row in doorRows)
-  print(f'wrote {os.path.relpath(path)}: {len(doorRows)} doors ({fronts} front doors), {len(mapRows)} door map rows, the Guild Lobby gate')
+  print(f'wrote {os.path.relpath(path)}: {len(doorRows)} doors ({fronts} front doors), {len(mapRows)} RealEstateDoorIDs, the Guild Lobby gate')
 
 
 if __name__ == '__main__':

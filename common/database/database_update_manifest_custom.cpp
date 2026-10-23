@@ -139,14 +139,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   CONSTRAINT `real_estate_zone_template_heading` CHECK (`zone_in_heading` >= 0 AND `zone_in_heading` < 512)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
-			R"(CREATE TABLE IF NOT EXISTS `real_estate_doors` (
-  `zone_id` INT(10) UNSIGNED NOT NULL,
-  `zone_version` TINYINT(3) UNSIGNED NOT NULL,
-  `door_id` TINYINT(3) UNSIGNED NOT NULL,
-  `real_estate_door_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`zone_id`, `zone_version`, `door_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_writs` (
   `item_id` INT(11) UNSIGNED NOT NULL,
   `definition_id` INT(10) UNSIGNED NOT NULL,
@@ -251,12 +243,6 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   `next_instance_id` INT(10) UNSIGNED NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `real_estate_instance_counter_single` CHECK (`id` = 1)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-)"
-			R"(CREATE TABLE IF NOT EXISTS `character_real_estate_interiors` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `property_id` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`character_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 )"
 			R"(CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
@@ -514,6 +500,30 @@ std::vector<ManifestEntry> manifest_entries_custom = {
   ADD COLUMN `disallow_mana_stone` TINYINT(4) NOT NULL DEFAULT 1 AFTER `filter_id`;
 )",
 		.content_schema_update = true,
+	},
+	ManifestEntry{
+		.version = 6,
+		.description = "2026_10_23_doors_real_estate_door_id",
+		.check = "SHOW COLUMNS FROM `doors` LIKE 'real_estate_door_id'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `doors`
+  ADD COLUMN `real_estate_door_id` INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER `dz_switch_id`;
+)",
+		.content_schema_update = true,
+	},
+	ManifestEntry{
+		.version = 7,
+		.description = "2026_10_23_safe_return_property_id",
+		.check = "SHOW COLUMNS FROM `character_instance_safereturns` LIKE 'property_id'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(ALTER TABLE `character_instance_safereturns`
+  ADD COLUMN `property_id` INT(10) UNSIGNED NOT NULL DEFAULT 0 AFTER `safe_heading`;
+)",
+		.content_schema_update = false,
 	},
 // Used for testing
 //	ManifestEntry{

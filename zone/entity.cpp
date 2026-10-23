@@ -999,7 +999,7 @@ bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app, Client *client)
 
 			new_door.door_param = door->GetDoorParam();
 			if (client->ClientVersion() == EQ::versions::ClientVersion::RoF2) {
-				new_door.real_estate_door_id = housing::realEstateDoorID(door->GetDoorID());
+				new_door.real_estate_door_id = door->GetRealEstateDoorID();
 			}
 			memcpy(ptr, &new_door, sizeof(new_door));
 			ptr += sizeof(new_door);

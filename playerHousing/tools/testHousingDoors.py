@@ -1,4 +1,4 @@
-"""Tests makeHousingDoorsSql.py on its data: regeneration, the door map's rows and values, Live's front doors per zone, the Palatial hall's interior doors, the SQL's guards and gate update, and each door rule refusing a bad input.
+"""Tests makeHousingDoorsSql.py on its data: regeneration, the RealEstateDoorID rows and values, Live's front doors per zone, the Palatial hall's interior doors, the SQL's guards and gate update, and each door rule refusing a bad input.
 
 Usage: python testHousingDoors.py --live <livedumps clone>
 """
@@ -77,9 +77,15 @@ check("Live's -1 on the three-room interiors' doors is written as 0", sorted((ro
       [('phinterior3a1', -1), ('phinterior3a2', -1), ('phinterior3a3', -1)])
 
 sql = open(sqlPath).read()
-check('the gate update sets only its open type', [line.strip() for line in sql.splitlines() if line.lstrip().startswith('UPDATE')],
-      ["UPDATE doors SET opentype = 159 WHERE zone = 'guildlobby' AND version = 0 AND doorid = 38;"])
-check('the SQL refuses a non-empty door map', "IF EXISTS (SELECT 1 FROM real_estate_doors) THEN" in sql, True)
+updates = [line.strip() for line in sql.splitlines() if line.lstrip().startswith('UPDATE')]
+check('the gate update sets its open type and RealEstateDoorID', [line for line in updates if "'guildlobby'" in line],
+      ["UPDATE doors SET opentype = 159, real_estate_door_id = 1 WHERE zone = 'guildlobby' AND version = 0 AND doorid = 38;"])
+check('one RealEstateDoorID update per neighborhood square and the portal, and the gate', (len([line for line in updates if "'neighborhood'" in line]), len(updates)), (78, 79))
+check('the portal and a guild square take their RealEstateDoorIDs',
+      ("UPDATE doors SET real_estate_door_id = 1 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 130;" in updates,
+       "UPDATE doors SET real_estate_door_id = 187 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 226;" in updates), (True, True))
+check('the SQL refuses doors that already carry a RealEstateDoorID', "IF EXISTS (SELECT 1 FROM doors WHERE real_estate_door_id <> 0) THEN" in sql, True)
+check('every door row is inserted with RealEstateDoorID 0', sql.count("`content_flags_disabled`, 0 FROM doors WHERE id = templateId;"), 38)
 check('one insert per door row', sql.count('INSERT INTO doors '), 38)
 check('the 345 version 2 door row', "SELECT 3, 'guildhall', 2, 'OBJ_GUILD_DOOR', -162.899, -3.4, 6.9, 128.0, 161," in sql, True)
 check('every door row is written closed and uninverted', sql.count(", 0, `door_param`,") == 38 and sql.count('`dest_heading`, 0, `incline`') == 38, True)

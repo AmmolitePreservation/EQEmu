@@ -28,12 +28,12 @@ namespace housing {
   void onZoneContents(Client *client);
   void onZoneIn(Client *client);
   void onDisconnect(Client *client);
+  uint32 hostedCopyPropertyId();
   void handleServerPacket(ServerPacket *pack);
   void handleFindRequest(Client *client, uint32 type, int32 propertyId, int32 recordId);
   void handleContainerOpened(Client *client, const EQApplicationPacket *app);
   bool handleDoorClick(Client *client, Doors *door);
   void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect, uint16 spellId, int32 anchorItemId);
-  uint32 realEstateDoorID(uint8 doorId);
   bool itemCastSpends(Client *client, uint32 inventorySlot);
   void handleItemCastFinished(Client *client, uint16 spellId, uint32 inventorySlot);
   void handleTrade(Client *client, NPC *npc, std::vector<EQ::ItemInstance *> &items);
