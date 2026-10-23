@@ -23,6 +23,8 @@ public:
 		uint32_t character_id;
 		uint8_t  tier;
 		uint32_t tribute;
+		uint8_t  kind;
+		uint8_t  slot;
 	};
 
 	static std::string PrimaryKey()
@@ -37,6 +39,8 @@ public:
 			"character_id",
 			"tier",
 			"tribute",
+			"kind",
+			"slot",
 		};
 	}
 
@@ -47,6 +51,8 @@ public:
 			"character_id",
 			"tier",
 			"tribute",
+			"kind",
+			"slot",
 		};
 	}
 
@@ -91,6 +97,8 @@ public:
 		e.character_id = 0;
 		e.tier         = 0;
 		e.tribute      = 0;
+		e.kind      = 0;
+		e.slot      = 0;
 
 		return e;
 	}
@@ -131,6 +139,8 @@ public:
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.tier         = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.tribute      = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.kind      = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.slot      = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -167,6 +177,8 @@ public:
 		v.push_back(columns[1] + " = " + std::to_string(e.character_id));
 		v.push_back(columns[2] + " = " + std::to_string(e.tier));
 		v.push_back(columns[3] + " = " + std::to_string(e.tribute));
+		v.push_back(columns[4] + " = " + std::to_string(e.kind));
+		v.push_back(columns[5] + " = " + std::to_string(e.slot));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -192,6 +204,8 @@ public:
 		v.push_back(std::to_string(e.character_id));
 		v.push_back(std::to_string(e.tier));
 		v.push_back(std::to_string(e.tribute));
+		v.push_back(std::to_string(e.kind));
+		v.push_back(std::to_string(e.slot));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -225,6 +239,8 @@ public:
 			v.push_back(std::to_string(e.character_id));
 			v.push_back(std::to_string(e.tier));
 			v.push_back(std::to_string(e.tribute));
+			v.push_back(std::to_string(e.kind));
+			v.push_back(std::to_string(e.slot));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -262,6 +278,8 @@ public:
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.tier         = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.tribute      = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.kind      = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.slot      = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -290,6 +308,8 @@ public:
 			e.character_id = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
 			e.tier         = row[2] ? static_cast<uint8_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.tribute      = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.kind      = row[4] ? static_cast<uint8_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.slot      = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -368,6 +388,8 @@ public:
 		v.push_back(std::to_string(e.character_id));
 		v.push_back(std::to_string(e.tier));
 		v.push_back(std::to_string(e.tribute));
+		v.push_back(std::to_string(e.kind));
+		v.push_back(std::to_string(e.slot));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -394,6 +416,8 @@ public:
 			v.push_back(std::to_string(e.character_id));
 			v.push_back(std::to_string(e.tier));
 			v.push_back(std::to_string(e.tribute));
+			v.push_back(std::to_string(e.kind));
+			v.push_back(std::to_string(e.slot));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

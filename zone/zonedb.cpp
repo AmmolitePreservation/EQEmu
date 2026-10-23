@@ -821,7 +821,7 @@ bool ZoneDatabase::LoadCharacterBandolier(uint32 character_id, PlayerProfile_Str
 }
 
 void ZoneDatabase::LoadCharacterTribute(Client* c){
-	const auto& l = CharacterTributeRepository::GetWhere(database, fmt::format("character_id = {}", c->CharacterID()));
+	const auto& l = CharacterTributeRepository::GetWhere(database, fmt::format("character_id = {} AND kind = 0", c->CharacterID()));
 
 	for (auto& t : c->GetPP().tributes) {
 		t.tier    = 0;
@@ -974,6 +974,7 @@ void ZoneDatabase::SaveCharacterTribute(Client* c)
 	for (auto& t : c->GetPP().tributes) {
 		if (t.tribute != TRIBUTE_NONE) {
 			tribute.character_id = c->CharacterID();
+			tribute.kind         = 0;
 			tribute.tier         = t.tier;
 			tribute.tribute      = t.tribute;
 
@@ -981,7 +982,7 @@ void ZoneDatabase::SaveCharacterTribute(Client* c)
 		}
 	}
 
-	CharacterTributeRepository::DeleteWhere(database, fmt::format("character_id = {}", c->CharacterID()));
+	CharacterTributeRepository::DeleteWhere(database, fmt::format("character_id = {} AND kind = 0", c->CharacterID()));
 
 	if (tribute_count > 0) {
 		CharacterTributeRepository::InsertMany(database, tributes);

@@ -97,25 +97,14 @@ namespace housing {
       return texts;
     }
 
-    bool ownsPlot(Client *client) {
-      auto rows = query(database, fmt::format(
-        "SELECT COUNT(*) FROM real_estate_properties p JOIN real_estate_definitions d ON d.id = p.definition_id WHERE p.owner_character_id = {} AND d.type = 4",
-        client->CharacterID()
-      ));
-      return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
+    // Every House of Thule character votes on an open poll of either kind; the ballot is the account's (POL-5).
+    bool mayVote(Client *client, const Poll &poll, int64 now) {
+      return stateOf(poll, now) == PollState::open && (client->GetPP().expansions & houseOfThule) != 0;
     }
 
-    // Every House of Thule character votes on an open question poll; a property poll's voters are the plot owners (S11).
-    bool mayVote(Client *client, const Poll &poll, int64 now, bool plotOwner) {
-      if (stateOf(poll, now) != PollState::open || !(client->GetPP().expansions & houseOfThule)) {
-        return false;
-      }
-      return poll.kind == PollKind::question || plotOwner;
-    }
-
-    std::map<uint32, std::vector<uint32>> votesOf(uint32 characterId) {
+    std::map<uint32, std::vector<uint32>> votesOf(uint32 accountId) {
       std::map<uint32, std::vector<uint32>> votes;
-      for (auto row : query(database, fmt::format("SELECT poll_id, option_key FROM real_estate_poll_votes WHERE character_id = {} ORDER BY poll_id, option_key", characterId))) {
+      for (auto row : query(database, fmt::format("SELECT poll_id, option_key FROM real_estate_poll_votes WHERE account_id = {} ORDER BY poll_id, option_key", accountId))) {
         votes[Strings::ToUnsignedInt(row[0])].push_back(Strings::ToUnsignedInt(row[1]));
       }
       return votes;
@@ -151,8 +140,8 @@ namespace housing {
         .u8(poll.prompt);
     }
 
-    WireWriter votesMessage(const std::vector<Poll> &polls, uint32 characterId, const std::map<uint32, std::string> &texts) {
-      const auto votes = votesOf(characterId);
+    WireWriter votesMessage(const std::vector<Poll> &polls, uint32 accountId, const std::map<uint32, std::string> &texts) {
+      const auto votes = votesOf(accountId);
       WireWriter entries;
       uint16 count = 0;
       for (const auto &poll : polls) {
@@ -170,12 +159,12 @@ namespace housing {
       return message;
     }
 
-    // Results are counted when sent, and only once a poll has closed unless it keeps them unpublished.
-    WireWriter resultsMessage(const std::vector<Poll> &polls, int64 now, const std::map<uint32, std::string> &texts) {
+    // Results are counted when sent, running totals while a poll is open as well as after its close, unless it keeps them unpublished (POL-5).
+    WireWriter resultsMessage(const std::vector<Poll> &polls, const std::map<uint32, std::string> &texts) {
       WireWriter entries;
       uint16 count = 0;
       for (const auto &poll : polls) {
-        if (poll.resultsUnpublished || stateOf(poll, now) < PollState::closed) {
+        if (poll.resultsUnpublished) {
           continue;
         }
         std::map<uint32, uint32> tally;
@@ -245,7 +234,6 @@ namespace housing {
       const int64 now = currentTime();
       const auto polls = publishedPolls();
       const auto texts = labels(polls);
-      const bool plotOwner = ownsPlot(client);
       WireWriter labelMessage;
       labelMessage.u16(static_cast<uint16>(texts.size()));
       for (const auto &[key, text] : texts) {
@@ -257,13 +245,13 @@ namespace housing {
       access.u32(static_cast<uint32>(polls.size()));
       for (const auto &poll : polls) {
         writePoll(list, poll, now);
-        access.u32(poll.id).u8(mayVote(client, poll, now, plotOwner) ? 1 : 0);
+        access.u32(poll.id).u8(mayVote(client, poll, now) ? 1 : 0);
       }
       sendMessage(client, OP_PollLabels, labelMessage);
       sendMessage(client, OP_PollList, list);
       sendMessage(client, OP_PollAccess, access);
-      sendMessage(client, OP_PollVotes, votesMessage(polls, client->CharacterID(), texts));
-      sendMessage(client, OP_PollResults, resultsMessage(polls, now, texts));
+      sendMessage(client, OP_PollVotes, votesMessage(polls, client->AccountID(), texts));
+      sendMessage(client, OP_PollResults, resultsMessage(polls, texts));
       WireWriter available;
       available.u8(1);
       sendMessage(client, OP_PollAvailable, available);
@@ -302,7 +290,7 @@ namespace housing {
     try {
       const auto poll = pollById(pollId);
       const int64 now = currentTime();
-      if (!poll || !mayVote(client, *poll, now, ownsPlot(client))) {
+      if (!poll || !mayVote(client, *poll, now)) {
         LogHousing("[{}] voted in poll [{}], which they may not vote in now", client->GetCleanName(), pollId);
         return;
       }
@@ -327,13 +315,13 @@ namespace housing {
         }
       }
       Transaction transaction(database);
-      query(database, fmt::format("DELETE FROM real_estate_poll_votes WHERE poll_id = {} AND character_id = {}", pollId, client->CharacterID()));
+      query(database, fmt::format("DELETE FROM real_estate_poll_votes WHERE poll_id = {} AND account_id = {}", pollId, client->AccountID()));
       for (uint32 key : keys) {
-        query(database, fmt::format("INSERT INTO real_estate_poll_votes (poll_id, character_id, option_key) VALUES ({}, {}, {})", pollId, client->CharacterID(), key));
+        query(database, fmt::format("INSERT INTO real_estate_poll_votes (poll_id, account_id, option_key) VALUES ({}, {}, {})", pollId, client->AccountID(), key));
       }
       transaction.commit();
-      const auto polls = publishedPolls();
-      sendMessage(client, OP_PollVotes, votesMessage(polls, client->CharacterID(), labels(polls)));
+      // Every zone sends its lists again: the new totals to everyone, the ballot to the account's other characters (POL-5).
+      sendEvent(EventType::pollsChanged, EventTarget::allZones, 0, 0, {});
       std::vector<std::string> ticked;
       for (uint32 key : keys) {
         ticked.push_back(std::to_string(key));
@@ -377,7 +365,7 @@ namespace housing {
     }
   }
 
-  // Teleport to Selected (dialog 0x8b): {0, poll id, the ranked property, -1}; property polls only, once their results are out.
+  // Teleport to Selected (dialog 0x8b): {0, poll id, the ranked property, -1}; property polls whose results are out.
   void handlePollTeleport(Client *client, WireReader &reader) {
     if (reader.remaining() != teleportSize) {
       LogError("Housing: [{}] sent a [{}]-byte poll teleport; it is [{}] bytes", client->GetCleanName(), reader.remaining(), teleportSize);
@@ -389,7 +377,7 @@ namespace housing {
     reader.u32();
     try {
       const auto poll = pollById(pollId);
-      if (!poll || poll->kind != PollKind::property || poll->resultsUnpublished || stateOf(*poll, currentTime()) < PollState::closed) {
+      if (!poll || poll->kind != PollKind::property || poll->resultsUnpublished) {
         LogHousing("[{}] asked to go to property [{}] of poll [{}], which shows no property results", client->GetCleanName(), key, pollId);
         return;
       }
@@ -439,16 +427,15 @@ namespace housing {
       }
       sendPollUpdate(changed, now);
       forEachSession([&](Client *client, Session &) {
-        const bool plotOwner = ownsPlot(client);
         WireWriter access;
         access.u32(static_cast<uint32>(polls.size()));
         for (const auto &poll : polls) {
-          access.u32(poll.id).u8(mayVote(client, poll, now, plotOwner) ? 1 : 0);
+          access.u32(poll.id).u8(mayVote(client, poll, now) ? 1 : 0);
         }
         sendMessage(client, OP_PollAccess, access);
-        const auto votes = votesOf(client->CharacterID());
+        const auto votes = votesOf(client->AccountID());
         for (const auto &poll : opened) {
-          if (poll.kind == PollKind::question && mayVote(client, poll, now, plotOwner) && !votes.count(poll.id)) {
+          if (poll.kind == PollKind::question && mayVote(client, poll, now) && !votes.count(poll.id)) {
             WireWriter prompt;
             prompt.u32(poll.id).lengthString(poll.question);
             sendMessage(client, OP_PollOpen, prompt);

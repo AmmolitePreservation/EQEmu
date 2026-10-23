@@ -1,6 +1,6 @@
 -- Player housing schema (serverPlan.md, chunk 3). Every column exists for a message or rule; anything derivable is derived
 -- when sent (owner names, children, composed property names, poll states, region matrices, the character's property lists,
--- trophy flags, anchor targets).
+-- trophy flags, anchor targets). Trophy tribute lives on EQEmu's tribute tables (sql/*Columns.sql, TRO-8).
 -- Content tables: definitions, costs, regions, zone templates, writs, neighborhood words, NPC items, auras and teleport keys.
 -- The rest is player state.
 
@@ -356,43 +356,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_poll_labels` (
 
 CREATE TABLE IF NOT EXISTS `real_estate_poll_votes` (
   `poll_id` INT(10) UNSIGNED NOT NULL,
-  `character_id` INT(10) UNSIGNED NOT NULL,
+  `account_id` INT(10) UNSIGNED NOT NULL,
   `option_key` INT(10) UNSIGNED NOT NULL,
-  PRIMARY KEY (`poll_id`, `character_id`, `option_key`),
-  KEY `character_id` (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `character_trophy_tribute` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `slot` TINYINT(3) UNSIGNED NOT NULL,
-  `tribute_id` INT(10) UNSIGNED NOT NULL,
-  `tier` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`character_id`, `slot`),
-  CONSTRAINT `character_trophy_tribute_slot` CHECK (`slot` <= 9)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `character_trophy_tribute_state` (
-  `character_id` INT(10) UNSIGNED NOT NULL,
-  `active` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `time_remaining` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `guild_opt_in` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`character_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `guild_trophy_tribute` (
-  `guild_id` INT(10) UNSIGNED NOT NULL,
-  `slot` TINYINT(3) UNSIGNED NOT NULL,
-  `tribute_id` INT(10) UNSIGNED NOT NULL,
-  `tier` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`guild_id`, `slot`),
-  CONSTRAINT `guild_trophy_tribute_slot` CHECK (`slot` <= 3)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS `guild_trophy_tribute_state` (
-  `guild_id` INT(10) UNSIGNED NOT NULL,
-  `active` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `time_remaining` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `edit_lock_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
-  `edit_lock_at` DATETIME NULL DEFAULT NULL,
-  PRIMARY KEY (`guild_id`)
+  PRIMARY KEY (`poll_id`, `account_id`, `option_key`),
+  KEY `account_id` (`account_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

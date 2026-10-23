@@ -17034,7 +17034,7 @@ void Client::Handle_OP_GuildTributeSaveActiveTributes(const EQApplicationPacket 
 	GuildTributeSaveActive_Struct *data = (GuildTributeSaveActive_Struct *) app->pBuffer;
 	auto guild = guild_mgr.GetGuildByGuildID(GuildID());
 	if (guild) {
-		GuildTributesRepository::GuildTributes gt{};
+		auto gt = GuildTributesRepository::FindOne(database, GuildID());
 
 		gt.guild_id          = GuildID();
 		gt.tribute_id_1      = data->tribute_id_1;

@@ -27,6 +27,16 @@ public:
 		uint32_t tribute_id_2_tier;
 		uint32_t time_remaining;
 		uint32_t enabled;
+		uint32_t trophy_id_1;
+		uint32_t trophy_id_1_tier;
+		uint32_t trophy_id_2;
+		uint32_t trophy_id_2_tier;
+		uint32_t trophy_id_3;
+		uint32_t trophy_id_3_tier;
+		uint32_t trophy_id_4;
+		uint32_t trophy_id_4_tier;
+		uint32_t trophy_time_remaining;
+		uint32_t trophy_enabled;
 	};
 
 	static std::string PrimaryKey()
@@ -44,6 +54,16 @@ public:
 			"tribute_id_2_tier",
 			"time_remaining",
 			"enabled",
+			"trophy_id_1",
+			"trophy_id_1_tier",
+			"trophy_id_2",
+			"trophy_id_2_tier",
+			"trophy_id_3",
+			"trophy_id_3_tier",
+			"trophy_id_4",
+			"trophy_id_4_tier",
+			"trophy_time_remaining",
+			"trophy_enabled",
 		};
 	}
 
@@ -57,6 +77,16 @@ public:
 			"tribute_id_2_tier",
 			"time_remaining",
 			"enabled",
+			"trophy_id_1",
+			"trophy_id_1_tier",
+			"trophy_id_2",
+			"trophy_id_2_tier",
+			"trophy_id_3",
+			"trophy_id_3_tier",
+			"trophy_id_4",
+			"trophy_id_4_tier",
+			"trophy_time_remaining",
+			"trophy_enabled",
 		};
 	}
 
@@ -104,6 +134,16 @@ public:
 		e.tribute_id_2_tier = 0;
 		e.time_remaining    = 0;
 		e.enabled           = 0;
+		e.trophy_id_1           = 0;
+		e.trophy_id_1_tier           = 0;
+		e.trophy_id_2           = 0;
+		e.trophy_id_2_tier           = 0;
+		e.trophy_id_3           = 0;
+		e.trophy_id_3_tier           = 0;
+		e.trophy_id_4           = 0;
+		e.trophy_id_4_tier           = 0;
+		e.trophy_time_remaining           = 0;
+		e.trophy_enabled           = 0;
 
 		return e;
 	}
@@ -147,6 +187,16 @@ public:
 			e.tribute_id_2_tier = static_cast<uint32_t>(strtoul(row[4], nullptr, 10));
 			e.time_remaining    = static_cast<uint32_t>(strtoul(row[5], nullptr, 10));
 			e.enabled           = static_cast<uint32_t>(strtoul(row[6], nullptr, 10));
+			e.trophy_id_1           = static_cast<uint32_t>(strtoul(row[7], nullptr, 10));
+			e.trophy_id_1_tier           = static_cast<uint32_t>(strtoul(row[8], nullptr, 10));
+			e.trophy_id_2           = static_cast<uint32_t>(strtoul(row[9], nullptr, 10));
+			e.trophy_id_2_tier           = static_cast<uint32_t>(strtoul(row[10], nullptr, 10));
+			e.trophy_id_3           = static_cast<uint32_t>(strtoul(row[11], nullptr, 10));
+			e.trophy_id_3_tier           = static_cast<uint32_t>(strtoul(row[12], nullptr, 10));
+			e.trophy_id_4           = static_cast<uint32_t>(strtoul(row[13], nullptr, 10));
+			e.trophy_id_4_tier           = static_cast<uint32_t>(strtoul(row[14], nullptr, 10));
+			e.trophy_time_remaining           = static_cast<uint32_t>(strtoul(row[15], nullptr, 10));
+			e.trophy_enabled           = static_cast<uint32_t>(strtoul(row[16], nullptr, 10));
 
 			return e;
 		}
@@ -187,6 +237,16 @@ public:
 		v.push_back(columns[4] + " = " + std::to_string(e.tribute_id_2_tier));
 		v.push_back(columns[5] + " = " + std::to_string(e.time_remaining));
 		v.push_back(columns[6] + " = " + std::to_string(e.enabled));
+		v.push_back(columns[7] + " = " + std::to_string(e.trophy_id_1));
+		v.push_back(columns[8] + " = " + std::to_string(e.trophy_id_1_tier));
+		v.push_back(columns[9] + " = " + std::to_string(e.trophy_id_2));
+		v.push_back(columns[10] + " = " + std::to_string(e.trophy_id_2_tier));
+		v.push_back(columns[11] + " = " + std::to_string(e.trophy_id_3));
+		v.push_back(columns[12] + " = " + std::to_string(e.trophy_id_3_tier));
+		v.push_back(columns[13] + " = " + std::to_string(e.trophy_id_4));
+		v.push_back(columns[14] + " = " + std::to_string(e.trophy_id_4_tier));
+		v.push_back(columns[15] + " = " + std::to_string(e.trophy_time_remaining));
+		v.push_back(columns[16] + " = " + std::to_string(e.trophy_enabled));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -215,6 +275,16 @@ public:
 		v.push_back(std::to_string(e.tribute_id_2_tier));
 		v.push_back(std::to_string(e.time_remaining));
 		v.push_back(std::to_string(e.enabled));
+		v.push_back(std::to_string(e.trophy_id_1));
+		v.push_back(std::to_string(e.trophy_id_1_tier));
+		v.push_back(std::to_string(e.trophy_id_2));
+		v.push_back(std::to_string(e.trophy_id_2_tier));
+		v.push_back(std::to_string(e.trophy_id_3));
+		v.push_back(std::to_string(e.trophy_id_3_tier));
+		v.push_back(std::to_string(e.trophy_id_4));
+		v.push_back(std::to_string(e.trophy_id_4_tier));
+		v.push_back(std::to_string(e.trophy_time_remaining));
+		v.push_back(std::to_string(e.trophy_enabled));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -251,6 +321,16 @@ public:
 			v.push_back(std::to_string(e.tribute_id_2_tier));
 			v.push_back(std::to_string(e.time_remaining));
 			v.push_back(std::to_string(e.enabled));
+			v.push_back(std::to_string(e.trophy_id_1));
+			v.push_back(std::to_string(e.trophy_id_1_tier));
+			v.push_back(std::to_string(e.trophy_id_2));
+			v.push_back(std::to_string(e.trophy_id_2_tier));
+			v.push_back(std::to_string(e.trophy_id_3));
+			v.push_back(std::to_string(e.trophy_id_3_tier));
+			v.push_back(std::to_string(e.trophy_id_4));
+			v.push_back(std::to_string(e.trophy_id_4_tier));
+			v.push_back(std::to_string(e.trophy_time_remaining));
+			v.push_back(std::to_string(e.trophy_enabled));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -291,6 +371,16 @@ public:
 			e.tribute_id_2_tier = static_cast<uint32_t>(strtoul(row[4], nullptr, 10));
 			e.time_remaining    = static_cast<uint32_t>(strtoul(row[5], nullptr, 10));
 			e.enabled           = static_cast<uint32_t>(strtoul(row[6], nullptr, 10));
+			e.trophy_id_1           = static_cast<uint32_t>(strtoul(row[7], nullptr, 10));
+			e.trophy_id_1_tier           = static_cast<uint32_t>(strtoul(row[8], nullptr, 10));
+			e.trophy_id_2           = static_cast<uint32_t>(strtoul(row[9], nullptr, 10));
+			e.trophy_id_2_tier           = static_cast<uint32_t>(strtoul(row[10], nullptr, 10));
+			e.trophy_id_3           = static_cast<uint32_t>(strtoul(row[11], nullptr, 10));
+			e.trophy_id_3_tier           = static_cast<uint32_t>(strtoul(row[12], nullptr, 10));
+			e.trophy_id_4           = static_cast<uint32_t>(strtoul(row[13], nullptr, 10));
+			e.trophy_id_4_tier           = static_cast<uint32_t>(strtoul(row[14], nullptr, 10));
+			e.trophy_time_remaining           = static_cast<uint32_t>(strtoul(row[15], nullptr, 10));
+			e.trophy_enabled           = static_cast<uint32_t>(strtoul(row[16], nullptr, 10));
 
 			all_entries.push_back(e);
 		}
@@ -322,6 +412,16 @@ public:
 			e.tribute_id_2_tier = static_cast<uint32_t>(strtoul(row[4], nullptr, 10));
 			e.time_remaining    = static_cast<uint32_t>(strtoul(row[5], nullptr, 10));
 			e.enabled           = static_cast<uint32_t>(strtoul(row[6], nullptr, 10));
+			e.trophy_id_1           = static_cast<uint32_t>(strtoul(row[7], nullptr, 10));
+			e.trophy_id_1_tier           = static_cast<uint32_t>(strtoul(row[8], nullptr, 10));
+			e.trophy_id_2           = static_cast<uint32_t>(strtoul(row[9], nullptr, 10));
+			e.trophy_id_2_tier           = static_cast<uint32_t>(strtoul(row[10], nullptr, 10));
+			e.trophy_id_3           = static_cast<uint32_t>(strtoul(row[11], nullptr, 10));
+			e.trophy_id_3_tier           = static_cast<uint32_t>(strtoul(row[12], nullptr, 10));
+			e.trophy_id_4           = static_cast<uint32_t>(strtoul(row[13], nullptr, 10));
+			e.trophy_id_4_tier           = static_cast<uint32_t>(strtoul(row[14], nullptr, 10));
+			e.trophy_time_remaining           = static_cast<uint32_t>(strtoul(row[15], nullptr, 10));
+			e.trophy_enabled           = static_cast<uint32_t>(strtoul(row[16], nullptr, 10));
 
 			all_entries.push_back(e);
 		}
@@ -403,6 +503,16 @@ public:
 		v.push_back(std::to_string(e.tribute_id_2_tier));
 		v.push_back(std::to_string(e.time_remaining));
 		v.push_back(std::to_string(e.enabled));
+		v.push_back(std::to_string(e.trophy_id_1));
+		v.push_back(std::to_string(e.trophy_id_1_tier));
+		v.push_back(std::to_string(e.trophy_id_2));
+		v.push_back(std::to_string(e.trophy_id_2_tier));
+		v.push_back(std::to_string(e.trophy_id_3));
+		v.push_back(std::to_string(e.trophy_id_3_tier));
+		v.push_back(std::to_string(e.trophy_id_4));
+		v.push_back(std::to_string(e.trophy_id_4_tier));
+		v.push_back(std::to_string(e.trophy_time_remaining));
+		v.push_back(std::to_string(e.trophy_enabled));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -432,6 +542,16 @@ public:
 			v.push_back(std::to_string(e.tribute_id_2_tier));
 			v.push_back(std::to_string(e.time_remaining));
 			v.push_back(std::to_string(e.enabled));
+			v.push_back(std::to_string(e.trophy_id_1));
+			v.push_back(std::to_string(e.trophy_id_1_tier));
+			v.push_back(std::to_string(e.trophy_id_2));
+			v.push_back(std::to_string(e.trophy_id_2_tier));
+			v.push_back(std::to_string(e.trophy_id_3));
+			v.push_back(std::to_string(e.trophy_id_3_tier));
+			v.push_back(std::to_string(e.trophy_id_4));
+			v.push_back(std::to_string(e.trophy_id_4_tier));
+			v.push_back(std::to_string(e.trophy_time_remaining));
+			v.push_back(std::to_string(e.trophy_enabled));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
