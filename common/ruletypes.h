@@ -1179,13 +1179,11 @@ RULE_BOOL(EvolvingItems, DestroyAugmentsOnEvolve, false, "If this is enabled, an
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Housing)
-RULE_BOOL(Housing, EnableHousing, true, "Master switch for player housing: when off, no housing data is sent and housing requests are refused.")
 RULE_BOOL(Housing, EnableUpkeep, true, "Charge property and item upkeep on each property's own clock.")
 RULE_INT(Housing, UpkeepIntervalSeconds, 43200, "Seconds from one of a property's upkeep charges to its next (Live: 10.8 to 13.2 hours apart, mean 12.3).")
 RULE_INT(Housing, UpkeepJitterSeconds, 4320, "Each upkeep interval is longer or shorter by up to this many seconds, at random.")
 RULE_INT(Housing, UpkeepPercent, 100, "Percent of every daily upkeep charged, read from the host zone's ruleset.")
 RULE_INT(Housing, UnpaidUpkeepEvictionDays, 90, "Days after a charge found a plot's escrow empty (player or guild plot) before world reclaims it into a Crate of Eviction (Live: 90). 0 = never.")
-RULE_INT(Housing, SellRefundPercent, 0, "Percent of the purchase price refunded when a plot is sold.")
 RULE_BOOL(Housing, SellRefundsEscrow, true, "Selling a plot withdraws its whole escrow to the seller, floored to copper, with nothing settled first (Live).")
 RULE_INT(Housing, MaxPlotsPerCharacter, 3, "Plots a character may own across all neighborhoods (Live's three).")
 RULE_INT(Housing, MaxHousesOverride, -1, "Houses and guild halls every plot and guild plot holds, replacing each plot's own max_children (a zone's ruleset may set its own). -1 = each plot's own.")

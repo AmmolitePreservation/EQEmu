@@ -390,6 +390,8 @@ namespace housing {
     if (!zone->GetInstanceID() || !propertyOfCopy(database, static_cast<uint16>(zone->GetInstanceID()))) {
       return;
     }
+    // EQEmu's shutdown state save would write the copy's spawns back under the freed id, and ids come back (INT-34).
+    zone->SetSaveZoneState(false);
     try {
       discardCopy(database, static_cast<uint16>(zone->GetInstanceID()));
       LogHousing("Discarded copy instance [{}] of property [{}]", zone->GetInstanceID(), root ? root->id : 0);

@@ -91,6 +91,7 @@ namespace housing {
     const CostOption *option(uint32 costId, uint32 currency) const;
     const RealEstateRegionsRepository::RealEstateRegions *region(uint32 id) const;
     const ZoneTemplate *zoneTemplate(uint32 dzId) const;
+    bool isZoneTemplate(uint32 zoneId, uint16 zoneVersion) const;
     const NpcItem *npcItem(uint32 itemId) const;
     const AuraItem *auraItem(uint32 itemId) const;
     const TeleportKey *teleportKey(uint32 itemId) const;

@@ -29,7 +29,6 @@ namespace housing {
   uint32 propertyOfCopy(Database &database, uint16 instanceId);
   uint16 runningCopy(Database &database, Database &content, uint32 propertyId);
   void discardCopy(Database &database, uint16 instanceId);
-  void restartInstanceCounter(Database &database);
 }
 
 #endif

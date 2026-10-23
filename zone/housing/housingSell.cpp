@@ -160,10 +160,6 @@ namespace housing {
       if (!state || !state->properties.count(plotId)) {
         throw SellRefusal("the plot is not one this zone sent", failed);
       }
-      const int refundPercent = RuleI(Housing, SellRefundPercent);
-      if (refundPercent != 0) {
-        throw std::runtime_error(fmt::format("Housing:SellRefundPercent is [{}]; no column records the price paid, so only 0 is supported", refundPercent));
-      }
       Transaction transaction(database);
       plot = lockedProperty(database, plotId);
       std::map<uint32, Property> fresh(state->properties);

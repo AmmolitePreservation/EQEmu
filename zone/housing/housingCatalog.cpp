@@ -359,6 +359,12 @@ namespace housing {
     return found == templates.end() ? nullptr : &found->second;
   }
 
+  bool Catalog::isZoneTemplate(uint32 zoneId, uint16 zoneVersion) const {
+    return std::any_of(templates.begin(), templates.end(), [&](const auto &entry) {
+      return entry.second.zone_id == zoneId && entry.second.zone_version == zoneVersion;
+    });
+  }
+
   const NpcItem *Catalog::npcItem(uint32 itemId) const {
     auto found = npcItems.find(itemId);
     return found == npcItems.end() ? nullptr : &found->second;

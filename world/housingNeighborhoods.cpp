@@ -234,9 +234,6 @@ namespace housing {
   }
 
   void balanceNeighborhoods() {
-    if (!RuleB(Housing, EnableHousing)) {
-      return;
-    }
     try {
       const NeighborhoodRules rules = checkedRules();
       for (int created = 0;; created++) {

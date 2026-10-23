@@ -71,7 +71,7 @@ namespace housing {
     const ZoneTemplatePoint zoneTemplate = zoneTemplateOf(content, property.definition_id);
     auto counter = query(database, "SELECT next_instance_id FROM real_estate_instance_counter WHERE id = 1 FOR UPDATE");
     if (counter.RowCount() != 1) {
-      throw std::runtime_error("real_estate_instance_counter has no row; world starts it at boot");
+      throw std::runtime_error("real_estate_instance_counter has no row; world makes it at its first start");
     }
     std::set<uint32> used;
     for (auto row : query(database, "SELECT id FROM instance_list")) {
@@ -109,12 +109,5 @@ namespace housing {
       transaction.commit();
     }
     database.DeleteInstance(instanceId);
-  }
-
-  void restartInstanceCounter(Database &database) {
-    const InstanceRange range = instanceRange(RuleI(Instances, ReservedInstances));
-    query(database, fmt::format(
-      "INSERT INTO real_estate_instance_counter (id, next_instance_id) VALUES (1, {0}) ON DUPLICATE KEY UPDATE next_instance_id = {0}", range.first
-    ));
   }
 }
