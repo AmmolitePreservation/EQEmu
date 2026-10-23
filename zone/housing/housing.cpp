@@ -452,10 +452,9 @@ namespace housing {
     if (catalogReady) {
       try {
         loadHostedRoot();
-        loadWrits();
       }
       catch (const std::exception &error) {
-        LogError("Housing: the property this zone runs or its doors could not be loaded: {}", error.what());
+        LogError("Housing: the property this zone runs could not be loaded: {}", error.what());
         return false;
       }
     }

@@ -1006,6 +1006,16 @@ bool Lua_Client::OpenRealEstatePurchase(uint32 property_id) {
 	return housing::questOpenPurchase(self, property_id);
 }
 
+bool Lua_Client::UseNeighborhoodWrit(uint32 definition_id) {
+	Lua_Safe_Call_Bool();
+	return housing::questUseNeighborhoodWrit(self, definition_id);
+}
+
+bool Lua_Client::HasGuildPermission(int action) {
+	Lua_Safe_Call_Bool();
+	return self->HasGuildPermission(action);
+}
+
 bool Lua_Client::IsGrouped() {
 	Lua_Safe_Call_Bool();
 	return self->IsGrouped();
@@ -3999,6 +4009,8 @@ luabind::scope lua_register_client() {
 	.def("NukeItem", (void(Lua_Client::*)(uint32,int))&Lua_Client::NukeItem)
 	.def("OpenLFGuildWindow", (void(Lua_Client::*)(void))&Lua_Client::OpenLFGuildWindow)
 	.def("OpenRealEstatePurchase", (bool(Lua_Client::*)(uint32))&Lua_Client::OpenRealEstatePurchase)
+	.def("UseNeighborhoodWrit", (bool(Lua_Client::*)(uint32))&Lua_Client::UseNeighborhoodWrit)
+	.def("HasGuildPermission", (bool(Lua_Client::*)(int))&Lua_Client::HasGuildPermission)
 	.def("PlayMP3", (void(Lua_Client::*)(std::string))&Lua_Client::PlayMP3)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*))&Lua_Client::Popup)
 	.def("Popup", (void(Lua_Client::*)(const char*,const char*,uint32))&Lua_Client::Popup)

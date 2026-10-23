@@ -264,6 +264,8 @@ public:
 	bool EnterRealEstate(uint32 property_id);
 	void LeaveRealEstate();
 	bool OpenRealEstatePurchase(uint32 property_id);
+	bool UseNeighborhoodWrit(uint32 definition_id);
+	bool HasGuildPermission(int action);
 	bool IsGrouped();
 	bool IsRaidGrouped();
 	bool Hungry();

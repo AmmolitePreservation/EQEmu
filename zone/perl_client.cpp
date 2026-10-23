@@ -890,6 +890,16 @@ bool Perl_Client_OpenRealEstatePurchase(Client* self, uint32 property_id) // @ca
 	return housing::questOpenPurchase(self, property_id);
 }
 
+bool Perl_Client_UseNeighborhoodWrit(Client* self, uint32 definition_id) // @categories Account and Character, Guild
+{
+	return housing::questUseNeighborhoodWrit(self, definition_id);
+}
+
+bool Perl_Client_HasGuildPermission(Client* self, int action) // @categories Guild
+{
+	return self->HasGuildPermission(action);
+}
+
 Raid* Perl_Client_GetRaid(Client* self) // @categories Account and Character, Raid
 {
 	return self->GetRaid();
@@ -3743,6 +3753,8 @@ void perl_register_client()
 	package.add("NukeItem", (uint32_t(*)(Client*, uint32, uint8))&Perl_Client_NukeItem);
 	package.add("OpenLFGuildWindow", &Perl_Client_OpenLFGuildWindow);
 	package.add("OpenRealEstatePurchase", &Perl_Client_OpenRealEstatePurchase);
+	package.add("UseNeighborhoodWrit", &Perl_Client_UseNeighborhoodWrit);
+	package.add("HasGuildPermission", &Perl_Client_HasGuildPermission);
 	package.add("PlayMP3", &Perl_Client_PlayMP3);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*))&Perl_Client_Popup2);
 	package.add("Popup2", (void(*)(Client*, const char*, const char*, uint32))&Perl_Client_Popup2);

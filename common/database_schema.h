@@ -262,7 +262,6 @@ namespace DatabaseSchema {
 			"real_estate_npc_items",
 			"real_estate_regions",
 			"real_estate_teleport_keys",
-			"real_estate_writs",
 			"real_estate_zone_templates",
 			"skill_caps",
 			"spawn2",
