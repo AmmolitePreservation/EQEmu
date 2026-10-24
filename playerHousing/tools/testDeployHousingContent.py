@@ -75,6 +75,14 @@ check('check mode queries the version and loads nothing', (result.returncode, le
 result, calls = run(version='4')
 check('migrations behind the build are refused before any load', (result.returncode, len(calls), f'custom version 4, not {deploy.requiredCustomVersion}' in result.stderr), (1, 1, True))
 
+result, calls = run('--from', 'guildLobby.sql')
+check('a resumed deploy loads from the named file on, after the version query', (result.returncode, [c['stdinStart'].split('\n')[0] for c in calls[1:]], 'resuming at guildLobby.sql; housingCatalog.sql, housingZones.sql, housingZoneSettings.sql taken as loaded' in result.stdout),
+      (0, [f'-- {name}' for name in deploy.contentFiles[3:]], True))
+result, calls = run('--from', 'housingCatalog.sql')
+check('resuming at the first file loads everything and says nothing of resuming', (result.returncode, len(calls), 'resuming' in result.stdout), (0, 1 + len(deploy.contentFiles), False))
+result, calls = run('--from', 'nothing.sql')
+check('resuming at a file that is not content is refused before any call', (result.returncode, len(calls), 'nothing.sql is not a content file' in result.stderr), (1, 0, True))
+
 with open(os.path.join(sqlFolder, 'guildBorderDoors.sql'), 'w', encoding='utf-8') as file:
   file.write('-- guildBorderDoors.sql\nFAIL;\n')
 result, calls = run()

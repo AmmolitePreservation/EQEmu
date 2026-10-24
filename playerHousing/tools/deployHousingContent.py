@@ -5,11 +5,12 @@ files and the eq_str table, versions 1 to 12 of db_version.custom_version) must 
 order, each refusing a second run itself: the catalog, the housing zone rows, their settings, the Guild Lobby's version 1, the guild
 border doors, the housing doors, the NPC items, the guild services, the training dummies' dbstr labels, the eqstr changes (eq_str must already hold the
 client's eqstr_us.txt, from import_client_files). A missing file stops the deploy before anything loads; a failing file stops it
-there, the files before it loaded. Afterwards export_client_files writes dbstr_us.txt and eqstr_us.txt for players. The connection
-is the server's own, from eqemu_config.json; the password reaches the client through a defaults file, never an argument. Housing
-expects one database: a content_database that differs from the database is refused.
+there, the files before it loaded, and once it is put right the deploy resumes at it with --from. Afterwards export_client_files
+writes dbstr_us.txt and eqstr_us.txt for players. The connection is the server's own, from eqemu_config.json; the password reaches
+the client through a defaults file, never an argument. Housing expects one database: a content_database that differs from the
+database is refused.
 
-Usage: python deployHousingContent.py --config <eqemu_config.json> [--mariadb <client command>] [--sql <folder>] [--check]
+Usage: python deployHousingContent.py --config <eqemu_config.json> [--mariadb <client command>] [--sql <folder>] [--check] [--from <content file>]
 """
 import argparse, json, os, shlex, subprocess, sys, tempfile
 
@@ -73,17 +74,22 @@ class Client:
       raise DeployError(f'{os.path.basename(path)} failed: {result.stderr.strip()}')
 
 
-def deploy(configPath, clientCommand, sqlFolder, checkOnly):
+def deploy(configPath, clientCommand, sqlFolder, checkOnly, resumeAt=None):
   paths = contentPaths(sqlFolder)
+  if resumeAt is not None and resumeAt not in contentFiles:
+    raise DeployError(f'{resumeAt} is not a content file; --from takes one of {", ".join(contentFiles)}')
+  first = contentFiles.index(resumeAt) if resumeAt is not None else 0
   client = Client(clientCommand, databaseSettings(configPath))
   try:
     version = client.customVersion()
     if version < requiredCustomVersion:
       raise DeployError(f'the housing migrations are at custom version {version}, not {requiredCustomVersion}: start the build\'s world once first')
     print(f'housing migrations at custom version {version}; {len(paths)} content files in order: {", ".join(contentFiles)}')
+    if first:
+      print(f'resuming at {resumeAt}; {", ".join(contentFiles[:first])} taken as loaded')
     if checkOnly:
       return
-    for path in paths:
+    for path in paths[first:]:
       client.load(path)
       print(f'loaded {os.path.basename(path)}')
   finally:
@@ -97,9 +103,10 @@ def main():
   parser.add_argument('--mariadb', default='mariadb', help='the MariaDB client command')
   parser.add_argument('--sql', default=os.path.join(here, '..', 'sql'), help='the folder of content files')
   parser.add_argument('--check', action='store_true', help='verify the files and the migrations, load nothing')
+  parser.add_argument('--from', dest='resumeAt', help='resume a stopped deploy at this content file; the files before it are taken as loaded')
   arguments = parser.parse_args()
   try:
-    deploy(arguments.config, arguments.mariadb, arguments.sql, arguments.check)
+    deploy(arguments.config, arguments.mariadb, arguments.sql, arguments.check, arguments.resumeAt)
   except DeployError as error:
     print(f'deploy stopped: {error}', file=sys.stderr)
     sys.exit(1)
