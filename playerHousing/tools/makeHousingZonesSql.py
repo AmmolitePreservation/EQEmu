@@ -16,9 +16,11 @@ header values and bypass (housingZoneSettings.sql).
 
 Usage: python makeHousingZonesSql.py --live <livedumps clone>
 """
-import argparse, csv, os, re
+import argparse, csv, os, re, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, here)
+from eqemuColumns import columnsOf  # noqa: E402
 # (id, version, short name, title or None for the copied row's own, Live's header zone or None, safe point (x, y, z, heading)
 # for a zone Live never sent, from housingZoneGeometry.py)
 housingZones = [
@@ -59,17 +61,14 @@ fogColumns = [('FogRed', ['fog_red', 'fog_red2', 'fog_red3', 'fog_red4']), ('Fog
 
 
 def zoneColumns():
-  path = os.path.join(here, '..', '..', 'common', 'repositories', 'base', 'base_zone_repository.h')
-  text = open(path, encoding='utf-8').read()
-  body = text[text.index('static std::vector<std::string> Columns()'):]
-  columns = re.findall(r'"([a-z_0-9]+)"', body[:body.index('};')])
+  columns = columnsOf('zone')
   needed = ['zoneidnumber', 'version', 'short_name', 'long_name', 'file_name', 'map_file_name', 'note', 'underworld', 'safe_x', 'safe_y', 'safe_z',
             'safe_heading', 'ztype', 'minclip', 'maxclip', 'fog_density', 'canbind', 'shutdowndelay', 'bypass_expansion_check', 'ceiling',
             'filter_id', 'disallow_mana_stone'] + gateColumns
   needed += [column for _, names in fogColumns for column in names]
-  if columns[0] != 'id' or any(column not in columns for column in needed):
+  if any(column not in columns for column in needed):
     raise ValueError(f'unexpected zone columns: {columns}')
-  return columns[1:]
+  return columns
 
 
 def number(value):
