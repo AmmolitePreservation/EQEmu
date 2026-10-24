@@ -428,31 +428,6 @@ namespace housing {
       });
     }
 
-    void announce(const std::set<uint32> &itemLists, const std::map<uint32, PropertyChangedPayload> &properties) {
-      for (const auto &[propertyId, owners] : properties) {
-        sendPropertyChanged(propertyId, owners);
-      }
-      for (uint32 propertyId : itemLists) {
-        sendEvent(EventType::itemListChanged, EventTarget::property, propertyId, propertyId, {});
-      }
-    }
-
-    void showRow(const PlacedItem &row, const Session &state) {
-      if (!row.placed) {
-        return;
-      }
-      auto property = state.properties.find(row.property_id);
-      if (property != state.properties.end() && !shownHere(property->second, state)) {
-        return;
-      }
-      if (isNpcItemId(row.item_id)) {
-        spawnNpcItem(row);
-      }
-      else {
-        broadcastWorldObject(row);
-      }
-    }
-
     void refuse(Client *client, const ItemRefusal &refusal, const char *request) {
       LogHousing("Refused [{}]'s {}: {} (code [{}])", client->GetCleanName(), request, refusal.what(), static_cast<uint32>(refusal.result));
       sendItemResult(client, refusal.result);
@@ -635,26 +610,66 @@ namespace housing {
       return stored;
     }
 
-    void finishApplied(const Session &state, const Applied &applied, const char *request) {
+    // A placed row left its place here: its object or spawn goes, its container closes, editors moving it stop.
+    void hideRow(const PlacedItem &row, const char *request) {
+      closeContainersOf(row.id);
+      if (isNpcItemId(row.item_id)) {
+        despawnNpcItem(row.id);
+      }
+      else {
+        broadcastWorldObjectRemove(row);
+      }
+      forEachSession([&](Client *editor, Session &editorState) {
+        if (editorState.placement && editorState.placement->sourceRecordId == row.id && editorState.placement->sourcePropertyId == row.property_id) {
+          cancelPlacement(editor, fmt::format("record [{}] was moved by {}", row.id, request));
+        }
+      });
+    }
+
+    void showRow(const PlacedItem &row) {
+      closeContainersOf(row.id);
+      if (isNpcItemId(row.item_id)) {
+        spawnNpcItem(row);
+      }
+      else {
+        broadcastWorldObject(row);
+      }
+    }
+
+    // The events: the owners each changed property had and has, and per item list the records withdrawn from it and placed in it.
+    void announce(const Applied &applied) {
+      for (const auto &[propertyId, owners] : applied.changedProperties) {
+        sendPropertyChanged(propertyId, owners);
+      }
+      std::map<uint32, std::vector<ItemListChangedRecord>> changes;
       for (const PlacedItem &row : applied.withdrawn) {
-        closeContainersOf(row.id);
-        if (isNpcItemId(row.item_id)) {
-          despawnNpcItem(row.id);
-        }
-        else {
-          broadcastWorldObjectRemove(row);
-        }
-        forEachSession([&](Client *editor, Session &editorState) {
-          if (editorState.placement && editorState.placement->sourceRecordId == row.id && editorState.placement->sourcePropertyId == row.property_id) {
-            cancelPlacement(editor, fmt::format("record [{}] was moved by {}", row.id, request));
-          }
-        });
+        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0});
       }
       for (const PlacedItem &row : applied.shown) {
-        closeContainersOf(row.id);
-        showRow(row, state);
+        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 1});
       }
-      announce(applied.itemLists, applied.changedProperties);
+      std::set<uint32> lists = applied.itemLists;
+      for (const auto &[propertyId, records] : changes) {
+        lists.insert(propertyId);
+      }
+      for (uint32 propertyId : lists) {
+        sendItemListChanged(propertyId, changes[propertyId]);
+      }
+    }
+
+    void finishApplied(const Applied &applied, const char *request) {
+      const std::set<uint32> shown = propertiesShownInZone();
+      for (const PlacedItem &row : applied.withdrawn) {
+        if (shown.count(row.property_id)) {
+          hideRow(row, request);
+        }
+      }
+      for (const PlacedItem &row : applied.shown) {
+        if (row.placed && shown.count(row.property_id)) {
+          showRow(row);
+        }
+      }
+      announce(applied);
     }
 
     // Store All, Pack and Unpack: every row of the source that passes the individual move rules into the destination moves,
@@ -738,9 +753,9 @@ namespace housing {
       return result;
     }
 
-    void finishBulkMove(Client *client, const Session &state, const Applied &result, const char *request) {
+    void finishBulkMove(Client *client, const Applied &result, const char *request) {
       sendItemResult(client, result.count ? ItemResult::success : ItemResult::nothingToTransfer);
-      finishApplied(state, result, request);
+      finishApplied(result, request);
       LogHousing("[{}]'s {} moved [{}] records", client->GetCleanName(), request, result.count);
     }
 
@@ -799,6 +814,30 @@ namespace housing {
       }
     }
     sendRemoved(row);
+  }
+
+  void applyItemListChange(const std::vector<ItemListChangedRecord> &records) {
+    const std::set<uint32> shown = propertiesShownInZone();
+    for (const auto &record : records) {
+      if (!shown.count(record.propertyId)) {
+        continue;
+      }
+      if (!record.placed) {
+        PlacedItem row{};
+        row.id = record.recordId;
+        row.property_id = record.propertyId;
+        row.item_id = record.itemId;
+        row.placed = 1;
+        hideRow(row, "another zone");
+        continue;
+      }
+      auto row = placedItem(record.propertyId, record.recordId);
+      if (!row || !row->placed) {
+        LogHousing("Record [{}] of property [{}] was placed from another zone but is not placed there now; a later event carries it", record.recordId, record.propertyId);
+        continue;
+      }
+      showRow(*row);
+    }
   }
 
   void handlePlaceRequest(Client *client, WireReader &reader) {
@@ -937,7 +976,7 @@ namespace housing {
     }
     state->placement.reset();
     sendItemResult(client, ItemResult::success);
-    finishApplied(*state, applied, "placement commit");
+    finishApplied(applied, "placement commit");
     LogHousing("[{}] placed record [{}] (item [{}]) in property [{}] at ({}, {}, {})", client->GetCleanName(), placed.id, placed.item_id, placed.property_id, placed.x, placed.y, placed.z);
   }
 
@@ -1041,14 +1080,20 @@ namespace housing {
       sendItemResult(client, ItemResult::failed);
       return;
     }
+    Applied applied;
+    applied.itemLists.insert(taken.property_id);
+    applied.changedProperties = changedProperties;
     if (wholeRow) {
       withdrawRow(taken);
+      if (taken.placed) {
+        applied.withdrawn.push_back(taken);
+      }
     }
     if (!client->PutItemInInventory(slot, *given, true)) {
       LogError("Housing: [{}] could not be given record [{}] (item [{}]) in slot [{}]; the item is lost from the property", client->GetCleanName(), taken.id, taken.item_id, slot);
     }
     sendItemResult(client, ItemResult::success);
-    announce({taken.property_id}, changedProperties);
+    announce(applied);
     LogHousing("[{}] took record [{}] (item [{}]) from property [{}]", client->GetCleanName(), taken.id, taken.item_id, taken.property_id);
   }
 
@@ -1129,7 +1174,7 @@ namespace housing {
       return;
     }
     sendItemResult(client, ItemResult::success);
-    finishApplied(*state, applied, "move to storage");
+    finishApplied(applied, "move to storage");
     LogHousing("[{}] stored item [{}] as record [{}] in property [{}]", client->GetCleanName(), stored.item_id, stored.id, stored.property_id);
   }
 
@@ -1281,7 +1326,7 @@ namespace housing {
       return;
     }
     sendItemResult(client, ItemResult::success);
-    finishApplied(*state, applied, "house swap");
+    finishApplied(applied, "house swap");
     LogHousing("[{}] swapped record [{}] of property [{}] for record [{}]", client->GetCleanName(), placedRecordId, placedPropertyId, storedRecordId);
   }
 
@@ -1382,7 +1427,7 @@ namespace housing {
     }
     // One result ends the client's request latch: 0 when every record applied, else the first refusal's code (INT-29).
     sendItemResult(client, firstRefusal ? *firstRefusal : ItemResult::success);
-    finishApplied(*state, applied, "layout load");
+    finishApplied(applied, "layout load");
     LogHousing("[{}] loaded a layout onto yard [{}] and house [{}]: [{}] of [{}] records applied", client->GetCleanName(), yardId, houseId, applied.count, records.size());
   }
 
@@ -1400,7 +1445,7 @@ namespace housing {
       if (!location) {
         throw ItemRefusal(ItemResult::notPlaceableZone, "the player stands in no yard or house");
       }
-      finishBulkMove(client, *state, moveRows(client, *state, location, location, true), "store all");
+      finishBulkMove(client, moveRows(client, *state, location, location, true), "store all");
     }
     catch (const ItemRefusal &refusal) {
       refuse(client, refusal, "store all");
@@ -1438,7 +1483,7 @@ namespace housing {
         throw ItemRefusal(ItemResult::crateRequired, fmt::format("plot [{}] has no placed moving crate", plot->id));
       }
       const uint32 crateId = crate->id;
-      finishBulkMove(client, *state, pack ? moveRows(client, *state, location, crateId, false) : moveRows(client, *state, crateId, location, false), request);
+      finishBulkMove(client, pack ? moveRows(client, *state, location, crateId, false) : moveRows(client, *state, crateId, location, false), request);
     }
     catch (const ItemRefusal &refusal) {
       refuse(client, refusal, request);

@@ -5,9 +5,11 @@
 #include "housingSession.h"
 #include "housingWire.h"
 
+#include "../../common/housingEventTypes.h"
 #include "../../common/housingPlacementRules.h"
 
 #include <string>
+#include <vector>
 
 class Client;
 
@@ -39,6 +41,9 @@ namespace housing {
   void cancelPlacement(Client *client, const std::string &reason);
   // A placed or stored row leaves its place: its world object or spawn goes, an open container closes, editors stop editing it.
   void withdrawRow(const PlacedItem &row);
+  // Records another zone placed or withdrew (an item list event): where their property is shown here, a withdrawn record's
+  // object or spawn goes and a placed one is read back and shown (INT-30).
+  void applyItemListChange(const std::vector<ItemListChangedRecord> &records);
 }
 
 #endif

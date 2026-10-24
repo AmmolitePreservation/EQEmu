@@ -3,6 +3,7 @@
 #include "housing.h"
 #include "housingAccess.h"
 #include "housingInteriors.h"
+#include "housingPlacement.h"
 #include "housingPolls.h"
 #include "housingSession.h"
 #include "housingWrits.h"
@@ -41,6 +42,10 @@ namespace housing {
     sendEvent(EventType::propertyChanged, EventTarget::property, propertyId, propertyId, std::string(reinterpret_cast<const char *>(&owners), sizeof(owners)));
   }
 
+  void sendItemListChanged(uint32 propertyId, const std::vector<ItemListChangedRecord> &records) {
+    sendEvent(EventType::itemListChanged, EventTarget::property, propertyId, propertyId, itemListChangedPayload(records));
+  }
+
   void handleServerPacket(ServerPacket *pack) {
     if (pack->size < sizeof(ServerHousingEvent_Struct)) {
       LogError("Housing: an event of [{}] bytes is shorter than its header", pack->size);
@@ -69,9 +74,22 @@ namespace housing {
       case EventType::accessChanged:
         applyAccessChange(event->property_id);
         break;
-      case EventType::itemListChanged:
+      case EventType::itemListChanged: {
+        std::vector<ItemListChangedRecord> records;
+        try {
+          records = itemListChangedRecords(event->payload, event->payload_size);
+        }
+        catch (const std::invalid_argument &error) {
+          LogError("Housing: item list event for [{}] from zone [{}] instance [{}]: {}", event->property_id, event->origin_zone_id, event->origin_instance_id, error.what());
+          return;
+        }
+        // The origin showed and hid its own rows before it sent the event (finishApplied); every other zone acts on the records now.
+        if (event->origin_zone_id != zone->GetZoneID() || event->origin_instance_id != zone->GetInstanceID()) {
+          applyItemListChange(records);
+        }
         refreshItemLists({event->property_id});
         break;
+      }
       case EventType::writUsed:
         break;
       case EventType::pollsChanged:
