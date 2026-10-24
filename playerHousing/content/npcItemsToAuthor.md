@@ -140,6 +140,15 @@ The Stone Companion's golem (47088) has material 0 and variation 0, as four copi
 | 64702 | Tumbleweed Twig | 12340 Familiar: Tumbleweed | `FamiliarTumbleweed` | `pets` row |
 | 64713 | Steamwork Companion | 12342 Familiar: Steamwork Flier | `FamiliarSteamworkCompanion` | `pets` row |
 
+## 4. Mounts Live never named (2)
+
+Peridot has the creature (its `horses` row) but Live never listed the item and never spawned that creature under a name in any captured yard (the one capture of race 594 texture 1 is a player's own mount). Named after Live's pattern for mounts ("a black wolf mount", "a battle armor worg mount"); level and size are those of Live's other mounts.
+
+| Item | Item name | NPC name | Level | Size | Source |
+|---|---|---|---|---|---|
+| 40426 | Black Silken Worg Bridle | a black worg mount | 30 | 6 | the owner's content, 2026-10-24 |
+| 40427 | Brown Chain Worg Bridle | a brown worg mount | 30 | 6 | the owner's content, 2026-10-24 |
+
 ## Reference: NPCs in the Guild Lobby and classic Guild Hall (46)
 
 | Zone | NPC | NPC name | Class | Race | Gender | Texture | Merchant list |
