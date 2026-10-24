@@ -277,12 +277,13 @@ namespace housing {
         if (mode == plotSearch && !ownerName.empty() && !Strings::EqualFold(owner, ownerName)) {
           continue;
         }
-        // rowValue is what Go sends back in OP_FindPersonRequest type 4: the plot's property id.
+        // rowValue is what Go sends back in OP_FindPersonRequest type 4: the plot's property id. The fill (0x74c4c0) shows the first
+        // string under Owner and the second under Address.
         rows.u32(plot.id)
           .u32(static_cast<uint32>(typeOf(plot)))
           .u32(plot.id)
-          .lengthString(catalog().definition(plot.definition_id)->row.address)
-          .lengthString(owner);
+          .lengthString(owner)
+          .lengthString(catalog().definition(plot.definition_id)->row.address);
         count++;
       }
       WireWriter message = replyHeader(listKind);

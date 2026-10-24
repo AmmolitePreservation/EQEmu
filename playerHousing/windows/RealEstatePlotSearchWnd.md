@@ -18,7 +18,7 @@ Columns: **Enabled when** / **Shown when** (the conditions feeding `0x866610` an
 
 The byte after `+0xdc` is 1 in all three. **Type 4 = plots by owner name** (`+0xdc` 1 = a typed name, 0 = your own plots); **type 5 = plots containing items you own**; both within the current neighborhood.
 
-**`REPSW_PlotList`** (the reply's modes 4/5, fill `0x74c4c0`): columns (the plot id), **Address** (string `a`), **Type** ("Player" / "Guild"; other kinds dropped), **Owner** (string `b`); each row stores the reply's **`rowValue`**. A click enables Go while a row is selected and disables it otherwise. Code `0x10` is the sort comparator (numeric and text columns).
+**`REPSW_PlotList`** (the reply's modes 4/5, fill `0x74c4c0`): columns (the plot id), **Address** (string `b`, the reply's second), **Type** ("Player" / "Guild"; other kinds dropped), **Owner** (string `a`, the first); each row stores the reply's **`rowValue`**. A click enables Go while a row is selected and disables it otherwise. Code `0x10` is the sort comparator (numeric and text columns).
 
 **Filters** (`0x74bb50`, re-run on each click and after each fill): the constructor **checks all four**, so every row shows by default. The filter tests **Type** (column 2) for Player / Guild and **Owner** (column 3) for Owned / Vacant and hides rows (`0x8578e0`); *inferred by analogy with the Neighborhood window:* an unchecked box hides its category (Player rows, Guild rows, rows with an owner, rows without one).
 
@@ -54,7 +54,7 @@ See `../flows/plotSearch.md`.
 | `REPSW_MyPlots_Btn` | Button | `+0x22c` | always | always | **`0x2691` type 4**, your own name, `+0xdc` = 0 | — | your plots in the neighborhood | done |
 | `REPSW_MyItems_Btn` | Button | `+0x230` | always | always | **`0x2691` type 5**, your own name | — | plots containing your items | done |
 | `REPSW_Go_Btn` | Button | `+0x234` | **only while a row is selected** | always | **/find wisp: `OP_FindPersonRequest` type 4 with the row's `rowValue`** (the `0x796c` branch is unreachable) | — | `OP_FindPersonReply` path to the plot | done |
-| `REPSW_PlotList` | Listbox | `+0x238` | always | always | select a row (enables Go); header sort | `0x2691` modes 4/5: id, Address, Player/Guild, Owner; row value = `rowValue` | plots: address, kind, owner, find target | done |
+| `REPSW_PlotList` | Listbox | `+0x238` | always | always | select a row (enables Go); header sort | `0x2691` modes 4/5: id, Address (second string), Player/Guild, Owner (first string); row value = `rowValue` | plots: address, kind, owner, find target | done |
 | `REPSW_ShowPlayer_Btn` | Button (checkbox) | `+0x23c` | always | always | re-run the filter; *inferred:* unchecked hides Player rows | checked by the constructor | — (client-side view filter) | done |
 | `REPSW_ShowGuild_Btn` | Button (checkbox) | `+0x240` | always | always | re-run the filter; *inferred:* unchecked hides Guild rows | checked by the constructor | — | done |
 | `REPSW_ShowOwned_Btn` | Button (checkbox) | `+0x244` | always | always | re-run the filter; *inferred:* unchecked hides rows with an owner | checked by the constructor | — | done |

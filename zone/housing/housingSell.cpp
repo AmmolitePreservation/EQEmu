@@ -4,6 +4,7 @@
 #include "housingCatalog.h"
 #include "housingEvents.h"
 #include "housingItems.h"
+#include "housingPlacement.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -156,6 +157,7 @@ namespace housing {
     int16 crateSlot = INVALID_INDEX;
     uint32 crateId = 0;
     bool crateCarriesProperty = false;
+    std::vector<PlacedItem> leaving;
     try {
       if (!state || !state->properties.count(plotId)) {
         throw SellRefusal("the plot is not one this zone sent", failed);
@@ -304,6 +306,7 @@ namespace housing {
       }
       releasePlot(database, plotId);
       transaction.commit();
+      leaving = rows;
     }
     catch (const SellRefusal &refusal) {
       LogHousing("Refused [{}]'s sale of property [{}]: {}", client->GetCleanName(), plotId, refusal.what());
@@ -341,11 +344,18 @@ namespace housing {
     }
     sendResult(client, sold);
     LogHousing("[{}] sold property [{}]", client->GetCleanName(), plotId);
+    std::vector<ItemListChangedRecord> withdrawn;
+    for (const PlacedItem &row : leaving) {
+      withdrawRow(row);
+      if (row.placed) {
+        withdrawn.push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0});
+      }
+    }
     sendPropertyChanged(plotId, PropertyChangedPayload{plot.owner_character_id, 0, plot.guild_id, 0});
     if (crateId) {
       sendPropertyChanged(crateId, PropertyChangedPayload{plot.owner_character_id, crateCarriesProperty ? client->CharacterID() : 0, 0, 0});
       sendItemListChanged(crateId, {});
     }
-    sendItemListChanged(plotId, {});
+    sendItemListChanged(plotId, withdrawn);
   }
 }

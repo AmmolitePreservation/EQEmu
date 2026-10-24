@@ -58,12 +58,12 @@ count × {
   u32     propertyID                    first column (%d)
   u32     kind                          only 4 ("Player") and 8 ("Guild") rows are shown; other rows are read and dropped
   u32     rowValue                      stored as the row's data value; **the /find target**: Go sends it in OP_FindPersonRequest (type 4, +0x08)
-  string  a                             column (%s)
-  string  b                             column (%s)
+  string  a                             the Owner column (%s)
+  string  b                             the Address column (%s)
 }
 ```
 
-Columns in order: id, `a`, "Player"/"Guild", `b`. The list is then sorted (`0x74bb50`).
+Columns in order: id, `b`, "Player"/"Guild", `a`: the fill (`0x74c4c0`) reads `a` into `+0x14` and `b` into `+0x10`, then builds the row from the id, `+0x10`, the kind and `+0x14`, so the second string shows under the XML's Address heading and the first under Owner (seen in game on peridothousing, 2026-10-24). The list is then sorted (`0x74bb50`).
 
 ### Neighborhood window
 
