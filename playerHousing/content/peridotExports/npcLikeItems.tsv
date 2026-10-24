@@ -1,0 +1,572 @@
+item_id	Name	idfile	itemtype	icon	clicktype	clickeffect	scrolleffect	nodrop	price	lore	housepet_file_name	interactive_object	placeable	npc_respawn_interval
+7867	Black Ornate Chain Bridle	IT63	0	596	1	2918	-1	0	0	Black Ornate Chain Bridle	black_horse	0	142	4500
+11164	Zatozia's Tortured Doll	IT10697	11	720	5	23497	-1	0	0	Lydia Pope's Doll	a_familiar_of_Zatozia	0	142	0
+15001	Ghostrider's Bridle and Barding	IT10778	68	1533	1	11564	-1	0	0	Summons the assistance of a legendary mount	tan_war_horse	0	142	0
+17571	Bat on a String	IT63	11	791	5	20744	-1	0	0	Tethers a bat to you	a_familiar_red_bat	0	142	4500
+17572	Collar of the Cursed Lupine	IT63	11	548	5	20745	-1	0	0	Collar for a werewolf Pet	a_familiar_red_werewolf	0	142	4500
+21800	Tan Rope Bridle	IT63	68	596	1	2919	-1	0	8000000	Tan Rope Bridle	tan_horse	0	142	4500
+21801	Tan Leather Bridle	IT63	68	596	1	2920	-1	0	26000000	Tan Leather Bridle	tan_horse	0	142	4500
+21802	Tan Silken Bridle	IT63	68	596	1	2921	-1	0	58000000	Tan Silken Bridle	tan_horse	0	142	4500
+21803	Tan Chain Bridle	IT63	68	596	1	2922	-1	0	91000000	Tan Chain Bridle	tan_horse	0	142	4500
+21805	White Rope Bridle	IT63	68	596	1	2867	-1	0	9000000	White Rope Bridle	white_horse	0	142	4500
+21806	White Leather Bridle	IT63	68	596	1	2868	-1	0	30000000	White Leather Bridle	white_horse	0	142	4500
+21807	White Silken Bridle	IT63	68	596	1	2869	-1	0	62000000	White Silken Bridle	white_horse	0	142	4500
+21808	White Chain Bridle	IT63	68	596	1	2870	-1	0	99000000	White Chain Bridle	white_horse	0	142	4500
+21809	White Ornate Chain Bridle	IT63	0	596	1	2871	-1	0	0	White Ornate Chain Bridle	white_horse	0	142	4500
+21810	Black Rope Bridle	IT63	68	596	1	2872	-1	0	9000000	Black Rope Bridle	black_horse	0	142	4500
+21811	Black Leather Bridle	IT63	68	596	1	2873	-1	0	30000000	Black Leather Bridle	black_horse	0	142	4500
+21812	Black Silken Bridle	IT63	68	596	1	2916	-1	0	62000000	Black Silken Bridle	black_horse	0	142	4500
+21813	Black Chain Bridle	IT63	68	596	1	2917	-1	0	99000000	Black Chain Bridle	black_horse	0	142	4500
+21815	Brown Rope Bridle	IT63	68	596	1	2862	-1	0	8000000	Brown Rope Bridle	brown_horse	0	142	4500
+21816	Brown Leather Bridle	IT63	68	596	1	2863	-1	0	26000000	Brown Leather Bridle	brown_horse	0	142	4500
+21817	Brown Silken Bridle	IT63	68	596	1	2864	-1	0	58000000	Brown Silken Bridle	brown_horse	0	142	4500
+21818	Brown Chain Bridle	IT63	68	596	1	2865	-1	0	91000000	Brown Chain Bridle	brown_horse	0	142	4500
+31492	Ghostly Bridle	IT63	11	596	3	2867	-1	0	0	Ghostly Bridle	white_horse	0	142	0
+31496	Bridle of Sir Ariam	IT63	68	596	3	2867	-1	0	0	Bridle of Sir Ariam	white_horse	0	142	0
+39342	Ghostrider's Bridle	IT10778	68	1533	1	8990	-1	0	0	Summons the assistance of a legendary mount	tan_horse	0	142	4500
+39657	Automated Clockwork Bag Compressor	IT63	11	2408	1	21853	-1	1	0	Automated Clockwork Bag Compressor	a_familiar_compressor	0	142	0
+40419	Aqua Goblin Totem	IT63	10	2673	5	21366	-1	0	0	Summons a Denizen of the deep	a_familiar_aqua_goblin	0	142	4500
+40423	Black Chain Worg Bridle	IT63	68	572	5	9399	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	4500
+40425	Black Ornate Chain Worg Bridle	IT63	68	572	5	9395	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	4500
+40426	Black Silken Worg Bridle	IT63	11	572	5	9397	-1	0	0	Summons a  worg as a mount	a_black_worg_mount	0	12	4500
+40427	Brown Chain Worg Bridle	IT63	11	572	5	9399	-1	0	0	Summons a  worg as a mount	a_brown_worg_mount	0	12	4500
+40431	Tan Chain Worg Bridle	IT63	68	572	5	9399	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	0
+40435	White Chain Worg Bridle	IT63	68	572	5	9399	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	0
+40437	White Ornate Chain Worg Bridle	IT63	68	572	5	9395	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	4500
+40489	Mottled Worg Bridle	IT63	68	572	5	9401	-1	0	0	Summons a  worg as a mount	saddled_mottled_worg	0	142	4500
+40597	Bridle of the Corrupted Sokokar	IT63	68	1533	5	13391	-1	0	0	Its flesh reeks of rot and discord	saddled_corrupted_sokokar	0	142	4500
+40601	Bridle of the Snow Leopard	IT63	68	1883	5	12914	-1	0	0	Summons a snow leopard mount	saddled_snow_leopard	0	142	4500
+40602	Bridle of the Shadow Panther	IT63	68	1883	5	12915	-1	0	0	Summons a shadow panther mount	saddled_shadow_panther	0	142	4500
+40603	Bridle of the Mystical Kirin	IT63	68	1883	5	12916	-1	0	0	Summons a mystical kirin mount	saddled_mystical_kirin	0	142	4500
+40604	Bridle of the Seething Chimera	IT63	68	1883	5	12917	-1	0	0	Summons a seething chimera mount	saddled_chimera	0	142	4500
+40628	Familiar of Lord Nagafen	IT63	11	1478	5	12935	-1	0	0	A small but dangerous dragon familiar	a_familiar_red_dragon	0	142	4500
+40629	Familiar of Hulcror	IT63	11	1474	5	12936	-1	0	0	A companion from another dimension	a_familiar_bazu	0	142	4500
+40630	Familiar of the Girplan Guardian	IT63	11	1496	5	12937	-1	0	0	Summons a girplan familiar to guide you	a_familiar_girplan_guardian	0	142	4500
+40631	Familiar of Lightningcaller Vhalek	IT63	11	1482	5	12938	-1	0	0	The lightning calls out, echoing in your mind	a_familiar_lightningcaller	0	142	4500
+40632	Familiar of the Stone Hive	IT63	11	1908	5	12939	-1	0	0	Bzzz Bzzt Bzzzzzt Bztzztzzz Bzzz	a_familiar_bixie	0	142	4500
+40643	Familiar of Phara Dar	IT63	11	2604	5	12891	-1	0	0	A beautiful figurine forged in Veeshan's Peak steam baths	a_familiar_azure_dragon	0	142	4500
+40644	Bridle of the Wrulon Guardian	IT63	68	1533	5	12893	-1	0	0	Summons a guardian wrulon mount	saddled_guardian_wrulon	0	142	4500
+40645	Bridle of the Wrulon Protector	IT63	68	1533	5	12894	-1	0	0	Summons a protective wrulon mount	saddled_wrulon_protector	0	142	4500
+40646	Bridle of the Crimson Cragslither	IT63	68	1533	5	12895	-1	0	0	Summons a crimson cragslither mount	saddled_crimson_cragslither	0	142	4500
+40647	Bridle of the Viridian Cragslither	IT63	68	1533	5	12896	-1	0	0	Summons a viridian cragslither mount	saddled_viridian_cragslither	0	142	4500
+40668	Familiar of Queen Eletyl	IT63	11	2600	5	12910	-1	0	0	Small but horrendous screeches send shivers down the spine	a_familiar_harpy_queen	0	142	0
+40669	Familiar of Zi-Thuuli, the Granite Claw	IT63	11	2601	5	12911	-1	0	0	Caught by surprise, mortal?	a_familiar_of_Zi-Thuuli	0	142	4500
+40670	Familiar of Valik the Cruel	IT63	11	2602	5	12912	-1	0	0	Victory lies in beating down the weak	a_familiar_stone_gargoyle	0	142	4500
+40671	Familiar of Lady Vox	IT63	11	2603	5	12913	-1	0	0	Frosty breath chills the air in a small area	a_familiar_icy_dragon	0	142	4500
+40677	Bridle of the Wrulon Warder	IT63	68	1533	5	12870	-1	0	0	Summons a warder wrulon mount	saddled_wrulon_warder	0	142	4500
+40678	Bridle of the Plagued Cragslither	IT63	68	1533	5	12871	-1	0	0	Summons a plagued cragslither mount	saddled_plagued_cragslither	0	142	0
+40679	Bridle of the Cursed Kirin	IT63	11	1533	5	12872	-1	0	0	Summons a cursed kirin mount	saddled_cursed_kirin	0	142	0
+40699	Familiar of the Bitter Brownie	IT63	11	1085	5	12881	-1	0	0	I place a curse on your soul and a pox on this land!	a_familiar_bitter_brownie	0	142	4500
+40700	Familiar of Severilous	IT63	11	2603	5	12882	-1	0	0	A small dragon more valuable than any treasure it guards	a_familiar_gold_dragon	0	142	4500
+40701	Familiar of the Kobold King	IT63	11	1646	5	12883	-1	0	0	Sometimes even kings must serve	a_familiar_kobold_king	0	142	4500
+40702	Familiar of the Phased Scrykin	IT63	11	1648	5	12884	-1	0	0	Accidental interdimensional shrinking is most unfortunate	a_familiar_phased_scrykin	0	142	4500
+40703	Familiar of the Hooded Scrykin	IT63	11	1649	5	12885	-1	0	0	Very small, very angry, and very dangerous	a_familiar_hooded_scrykin	0	142	4500
+40704	Familiar of the Gorged Eye	IT63	11	885	5	12886	-1	0	0	Its stomach is actually bigger than its eyes	a_familiar_gorged_eye	0	142	4500
+40711	Bridle of the Commanded Feran	IT63	68	1533	5	13370	-1	0	0	Summons a commanded feran mount	saddled_commanded_feran	0	142	4500
+40712	Bridle of the Ferocious Feran	IT63	68	1533	5	13371	-1	0	0	Summons a ferocious feran mount	saddled_ferocious_feran	0	142	0
+40728	Familiar of the Zombie Doorman	IT63	11	1386	5	13380	-1	0	0	Even undead servants sometimes feel lonely	a_familiar_zombie_doorman	0	142	4500
+40729	Familiar of Nexona	IT63	11	2604	5	13381	-1	0	0	Ancient secrets whispered to dragons are seldom forgotten	a_familiar_blue_dragon	0	142	4500
+40730	Familiar of Warden Hanvar	IT63	11	1496	5	13382	-1	0	0	Even the warden feels the need for a confidant	a_familiar_barraki_warden	0	142	4500
+40731	Familiar of King Gelaqua	IT63	11	1535	5	13383	-1	0	0	A magical doppleganger created from icy crystal shards	a_familiar_gelidran	0	142	4500
+40732	Familiar of Queen Pyrilonis	IT63	11	1536	5	13384	-1	0	0	A magical doppleganger created from smoldering magma	a_familiar_fiery_pyrelin	0	142	4500
+40743	Bridle of the Emerald Sokokar	IT63	68	1533	5	20140	-1	0	0	Well suited for blending into foliage of the Emerald Jungle	saddled_emerald_sokokar	0	142	4500
+40744	Bridle of the Bloodied Sokokar	IT63	68	1533	5	20141	-1	0	0	Drenched in the blood of battle	saddled_bloodied_sokokar	0	142	4500
+40761	Familiar of the Runebound Goblin	IT63	11	2673	5	20152	-1	0	0	Some goblins are trapped in ice, others in magic	a_familiar_runebound_goblin	0	142	0
+40762	Familiar of Trakanon	IT63	11	1478	5	20153	-1	0	0	Lust for the living is the deepest passion of the dead	a_familiar_emerald_dragon	0	142	4500
+40763	Familiar of the Spiroc Roostmaster	IT63	11	1146	5	20154	-1	0	0	Echoes of Timorous Deep whistle in the wind	a_familiar_roostmaster	0	142	4500
+40764	Familiar of the Armored Worg	IT63	11	1890	5	20155	-1	0	0	Worgs are trained for combat from the moment they are born	a_familiar_armored_worg	0	142	4500
+40776	Bridle of King Kalakor	IT63	68	1533	5	20166	-1	0	0	The bridle of the highland lion king	saddled_highland_lion_king	0	142	0
+40777	Bridle of the Highland Lion	IT63	68	1533	5	20167	-1	0	0	You think you hear it growling	saddled_highland_lion	0	142	0
+40793	Minor Stone of Summoning: Air	IT63	11	2102	5	20168	-1	0	0	A tiny air elemental is bound to this stone	a_familiar_wind_elemental	0	142	0
+40794	Minor Stone of Summoning: Earth	IT63	11	2103	5	20169	-1	0	0	A tiny earth elemental is bound to this stone	a_familiar_earth_elemental	0	142	4500
+41264	Bridle of the Flying Imperial Sokokar	IT63	68	1533	5	16532	-1	0	0	The Imperial Sokokar	saddled_imperial_sokokar	0	142	4500
+42819	Rallosian Battle Figure	IT63	11	720	5	13396	-1	0	0	It's a figure, not a doll	a_familiar_Rallosian_figure	0	142	4500
+42936	Sarah's Lost Locket	IT63	11	1649	5	21376	-1	0	0	You feel an unnatural chill when you touch this locket	a_familiar_wailing_banshee	0	142	4500
+42937	Jennifer's Lost Locket	IT63	11	1648	5	21377	-1	0	0	You feel an unnatural chill when you touch this locket	a_familiar_spectral_banshee	0	142	4500
+42985	Shiny New Collapsible Roboboar	IT63	68	1027	5	20112	-1	0	0	Summons a roboboar	shiny_roboboar	0	142	4500
+42988	Shiny New Class V Collapsible Roboboar	IT63	68	1027	5	20116	-1	0	0	Summons a roboboar	shiny_roboboar	0	142	0
+42999	Black Wolf Figurine	IT63	11	2907	5	21380	-1	0	0	You hear an echoing wolf howl when you hold this figurine	a_familiar_shadow_wolf	0	142	4500
+43000	Everburning Ember	IT63	11	1945	5	21381	-1	0	0	This ember never grows cold	a_familiar_ember_elemental	0	142	4500
+43499	Stone of the Serpent	IT63	11	969	5	13091	-1	0	0	It is not hard to guess what slept under this rock	a_familiar_coral_serpent	0	142	4500
+43500	Goblin Skull Fetish	IT63	11	1633	5	13092	-1	0	0	Somehow, it still looks like it's laughing at you	a_familiar_goblin_of_Kunark	0	142	4500
+43521	Snappy's Claw	IT63	11	1227	5	21057	-1	0	0	The claw snaps shut from time to time	a_familiar_snappy_scorpion	0	142	4500
+43522	Icicle's Collar	IT63	11	533	5	21058	-1	0	0	This collar is always cold.	a_familiar_polar_bear	0	142	4500
+43530	Black Ornate Chain Shiny Collapsible Roboboar	IT63	68	1027	5	20116	-1	0	0	Summons a  shiny roboboar as a mount	shiny_roboboar	0	142	0
+43541	White Chain Shiny Collapsible Roboboar	IT63	11	1027	5	20115	-1	0	0	Summons a  shiny roboboar as a mount	shiny_roboboar	0	142	4500
+43596	Cit Chac's Collar	IT63	11	564	5	21621	-1	0	0	Cute puma cub that follows you around.	a_familiar_puma_cub	0	142	4500
+43597	Panar's Collar	IT63	11	564	5	21622	-1	0	0	Cute leopard cub that follows you around.	a_familiar_leopard_cub	0	142	4500
+43934	Preserved Frog Leg	IT63	11	1068	5	21508	-1	0	0	You have to pull the leg	a_familiar_old_froglok	0	142	4500
+43935	Dried Frog Leg	IT63	11	1068	5	21509	-1	0	0	You pulled too hard	a_familiar_undead_froglok	0	142	4500
+43969	Jade Hydra Saddle	IT63	68	2902	5	21382	-1	0	0	Summons forth a jade hydra	saddled_jade_hydra	0	142	4500
+43970	Onyx Hydra Saddle	IT63	68	2902	5	21383	-1	0	0	Summons forth an onyx hydra	saddled_onyx_hydra	0	142	4500
+43988	Mechamatic Remote Control	IT63	11	2407	5	21627	-1	0	0	Tiny Clockwork to follow you around.	a_familiar_clockwork_toy	0	142	4500
+43989	Moonfang's Cub	IT63	11	564	5	21623	-1	0	0	Cute panther cub that follows you around.	a_familiar_panther_cub	0	142	4500
+44496	Panpipes of the Dancer	IT63	11	1317	5	21639	-1	0	0	Tiny Satyr that follows you around	a_familiar_dancing_satyr	0	142	4500
+44497	Flittering Wings	IT63	11	909	5	21640	-1	0	0	Fairy that flits about your trail	a_familiar_fairy	0	142	4500
+45193	Fae-Touched Gnome	IT63	11	720	5	21650	-1	0	0	Why is that tiny guy following you?	a_familiar_miniature_Gnome	0	142	4500
+45374	Child's Play Anklebiter Doll	IT63	11	3257	5	20119	-1	0	0	Ineffective but cute!	a_familiar_of_charity	0	142	4500
+47088	Stone Companion	IT63	11	1414	5	21930	-1	0	0	Tiny stone golem	a_familiar_stone_golem	0	142	4500
+47089	Clicking Beetle	IT63	11	927	5	21931	-1	0	0	Small clockwork companion	a_familiar_clicking_beetle	0	142	4500
+47090	Ticking Companion	IT63	11	720	5	21932	-1	0	0	Small clockwork companion	a_familiar_ticking_companion	0	142	4500
+47091	Springwork Spider	IT63	11	782	5	21933	-1	0	0	Small clockwork companion	a_familiar_springwork_spider	0	142	4500
+47715	Plagued Skull Fragment	IT63	11	3183	5	21948	-1	0	0	Death follows your path	a_familiar_floating_skull	0	142	0
+47810	Beden's Collar	IT63	11	2308	5	21955	-1	0	0	Collar for a tiger pet	a_familiar_tiger_cub	0	142	4500
+47811	Collar of the King	IT63	11	1623	5	21956	-1	0	0	Collar for a lion Pet	a_familiar_lion_cub	0	142	4500
+47812	Captured Bone of the Lost	IT63	11	1501	5	21957	-1	0	0	It stinks quite a bit	a_familiar_zombie	0	142	4500
+48090	Unstable Ooze	IT63	11	3282	5	22473	-1	0	0	This ooze does not hold its form	a_familiar_unstable_ooze	0	142	4500
+48091	Empathetic Ooze	IT63	11	3282	5	22474	-1	0	0	This ooze feels for you	a_familiar_empathetic_ooze	0	142	4500
+48092	Spitting Ooze	IT63	11	3282	5	22475	-1	0	0	This ooze is slightly protective and aggressive	a_familiar_spitting_ooze	0	142	4500
+48978	Brewworks	IT63	11	2350	5	16898	-1	0	0	Summons a brew making Clockwork.	a_familiar_brewwork	0	142	4500
+48979	Guardian Wolf Whistle	IT63	11	2771	5	16905	-1	0	0	Summons a wolf to warn you of approach.	a_familiar_guardian_wolf	0	142	4500
+48991	Erollisi's Doll	IT63	11	3258	5	16914	-1	0	0	This lovable doll can't give enough love	a_familiar_hugging_doll	0	142	4500
+48992	Caged Aggressive Rat	IT63	11	3303	5	16915	-1	0	0	This rat is a bit ornery	a_familiar_aggressive_rat	0	142	4500
+50851	Skittering Mount Saddle	IT63	68	3287	5	23013	-1	0	0	Fear not the widow, but conquer it	saddled_skittering_widow	0	142	0
+50852	Wiring Mount Saddle	IT63	68	3287	5	23014	-1	0	0	Gnomes have lost the method of creation	saddled_clockwork_widow	0	142	4500
+51786	Flittering Wings	IT63	11	909	5	21640	-1	0	0	Fairy that flits about your trail	a_familiar_fairy	0	142	4500
+51806	Adventurer's Tan Trotter Bridle	IT63	68	572	3	2921	-1	0	0	Adventurer's Tan Trotter Bridle	tan_horse	0	142	0
+51808	Adventurer's Tan Steed Gloves	IT63	68	531	3	2923	-1	0	0	Adventurer's Tan Steed Gloves	tan_horse	0	142	0
+51809	Adventurer's White Nag Saddle	IT63	68	835	3	2867	-1	0	0	Adventurer's White Nag Saddle	white_horse	0	142	0
+51811	Adventurer's White Trotter Bridle	IT63	68	572	3	2869	-1	0	0	Adventurer's White Trotter Bridle	white_horse	0	142	0
+51812	Adventurer's White Mount Cloak	IT63	68	659	3	2870	-1	0	0	Adventurer's White Mount Cloak	white_horse	0	142	0
+51813	Adventurer's White Steed Gloves	IT63	68	529	3	2871	-1	0	0	Adventurer's White Steed Gloves	white_horse	0	142	0
+51814	Adventurer's Black Nag Saddle	IT63	68	556	3	2872	-1	0	0	Adventurer's Black Nag Saddle	black_horse	0	142	0
+51815	Adventurer's Black Dobbin Boots	IT63	68	844	3	2873	-1	0	0	Adventurer's Black Dobbin Boots	black_horse	0	142	0
+51816	Adventurer's Black Trotter Bridle	IT63	68	596	3	2916	-1	0	0	Adventurer's Black Trotter Bridle	black_horse	0	142	0
+51817	Adventurer's Black Mount Cloak	IT63	68	657	3	2917	-1	0	0	Adventurer's Black Mount Cloak	black_horse	0	142	0
+51818	Adventurer's Black Steed Gloves	IT63	68	530	3	2918	-1	0	0	Adventurer's Black Steed Gloves	black_horse	0	142	0
+51821	Adventurer's Brown Trotter Bridle	IT63	68	596	3	2864	-1	0	0	Adventurer's Brown Trotter Bridle	brown_horse	0	142	0
+51822	Adventurer's Brown Mount Cloak	IT63	68	662	3	2865	-1	0	0	Adventurer's Brown Mount Cloak	brown_horse	0	142	0
+51823	Adventurer's Brown Steed Gloves	IT63	68	636	3	2866	-1	0	0	Adventurer's Brown Steed Gloves	brown_horse	0	142	0
+51872	Bridle of the Alabaster Jungle	IT63	68	1533	5	24691	-1	0	0	You think you hear it growling	saddled_white_tiger	0	142	0
+52013	Gnoll Pup Leash	IT63	11	643	5	24073	-1	0	0	Summons a gnoll	a_familiar_gnoll_pup	0	142	4500
+52021	Desiccated Hedgerow Leaf	IT63	68	2207	5	23469	-1	0	0	Summon a topairy lion under your control	desiccated_topiary_lion	0	142	4500
+52096	Verdant Hedgerow Leaf	IT63	68	2205	5	23467	-1	0	0	Summon a topairy lion under your control	verdant_topiary_lion	0	142	4500
+52097	Charred Rotdog Saddle	IT63	11	3365	5	23471	-1	0	0	Summon a rotdog under your control	saddled_charred_rotdog	0	142	4500
+52098	Fleshless Rotdog Saddle	IT63	68	5034	5	23473	-1	0	0	Summon a rotdog under your control	saddled_fleshless_rotdog	0	142	4500
+52099	Albino Rotdog Saddle	IT63	11	3365	5	23475	-1	0	0	Summon a rotdog under your control	saddled_albino_rotdog	0	142	4500
+52193	Petamorph Wand - Scarecrow	IT10504	10	1282	5	20996	-1	0	0	Scare up your pet	a_scarecrow_familiar	0	142	0
+52198	Walking Death	IT63	11	2016	5	19999	-1	0	0	Summons a sprit of death	a_familiar_visage_of_death	0	142	4500
+52285	Clockwork Fireworks Engineer	IT63	10	2404	5	24065	-1	0	0	Summons a clockwork that creates fireworks	a_familiar_firework_engineer	0	142	4500
+52289	Gamework Companion Controller	IT63	10	2304	5	24066	-1	0	0	Summons your very own clockwork game companion	a_familiar_gamework	0	142	0
+52291	Marvin the Goblin	IT63	11	650	5	24068	-1	0	0	Summons Marvin the Goblin	a_familiar_Marvin_goblin	0	142	0
+52304	Festive Braxi Saddle	IT63	68	5032	5	19954	-1	0	0	Summon a braxi under your control	saddled_festive_braxi	0	142	4500
+52509	Doomsday Beetle	IT63	11	927	0	-1	-1	0	0	This beetle has predicted the end of Norrath.	Doomsday_Beetle	0	142	4500
+52591	Hobby Horse	IT63	68	2902	5	19996	-1	0	0	Coconuts included for realistic riding sounds!	tan_horse	0	142	0
+52593	Mini Jokester	IT63	11	650	0	-1	-1	0	0	A reminder of your fun with Bobo.	Mini_Jokester	0	142	4500
+53240	Tan Rope Bridle	IT63	68	596	1	2919	-1	0	8000000	Tan Rope Bridle	tan_horse	0	142	0
+53513	Freemind Spore Earring	IT63	10	1042	5	11502	-1	0	0	Radiates with strange magic	a_familiar_freemind_sporali	0	142	4500
+53613	Totem of the Stonemight	IT10643	10	1355	5	11508	-1	0	0	A small stone statue of an ugly little goblin	a_familiar_Stonemight_goblin	0	142	4500
+53687	Direwolf Totem of Battle	IT63	11	800	5	11517	-1	0	0	This tiny figure of a wolf was carved from a wolf's fang	a_familiar_battle_direwolf	0	142	4500
+53688	Direwolf Totem of Spirit	IT63	11	800	5	11518	-1	0	0	This tiny figure of a wolf was carved from a wolf's claw	a_familiar_arcane_wolf	0	142	4500
+53755	Flute of the Sea Serpent	IT63	10	1317	5	24189	-1	0	0	Summons a real sea serpent, only smaller.	a_familiar_sea_serpent	0	142	4500
+53769	Verdant Selyrah Whistle	IT63	68	3915	5	12327	-1	0	0	Summons a verdant Selyrah.	a_verdant_selyran_mount	0	142	4500
+54768	Veilbreaker Escape Module	IT63	68	3840	5	24931	-1	0	0	An escape device from the Veilbreaker	imposing_baloon_pack	0	142	0
+54769	Airship in a Bottle	IT63	11	3991	0	-1	-1	0	0	A real working airship in a bottle	Airship_in_a_Bottle	0	142	4500
+54807	Lava Braxi Saddle	IT63	68	3365	5	10377	-1	0	0	Summon a braxi under your control	saddled_lava_braxi	0	142	0
+54832	Veilbreaker Souvenir	IT63	11	3990	5	12453	-1	0	0	Summons a souvenir to follow you around	a_familiar_Veilbreaker	0	142	0
+54931	Spore Curer Bait	IT63	11	1233	5	24056	-1	0	0	A small pile of rotted plants	a_familiar_spore_curer	0	142	4500
+54932	Harness of the Flaming Beast	IT63	11	1235	5	24057	-1	0	0	A mystical harness that tames a savage being	a_familiar_flaming_beast	0	142	4500
+54933	Bear Saddle	IT63	68	3365	5	24058	-1	0	0	Summon a domesticated bear	saddled_docile_bear	0	142	4500
+54934	War Bear Saddle	IT63	68	3365	5	24059	-1	0	0	Summon a war trained bear	saddled_war_bear	0	142	0
+54977	Drake of Pure Nature	IT63	11	2192	5	17846	-1	0	0	Its purity will protect you	a_familiar_drake_of_nature	0	142	4500
+54982	Ember Wurm Saddle	IT63	68	3666	5	17849	-1	0	0	Summons a bound ember wurm	saddled_ember_wurm	0	142	4500
+54983	Frost Wurm Saddle	IT63	68	3666	5	17850	-1	0	0	Summons a bound frost wurm	saddled_frost_wurm	0	142	4500
+54998	Baby Red Dragon	IT63	11	2603	0	-1	-1	0	0	They grow up so quickly	Baby_Red_Dragon	0	6	4500
+55427	Armored Planar Ardennes Saddle	IT63	68	5031	5	24169	-1	0	0	Summons a large armored horse of the Ardennes breed	armored_planar_ardennes	0	142	4500
+55428	Armored Royal Ardennes Saddle	IT63	68	5031	5	24174	-1	0	0	Summons a large armored horse of the Ardennes breed	armored_royal_ardennes	0	142	4500
+55429	Armored Royal Shire Saddle	IT63	68	5031	5	24179	-1	0	0	Summons a large armored horse of the Shire breed	armored_royal_shire	0	142	4500
+55430	Armored Battle Shire Saddle	IT63	68	5031	5	24184	-1	0	0	Summons a large armored horse of the Shire breed	armored_battle_shire	0	142	4500
+55444	Scarecrow Pet	IT63	11	1481	0	-1	-1	0	0	A pet for your house	a_scarecrow	0	142	4500
+55445	Skeleton Pet	IT63	11	3184	0	-1	-1	0	0	A pet for your house	a_skeleton	0	142	4500
+55989	Ghostrider's Spirit	IT10778	68	6668	1	22872	-1	0	0	Summons the assistance of a legendary mount	ghostrider`s_spirit	0	142	0
+56052	Petamorph Wand - Aviak	IT10822	10	3714	5	23486	-1	0	0	Is your pet now edible?	an_aviak_familiar	0	142	0
+56063	Familiar of Thankful Days	IT11823	11	3366	5	23489	-1	0	0	Summons an aviak familiar.	a_familiar_edible_aviak	0	142	4500
+57133	Kerrias Figurine	IT63	11	2910	0	-1	-1	0	0	Suspiciously lifelike	Kerrias_Figurine	0	6	0
+57191	Desert Kangon Saddle	IT63	68	3666	5	12449	-1	0	0	Summons a desert kangon mount	a_desert_kangon_mount	0	142	4500
+57192	Forest Kangon Saddle	IT63	68	3666	5	12451	-1	0	0	Summons a forest kangon mount	a_forest_kangon_mount	0	142	4500
+57367	Dragonfly Saddle	IT63	68	5032	5	39304	-1	0	0	Summons a dragonfly mount	a_dragonfly_mount	0	142	0
+57368	Komodo Dragon Saddle	IT63	68	5032	5	39648	-1	0	0	Summons a komodo dragon mount	a_komodo_dragon_mount	0	142	0
+57386	Frostfell Goblin Familiar	IT11823	11	2633	5	27378	-1	0	0	Summons a Frostfell goblin familiar.	a_familiar_Frostfell_goblin	0	142	0
+57387	Icesprite Familiar	IT11823	11	2974	5	27379	-1	0	0	Summons an icesprite familiar.	a_familiar_icesprite	0	142	0
+57388	Santug Claugg Familiar	IT11823	11	621	5	27380	-1	0	0	Summons a Santa Klug familiar.	a_familiar_Santug_Claugg	0	142	4500
+57389	Snow Spider Familiar	IT11823	11	782	5	27381	-1	0	0	Summons a snow spider familiar.	a_familiar_snow_spider	0	142	0
+57476	Sessiloid Saddle	IT63	68	2902	5	15896	-1	0	0	Summon a sessiloid under your control.	a_sessiloid_mount	0	142	4500
+57534	Chocolate Bunny	IT63	11	3657	0	-1	-1	0	0	It's not really made of chocolate.	a_chocolate_bunny	0	142	4500
+57554	Armored Snow Puma Saddle	IT63	68	5032	5	9886	-1	0	0	Summon a Snow Puma under your control.	an_armored_snow_puma	0	142	4500
+57703	Metamorph Totem: Ancient Gods	IT63	11	6680	5	39535	-1	0	0	Summons an ancient god or changes your pet into one	an_ancient_god_puppet	0	142	0
+57798	Golden Wurm Saddle	IT63	68	2902	5	11743	-1	0	0	Summon a golden wurm under your control.	a_golden_wurm_mount	0	142	4500
+57799	Armored Sessiloid Saddle	IT63	68	2902	5	15898	-1	0	0	Summon an armored sessiloid under your control.	an_armored_sessiloid_mount	0	142	4500
+57888	Solusek Ro Puppet	IT63	11	3258	5	27789	-1	0	0	Pilfered from Bristlebane's prop chest.	Solusek_Ro_puppet	0	142	4500
+59500	Small White Drum	IT63	68	1318	1	3813	-1	0	9000000	A Small White Drum	white_drogmor	0	142	4500
+59501	White Drum	IT63	68	1318	1	3814	-1	0	30000000	A White Drum	white_drogmor	0	142	4500
+59502	Large White Drum	IT63	68	1318	1	3815	-1	0	62000000	A Large White Drum	white_drogmor	0	142	4500
+59503	Giant White Drum	IT63	68	1318	1	3816	-1	0	99000000	A Giant White Drum	white_drogmor	0	142	4500
+59504	Glowing White Drum	IT63	11	1318	1	3817	-1	0	0	A Glowing White Drum	white_drogmor	0	142	0
+59505	Small Black Drum	IT63	68	1318	1	3818	-1	0	9000000	A Small Black Drum	black_drogmor	0	142	4500
+59506	Black Drum	IT63	68	1318	1	3819	-1	0	30000000	A Black Drum	black_drogmor	0	142	4500
+59507	Large Black Drum	IT63	68	1318	1	3820	-1	0	62000000	A Large Black Drum	black_drogmor	0	142	4500
+59508	Giant Black Drum	IT63	68	1318	1	3821	-1	0	99000000	A Giant Black Drum	black_drogmor	0	142	4500
+59509	Glowing Black Drum	IT63	68	1318	1	3822	-1	0	0	A Glowing Black Drum	black_drogmor	0	142	4500
+59510	Small Green Drum	IT63	68	1318	1	3823	-1	0	9000000	A Small Green Drum	green_drogmor	0	142	4500
+59511	Green Drum	IT63	68	1318	1	3824	-1	0	30000000	A Green Drum	green_drogmor	0	142	4500
+59512	Large Green Drum	IT63	68	1318	1	3825	-1	0	62000000	A Large Green Drum	green_drogmor	0	142	4500
+59513	Giant Green Drum	IT63	68	1318	1	3826	-1	0	99000000	A Giant Green Drum	green_drogmor	0	142	4500
+59514	Glowing Green Drum	IT63	11	1318	1	3827	-1	0	0	A Glowing Green Drum	green_drogmor	0	142	0
+59515	Small Red Drum	IT63	68	1318	1	3828	-1	0	9000000	A Small Red Drum	red_drogmor	0	142	4500
+59516	Red Drum	IT63	68	1318	1	3829	-1	0	30000000	A Red Drum	red_drogmor	0	142	4500
+59517	Large Red Drum	IT63	68	1318	1	3830	-1	0	62000000	A Large Red Drum	red_drogmor	0	142	4500
+59518	Giant Red Drum	IT63	68	1318	1	3831	-1	0	99000000	A Giant Red Drum	red_drogmor	0	142	4500
+59519	Glowing Red Drum	IT63	11	1318	1	3832	-1	0	0	A Glowing Red Drum	red_drogmor	0	142	0
+60380	Olive	IT63	11	1489	0	-1	-1	0	0	A mechanical serpent pet built by Gerta	Olive	0	142	4500
+60381	Whirligig Flyer Control Device	IT63	68	2406	5	9111	-1	0	0	Summons a Whirligig Flyer.	a_whirligig_mount	0	142	4500
+60436	Plains Puma Saddle	IT63	68	5032	5	12494	-1	0	0	Summons a plains puma mount	a_plains_puma_mount	0	142	0
+60437	Forest Jaguar Saddle	IT63	68	5032	5	12496	-1	0	0	Summons a forest jaguar mount	a_forest_jaguar_mount	0	142	0
+60438	Grassland Tiger Saddle	IT63	68	5032	5	12498	-1	0	0	Summons a grassland tiger mount	a_grassland_tiger_mount	0	142	0
+60939	Venomous Raptor Familiar	IT63	11	2977	5	9696	-1	0	0	Watch out for its bite.	a_familiar_venomous_raptor	0	142	4500
+60944	Venomous Raptor Saddle	IT63	68	3365	5	27790	-1	0	0	Summons a tamed Venomous Raptor.	a_venomous_raptor_mount	0	142	4500
+60945	Firescale Wrulon Saddle	IT63	68	3365	5	27791	-1	0	0	Summons a tamed Firescale Wrulon.	a_firescale_wrulon_mount	0	142	4500
+60958	Flame Wurmling	IT63	11	1906	0	-1	-1	0	0	You may want to keep this one outside.	Flame_Wurmling	0	142	4500
+61009	Dragonscale Skystrider Scales	IT63	10	1233	5	33051	-1	0	0	Scales from a dragonscale skystrider	a_familiar_scaly_skystrider	0	142	0
+61036	Petamorph Wand - Brownie	IT63	10	3714	5	11598	-1	0	0	It's so tiny.	a_brownie_familiar	0	142	0
+61061	Ognit's Mini Dirigible Device	IT63	68	3840	5	27794	-1	0	0	Summon a Mini Dirigible under your control.	patchwork_baloon_pack	0	142	0
+61948	Shadow Wurm Saddle	IT63	68	5034	5	27852	-1	0	0	Summons a tame Shadow Wurm	a_shadow _wurm_mount	0	142	4500
+61949	Young Tiger Raptor	IT63	11	833	0	-1	-1	0	0	It doesn't like visitors	a_young_tiger_raptor	0	142	4500
+61950	Treant familiar	IT63	11	2208	5	27854	-1	0	0	A guardian tree spirit	a_familiar_treant	0	142	0
+61951	Maraca Familiar	IT11794	11	3510	5	27855	-1	0	0	An pair of animated maracas	familiar_maracas	0	142	4500
+61979	Petamorph Wand - Sporali	IT63	10	3714	5	19794	-1	0	0	Changes your pet into a random Sporali.	a_sporali_familiar	0	142	0
+61985	Rallos Zek Puppet	IT63	11	3258	5	19797	-1	0	0	Pilfered from Bristlebane's prop chest.	Rallos_Zek_puppet	0	142	0
+62768	Cliknar Worker Familiar	IT63	11	3900	5	15916	-1	0	0	A loyal cliknar worker that follows you around	a_familiar_cliknar_worker	0	142	0
+62774	Petamorph Wand - Cliknar	IT63	11	3714	5	23272	-1	0	0	Changes your pet into a cliknar	a_cliknar_familiar	0	142	0
+62787	Desert Tarantula Saddle	IT63	68	5034	5	10826	-1	0	0	Summons a desert tarantula mount	a_desert_tarantula_mount	0	142	4500
+64068	Tan Rope Bridle and Barding	IT63	68	596	1	8916	-1	0	0	Tan Rope Bridle and Barding	tan_war_horse	0	142	0
+64069	Tan Leather Bridle and Barding	IT63	68	596	1	8917	-1	0	0	Tan Leather Bridle and Barding	tan_war_horse	0	142	0
+64070	Tan Silken Bridle and Barding	IT63	68	596	1	8918	-1	0	0	Tan Silken Bridle and Barding	tan_war_horse	0	142	0
+64071	Tan Chain Bridle and Barding	IT63	68	596	1	8919	-1	0	0	Tan Chain Bridle and Barding	tan_war_horse	0	142	4500
+64073	White Rope Bridle and Barding	IT63	68	596	1	8906	-1	0	0	White Rope Bridle and Barding	white_war_horse	0	142	0
+64074	White Leather Bridle and Barding	IT63	68	596	1	8907	-1	0	0	White Leather Bridle and Barding	white_war_horse	0	142	0
+64075	White Silken Bridle and Barding	IT63	68	596	1	8908	-1	0	0	White Silken Bridle and Barding	white_war_horse	0	142	0
+64076	White Chain Bridle and Barding	IT63	68	596	1	8909	-1	0	0	White Chain Bridle and Barding	white_war_horse	0	142	4500
+64077	White Ornate Chain Bridle and Barding	IT63	68	596	1	8910	-1	0	0	White Ornate Chain Bridle and Barding	white_war_horse	0	142	4500
+64078	Black Rope Bridle and Barding	IT63	68	596	1	8911	-1	0	0	Black Rope Bridle and Barding	black_war_horse	0	142	0
+64079	Black Leather Bridle and Barding	IT63	68	596	1	8912	-1	0	0	Black Leather Bridle and Barding	black_war_horse	0	142	0
+64080	Black Silken Bridle and Barding	IT63	68	596	1	8913	-1	0	0	Black Silken Bridle and Barding	black_war_horse	0	142	0
+64081	Black Chain Bridle and Barding	IT63	68	596	1	8914	-1	0	0	Black Chain Bridle and Barding	black_war_horse	0	142	4500
+64082	Black Ornate Chain Bridle and Barding	IT63	68	596	1	8915	-1	0	0	Black Ornate Chain Bridle and Barding	black_war_horse	0	142	4500
+64083	Brown Rope Bridle and Barding	IT63	68	596	1	8901	-1	0	0	Brown Rope Bridle and Barding	brown_war_horse	0	142	0
+64084	Brown Leather Bridle and Barding	IT63	68	596	1	8902	-1	0	0	Brown Leather Bridle and Barding	brown_war_horse	0	142	0
+64085	Brown Silken Bridle and Barding	IT63	68	596	1	8903	-1	0	0	Brown Silken Bridle and Barding	brown_war_horse	0	142	0
+64086	Brown Chain Bridle and Barding	IT63	68	596	1	8904	-1	0	0	Brown Chain Bridle and Barding	brown_war_horse	0	142	0
+64088	Ornate Barding	IT63	68	596	1	8916	-1	0	0	Ornate Barding	tan_war_horse	0	142	4500
+64187	Prismatic Selyrah Saddle	IT63	68	3932	5	32093	-1	0	0	Summons a prismatic Selyrah	prismatic_selyrah	0	142	0
+64560	Tiger Raptor Saddle	IT63	68	3932	5	12320	-1	0	0	Summons a tamed Tiger Raptor	a_tiger_raptor_mount	0	142	0
+64561	Nature-Touched Wurm Saddle	IT63	68	3932	5	12321	-1	0	0	Summons a tamed Nature-Touched Wurm	a_nature_touched_wurm_mount	0	142	0
+64702	Tumbleweed Twig	IT63	11	2035	5	12340	-1	0	0	Summons a tumbleweed to follow in your wake	a_tumbleweed_familiar	0	142	4500
+64704	Anizok's Steam Escalator	IT63	68	3840	5	12339	-1	0	0	Summon a steam powered transportation backpack	steam_escalator	0	142	0
+64711	Petamorph Wand - Gnomework	IT63	10	2286	5	12341	-1	0	0	Change your pet into the form of a Gnomework	a_gnomework_familiar	0	142	0
+64713	Steamwork Companion	IT63	11	2400	5	12342	-1	0	0	This companion helps lift you up	a_steamwork_companion	0	142	4500
+66305	Pegasus Saddle	IT63	68	5033	5	32047	-1	0	0	Summons a pegasus mount	pegasus	0	142	4500
+66307	Battle Armored Pegasus Saddle	IT63	68	5033	5	32051	-1	0	0	Summons a pegasus mount that is wearing battle armor	battle_armored_pegasus	0	142	4500
+66308	Onyx Skystrider Saddle	IT63	68	5033	5	32053	-1	0	0	Summons an onyx skystrider mount	onyx_skystrider	0	142	4500
+66309	Parade Armored Onyx Skystrider Saddle	IT63	68	5033	5	32055	-1	0	0	Summons an onyx skystrider mount wearing parade armor	parade_armored_onyx_skystrider	0	142	4500
+66311	Dreadmare Saddle	IT63	68	5033	5	32059	-1	0	0	Summons a dreadmare mount	dreadmare	0	142	4500
+66312	Blazing Skystrider Saddle	IT63	68	5033	5	32061	-1	0	0	Summons a blazing skystrider mount	blazing_skystrider	0	142	4500
+66313	Mechanical Skystrider Saddle	IT63	68	5033	5	32063	-1	0	0	Summons a clockwork skystrider mount	mechanical_skystrider	0	142	0
+66314	Celestial Skystrider Saddle	IT63	68	5033	5	32065	-1	0	0	Summons a celestial skystrider mount	celestial_skystrider	0	142	4500
+66315	Dragonscale Skystrider Saddle	IT63	68	5033	5	32067	-1	0	0	Summons a dragonscale skystrider mount	draconic_skystrider	0	142	4500
+66316	Black Wolf Saddle	IT63	68	5032	5	39848	-1	0	0	Summons a black wolf mount	a_black_wolf_mount	0	142	0
+66317	White Wolf Saddle	IT63	68	5032	5	39849	-1	0	0	Summons a white wolf mount	a_white_wolf_mount	0	142	0
+66318	Gray Wolf Saddle	IT63	68	5032	5	39850	-1	0	0	Summons a gray wolf mount	a_gray_wolf_mount	0	142	0
+66319	Empowered Dragonscale Skystrider Saddle	IT63	68	5033	5	32898	-1	0	0	Summons a dragonscale skystrider mount	draconic_skystrider	0	142	0
+66396	Worg Saddle	IT63	68	5032	5	39856	-1	0	0	Summons a worg mount	a_worg_mount	0	142	0
+66397	Regal Worg Saddle	IT63	68	5032	5	39857	-1	0	0	Summons a regal worg mount	a_regal_worg_mount	0	142	0
+66398	Battle Armor Worg Saddle	IT63	68	5032	5	39858	-1	0	0	Summons a battle armor worg mount	a_battle_armor_worg_mount	0	142	0
+66431	Petamorph Wand - Goo	IT63	11	3135	5	32786	-1	0	0	Changes your pet into a goo	a_goo_familiar	0	142	0
+66449	Petamorph Wand - Kirin	IT63	11	2433	5	12491	-1	0	0	Changes your pet into a kirin	a_kirin_familiar	0	142	0
+66562	Terribly Tired Skull	IT63	11	3184	5	32036	-1	0	0	A lethargic skull pet who will follow you around	a_terribly_tired_skull	0	142	0
+66563	Tiny Tentacle Terror	IT63	11	2851	5	32037	-1	0	0	A miniature tentacle terror who will follow you around	a_tiny_terror_tentacle	0	142	0
+66564	Petamorph Wand - Worg	IT63	11	2139	5	27995	-1	0	0	Changes your pet into a worg	a_worg_familiar	0	142	0
+66598	Petamorph Wand - Snow Spider	IT63	11	2455	5	32783	-1	0	0	Changes your pet into a snow spider	a_snow_spider_familiar	0	142	0
+66639	Friendly Guild General Supply Merchant	IT63	11	720	0	-1	-1	1	1000	For all your general supply needs	NGH_Merchant_General	0	2	750
+66640	Friendly Guild Teleportation Assistant	IT63	11	720	0	-1	-1	1	1000	Happy to operate your guild hall teleportation device	NGH_Teleport_Assistant	0	2	750
+66641	Friendly Guild Personal-Banker	IT63	11	720	0	-1	-1	1	1000	Assists with your personal banking needs	NGH_Banker_Personal	0	2	750
+66642	Friendly Guild Guild-Banker	IT63	11	720	0	-1	-1	1	1000	Assists with your guild banking needs	NGH_Banker_Guild	0	2	750
+66643	Friendly Guild Guild-Tribute Master	IT63	11	720	0	-1	-1	1	1000	Happy to help with your guild tribute needs	NGH_Tribute_Guild	0	2	750
+66644	Friendly Guild Personal-Tribute Master	IT63	11	720	0	-1	-1	1	1000	Happy to help with your personal tribute needs	NGH_Tribute_Personal	0	2	750
+66645	Guild Regeneration Pool	IT23628	11	3771	0	-1	-1	1	1000	Imparts a feeling of health to those around it	NGH_Regen_Pool_Aura	1	2	38
+66646	Guild Teleportation Device	IT63	11	3267	0	-1	-1	1	1000	Best paired with Friendly Guild Teleportation Assistant	NGH_Teleport_Device	0	2	750
+66647	Friendly Guild Parcel Delivery Liaison	IT63	11	720	0	-1	-1	0	1000	Hired to help deliver parcels	NGH_Merchant_Parcel1	0	2	750
+66648	Hyredel Swiftstride	IT63	11	720	0	-1	-1	0	1000	Happy to assist with the delivery of parcels	NGH_Merchant_Parcel2	0	6	750
+66700	Decorative Dummy: Azia	IT63	11	3252	0	-1	-1	0	100000	Won't fight back	NGH_Combat_Dummy_00	0	6	750
+66701	Decorative Dummy: Beza	IT63	11	3252	0	-1	-1	0	101000	Won't fight back	NGH_Combat_Dummy_01	0	6	750
+66702	Decorative Dummy: Caza	IT63	11	3252	0	-1	-1	0	102000	Won't fight back	NGH_Combat_Dummy_02	0	6	750
+66703	Decorative Dummy: Dena	IT63	11	3252	0	-1	-1	0	103000	Won't fight back	NGH_Combat_Dummy_03	0	6	750
+66704	Decorative Dummy: Ena	IT63	11	3252	0	-1	-1	0	104000	Won't fight back	NGH_Combat_Dummy_04	0	6	750
+66705	Decorative Dummy: Fana	IT63	11	3252	0	-1	-1	0	105000	Won't fight back	NGH_Combat_Dummy_05	0	6	750
+66706	Decorative Dummy: Geza	IT63	11	3252	0	-1	-1	0	106000	Won't fight back	NGH_Combat_Dummy_06	0	6	750
+66707	Decorative Dummy: Heda	IT63	11	3252	0	-1	-1	0	107000	Won't fight back	NGH_Combat_Dummy_07	0	6	750
+66708	Decorative Dummy: Izah	IT63	11	3252	0	-1	-1	0	108000	Won't fight back	NGH_Combat_Dummy_08	0	6	750
+66709	Decorative Dummy: Jaka	IT63	11	3252	0	-1	-1	0	109000	Won't fight back	NGH_Combat_Dummy_09	0	6	750
+66710	Decorative Dummy: Kala	IT63	11	3252	0	-1	-1	0	110000	Won't fight back	NGH_Combat_Dummy_10	0	6	750
+66711	Decorative Dummy: Lena	IT63	11	3252	0	-1	-1	0	111000	Won't fight back	NGH_Combat_Dummy_11	0	6	750
+66712	Decorative Dummy: Meda	IT63	11	3252	0	-1	-1	0	112000	Won't fight back	NGH_Combat_Dummy_12	0	6	750
+66713	Decorative Dummy: Neza	IT63	11	3252	0	-1	-1	0	113000	Won't fight back	NGH_Combat_Dummy_13	0	6	750
+66714	Decorative Dummy: Ozah	IT63	11	3252	0	-1	-1	0	114000	Won't fight back	NGH_Combat_Dummy_14	0	6	750
+66715	Decorative Dummy: Paza	IT63	11	3252	0	-1	-1	0	115000	Won't fight back	NGH_Combat_Dummy_15	0	6	750
+66716	Decorative Dummy: Qela	IT63	11	3252	0	-1	-1	0	116000	Won't fight back	NGH_Combat_Dummy_16	0	6	750
+66717	Decorative Dummy: Rena	IT63	11	3252	0	-1	-1	0	117000	Won't fight back	NGH_Combat_Dummy_17	0	6	0
+66718	Decorative Dummy: Sana	IT63	11	3252	0	-1	-1	0	118000	Won't fight back	NGH_Combat_Dummy_18	0	6	0
+66719	Decorative Dummy: Taza	IT63	11	3252	0	-1	-1	0	119000	Won't fight back	NGH_Combat_Dummy_19	0	6	0
+66783	Petamorph Wand - Domain Prowler	IT63	11	1725	5	32041	-1	0	0	Changes your pet into a domain prowler	a_domain_prowler_familiar	0	142	0
+66785	Oashim Familiar	IT63	11	3303	5	32044	-1	0	0	A loyal oashim pet who will follow you around	a_loyal_oashim_familiar	0	142	0
+66786	Goral Stalker Saddle	IT63	68	5032	5	32045	-1	0	0	Summons a Goral mount	a_goral_stalker_mount	0	142	4500
+66951	Aviak Pull Along	IT63	11	4431	5	32902	-1	0	0	Three aviaks a dragging	a_familiar_aviak_toy	0	142	0
+67089	Mirror Shard	IT63	10	1477	3	32817	-1	0	0	A shard of a broken mirror	a_familiar_shard_golem	0	142	0
+67090	Broken Antler	IT63	10	1498	3	32818	-1	0	0	A broken antler from an elk	a_familiar_elk_head	0	142	0
+67092	Old Worn Cat Collar	IT63	10	1645	3	32820	-1	0	0	A collar belonging to a black cat	a_familiar_black_cat	0	142	0
+67883	Petamorph Wand - Nightmare Skull	IT10409	11	1276	5	32876	-1	0	0	Changes your pet into a horrific skull	a_nightmare_skull_familiar	0	142	0
+67889	Balebri's Horse Saddle	IT63	68	3932	5	32880	-1	0	0	Summons Balebri's Horse	Balebri's_Horse	0	142	0
+67890	Dallyn's Horse Saddle	IT63	68	3932	5	32882	-1	0	0	Summons Dallyn's Horse	Dallyn's_Horse	0	142	4500
+67891	Meleen's Horse Saddle	IT63	68	3932	5	32884	-1	0	0	Summons Meleen's Horse	Meleen's_Horse	0	142	4500
+67892	Rhyan's Horse Saddle	IT63	68	3932	5	32886	-1	0	0	Summons Rhyan's Horse	Rhyan's_Horse	0	142	0
+67893	Tahka's Horse Saddle	IT63	68	3932	5	32888	-1	0	0	Summons Tahka's Horse	Tahka's_Horse	0	142	0
+67923	Petamorph Wand - Amethyst Crystalline Trichordont	IT11162	11	1977	5	32896	-1	0	0	Changes your pet into an amethyst crystalline trichordont	a_crystalline_familiar	0	142	0
+67929	Attendant Kandus Familiar	IT63	11	3628	5	32893	-1	0	0	Summons a personal attendant	a_familiar_attendant_Kandus	0	142	0
+67930	Attendant Jalia Familiar	IT63	11	3624	5	32894	-1	0	0	Summons a personal attendant	a_familiar_attendant_Jalia	0	142	0
+67953	Petamorph Wand - Mad Jester	IT10697	11	1414	5	33084	-1	0	0	Changes your pet into a mad jester	a_mad_jester_familiar	0	142	0
+67960	Soul Reaper Familiar	IT63	11	579	5	33088	-1	0	0	Summons a harbinger of death	a_familiar_soul_reaper	0	142	0
+70737	Refurbished Puppet	IT63	11	3515	5	37850	-1	0	0	Summons a refurbished puppet	a_halfling_puppet	0	142	0
+71023	Petamorph Wand - Polar Bear	IT71	11	975	5	33572	-1	0	0	Changes your pet into a polar bear	a_polar_bear_familiar	0	142	0
+71024	Petamorph Wand - Undead Gingerbread Man	IT11892	11	720	5	33573	-1	0	0	Changes your pet into a zombie gingerbread man	an_undead_gingerbread_familiar	0	142	0
+71033	Scribe Glyssel Familiar	IT63	11	861	5	33579	-1	0	0	Summons a hired scribe	a_familiar_scribe_Glyssel	0	142	0
+71034	Scribe Daror Familiar	IT63	11	863	5	33580	-1	0	0	Summons a hired scribe	a_familiar_scribe_Daror	0	142	0
+71965	Petamorph Wand - Blaster Steam Suit Pilot	IT11173	11	2379	5	33772	-1	0	0	Changes your pet into a blaster steam suit pilot	a_blaster_steam_suit_familiar	0	142	0
+71966	Petamorph Wand - Grandfather Clock	IT51	11	973	5	33773	-1	0	0	Changes your pet into an animated grandfather clock	a_grandfather_clock_familiar	0	142	0
+71974	Happy Noble Marionette Familiar	IT63	11	653	5	33778	-1	0	0	Summons a marionette	a_familiar_happy_noble_puppet	0	142	0
+71975	Dark Prince Marionette Familiar	IT63	11	654	5	33779	-1	0	0	Summons a marionette	a_familiar_dark_prince_puppet	0	142	0
+71976	Melancholy Jester Marionette Familiar	IT63	11	650	5	33780	-1	0	0	Summons a marionette	a_familiar_jester_puppet	0	142	0
+71977	White Queen Marionette Familiar	IT63	11	652	5	33781	-1	0	0	Summons a marionette	a_familiar_queen_puppet	0	142	0
+71978	Moody Harlequin Marionette Familiar	IT63	11	649	5	33782	-1	0	0	Summons a marionette	a_familiar_harlequin_puppet	0	142	0
+71981	Petamorph Wand - Bixie Drone	IT11795	11	3511	5	33885	-1	0	0	Changes your pet into a bixie drone	a_bixie_drone_familiar	0	142	0
+71982	Metamorph Totem: Bone Golem	IT10689	11	1406	5	33886	-1	0	0	Summons a bone golem or changes your pet into one	a_familiar_bone_golem	0	142	0
+71989	Forgotten King Hethkan Familiar	IT63	11	1445	5	33891	-1	0	0	Summons an arrogant mummy	a_familiar_king_Hethkan	0	142	0
+71992	Metamorph Totem: Vitrik	IT10697	11	1146	5	33967	-1	0	0	Changes your pet into a vitrik	a_familiar_vitrik	0	142	0
+71999	Metamorph Totem: Abyssal Girplan	IT10793	11	2181	5	37618	-1	0	0	Summons a girplan	a_familiar_abyssal_girplan	0	142	0
+72000	Metamorph Totem: Night Harvest Scarecrow	IT11071	11	1481	5	37619	-1	0	0	Summons a scarecrow	a_familiar_night_harvester	0	142	0
+72268	Metamorph Totem: Albino Rat	IT63	11	3303	5	37655	-1	0	0	Summons an albino rat or changes your pet into one	a_familiar_albino_rat	0	142	0
+72269	Metamorph Totem: Turepta	IT63	11	1224	5	37657	-1	0	0	Summons a turepta or changes your pet into one	a_familiar_turepta	0	142	0
+72273	Steed of War Saddle	IT63	68	3666	5	37660	-1	0	0	Summons a steed of war mount	Steed_of_War	0	142	0
+72274	Umbral Selyrah Saddle	IT63	68	3666	5	37662	-1	0	0	Summons am umbral selyrah mount	Umbral_Selyrah	0	142	0
+72275	Highland Cragslither Saddle	IT63	68	3666	5	37664	-1	0	0	Summons a highland cragslither mount	Highland_Cragslither	0	142	0
+72276	Ornate Flying Carpet	IT63	68	4637	5	37666	-1	0	0	Summons an ornate flying carpet mount	Ornate_Flying_Carpet	0	142	0
+72298	Metamorph Totem: Ankylosaurus	IT63	11	1712	5	39896	-1	0	0	Summons a ankylosaurus or changes your pet into one	an_ankylosaurus_familiar	0	142	0
+77402	Fear Corrupted Phase Spider Metamorph Totem	IT10815	11	1659	5	37804	-1	0	0	Summons a feared phase spider or changes your pet into one	a_familiar_fear_spider	0	142	0
+77403	Holgresh Metamorph Totem	IT11087	11	2154	5	37806	-1	0	0	Summons a holgresh or changes your pet into one	a_familiar_holgresh	0	142	0
+77408	Holgresh House Pet	IT63	11	791	0	-1	-1	0	0	A pet for your house.	a_holgresh	0	142	0
+77413	Bracelet of the Severed Hand	IT63	68	614	5	37802	-1	0	0	Summons a severed hand mount	a_reanimated_hand	0	142	0
+77414	Thulian Bracelet of the Severed Hand	IT63	68	2844	5	37803	-1	0	0	Summons a Thulian severed hand mount	a_thulian_reanimated_hand	0	142	0
+77442	Holy Steed	IT63	68	7674	5	2874	-1	0	0	Holy Steed	white_horse	0	142	0
+77443	Unholy Steed	IT63	68	7673	5	2875	-1	0	0	Unholy Steed	black_horse	0	142	0
+77444	Valiant Steed	IT63	68	7674	5	8977	-1	0	0	Valiant Steed	unicorn_steed	0	142	0
+77445	Abyssal Steed	IT63	68	7673	5	8978	-1	0	0	Abyssal Steed	nightmare_steed	0	142	0
+77446	Divine Steed	IT63	68	7674	5	23602	-1	0	0	Divine Steed	unicorn_steed	0	142	0
+77447	Steed of Souls	IT63	68	7673	5	21803	-1	0	0	Steed of Souls	nightmare_steed	0	142	0
+77448	Hallowed Steed	IT63	68	7674	5	32050	-1	0	0	Hallowed Steed	parade_armored_pegasus	0	142	0
+77449	Wicked Steed	IT63	68	7673	5	32058	-1	0	0	Wicked Steed	battle_armored_onyx_skystrider	0	142	0
+77459	Metamorph Totem: White Werewolf	IT10643	11	1355	5	37791	-1	0	0	Summons a white werewolf	a_familiar_white_werewolf	0	142	0
+77464	Metamorph Totem: Rotted Treant	IT10943	11	1801	5	37797	-1	0	0	Summons a rotted treant	a_familiar_rotted_treant	0	142	0
+77593	Holy Warhorse	IT63	68	7674	5	8975	-1	0	0	Holy Warhorse	white_war_horse	0	142	0
+77939	Collapsible Roboboar	IT63	68	1027	5	8355	-1	0	0	A Collapsible Roboboar	roboboar	0	142	4500
+79517	Lunar Fungus	IT63	11	854	5	11573	-1	0	0	Radiates lunar magic	a_familiar_lunar_sporali	0	142	4500
+79697	Familiar of the Emerald Jungle	IT63	11	1533	5	13392	-1	0	0	It hops, and flaps, croaks, and breathes fire	a_familiar_emerald_sokokar	0	142	4500
+80668	Enchanted Firethrower of Speed	IT10503	68	1281	5	3832	-1	0	0	Grants fire in exchange for ashes	red_drogmor	0	142	0
+81256	Metamorph Totem: Poisoned Rat	IT63	11	3303	5	37866	-1	0	0	Summons a poisoned rat or changes your pet into one	a_familiar_poison_rat	0	142	0
+81266	Metamorph Totem: Zombie Rabbit	IT11209	11	3665	5	38381	-1	0	0	Summons a zombie rabbit	a_familiar_zombie_rabbit	0	142	0
+81273	Metamorph Totem: Nightmare Scorpion	IT11209	11	1240	5	38387	-1	0	0	Summons a nightmare scorpoin	a_familiar_dark_scorpion	0	142	0
+81278	Metamorph Totem: Chetari Servant	IT11209	11	3303	5	38392	-1	0	0	Summons a chetari servant	a_familiar_chetari_servant	0	142	0
+81283	Metamorph Totem: Chocolate Rabbit	IT11209	11	3657	5	38397	-1	0	0	Summons a chocolate rabbit	a_familiar_chocolate_rabbit	0	142	0
+81505	Helping Hand Familiar	IT63	11	5744	5	38631	-1	0	0	Helping Hand Familiar	a_familiar_helping_hand	0	142	0
+81559	Metamorph Totem: Fearful Ant	IT63	11	5711	5	38678	-1	0	0	Summons a fearful ant or changes your pet into one	a_familiar_fearful_ant	0	142	0
+81560	Metamorph Totem: Crystal Spider	IT63	11	5751	5	38680	-1	0	0	Summons a crystal spider or changes your pet into one	a_familiar_crystal_spider	0	142	0
+81564	Frightful Wrulon Saddle	IT63	68	3666	5	38683	-1	0	0	Summons a frightful wrulon mount	Frightful_Wrulon	0	142	0
+81565	Nightmare Saddle	IT63	68	5709	5	38685	-1	0	0	Summons a nightmare mount	Nightmare	0	142	0
+85364	Metamorph Totem: Tirun	IT63	11	6724	5	39227	-1	0	0	Summons a tirun or changes your pet into one	a_tirun_familiar	0	142	0
+85370	Ethernere Wurm Saddle	IT63	68	3666	5	39229	-1	0	0	Summons an ethernere wurm mount	Ethernere_Wurm	0	142	0
+85449	Raptor Saddle	IT63	68	5032	5	39476	-1	0	0	Summons a raptor mount	a_raptor_mount	0	142	0
+85450	Reindeer Saddle	IT63	68	5032	5	39478	-1	0	0	Summons a reindeer mount	a_reindeer_mount	0	142	0
+85965	Jimothy Junior	IT63	11	6266	5	39541	-1	0	0	Jimothy Junior	a_familiar_Jimothy_jr	0	142	0
+93862	Jungle Raptor Saddle	IT63	68	3932	5	39510	-1	0	0	Summons a tamed Jungle Raptor	a_jungle_raptor_mount	0	142	0
+93996	Metamorph Totem: Speckled Hare	IT63	11	1712	5	40772	-1	0	0	Summons a speckled hare or changes your pet into one	a_speckled_hare_familiar	0	142	0
+97890	Class IV Collapsible Roboboar	IT63	68	1027	5	9184	-1	0	0	A Collapsible Roboboar	roboboar	0	142	0
+97891	Class V Collapsible Roboboar	IT63	0	1027	5	9185	-1	0	0	A Collapsible Roboboar	roboboar	0	142	4500
+101182	Noble Prowler Saddle	IT63	68	5032	5	40716	-1	0	0	Summons a prowler mount	a_noble_prowler	0	142	0
+101183	Toxic Prowler Saddle	IT63	68	5032	5	40717	-1	0	0	Summons a prowler mount	a_toxic_prowler	0	142	0
+101184	Shadow Prowler Saddle	IT63	68	5032	5	40718	-1	0	0	Summons a prowler mount	a_shadow_prowler	0	142	0
+101186	Marble Prowler Saddle	IT63	68	5032	5	40720	-1	0	0	Summons a stone prowler mount	a_marble_prowler	0	142	0
+101189	Cerulean Armor Battle Cat Saddle	IT63	68	5032	5	40723	-1	0	0	Summons a battle cat	a_cerulean_armor_battle_cat	0	142	0
+101190	Crimson Armor Battle Cat Saddle	IT63	68	5032	5	40724	-1	0	0	Summons a battle cat	a_crimson_armor_battle_cat	0	142	0
+101191	Bronze Armor Battle Cat Saddle	IT63	68	5032	5	40725	-1	0	0	Summons a battle cat	a_bronze_armor_battle_cat	0	142	0
+101685	Pridewing Lion Mount	IT63	68	5033	5	42796	-1	0	0	Summons a flying lion mount	sable_pridewing	0	142	0
+106617	Resident Zombie - Female	IT63	11	1445	0	-1	-1	1	0	Resident Zombie - Female	Zombie00	0	142	0
+106618	Resident Zombie - Male	IT63	11	1445	0	-1	-1	1	0	Resident Zombie - Male	Zombie01	0	142	0
+106619	Wandering Mummy	IT63	11	790	0	-1	-1	1	0	Wandering Mummy	Mummy00	0	142	0
+106620	Creepy Jester	IT63	11	2614	0	-1	-1	1	0	Creepy Jester	Creepy_Jester	0	142	0
+106621	Haunting Banshee	IT63	11	6724	0	-1	-1	1	0	Haunting Banshee	Banshee	0	142	0
+106622	Haunting Spectral Banshee	IT63	11	6724	0	-1	-1	1	0	Haunting Spectral Banshee	Spectral_Banshee	0	142	0
+106623	Friendly Dark Werewolf	IT63	11	800	0	-1	-1	1	0	Friendly Dark Werewolf	Dark_Werewolf	0	142	0
+106624	Friendly Frost Werewolf	IT63	11	800	0	-1	-1	1	0	Friendly Frost Werewolf	Frost_Werewolf	0	142	0
+106625	Tamed Zombie Rat	IT63	11	3303	0	-1	-1	1	0	Tamed Zombie Rat	Zombie_Rat	0	142	0
+106626	Tamed Oashim	IT63	11	3303	0	-1	-1	1	0	Tamed Oashim	Pet_Oashim	0	142	0
+106627	Lost Spectre	IT63	11	579	0	-1	-1	1	0	Lost Spectre	Spectre00	0	142	0
+106628	Bound Spectral Wolf	IT63	11	2907	0	-1	-1	1	0	Bound Spectral Wolf	Spectral_Wolf	0	142	0
+106629	Tamed Black Wolf	IT63	11	2907	0	-1	-1	1	0	Tamed Black Wolf	Black_Wolf	0	142	0
+106630	Decaying Skeleton Guardian	IT63	11	3184	0	-1	-1	1	0	Decaying Skeleton Guardian	Decaying_Skeleton	0	142	0
+106631	Blood Skeleton Guardian	IT63	11	3184	0	-1	-1	1	0	Blood Skeleton Guardian	Blood_Skeleton	0	142	0
+106632	Haunting Froglok Ghost	IT63	11	1243	0	-1	-1	1	0	Haunting Froglok Ghost	Froglok_Ghost	0	142	0
+106633	Living Nightmare Scarcrow	IT63	11	1481	0	-1	-1	1	0	Living Nightmare Scarcrow	Nightmare_Scarecrow	0	142	0
+106634	Bound Scorpion Fiend	IT63	11	1226	0	-1	-1	1	0	Bound Scorpion Fiend	Scorpion_Fiend	0	142	0
+106635	Tamed Zombie Rabbit	IT63	11	3665	0	-1	-1	1	0	Tamed Zombie Rabbit	Zombie_Rabbit	0	142	0
+106636	Haunting Skull Spirit	IT63	11	6280	0	-1	-1	1	0	Haunting Skull Spirit	Haunting_Skull	0	142	0
+106637	Vampire Guest - Female	IT63	11	658	0	-1	-1	1	0	Vampire Guest - Female	Vampire_Guest00	0	142	0
+106638	Vampire Guest - Male	IT63	11	658	0	-1	-1	1	0	Vampire Guest - Male	Vampire_Guest01	0	142	0
+106639	Gingerbread Monster	IT63	11	1090	0	-1	-1	1	0	Gingerbread Monster	Gingerbread_Monster	0	142	0
+106640	Bone Golem Guardian	IT63	11	1633	0	-1	-1	1	0	Bone Golem Guardian	Bone_Golem_Guardian	0	142	0
+106641	Crystalline Trichordont Guardian - Ruby	IT63	11	1944	0	-1	-1	1	0	Crystalline Trichordont Guardian - Ruby	Crystalline_Trichordont00	0	142	0
+106642	Crystalline Trichordont Guardian - Amethyst	IT63	11	1974	0	-1	-1	1	0	Crystalline Trichordont Guardian - Amethyst	Crystalline_Trichordont01	0	142	0
+106643	Living Bellikos Doll - Crimson	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Crimson	Living_Bellikos_Doll00	0	142	0
+106644	Living Bellikos Doll - Midnight	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Midnight	Living_Bellikos_Doll01	0	142	0
+106645	Living Bellikos Doll - Elegant	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Elegant	Living_Bellikos_Doll02	0	142	0
+106646	Living Bellikos Doll - Mystical	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Mystical	Living_Bellikos_Doll03	0	142	0
+106647	Living Bellikos Doll - Arcane	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Arcane	Living_Bellikos_Doll04	0	142	0
+106648	Living Bellikos Doll - Sorcerous	IT63	11	3257	0	-1	-1	1	0	Living Bellikos Doll - Sorcerous	Living_Bellikos_Doll05	0	142	0
+106649	Undead Gnoll Guardian	IT63	11	743	0	-1	-1	1	0	Undead Gnoll Guardian	Undead_Gnoll	0	142	0
+106650	Gray Girplan Visitor	IT63	11	5709	0	-1	-1	1	0	Gray Girplan Visitor	Girplan_Visitor00	0	142	0
+106651	Red Girplan Visitor	IT63	11	5709	0	-1	-1	1	0	Red Girplan Visitor	Girplan_Visitor01	0	142	0
+106652	Nekhon Guardian	IT63	11	2093	0	-1	-1	1	0	Nekhon Guardian	Nekhon	0	142	0
+106653	Shadow Nekhan Guardian	IT63	11	2090	0	-1	-1	1	0	Shadow Nekhan Guardian	Shadow_Nekhon	0	142	0
+106654	Undead Guard	IT63	11	5329	0	-1	-1	1	0	Undead Guard	Undead_Guard	0	142	0
+106655	Undead Knight	IT63	11	5655	0	-1	-1	1	0	Undead Knight	Undead_Knight	0	142	0
+106656	Minotaur Guardian	IT63	11	1219	0	-1	-1	1	0	Minotaur Guardian	Minotaur_Guardian	0	142	0
+106657	Living Grandfather Clock	IT63	11	2407	0	-1	-1	1	0	Living Grandfather Clock	Living_Grandfather_Clock	0	142	0
+106658	Rotted Treant Protector	IT63	11	2036	0	-1	-1	1	0	Rotted Treant Protector	Rotted_Treant	0	142	0
+106659	Verdant Treant Protector	IT63	11	2014	0	-1	-1	1	0	Verdant Treant Protector	Verdant_Treant	0	142	0
+106660	Vitrik Visitor	IT63	11	5748	0	-1	-1	1	0	Vitrik Visitor	Vitrik_Visitor	0	142	0
+106663	Flame Telmira Guardian	IT63	11	2988	0	-1	-1	1	0	Flame Telmira Guardian	Flame_Telmira	0	142	0
+106664	Flood Telmira Guardian	IT63	11	2983	0	-1	-1	1	0	Flood Telmira Guardian	Flood_Telmira	0	142	0
+106666	Moggie Kitten Familiar	IT63	11	8192	5	42805	-1	0	0	Adorable little Moggie Kitten	moggie_kitten	0	142	0
+106667	Tortoise Shell Kitten Familiar	IT63	11	8193	5	42806	-1	0	0	Adorable little Tortoise Shell Kitten	tortoise_shell_kitten	0	142	0
+106668	Sandy Calico Kitten Familiar	IT63	11	8194	5	42807	-1	0	0	Adorable little Sandy Calico Kitten	sandy_calico_kitten	0	142	0
+106669	Gray Calico Kitten Familiar	IT63	11	8195	5	42808	-1	0	0	Adorable little Gray Calico Kitten	gray_calico_kitten	0	142	0
+106670	Erudian Blue Familiar	IT63	11	8192	5	42809	-1	0	0	Adorable Erudian Blue	Erudian_blue	0	142	0
+106671	Antonican Shorthair Familiar	IT63	11	8193	5	42810	-1	0	0	Adorable Antonican Shorthair	Antonican_shorthair	0	142	0
+106672	Antonican Wirehair Familiar	IT63	11	8194	5	42811	-1	0	0	Adorable Antonican Wirehair	Antonican_wirehair	0	142	0
+106673	Halasian Highlander Familiar	IT63	11	8195	5	42812	-1	0	0	Adorable Halasian Highlander	Halasian_highlander	0	142	0
+106674	Midnight Familiar	IT63	11	8192	5	42813	-1	0	0	She's spooked, and jumping at her own shadow!	Midnight	0	142	0
+106675	Cranky Cat Familiar	IT63	11	8193	5	42814	-1	0	0	I wouldn't try to pet him, if I were you...	Cranky_Cat	0	142	0
+106695	Dark Direhound	IT63	68	2902	5	42837	-1	0	0	Summons a Dark Direhound mount	sable_direhound	0	142	0
+107105	Vampire Bat	IT63	11	791	0	-1	-1	1	0	A mostly harmless creature for your home	vampire_bat	0	142	4500
+107106	Stambles the Reincarnate	IT63	11	3659	0	-1	-1	1	0	The lost bunny brother rises!	Stambles_the_Reincarnate	0	142	4500
+107109	Polar Bear Cub	IT63	11	2909	0	-1	-1	1	0	A baby polar bear pet for your house	a_polar_bear_cub	0	142	4500
+107111	Tiny Icepup	IT63	11	2907	0	-1	-1	1	0	A baby ice wolf pet for your house	an_icewolf_pup	0	142	4500
+107135	Scrounging Rat	IT63	11	3303	0	-1	-1	1	10000	A small brown rat	scrounging_rat	0	142	4500
+107136	Dirty Rat	IT63	11	3303	0	-1	-1	1	8000	A very dirty rat, you should clean him	dirty_rat	0	142	4500
+107137	Fabled Icerat	IT63	11	3303	0	-1	-1	1	100000	A beautiful snowy white rat	icerat	0	142	4500
+107138	Herbert the Bouncing Baby Bunny	IT63	11	3659	0	-1	-1	1	275000	A quiet lightly two toned bunny	Herbert	0	142	4500
+107139	Albert the Hopping Hare	IT63	11	3657	0	-1	-1	1	275000	A hopping brown bunny	Albert	0	142	4500
+107140	David the Rambunctious Rabbit	IT63	11	3656	0	-1	-1	1	275000	A shy white bunny	David	0	142	4500
+107141	Robert the Leaping Longear	IT63	11	3658	0	-1	-1	1	275000	An energetic grey bunny	Robert	0	142	4500
+107142	Shik`Nar Spawn	IT63	11	1242	0	-1	-1	1	30000	An adorable little Shik`Nar hatchling	Shik`Nar_spawn	0	142	4500
+107143	Venomous Crawler	IT63	11	1089	0	-1	-1	1	6500	A harmless wasp-spider from The Steppes	venomous_crawler	0	142	4500
+107144	Itty Bitty Spider	IT63	11	1089	0	-1	-1	1	6500	A scary black and red spider	itty_bitty_spider	0	142	4500
+107145	Tiny Terrorantula	IT63	11	1089	0	-1	-1	1	6500	A tiny little brown spider from South Ro	tiny_Terrorantula	0	142	4500
+107146	Aviak Starling	IT63	11	2908	0	-1	-1	1	250000	A tiny red Aviak	aviak_starling	0	142	4500
+107147	Aviak Chick	IT63	11	2908	0	-1	-1	1	250000	A tiny noble Aviak	aviak_chick	0	142	4500
+107148	Aviak Egret	IT63	11	2908	0	-1	-1	1	250000	A tiny ebon Aviak	aviak_egret	0	142	4500
+107149	Aviak Quetzel	IT63	11	2908	0	-1	-1	1	285000	A beautiful red Aviak	aviak_quetzel	0	142	4500
+107150	Aviak Guardian	IT63	11	2908	0	-1	-1	1	285000	A noble Aviak guard	aviak_guardian	0	142	4500
+107151	Aviak Avocet	IT63	11	2908	0	-1	-1	1	285000	A shadowed Aviak protector	aviak_avocet	0	142	4500
+107152	Black Bear Cub	IT63	11	2909	0	-1	-1	1	260000	A wandering cub from Jaggedpine	black_bear_cub	0	142	4500
+107153	Surefall Brown Bear Cub	IT63	11	2909	0	-1	-1	1	260000	An adorable cub from Surefall Glade	brown_bear_cub	0	142	4500
+107154	Beautiful Black Bear	IT63	11	2909	0	-1	-1	1	310000	A mysterious bear from Qeynos hills	beautiful_black_bear	0	142	4500
+107155	Jaggedpine Brown Bear	IT63	11	2909	0	-1	-1	1	310000	A majestic grizzly bear	Jaggedpine_brown_bear	0	142	4500
+107156	Guardian Worg	IT63	11	1910	0	-1	-1	1	190000	An imposing grey Worg guardian	guardian_worg	0	142	4500
+107157	Guardian Worg Pup	IT63	11	1910	0	-1	-1	1	150000	A cute grey Worg pup	guardian_worg_pup	0	142	4500
+107158	Haze Panther	IT63	11	2910	0	-1	-1	1	110000	A beautiful black panther	haze_panther	0	142	4500
+107159	Haze Panther Cub	IT63	11	2910	0	-1	-1	1	0	A small panther cub	haze_panther_cub	0	142	4500
+107160	Icefall Leopard	IT63	11	2910	0	-1	-1	1	190000	An extraordinary snowy spotted leopard	Icefall_leopard	0	142	4500
+107161	Icefall Leopard Cub	IT63	11	2910	0	-1	-1	1	150000	A young spotted Icefall predator	Icefall_leopard_cub	0	142	4500
+107162	Timorous Tigeraptor	IT63	11	1473	0	-1	-1	1	400000	A domesticated Tigeraptor from Timorous Deep	Timorous_tigeraptor	0	142	4500
+107163	Dolorous Jester of Guk	IT63	11	1245	0	-1	-1	0	0	The Ghoul rarely has anything nice to say	Dolorous_Jester_of_Guk	0	6	4500
+107164	Obstructive Werewolf	IT63	11	743	0	-1	-1	0	4100000	A rude werewolf that enjoys getting in the way	Obstructive_Werewolf	0	6	4500
+107165	Friendly Canine	IT63	11	2907	0	-1	-1	1	110000	The dog's white and black coat shimmers in the light	friendly_canine	0	142	4500
+107166	Friendly Puppy	IT63	11	2907	0	-1	-1	1	0	The young pup just started getting its white and black fur	friendly_pup	0	142	4500
+107167	Desert Coyote	IT63	11	2907	0	-1	-1	1	190000	A sandy colored hound from the Desert of Ro	desert_coyote	0	142	4500
+107210	Action Goblin: Green	IT63	11	2633	0	-1	-1	1	260	The rarest and most sought after of the Action Goblins	Action_Goblin_Leader	0	6	4500
+107211	Action Goblin: Red	IT63	11	2673	0	-1	-1	1	230	The second in command of the Action Goblins	Action_Goblin_Commander	0	6	4500
+107212	Action Goblin: Blue	IT63	11	2633	0	-1	-1	1	210	The craftiest of the Action Goblins	Action_Goblin_Tactician	0	6	4500
+107213	Action Goblin: Purple	IT63	11	2633	0	-1	-1	1	250	The Action Goblins would be lost without this adept arcanist	Action_Goblin_Arcanist	0	6	4500
+107214	Action Goblin: Tan	IT63	11	2673	0	-1	-1	1	240	The weaponsmith of the Action Goblins	Action_Goblin_Weaponsmith	0	6	4500
+107215	Action Goblin: Aqua	IT63	11	2633	0	-1	-1	1	180	The most Aquatically inclined member of the Action Goblins	Action_Goblin_Diver	0	6	4500
+107216	Decorative Polar Bear	IT63	11	2909	0	-1	-1	1	575000	A magically shrunken polar bear with an illusionary trick	Decorative_Polar_Bear	0	6	4500
+107217	Decorative Black Bear	IT63	11	2909	0	-1	-1	1	575000	A magically shrunken black bear with an illusionary trick	Decorative_Black_Bear	0	6	4500
+107218	Decorative Brown Bear	IT63	11	2909	0	-1	-1	1	575000	A magically shrunken brown bear with an illusionary trick	Decorative_Brown_Bear	0	6	4500
+107219	Armored Action Centaur	IT63	11	1907	0	-1	-1	0	2500000	A rare and expensive collector's piece	Armored_Action_Centaur	0	6	4500
+107350	The Punting Gnome	IT63	11	994	0	-1	-1	0	0	How far can you punt the gnome?	The_Punting_Gnome	0	136	4500
+107386	Curious Box	IT11054	11	3651	0	-1	-1	0	0	A curious box indeed	a_frog	0	6	0
+107389	Employee: Male Barbarian Guard	IT63	17	6851	0	-1	-1	0	0	Employee: Male Barbarian Guard	Guard00	0	142	0
+107390	Employee: Female Barbarian Guard	IT63	17	6851	0	-1	-1	0	0	Employee: Female Barbarian Guard	Guard01	0	142	0
+107792	Prince Plushie	IT63	17	6680	0	-1	-1	1	0	Prince Plushie	Prince_Plushie	0	142	0
+107793	Chancellor Plushie	IT63	17	6680	0	-1	-1	1	0	Chancellor Plushie	Chancellor_Plushie	0	142	0
+107794	Jester Plushie	IT63	17	6680	0	-1	-1	1	0	Jester Plushie	Jester_Plushie	0	142	0
+107795	Harlequin Plushie	IT63	17	6680	0	-1	-1	1	0	Harlequin Plushie	Harlequin_Plushie	0	142	0
+107796	Angry Bellikos Plushie	IT63	17	6680	0	-1	-1	1	0	Angry Bellikos Plushie	Angry_Bellikos_Plushie	0	142	0
+107797	Sinister Bellikos Plushie	IT63	17	6680	0	-1	-1	1	0	Sinister Bellikos Plushie	Sinister_Bellikos_Plushie	0	142	0
+107798	Ominous Bellikos Plushie	IT63	17	6680	0	-1	-1	1	0	Ominous Bellikos Plushie	Ominous_Bellikos_Plushie	0	142	0
+107799	Malevolent Bellikos Plushie	IT63	17	6680	0	-1	-1	1	0	Malevolent Bellikos Plushie	Malevolent_Bellikos_Plushie	0	142	0
+107800	Vile Bellikos Plushie	IT63	17	6680	0	-1	-1	1	0	Vile Bellikos Plushie	Vile_Bellikos_Plushie	0	142	0
+107801	Queen Plushie	IT63	17	6680	0	-1	-1	1	0	Queen Plushie	Queen_Plushie	0	142	0
+107805	Ruffian Bonnie Familiar	IT63	11	3814	5	38816	-1	0	0	Summons a hired thug	a_familiar_ruffian_Bonnie	0	142	0
+107806	Ruffian Finnigan Familiar	IT63	11	3817	5	38817	-1	0	0	Summons a hired thug	a_familiar_ruffian_Finnigan	0	142	0
+107952	Grey Wolf Familiar	IT63	11	8363	5	46456	-1	0	0	A faithful companion	grey_wolf	0	142	0
+107953	Halasian Wolf Familiar	IT63	11	8364	5	46457	-1	0	0	A faithful companion	halasian_wolf	0	142	0
+107954	Antonican Wolf Familiar	IT63	11	8365	5	46458	-1	0	0	A faithful companion	antonican_wolf	0	142	0
+107955	Grey Frostfell Pup Familiar	IT63	11	8366	5	46459	-1	0	0	Adorable Frostfell pup	grey_frostfell_pup	0	142	0
+107956	Halasian Frostfell Pup Familiar	IT63	11	8367	5	46460	-1	0	0	Adorable Frostfell pup	halasian_frostfell_pup	0	142	0
+107957	Antonican Frostfell Pup Familiar	IT63	11	8368	5	46461	-1	0	0	Adorable Frostfell pup	antonican_frostfell_pup	0	142	0
+107958	Santug's Grey Pup Familiar	IT63	11	8369	5	46462	-1	0	0	Gifted from the saint of Frostfell himself	Santug`s_grey_pup	0	142	0
+107959	Santug's Halasian Pup Familiar	IT63	11	8370	5	46463	-1	0	0	Gifted from the saint of Frostfell himself	Santug`s_halasian_pup	0	142	0
+107960	Santug's Antonican Pup Familiar	IT63	11	8371	5	46464	-1	0	0	Gifted from the saint of Frostfell himself	Santug`s_antonican_pup	0	142	0
+107961	Shadow Familiar	IT63	11	8365	5	46465	-1	0	0	So ferocious, much bark.	Shadow	0	142	0
+111269	Queen's Prime Minion Saddle	IT63	68	2902	5	20575	-1	0	0	Reserved for the Queen's Servants	saddled_queen`s_minion	0	142	4500
+111274	Prime Cliknar Mount Saddle	IT63	68	2902	5	20580	-1	0	0	Domesticated Cliknar	saddled_black_cliknar	0	142	4500
+111278	Strong Captured Cliknar Mount Saddle	IT63	68	2902	5	20584	-1	0	0	Domesticated Cliknar	saddled_captured_cliknar	0	142	4500
+111540	Bard's Severed Hand	IT63	68	5034	5	38953	-1	0	0	Summons a severed hand mount	bard`s_hand	0	142	0
+111541	Beastlord's Severed Hand	IT63	68	5034	5	38955	-1	0	0	Summons a severed hand mount	beastlord`s_hand	0	142	0
+111542	Berserker's Severed Hand	IT63	68	5034	5	38957	-1	0	0	Summons a severed hand mount	berserker`s_hand	0	142	0
+111543	Cleric's Severed Hand	IT63	68	5034	5	38959	-1	0	0	Summons a severed hand mount	cleric`s_hand	0	142	0
+111544	Druid's Severed Hand	IT63	68	5034	5	38961	-1	0	0	Summons a severed hand mount	druid`s_hand	0	142	0
+111545	Enchanter's Severed Hand	IT63	68	5034	5	38963	-1	0	0	Summons a severed hand mount	enchanter`s_hand	0	142	0
+111546	Mage's Severed Hand	IT63	68	5034	5	38965	-1	0	0	Summons a severed hand mount	magician`s_hand	0	142	0
+111547	Monk's Severed Hand	IT63	68	5034	5	38967	-1	0	0	Summons a severed hand mount	monk`s_hand	0	142	0
+111548	Necromancer's Severed Hand	IT63	68	5034	5	38969	-1	0	0	Summons a severed hand mount	necromancer`s_hand	0	142	0
+111549	Paladin's Severed Hand	IT63	68	5034	5	38971	-1	0	0	Summons a severed hand mount	paladin`s_hand	0	142	0
+111550	Ranger's Severed Hand	IT63	68	5034	5	38973	-1	0	0	Summons a severed hand mount	ranger`s_hand	0	142	0
+111551	Rogue's Severed Hand	IT63	68	5034	5	38975	-1	0	0	Summons a severed hand mount	rogue`s_hand	0	142	0
+111552	Shadowknight's Severed Hand	IT63	68	5034	5	38977	-1	0	0	Summons a severed hand mount	shadowknight`s_hand	0	142	0
+111553	Shaman's Severed Hand	IT63	68	5034	5	38979	-1	0	0	Summons a severed hand mount	shaman`s_hand	0	142	0
+111554	Warrior's Severed Hand	IT63	68	5034	5	38981	-1	0	0	Summons a severed hand mount	warrior`s_hand	0	142	0
+111555	Wizard's Severed Hand	IT63	68	5034	5	38983	-1	0	0	Summons a severed hand mount	wizard`s_hand	0	142	0
+111556	Reaper Plushie	IT63	11	6680	0	-1	-1	1	0	Reaper Plushie	Reaper_Plushie	0	142	0
+111557	Executioner Plushie	IT63	11	6680	0	-1	-1	1	0	Executioner Plushie	Executioner_Plushie	0	142	0
+111558	Frightfinger Plushie	IT63	11	6680	0	-1	-1	1	0	Frightfinger Plushie	Frightfinger_Plushie	0	142	0
+111559	Amygdalan Plushie	IT63	11	6680	0	-1	-1	1	0	Amygdalan Plushie	Amygdalan_Plushie	0	142	0
+111560	Banshee Plushie	IT63	11	6680	0	-1	-1	1	0	Banshee Plushie	Banshee_Plushie	0	142	0
+111561	Fear Spider Plushie	IT63	11	6680	0	-1	-1	1	0	Fear Spider Plushie	Fear_Spider_Plushie	0	142	0
+111562	Phase Spider Plushie	IT63	11	6680	0	-1	-1	1	0	Phase Spider Plushie	Phase_Spider_Plushie	0	142	0
+111563	Tentacle Tormentor Plushie	IT63	11	6680	0	-1	-1	1	0	Tentacle Tormentor Plushie	Tentacle_Tormentor_Plushie	0	142	0
+111564	Tentacle Aberration Plushie	IT63	11	6680	0	-1	-1	1	0	Tentacle Aberration Plushie	Tentacle_Aberration_Plushie	0	142	0
+111565	Cazic-Thule Plushie	IT63	11	6680	0	-1	-1	1	0	Cazic-Thule Plushie	Cazic-Thule_Plushie	0	142	0
+111567	Ruishi Saddle	IT63	68	5034	5	39277	-1	0	0	Summons a Ruishi mount	a_ruishi_mount	0	142	0
+124273	Miniature Action Lashun	IT63	11	894	0	-1	-1	0	0	Cease this endless conflict!	Action_Lashun	0	6	4500
+129866	Radiant Amber Pridewing Bridle	IT63	68	1533	1	49695	-1	0	0	Legendary mount of Rodcet's defenders	amber_pridewing	0	142	0
+129867	Radiant Platinum Pridewing Bridle	IT63	68	1533	1	49696	-1	0	0	Legendary mount of Rodcet's defenders	platinum_pridewing	0	142	0
+129868	Radiant Sable Pridewing Bridle	IT63	68	1533	1	49697	-1	0	0	Legendary mount of Rodcet's defenders	sable_pridewing	0	142	0
