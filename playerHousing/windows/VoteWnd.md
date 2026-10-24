@@ -23,7 +23,7 @@
 
 ## Voting
 
-**Every click sends `0x15a8` at once** (no submit button): poll id, the clicked option key, a selected byte, and the full list of ticked keys (`../polls.md`). **Un-ticking your last checkbox is refused** (the client re-ticks it).
+**Every click sends `0x15a8` at once** (no submit button): poll id, the clicked option key, a selected byte, and the keys of the other ticked checkboxes, none for a radio or the property button (`../polls.md`). **Un-ticking your last checkbox is refused** (the client re-ticks it).
 
 ## Controls
 

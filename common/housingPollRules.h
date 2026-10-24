@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -34,11 +35,35 @@ namespace housing {
     return now < closesAt ? PollState::open : PollState::closed;
   }
 
-  // Whether a vote's ticked keys fit the poll: a known option each (any key on a property poll, checked as a plot elsewhere),
-  // no repeats, and no more than the selection type allows. An empty set withdraws the vote.
+  // The ballot a vote (0x15a8) casts. RoF2's vote window (0x794e90) sends a radio's or the property button's choice only as the
+  // clicked key, with no ticked list; a checkbox click lists the other ticked boxes and says whether the clicked one is now
+  // ticked. It never sends an empty ballot (the last checkbox re-ticks itself), so one is refused, as are an unselected radio or
+  // button and a clicked key that is also listed.
+  inline std::optional<std::vector<uint32>> ballotOf(PollSelection selection, uint32 clicked, bool selected, const std::vector<uint32> &othersTicked) {
+    if (selection != PollSelection::multiple) {
+      if (!selected || !othersTicked.empty()) {
+        return std::nullopt;
+      }
+      return std::vector<uint32>{clicked};
+    }
+    if (std::find(othersTicked.begin(), othersTicked.end(), clicked) != othersTicked.end()) {
+      return std::nullopt;
+    }
+    std::vector<uint32> ballot = othersTicked;
+    if (selected) {
+      ballot.push_back(clicked);
+    }
+    if (ballot.empty()) {
+      return std::nullopt;
+    }
+    return ballot;
+  }
+
+  // Whether a ballot fits the poll: at least one key, a known option each (any key on a property poll, checked as a plot
+  // elsewhere), no repeats, and no more than the selection type allows.
   inline bool voteKeysAllowed(PollKind kind, PollSelection selection, uint32 maxSelections, const std::set<uint32> &options, const std::vector<uint32> &keys) {
     const std::set<uint32> distinct(keys.begin(), keys.end());
-    if (distinct.size() != keys.size()) {
+    if (keys.empty() || distinct.size() != keys.size()) {
       return false;
     }
     const uint32 limit = selection == PollSelection::multiple ? maxSelections : 1;

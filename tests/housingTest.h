@@ -74,6 +74,7 @@ public:
     TEST_ADD(HousingTest::lookOutsideTheOptionsIsRefused);
     TEST_ADD(HousingTest::pollStateFollowsPublishingAndDates);
     TEST_ADD(HousingTest::voteKeysFitTheSelectionType);
+    TEST_ADD(HousingTest::ballotFollowsTheVoteWindowsClick);
     TEST_ADD(HousingTest::pollResultsRankTiesTogether);
     TEST_ADD(HousingTest::houseSwapNeedsRoomForThePlacedHousesItems);
     TEST_ADD(HousingTest::itemListPayloadIsSixteenBytesARecordAndRefusesATornOne);
@@ -765,9 +766,22 @@ private:
     TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::multiple, 2, options, {10, 11, 12}));
     TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::multiple, 3, options, {10, 10}));
     TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {13}));
-    TEST_ASSERT(housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {}));
+    TEST_ASSERT(!housing::voteKeysAllowed(PollKind::question, PollSelection::single, 3, options, {}));
     TEST_ASSERT(housing::voteKeysAllowed(PollKind::property, PollSelection::propertyButton, 1, {}, {117730767}));
     TEST_ASSERT(!housing::voteKeysAllowed(PollKind::property, PollSelection::single, 1, {}, {117730767}));
+  }
+
+  void ballotFollowsTheVoteWindowsClick() {
+    using housing::PollSelection;
+    using Ballot = std::optional<std::vector<uint32>>;
+    TEST_ASSERT(housing::ballotOf(PollSelection::single, 11, true, {}) == Ballot(std::vector<uint32>{11}));
+    TEST_ASSERT(housing::ballotOf(PollSelection::propertyButton, 117730767, true, {}) == Ballot(std::vector<uint32>{117730767}));
+    TEST_ASSERT(!housing::ballotOf(PollSelection::single, 11, false, {}));
+    TEST_ASSERT(!housing::ballotOf(PollSelection::single, 11, true, {10}));
+    TEST_ASSERT(housing::ballotOf(PollSelection::multiple, 12, true, {10}) == Ballot(std::vector<uint32>{10, 12}));
+    TEST_ASSERT(housing::ballotOf(PollSelection::multiple, 12, false, {10}) == Ballot(std::vector<uint32>{10}));
+    TEST_ASSERT(!housing::ballotOf(PollSelection::multiple, 12, false, {}));
+    TEST_ASSERT(!housing::ballotOf(PollSelection::multiple, 12, true, {12}));
   }
 
   void pollResultsRankTiesTogether() {

@@ -298,12 +298,14 @@ namespace housing {
       for (const auto &[key, position] : poll->options) {
         options.insert(key);
       }
-      if (!voteKeysAllowed(poll->kind, poll->selection, poll->maxSelections, options, keys)) {
-        LogHousing("[{}]'s vote in poll [{}] (clicked [{}], selected [{}]) ticks keys the poll does not allow", client->GetCleanName(), pollId, clicked, selected);
+      const auto ballot = ballotOf(poll->selection, clicked, selected != 0, keys);
+      if (!ballot || !voteKeysAllowed(poll->kind, poll->selection, poll->maxSelections, options, *ballot)) {
+        LogHousing("[{}]'s vote in poll [{}] (clicked [{}], selected [{}], [{}] others ticked) is no ballot the poll allows", client->GetCleanName(), pollId,
+          clicked, selected, keys.size());
         return;
       }
       if (poll->kind == PollKind::property) {
-        for (uint32 key : keys) {
+        for (uint32 key : *ballot) {
           const Property *plot = plotOf(*state, key);
           const uint32 standing = standingProperty(client, *state);
           const Property *standingPlot = standing ? ancestorOfType(state->properties.at(standing), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, state->lookup()) : nullptr;
@@ -316,14 +318,14 @@ namespace housing {
       }
       Transaction transaction(database);
       query(database, fmt::format("DELETE FROM real_estate_poll_votes WHERE poll_id = {} AND account_id = {}", pollId, client->AccountID()));
-      for (uint32 key : keys) {
+      for (uint32 key : *ballot) {
         query(database, fmt::format("INSERT INTO real_estate_poll_votes (poll_id, account_id, option_key) VALUES ({}, {}, {})", pollId, client->AccountID(), key));
       }
       transaction.commit();
       // Every zone sends its lists again: the new totals to everyone, the ballot to the account's other characters (POL-5).
       sendEvent(EventType::pollsChanged, EventTarget::allZones, 0, 0, {});
       std::vector<std::string> ticked;
-      for (uint32 key : keys) {
+      for (uint32 key : *ballot) {
         ticked.push_back(std::to_string(key));
       }
       LogHousing("[{}] voted [{}] in poll [{}]", client->GetCleanName(), Strings::Join(ticked, ","), pollId);

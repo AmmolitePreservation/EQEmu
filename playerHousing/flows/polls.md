@@ -25,7 +25,7 @@ The server runs polls: **question polls** (single or multiple choice) and **prop
 | 0 | C -> S | a bare `0x15e2` | after a UI reload |
 | 1 | S -> C | `0x6860`, `0x15e2`, `0x7497`, `0x52b5`, `0x593a` | labels, polls, eligibility, votes, availability; the client may pop the Vote window once for polls with the "prompt" flag the player hasn't voted on |
 | 2 | (client) | open the Vote window | Purchase window **Vote** (property polls, key = the plot), Polls **Open Polls** (question polls), a "pollid=" chat link, or server `0x7a4d` |
-| 3 | C -> S | **`0x15a8`** on every click | poll id, the clicked key, selected byte, all ticked keys |
+| 3 | C -> S | **`0x15a8`** on every click | poll id, the clicked key, selected byte, the other ticked checkboxes' keys (none for a radio or the property button) |
 | 4 | S -> C | `0x52b5` | the updated votes |
 | 5 | S -> C | `0x39bb` (state changes), `0x3311` (results) | |
 | 6 | C -> S | **`0x499a`** {0, poll id, result key, -1} | Teleport to Selected (property polls) after the confirmation |
