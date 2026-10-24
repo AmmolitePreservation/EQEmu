@@ -942,11 +942,13 @@ namespace housing {
     }
     ItemRequest request;
     readItemRequest(reader, request);
+    // The sender (0x5b1f90) pushes the placement object's +0x80, +0x84, +0x88, +0x7c: scale comes after the rotation here,
+    // unlike the object's own order in 0x626e and 0x1045.
     ObjectTransform transform;
-    transform.scale = reader.f32();
     transform.heading = reader.f32();
     transform.pitch = reader.f32();
     transform.roll = reader.f32();
+    transform.scale = reader.f32();
     transform.y = reader.f32();
     transform.x = reader.f32();
     transform.z = reader.f32();

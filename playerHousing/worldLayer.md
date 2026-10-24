@@ -57,7 +57,7 @@ The distinctive spawn field **`+0x1e54`** is read by: `0x504b60` (the anchor fun
 
 Runtime-only fields: **`+0x30`** spawn id (an NPC item's spawn), **`+0x34`** the light, **`+0x38`** the actor (or the NPC item's spawn actor).
 
-**Float order differs between messages:** the placement object (`0x626e`, `0x711a`, `0x1045`) is **scale, heading, pitch, roll, position**; the placed-item entry (`0x1cef`) and the layout file are **heading, pitch, roll, scale, position**.
+**Float order differs between messages:** the placement object (`0x626e`, `0x1045`) is **scale, heading, pitch, roll, position**; the placement commit (`0x711a`, pushed by `0x5b1f90`), the placed-item entry (`0x1cef`) and the layout file are **heading, pitch, roll, scale, position**.
 
 ### Building the body (`0x504b60`)
 

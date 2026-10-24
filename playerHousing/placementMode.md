@@ -78,7 +78,7 @@ Wire order (the stream cursor is the usual `{buffer, length, position}`):
 | 5 | cstring (≤15 characters), validated as the **item GUID** (16 hex characters, `0x505a50` → `0x80c920`) | `+0x10` | the commit `0x711a` sends this GUID |
 | 6 | u32 | `+0x24` | **property id** the item belongs to (sent in `0x711a`; rewritten by `0x1097` via `0x556e10`) |
 | 7 | u32 | `+0x28` | **record id** of the placed-item entry (same) |
-| 8 | u32 × 7 (floats) | `+0x7c`–`+0x94` | **transform: scale (`+0x7c`), heading (`+0x80`), pitch (`+0x84`), roll (`+0x88`), then position (`+0x8c`–`+0x94`)** (verified from the world-object body build, `worldLayer.md`). `0x711a` sends exactly these (the four as-is; the position adjusted when anchored to a spawn). End reads the position from `+0x8c`–`+0x94`. **Note the order differs from the placed-item entry and layouts (heading first).** |
+| 8 | u32 × 7 (floats) | `+0x7c`–`+0x94` | **transform: scale (`+0x7c`), heading (`+0x80`), pitch (`+0x84`), roll (`+0x88`), then position (`+0x8c`–`+0x94`)** (verified from the world-object body build, `worldLayer.md`). `0x711a` sends these in another order: heading, pitch, roll, scale, then the position (`0x5b1f90` pushes `+0x80`, `+0x84`, `+0x88`, `+0x7c`; the position adjusted when anchored to a spawn). End reads the position from `+0x8c`–`+0x94`. **Note the order differs from the placed-item entry and layouts (heading first).** |
 | 9 | u8 × 3 | `+0x98`, `+0x99`, `+0x9a` | `+0x98` NPC item (actor flags: no surface, no collision); `+0x99`/`+0x9a` sub-mode gates |
 | 10 | u32 | `+0x9c` | surface type (1 = wall) |
 | 11 | u32 × 7 | `+0xa0`–`+0xb8` | **min / max / default scale**, **heading offset**, **two wall-mount tilts**, **light type** (`worldLayer.md`, *The placement object*) |
