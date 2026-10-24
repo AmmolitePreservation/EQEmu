@@ -26,7 +26,7 @@ The stack's `code/` is a clone of AmmolitePreservation/EQEmu; it is on `claude` 
 
 ### Chunk 8 in game
 
-Stage 0 (baseline), stage 1 (the item tail: seven items, `itemTail`) and stage 2 (zone-in: the 75 plot records and regions, twelve plots stood on, `neighborhoodZoneIn`) pass with the mqperidotemu suites. Through the Guild Lobby gate the Go lands in a Sunrise Hills copy. A plot bought from its border stone (104 Market Street, 21 platinum), then a chair and a house placed from inventory once the commit read Live's field order (PLC-23). Stage 3 onward continues; what the shakeout finds goes to worklist.md.
+Stage 0 (baseline), stage 1 (the item tail: seven items, `itemTail`) and stage 2 (zone-in: the 75 plot records and regions, twelve plots stood on, `neighborhoodZoneIn`) pass with the mqperidotemu suites. Through the Guild Lobby gate the Go lands in a Sunrise Hills copy. A plot bought from its border stone (104 Market Street, 21 platinum), then a chair and a house placed from inventory once the commit read Live's field order (PLC-23). Stage 3 passes: escrow deposits and withdrawals (the coin to the cursor), daily upkeep prorated by the second and charged on schedule by world, a charge that takes what is left, the stamp on the next, 0x18 on a place request there, and a deposit clearing it. Stage 4 placed, edited, stored, picked up and placed an NPC item; stage 7 searched, used Go and sold, empty and into a crate. Menus, forges and house entry wait on an in-game cursor (PRC-11); access and transfer need a second client. What the shakeout finds goes to worklist.md.
 
 ## The client
 

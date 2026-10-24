@@ -40,6 +40,7 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 | **Walking off the plot doesn't cancel placement** | player movement never cancels it; validity follows the item, not the player | *Scenario* |
 | **Left-clicking a placed item does nothing** | a left click sends `0x218c`/`0x050c`, which Peridot only logs; a house enters only from its door or the menu's Enter; the menu comes from a right click (`0x21ec`), which the server answers with the `0x21ec` menu | `flows/editPlacedItem.md` |
 | **MacroQuest shows no item for a placed entry** | a placed entry's item has only the shared definition, which the client reads at `+0x144` (getter `0x554fb0`); MacroQuest's emu `ItemClient` reads it at `+0x148` and returns null. The probe (mqperidotemu) reads the client's offset | mqperidotemu `probeSpec.md` |
+| **Unpack does nothing and says nothing** | Unpack moves only the rows that pass the individual move rules and is silent about the rest (Live, INT-9); a house never passes the stored-item rule. Place a house straight from the crate's row instead | `windows/RealEstateItemsWnd.md` |
 | **Layouts appear for every character** | layout files (`.\userdata\RE_Layout_*.xml`) have no character in the name | *Layouts* |
 | **A loaded layout lands in the wrong place** | positions are relative to the plot definition's layout origin/heading (definition fields 15–18) | `flows/layouts.md` |
 | **Use Inventory has no effect when loading a layout** | it's silently turned off without permission 9, 6 or 4 (or GM) | *How Load plans* |
