@@ -210,14 +210,14 @@ namespace housing {
       auto money = balances(ids);
       std::map<uint32, RecordFields> fields;
       for (const auto &[id, property] : properties) {
-        const CharacterIdentity *owner = nullptr;
+        std::optional<CharacterIdentity> owner;
         if (property.owner_character_id) {
           auto found = identities.find(property.owner_character_id);
           if (found == identities.end()) {
             problems.push_back(fmt::format("property [{}] is owned by character [{}], which does not exist", id, property.owner_character_id));
             continue;
           }
-          owner = &found->second;
+          owner = found->second;
         }
         fields[id] = RecordFields{
           typeOf(property) == DefinitionType::plot && !property.owner_character_id,
@@ -552,7 +552,7 @@ namespace housing {
       }
       for (uint32 id : propertyIds) {
         if (!existing.count(id) && old->properties.count(id)) {
-          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{false, 0, nullptr, {}, {}, {}, 0}));
+          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{false, 0, std::nullopt, {}, {}, {}, 0}));
         }
       }
       sendPropertyLists(client, fresh);

@@ -6,11 +6,13 @@
 
 #include "../../common/repositories/real_estate_regions_repository.h"
 
+#include <optional>
+
 namespace housing {
   struct RecordFields {
     bool vacantPlayerPlot;
     uint32 guildId;
-    const CharacterIdentity *owner;
+    std::optional<CharacterIdentity> owner;
     std::string name;
     std::vector<uint32> childIds;
     std::vector<Balance> balances;
