@@ -40,11 +40,11 @@ lotSquares = generator.readLotSquares()
 
 neighborhoodRows = [row for row in mapRows if row[:2] == (712, 0)]
 check('door map rows: 73 lot squares, 4 guild squares, the portal, the Guild Lobby gate, 12 front doors', len(mapRows), 91)
-check('neighborhood and Guild Lobby map rows', len(neighborhoodRows) + sum(row[:2] == (344, 0) for row in mapRows), 79)
+check('neighborhood and Guild Lobby map rows', len(neighborhoodRows) + sum(row[:2] == (344, 1) for row in mapRows), 79)
 check('lot squares 1-73 map to plots 101-173', [row[3] for row in neighborhoodRows if row[2] <= 73], list(range(101, 174)))
 check('guild squares map to plots 187-190', [(row[2], row[3]) for row in neighborhoodRows if 200 <= row[2] <= 255], [(226, 187), (227, 188), (228, 189), (229, 190)])
 check('the void portal opens the neighborhood list', [row for row in neighborhoodRows if row[2] == 130], [(712, 0, 130, 1)])
-check('the Guild Lobby gate opens the neighborhood list', [row for row in mapRows if row[0] == 344], [(344, 0, 38, 1)])
+check("the Guild Lobby gate opens the neighborhood list, in the lobby's version 1", [row for row in mapRows if row[0] == 344], [(344, 1, 38, 1)])
 check('front doors map to 0', sorted(row for row in mapRows if row[3] == 0),
       [(345, 2, 3, 0), (714, 0, 1, 0), (715, 0, 1, 0), (716, 0, 1, 0), (717, 0, 1, 0), (718, 0, 1, 0), (719, 0, 1, 0), (723, 0, 1, 0),
        (737, 0, 1, 0), (738, 0, 2, 0), (751, 0, 2, 0), (766, 0, 1, 0)])
@@ -78,12 +78,15 @@ check("Live's -1 on the three-room interiors' doors is written as 0", sorted((ro
 
 sql = open(sqlPath).read()
 updates = [line.strip() for line in sql.splitlines() if line.lstrip().startswith('UPDATE')]
-check('the gate update sets its open type and RealEstateDoorID', [line for line in updates if "'guildlobby'" in line],
-      ["UPDATE doors SET opentype = 159, real_estate_door_id = 1 WHERE zone = 'guildlobby' AND version = 0 AND doorid = 38;"])
+check('the gate update sets its open type and RealEstateDoorID at version 1', [line for line in updates if "'guildlobby'" in line],
+      ["UPDATE doors SET opentype = 159, real_estate_door_id = 1 WHERE zone = 'guildlobby' AND version = 1 AND doorid = 38;"])
 check('one RealEstateDoorID update per neighborhood square and the portal, and the gate', (len([line for line in updates if "'neighborhood'" in line]), len(updates)), (78, 79))
-check('the portal and a guild square take their RealEstateDoorIDs',
-      ("UPDATE doors SET real_estate_door_id = 1 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 130;" in updates,
+check("the portal moves to Live's position and takes its RealEstateDoorID; a guild square takes its plot",
+      ("UPDATE doors SET pos_x = 1955.43, pos_y = -2900.76, pos_z = 3.24432, heading = 359.0, real_estate_door_id = 1 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 130;" in updates,
        "UPDATE doors SET real_estate_door_id = 187 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 226;" in updates), (True, True))
+check("the SQL requires the portal as a closed void portal anywhere and the gate at Live's position in version 1",
+      ("doorid = 130 AND name = 'OBJ_VOIDPORTAL'\n      AND opentype = 159 AND doorisopen = 0 AND invert_state = 0) THEN" in sql,
+       "zone = 'guildlobby' AND version = 1 AND doorid = 38 AND name = 'OBJ_IRONGATESWITCH'\n      AND doorisopen = 0 AND invert_state = 0 AND ABS(pos_x - (293.331)) <= 1.0" in sql), (True, True))
 check('the SQL refuses doors that already carry a RealEstateDoorID', "IF EXISTS (SELECT 1 FROM doors WHERE real_estate_door_id <> 0) THEN" in sql, True)
 check('every door row is inserted with RealEstateDoorID 0', sql.count("`content_flags_disabled`, 0 FROM doors WHERE id = templateId;"), 38)
 check('one insert per door row', sql.count('INSERT INTO doors '), 38)

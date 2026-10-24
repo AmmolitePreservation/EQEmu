@@ -52,9 +52,10 @@ def run(*extra, version=str(deploy.requiredCustomVersion)):
 
 manifest = open(os.path.join(here, 'makeHousingManifest.py'), encoding='utf-8').read()
 check('the required custom version is the manifest\'s highest', deploy.requiredCustomVersion, max(int(v) for v in re.findall(r"^\s+\((\d+), '", manifest, re.M)))
-check('nine content files, the catalog first, the eqstr changes last', (len(deploy.contentFiles), deploy.contentFiles[0], deploy.contentFiles[-1]),
-      (9, 'housingCatalog.sql', 'eqStrings.sql'))
-check('the housing doors load after the guild border doors', deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildBorderDoors.sql'), True)
+check('ten content files, the catalog first, the eqstr changes last', (len(deploy.contentFiles), deploy.contentFiles[0], deploy.contentFiles[-1]),
+      (10, 'housingCatalog.sql', 'eqStrings.sql'))
+check('the housing doors load after the guild border doors and the Guild Lobby', deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildBorderDoors.sql')
+      and deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildLobby.sql'), True)
 check('the guild services load after the NPC items', deploy.contentFiles.index('guildServices.sql') > deploy.contentFiles.index('npcItems.sql'), True)
 check('every content file exists in the repository', deploy.contentPaths(os.path.join(here, '..', 'sql')) != [], True)
 
@@ -78,7 +79,7 @@ with open(os.path.join(sqlFolder, 'guildBorderDoors.sql'), 'w', encoding='utf-8'
   file.write('-- guildBorderDoors.sql\nFAIL;\n')
 result, calls = run()
 check('a failing file stops the deploy there, the files before it loaded', (result.returncode, [c['stdinStart'].split('\n')[0] for c in calls[1:]], 'guildBorderDoors.sql failed' in result.stderr),
-      (1, ['-- housingCatalog.sql', '-- housingZones.sql', '-- housingZoneSettings.sql', '-- guildBorderDoors.sql'], True))
+      (1, ['-- housingCatalog.sql', '-- housingZones.sql', '-- housingZoneSettings.sql', '-- guildLobby.sql', '-- guildBorderDoors.sql'], True))
 
 os.remove(os.path.join(sqlFolder, 'npcItems.sql'))
 result, calls = run()
