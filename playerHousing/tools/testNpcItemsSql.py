@@ -64,11 +64,12 @@ print(f'tables made; {len(items)} NPC items in the items table, {sum(1 for _, na
 
 content = open(npcItemsPath, encoding='utf-8').read()
 sql(content)
-check('274 NPC types in the housing block', 'SELECT COUNT(*) FROM npc_types WHERE id BETWEEN 3000000 AND 3999999', '274')
-check('274 NPC item rows, each naming its type', 'SELECT COUNT(*) FROM real_estate_npc_items i JOIN npc_types n ON n.id = i.npc_type_id AND n.id = 3000000 + i.item_id', '274')
+check('528 NPC types in the housing block', 'SELECT COUNT(*) FROM npc_types WHERE id BETWEEN 3000000 AND 3999999', '528')
+check('528 NPC item rows, each naming its type', 'SELECT COUNT(*) FROM real_estate_npc_items i JOIN npc_types n ON n.id = i.npc_type_id AND n.id = 3000000 + i.item_id', '528')
+check('the 42 gaps have no row but keep their names', "SELECT COUNT(*) FROM items it LEFT JOIN real_estate_npc_items i ON i.item_id = it.id WHERE i.item_id IS NULL AND it.housepet_file_name <> ''", '42')
 check('49 merchant rows for the two vendors', 'SELECT merchantid, COUNT(*) FROM merchantlist GROUP BY merchantid ORDER BY merchantid', '3066639\t24\n3066640\t25')
 check('3 tint sets, each on its NPC type', 'SELECT COUNT(*) FROM npc_types_tint t JOIN npc_types n ON n.armortint_id = t.id', '3')
-check('1000 actions, all on NPC items', 'SELECT COUNT(*) FROM real_estate_npc_item_actions a JOIN real_estate_npc_items i ON i.item_id = a.item_id', '1000')
+check('2013 actions, all on NPC items', 'SELECT COUNT(*) FROM real_estate_npc_item_actions a JOIN real_estate_npc_items i ON i.item_id = a.item_id', '2013')
 check('17 training dummies', 'SELECT COUNT(*) FROM real_estate_npc_items WHERE training_dummy = 1', '17')
 check("the General Supply Merchant's row", "SELECT name, lastname, race, gender, class, level, size, merchant_id, armortint_green FROM npc_types WHERE id = 3066639",
       'General_Supply_Merchant\tGeneral Supplies\t6\t1\t41\t70\t5\t3066639\t128')
@@ -82,7 +83,7 @@ check("the Assistant's first key is Live's first", 'SELECT item FROM merchantlis
 error = sql(content, expectError=True)
 assert 'npc_types already holds NPC item types' in error, f'a second run was not refused by the guard: {error[:300]}'
 print('a second run is refused by the first guard')
-check('and changes nothing', 'SELECT COUNT(*) FROM npc_types WHERE id BETWEEN 3000000 AND 3999999', '274')
+check('and changes nothing', 'SELECT COUNT(*) FROM npc_types WHERE id BETWEEN 3000000 AND 3999999', '528')
 error = sql("INSERT INTO real_estate_npc_items (item_id, npc_type_id, race_tag) VALUES (1, 3000001, 'TOOLONG')", expectError=True)
 assert 'real_estate_npc_item_race_tag' in error or 'Data too long' in error, f'a long race tag was not refused: {error[:200]}'
 print('a long race tag is refused')

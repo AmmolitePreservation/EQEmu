@@ -1,7 +1,4 @@
 result	spell_id	type	petpower	npcID	name	race	gender	texture	helmtexture	size	bodytype
-familiar	1936	SumMageMultiElement	0	598	SumMageMultiElement	75	2	3	0	6	24
-familiar	6242	blood_skeleton	0	642	blood_skeleton	367	2	3	3	9	8
-familiar	6274	blood_skeleton2	0	643	blood_skeleton2	367	2	3	3	9	8
 familiar	11502	SporaliFamiliar	0	678	SporaliFamiliar	456	2	2	0	5	25
 familiar	11508	GoblinFamiliar	0	741	GoblinFamiliar	433	2	0	0	3	25
 familiar	11517	MeleeWolfFamiliar	0	743	MeleeWolfFamiliar	42	2	0	0	2	25
@@ -13,6 +10,7 @@ familiar	12884	FamiliarPhasedScrykin	0	707	FamiliarPhasedScrykin	495	2	1	1	2.5	2
 familiar	12885	FamiliarHoodedScrykin	0	695	FamiliarHoodedScrykin	495	2	0	0	3	25
 familiar	12886	FamiliarGorgedEye	0	693	FamiliarGorgedEye	469	2	0	0	2.5	25
 familiar	12891	FamiliarAzureDragon	0	711	FamiliarAzureDragon	530	2	3	3	0	25
+familiar	12910	FamiliarQueenHarpy	0	730	FamiliarQueenHarpy	527	2	2	2	2.5	25
 familiar	12911	FamiliarRunicGargoyle	0	729	FamiliarRunicGargoyle	464	2	3	3	2.5	25
 familiar	12912	FamiliarStoneGargoyle	0	737	FamiliarStoneGargoyle	464	2	0	0	2.5	25
 familiar	12913	FamiliarFrostDragon	0	690	FamiliarFrostDragon	530	2	0	0	0	25
@@ -32,9 +30,11 @@ familiar	13392	FamiliarEmeraldSokokar	0	724	FamiliarEmeraldSokokar	627	2	0	0	2	2
 familiar	13396	FamiliarBattleOgre	0	712	FamiliarBattleOgre	10	0	3	255	3	25
 familiar	16898	FamiliarBrewworks	0	716	FamiliarBrewworks	457	2	6	6	3	25
 familiar	20119	FamiliarKillerAttackDoll	0	717	FamiliarKillerAttackDoll	638	2	2	2	3	25
+familiar	20152	FamiliarRuneboundGoblin	0	728	FamiliarRuneboundGoblin	433	2	6	6	3	25
 familiar	20153	FamiliarEmeraldDragon	0	723	FamiliarEmeraldDragon	530	2	5	5	0	25
 familiar	20154	FamiliarCrimsonSpiroc	0	720	FamiliarCrimsonSpiroc	558	2	2	2	2.5	25
 familiar	20155	FamiliarSpikedWorg	0	736	FamiliarSpikedWorg	580	2	2	2	2	25
+familiar	20168	FamiliarLesserAir	0	700	FamiliarLesserAir	75	2	3	3	3	25
 familiar	20169	FamiliarLesserEarth	0	701	FamiliarLesserEarth	75	2	0	0	3	25
 familiar	20744	FamiliarRedBat	0	727	FamiliarRedBat	416	2	1	1	1.5	25
 familiar	21057	FamiliarOrangeScorpion	0	733	FamiliarOrangeScorpion	611	2	0	0	2.5	25

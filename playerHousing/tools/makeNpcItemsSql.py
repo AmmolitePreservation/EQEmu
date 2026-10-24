@@ -1,10 +1,13 @@
-"""Writes sql/npcItems.sql: the NPC behind every NPC item in Peridot's items table (NPC-1, NPC-2, NPC-8, NPC-9, NPC-24).
+"""Writes sql/npcItems.sql: the NPC behind every NPC item in Peridot's items table (NPC-1, NPC-2, NPC-8, NPC-9, NPC-24, NPC-37).
 
 An NPC item is a placeable item with a house-pet name that is not an interactive object (the RoF2 client's rule), as the items
-table stands after the housing migrations: an item Live lists takes Live's name (content/peridotExports, the same client records
-and items.txt the adoption migration reads); an item only Peridot has is one when its captured tail carries a respawn interval,
-and this content gives it the name of the NPC it spawns, as the owner decided. Each gets an npc_types row at 3000000 + its item
-id, its look from one source in this order:
+table stands after the housing migrations (content/peridotExports/npcLikeItems.tsv, exported from a migrated table: every
+placeable item with a house-pet name or a respawn interval): an item Live lists carries Live's name, which the adoption
+migration gave it from the same client records and items.txt; an item only Peridot has is one when its tail carries a respawn
+interval, and this content gives it the name of the NPC it spawns, as the owner decided. An NPC item no source gives a look is a
+gap (content/npcItemGaps.tsv, written here; the owner decided 2026-10-24): it gets no row, the catalog warns of it at every
+load and the item stays unplaceable until a look is found. Each other item gets an npc_types row at 3000000 + its item id, its
+look from one source in this order:
 - content/npcItemsToAuthor.md section 1 (the guild services, the Device, Hyredel Swiftstride and the training dummies): the
   owner's race, gender, class, level and size, with the rest of the look read from Live's captures of that NPC in that race and
   gender (the most common complete look across every server's halls; owners re-skin copies with the Augmentater, the mode is the
@@ -30,12 +33,16 @@ import argparse, collections, csv, glob, os, re, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
-import itemTailDecode  # noqa: E402
 import makeGuildServicesSql as guildServices  # noqa: E402
 
 exportsDirectory = os.path.join(here, '..', 'content', 'peridotExports')
 authoringPath = os.path.join(here, '..', 'content', 'npcItemsToAuthor.md')
+gapsPath = os.path.join(here, '..', 'content', 'npcItemGaps.tsv')
 sqlPath = os.path.join(here, '..', 'sql', 'npcItems.sql')
+
+
+class LookGap(ValueError):
+  """No source gives this NPC item a look it can be spawned with; the item is a gap, not a fault of the content."""
 
 npcTypeBase, npcTypeLimit = 3000000, 3999999
 petActions = (16175, 16176, 16177, 16178, 16179, 16394, 16492)
@@ -87,7 +94,7 @@ def readTsv(path, encoding='latin-1'):
 def npcName(displayedName):
   name = displayedName.strip().replace(' ', '_')
   if not name or len(name) > nameLimit or not re.fullmatch(r"[A-Za-z0-9_`#'-]+", name):
-    raise ValueError(f'{displayedName!r} does not make an NPC name of at most {nameLimit} characters')
+    raise LookGap(f'{displayedName!r} does not make an NPC name of at most {nameLimit} characters')
   return name
 
 
@@ -98,26 +105,23 @@ def npcTypeId(itemId):
 # --- Peridot's NPC items -------------------------------------------------------------------------------------------------
 
 def peridotNpcItems(live):
-  """Item id -> {name, itemName, clickEffect, housepetName, source}: Peridot's NPC items as the migrated items table holds them."""
-  items = {int(row['item_id']): row for row in readTsv(os.path.join(exportsDirectory, 'placeableItems.tsv'), 'utf-8')}
-  _, tailRows = itemTailDecode.readRows(os.path.join(exportsDirectory, 'placeableTails.tsv'))
-  tails = {row['id']: itemTailDecode.decode(row) for row in tailRows}
-  if set(tails) != set(items):
-    raise ValueError('the placeable item export and the tail export name different items')
-  captured = {int(row['itemId']): row for row in readTsv(os.path.join(live, 'master', 'fields', 'itemDefinitions.tsv')) if row['Placeable'] != '0'}
-  listed = {int(row['id']): row for row in readTsv(os.path.join(live, 'itemsTxt', 'itemsTxtExtract.tsv')) if row['placeablebitfield'] != '0'}
+  """Item id -> {itemName, clickEffect, housepetName, source}: Peridot's NPC items as the migrated items table holds them. An item
+  Live lists (its client records or items.txt) carries the name the adoption gave it; an item only Peridot has is an NPC item
+  when its tail carries a respawn interval, and takes its name from this content, whatever the export shows."""
+  captured = {int(row['itemId']) for row in readTsv(os.path.join(live, 'master', 'fields', 'itemDefinitions.tsv')) if row['Placeable'] != '0'}
+  listed = {int(row['id']) for row in readTsv(os.path.join(live, 'itemsTxt', 'itemsTxtExtract.tsv')) if row['placeablebitfield'] != '0'}
   result = {}
-  for itemId, item in sorted(items.items()):
-    tail = tails[itemId]
-    if itemId in captured:
-      housepetName, interactive, source = captured[itemId]['HousepetFileName'], captured[itemId]['bInteractiveObject'] != '0', 'live'
-    elif itemId in listed:
-      housepetName, interactive, source = listed[itemId]['placeablenpcname'], tail['interactive'] != 0, 'live'
-    else:
-      housepetName, interactive, source = '', tail['interactive'] != 0, 'peridot'
-    if interactive or not (housepetName or (source == 'peridot' and tail['respawn'] > 0)):
+  for row in readTsv(os.path.join(exportsDirectory, 'npcLikeItems.tsv'), 'utf-8'):
+    itemId = int(row['item_id'])
+    if row['interactive_object'] != '0':
       continue
-    result[itemId] = {'itemName': item['Name'], 'clickEffect': int(item['clickeffect']), 'housepetName': housepetName, 'source': source}
+    source = 'live' if itemId in captured or itemId in listed else 'peridot'
+    housepetName = row['housepet_file_name'] if source == 'live' else ''
+    if not (housepetName or (source == 'peridot' and int(row['npc_respawn_interval']) > 0)):
+      continue
+    result[itemId] = {'itemName': row['Name'], 'clickEffect': int(row['clickeffect']), 'housepetName': housepetName, 'source': source}
+  if not result:
+    raise ValueError('content/peridotExports/npcLikeItems.tsv names no NPC item')
   return result
 
 
@@ -150,11 +154,11 @@ def lookTuple(row, playable):
 def mode(counter, what, lowestOnTie=False):
   ranked = counter.most_common()
   if not ranked:
-    raise ValueError(f'{what}: no capture shows it whole')
+    raise LookGap(f'{what}: no capture shows it whole')
   tied = [value for value, count in ranked if count == ranked[0][1]]
   if len(tied) > 1:
     if not lowestOnTie:
-      raise ValueError(f'{what}: {len(tied)} looks tie at {ranked[0][1]} captures each')
+      raise LookGap(f'{what}: {len(tied)} looks tie at {ranked[0][1]} captures each')
     return min(tied, key=lambda value: [int(part) if part.lstrip('-').isdigit() else part for part in value])
   return ranked[0][0]
 
@@ -179,9 +183,9 @@ def standardLook(rows, what, race=None, gender=None, withLevel=True, lastname=No
   look['equipment'] = [int(value) for value in held] if playable else [0] * heldSlots[0] + [int(value) for value in held]
   look['armorColors'] = [int(value) for value in look['ArmorColor'].split(',')] if playable else [0] * equipmentSlots
   if len(look['armorColors']) != equipmentSlots:
-    raise ValueError(f'{what}: ArmorColor holds {len(look["armorColors"])} colors')
+    raise LookGap(f'{what}: ArmorColor holds {len(look["armorColors"])} colors')
   if not look['ActorDef'].endswith('_ACTORDEF') or len(look['ActorDef']) < 12:
-    raise ValueError(f'{what}: actor definition {look["ActorDef"]!r} gives no race tag')
+    raise LookGap(f'{what}: actor definition {look["ActorDef"]!r} gives no race tag')
   look['raceTag'] = look['ActorDef'][:3]
   for column in (('Level',) if withLevel else ()) + ('Height', 'Lastname'):
     look[column] = mode(collections.Counter(single(row, column) for row in rows if single(row, column) is not None), f'{what}: {column}')
@@ -362,12 +366,13 @@ def baseNpc(itemId, name, level, race, gender, kind, size):
 def size(text, what):
   value = round(float(text), 2)
   if not 0.1 <= value <= 50:
-    raise ValueError(f'{what}: size {value} is not a size')
+    raise LookGap(f'{what}: size {value} is not a size')
   return value
 
 
 def compose(live):
-  """Every NPC item's rows: npc_types, tints, merchant lists, real_estate_npc_items, actions and house-pet names, plus the report."""
+  """Every NPC item's rows: npc_types, tints, merchant lists, real_estate_npc_items, actions and house-pet names, the report, and
+  the gaps: the NPC items no source gives a look (item id, name, house-pet name, why), which get no rows. Any other fault raises."""
   npcItems = peridotNpcItems(live)
   captures = spawnCaptures(live)
   sources = {'tags': raceTags(captures), 'analogues': creatureAnalogues(captures), 'liveItems': liveNpcItems(live), 'creatures': clickCreatures(),
@@ -375,17 +380,29 @@ def compose(live):
              'peridotIds': peridotItemIds(), 'moduleKeys': {key['itemId'] for key in guildServices.keys(guildServices.readDestinations())},
              'captures': captures}
   report = collections.Counter()
-  notes, problems = [], []
+  notes, gaps = [], []
   rows = {'npcTypes': [], 'tints': [], 'merchants': [], 'npcItems': [], 'actions': [], 'housepetNames': []}
   for itemId, item in npcItems.items():
     try:
       composeItem(itemId, item, sources, rows, report, notes)
-    except ValueError as error:
-      problems.append(str(error))
-  if problems:
-    raise ValueError(f'{len(problems)} NPC items cannot be composed:\n  ' + '\n  '.join(problems))
+    except LookGap as error:
+      reason = str(error)
+      prefix = f'item {itemId} ({item["itemName"]}): '
+      gaps.append({'itemId': itemId, 'itemName': item['itemName'], 'housepetName': item['housepetName'],
+                   'reason': reason[len(prefix):] if reason.startswith(prefix) else reason})
   report['NPC items'] = len(npcItems)
-  return rows, report, notes
+  report['gaps, no look (content/npcItemGaps.tsv)'] = len(gaps)
+  return rows, report, notes, gaps
+
+
+def renderGaps(gaps):
+  lines = ['item_id\tname\thousepet_file_name\twhy']
+  for gap in gaps:
+    for key in ('itemName', 'housepetName', 'reason'):
+      if '\t' in gap[key] or '\n' in gap[key]:
+        raise ValueError(f'gap {gap["itemId"]}: {key} holds a tab or a line break')
+    lines.append(f'{gap["itemId"]}\t{gap["itemName"]}\t{gap["housepetName"]}\t{gap["reason"]}')
+  return '\n'.join(lines) + '\n'
 
 
 def summonedPet(itemId, item, what, sources, notes):
@@ -400,7 +417,7 @@ def summonedPet(itemId, item, what, sources, notes):
     level = int(look['Level']) if look else int(single(liveItem, 'level') or 0)
     height = look['Height'] if look else single(liveItem, 'height')
     if not level or not height:
-      raise ValueError(f'{what}: Live gives no single level or height for it')
+      raise LookGap(f'{what}: Live gives no single level or height for it')
     if look and (int(look['Race']), int(look['Gender'])) != (race, gender):
       notes.append(f'{what}: Live shows race {look["Race"]} gender {look["Gender"]}, Peridot\'s {creatureKind} row race {race} gender {gender}')
     source = 'Live'
@@ -411,10 +428,10 @@ def summonedPet(itemId, item, what, sources, notes):
     authored = sources['mounts'][itemId]
     displayedName, level, height, source = authored['displayedName'], authored['level'], authored['size'], 'section 4'
   else:
-    raise ValueError(f'{what}: Live never named it or its creature (race {race} gender {gender} texture {texture}); author it in section 4')
+    raise LookGap(f'{what}: Live never named it or its creature (race {race} gender {gender} texture {texture}); author it in section 4')
   tag = raceTag(sources['tags'], race, gender, look)
   if not tag:
-    raise ValueError(f'{what}: no capture gives race {race} an actor tag')
+    raise LookGap(f'{what}: no capture gives race {race} an actor tag')
   npc = baseNpc(itemId, npcName(' '.join(displayedName.split())), level, race, gender, 'pet', size(height, what))
   npc.update(texture=max(texture, 0), helmtexture=max(int(creature['helmtexture']), 0))
   npc['bodytype'] = int(creature['bodytype']) if creatureKind == 'familiar' else animalBodyType
@@ -468,7 +485,7 @@ def composeItem(itemId, item, sources, rows, report, notes):
       raceTag = look['raceTag']
       report['pet from Live'] += 1
     else:
-      raise ValueError(f'{what}: no section 1 entry, no summoning spell Peridot has and no Live capture to take a look from')
+      raise LookGap(f'{what}: no section 1 entry, no summoning spell Peridot has and no Live capture to take a look from')
     if itemId == generalSupplyMerchant:
       npc['merchant_id'] = npc['id']
       missing = [sold for sold in vendors[generalSupplyVendor] if sold not in peridotIds]
@@ -547,11 +564,13 @@ def main():
   live = parser.parse_args().live
   if not os.path.isdir(os.path.join(live, 'master', 'fields', 'spawns')):
     raise SystemExit(f'{live} is not a livedumps clone with master tables')
-  rows, report, notes = compose(live)
+  rows, report, notes, gaps = compose(live)
   with open(sqlPath, 'w', newline='\n', encoding='utf-8') as file:
     file.write(renderSql(rows))
+  with open(gapsPath, 'w', newline='\n', encoding='utf-8') as file:
+    file.write(renderGaps(gaps))
   print(f'wrote {sqlPath}: {len(rows["npcTypes"])} NPC types, {len(rows["tints"])} tint sets, {len(rows["merchants"])} merchant rows, '
-        f'{len(rows["actions"])} actions, {len(rows["housepetNames"])} house-pet names')
+        f'{len(rows["actions"])} actions, {len(rows["housepetNames"])} house-pet names; {gapsPath}: {len(gaps)} gaps')
   for key, count in sorted(report.items()):
     print(f'  {key}: {count}')
   for note in notes:

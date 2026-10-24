@@ -254,6 +254,8 @@ namespace housing {
         npcItemsWithoutRows.insert(itemId);
       }
     }
+    // The known gaps (content/npcItemGaps.tsv): a warning, not an error, at every load, so a reload (#realestate reload) shows what is still open.
+    std::string gaps;
     if (!npcItemsWithoutRows.empty()) {
       constexpr size_t listed = 24;
       std::vector<std::string> ids;
@@ -264,8 +266,8 @@ namespace housing {
         }
         ids.push_back(std::to_string(itemId));
       }
-      itemProblems.push_back(fmt::format("[{}] NPC items have no usable real_estate_npc_items row naming the NPC they spawn and cannot be placed: {}",
-        npcItemsWithoutRows.size(), Strings::Join(ids, ", ")));
+      gaps = fmt::format("[{}] NPC items have no real_estate_npc_items row naming the NPC they spawn and cannot be placed: {}",
+        npcItemsWithoutRows.size(), Strings::Join(ids, ", "));
     }
 
     auraItems.clear();
@@ -330,8 +332,14 @@ namespace housing {
     for (const auto &problem : itemProblems) {
       LogError("Housing catalog: {}", problem);
     }
+    if (!gaps.empty()) {
+      LogWarning("Housing catalog: {}", gaps);
+    }
     lastProblems = problems;
     lastProblems.insert(lastProblems.end(), itemProblems.begin(), itemProblems.end());
+    if (!gaps.empty()) {
+      lastProblems.push_back(gaps);
+    }
     loaded = problems.empty();
     LogHousing("Catalog [{}]: [{}] definitions, [{}] costs with [{}] of [{}] options enabled, [{}] regions, [{}] zone templates, [{}] NPC items placeable and [{}] without a row",
       loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), optionCount, storedOptions.size(), regions.size(), templates.size(),

@@ -31,7 +31,7 @@ def expectRaises(label, action, fragment):
   raise AssertionError(f'{label}: did not raise')
 
 
-rows, report, notes = generator.compose(live)
+rows, report, notes, gaps = generator.compose(live)
 npcs = {npc['id'] - generator.npcTypeBase: npc for npc in rows['npcTypes']}
 tags = {itemId: (tag, dummy) for itemId, _, tag, dummy in rows['npcItems']}
 actions = collections.defaultdict(list)
@@ -44,9 +44,17 @@ for merchant, slot, sold in rows['merchants']:
 with open(generator.sqlPath, encoding='utf-8') as file:
   sql = file.read()
 check("sql/npcItems.sql is the generator's output", sql == generator.renderSql(rows), True)
-check('274 NPC items: 9 services, 17 dummies, 248 pets and mounts', (report['NPC items'], report['service'], report['dummy'], len(npcs)), (274, 9, 17, 274))
+check('570 NPC items in the migrated table: 9 services, 17 dummies, 502 pets and mounts with a look, 42 gaps', (report['NPC items'], report['service'], report['dummy'], len(npcs), len(gaps)),
+      (570, 9, 17, 528, 42))
 check('the pets by look source', (report['pet from Live'], report['pet from familiar, named by Live'], report['pet from horse, named by Live'],
-                                  report['pet from horse, named by a Live analogue'], report['pet from horse, named by section 4']), (86, 55, 101, 4, 2))
+                                  report['pet from horse, named by a Live analogue'], report['pet from horse, named by section 4']), (268, 58, 168, 6, 2))
+gapIds = [gap['itemId'] for gap in gaps]
+check('no gap item gets a row, and the gaps are the items without a look', (any(itemId in npcs for itemId in gapIds), gapIds[:3], gapIds[-1]), (False, [39657, 61009, 64711], 111552))
+check('a gap says why: a familiar with no spell and no capture, and the three decorative dummies whose captures tie', (gaps[0]['reason'], gaps[6]['itemName'], gaps[6]['reason']),
+      ('no section 1 entry, no summoning spell Peridot has and no Live capture to take a look from', 'Decorative Dummy: Rena', 'Level: 2 looks tie at 2 captures each'))
+check("content/npcItemGaps.tsv is the generator's output", open(generator.gapsPath, encoding='utf-8').read() == generator.renderGaps(gaps), True)
+check('the gaps file names every gap once with its house-pet name', [line.split('\t')[:3] for line in open(generator.gapsPath, encoding='utf-8').read().split('\n')[1:3]],
+      [['39657', 'Automated Clockwork Bag Compressor', 'a_familiar_compressor'], ['61009', 'Dragonscale Skystrider Scales', 'a_familiar_scaly_skystrider']])
 check('every NPC type id is 3000000 + its item id', all(npc['id'] == generator.npcTypeId(itemId) for itemId, npc in npcs.items()), True)
 check('every name fits the client', all(1 <= len(npc['name']) <= generator.nameLimit and ' ' not in npc['name'] for npc in npcs.values()), True)
 check('every race tag is three upper-case characters', all(len(tag) == 3 and tag == tag.upper() for tag, _ in tags.values()), True)
@@ -92,7 +100,7 @@ check("a bridle spawns Peridot's horse row with Live's name, level and size", (h
 check('a pet with no captured menu gets the four movement actions', actions[7867], list(generator.movementActions))
 check("the Skeleton Pet's captured actions add Play Dead", actions[55445], [16175, 16176, 16177, 16178, 16179])
 check('the Punting Gnome only gets kicked', actions[107350], [16394])
-check('227 pets took the default, 21 their captured menu', (report['pets given the movement actions (no captured menu)'], len(rows['actions'])), (227, 227 * 4 + 92))
+check('477 pets took the default, 25 their captured menu', (report['pets given the movement actions (no captured menu)'], len(rows['actions'])), (477, 477 * 4 + 105))
 check('Walking Death spawns as the Banshee', (npcs[52198]['name'], npcs[52198]['race'], npcs[52198]['gender'], npcs[52198]['texture'], npcs[52198]['size'], tags[52198]),
       ('a_familiar_visage_of_death', 487, 1, 0, 3.0, ('BSE', 0)))
 check("a mount Live never named takes its creature's Live name", (npcs[43541]['name'], npcs[61948]['name'], npcs[67890]['name']), ('shiny_roboboar', 'a_shadow_wurm_mount', 'Dallyns_Horse'))
