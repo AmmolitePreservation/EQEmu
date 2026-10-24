@@ -627,7 +627,7 @@ The code itself is verified by reading it against Peridot's source and the resea
 1. **Back up the database** (`mysqldump` of `peq`) before the new build first starts: the `items` migration renames 18 columns (its own `items_housing_capture` keeps the raw capture, but a full backup covers everything).
 2. Pull, build and restart (the Peridot build loop).
 3. **World runs the custom migrations at boot** (1: the item tail; 2 and 3: the housing schema; 4: Live's item values). Check: `world:version` reports custom database version 4; `SHOW COLUMNS FROM items LIKE 'real_estate_upkeep_id'` finds it; `items_housing_capture` holds every item; the 23 tables exist; **`rule_values` has the `Housing:` rules** (injected at boot).
-4. Load the content: `sql/housingCatalog.sql` (the catalog: definitions, costs, regions, neighborhood words), the interior and guild hall zone rows, the NPC item types, the trophy benefits. World then creates the random neighborhoods itself at its next boot (D11).
+4. Load the content: `sql/housingCatalog.sql` (the catalog: definitions, costs, regions, neighborhood words), the interior and guild hall zone rows, the NPC item types, the trophy benefits. World then creates the random neighborhoods itself at its next boot (D11). Then `export_client_files` writes `dbstr_us.txt` and `eqstr_us.txt` from `db_str` and `eq_str` for players to download (PAT-1, PAT-8).
 
 ### Validating in game, in dependency order
 

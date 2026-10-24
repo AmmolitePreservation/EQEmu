@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 140, liveCheck 27, clientAnalysis 27, peridotTest 52, question 28, done 120; 394 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
+**Counts.** fix 141, liveCheck 27, clientAnalysis 27, peridotTest 52, question 28, done 120; 395 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -42,6 +42,7 @@
 - **Poll rules (2026-10-23, POL-4):** one vote per account on every poll, cast or changed from any of its characters, with no plot-ownership requirement; results show as running totals while a poll is open, unless the poll keeps them unpublished. The other first-pass rules stand: a property vote names the occupied plot the voter stands on and skips an opted-out one, ties share a rank, a prompting question poll opens the vote window, and the unknown fields go out as 0 (POL-5). Polls stay in the first build and are tested there; Peridot creates and runs them in game with `#realestate poll`.
 - **Trophy tribute data (2026-10-23, REU-8):** EQEmu's tribute tables, extended with care, not housing's four trophy tables: trophy tribute is Live's second tribute set on the same definitions and currency. EQEmu's own saves rewrite whole rows, so each one that would drop or zero the trophy data is fixed with the columns; the guild edit lock is world's, not the database's (TRO-8). Decided ahead of build step 8 because it shapes the one migration.
 - **Neighborhood window filters (2026-10-23, PAT-2):** no UI patch. RoF2's Neighborhood window keeps its stock start, the six Show filters unticked until the player ticks them; the patcher ships no UI file.
+- **Client text files (2026-10-23):** eqstr_us.txt is driven like dbstr_us.txt, through EQEmu's own client-file tooling (Spire is not in scope): an eq_str table that import_client_files fills from RoF2's file, content SQL alters (13333/13334) and export_client_files writes whole (PAT-8). PAT-1's dummy labels are db_str rows exported the same way. The patcher ships only files no table drives: the two Resources lists and Live's guildlobby.eqg/.zon.
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
 
 ## Questions to work through
@@ -302,7 +303,7 @@ In order: process and foundational first, then the extras (structure before cont
 
 ### Q24. Reclaim warning text, eqstr 13333/13334 (RCL-1) (decided)
 
-- **Decided:** (a), Live's text. The guild-membership clause in 13333 waits for Q15 (polish).
+- **Decided:** (a), Live's text, delivered from the eq_str table through export_client_files (PAT-8; the owner, 2026-10-23), not a patched file. The guild-membership clause in 13333 waits for Q15 (polish).
 
 - **Question:** RoF2's eqstr 13333/13334 (the Purchase and Manage windows' eviction labels) describe a login-based rule (90 days without the owner's login, 30 without any member's). Live's text and Peridot's rule are escrow-based (90 days after escrow expires; a guild plot below 10 members). Patch the two strings to Live's text?
 - **Options:** (a) ship Live's text through the patcher; (b) stock RoF2: the windows describe a rule the server doesn't run.
@@ -312,7 +313,7 @@ In order: process and foundational first, then the extras (structure before cont
 
 ### Q25. Training dummy labels, dbstr category 28 (PAT-1) (decided)
 
-- **Decided:** (a). Ship Live's rows when Peridot's item table has the dummies, or when the dummies were released by the Rain of Fear era (RoF2's own content); otherwise they wait for the final polish item with the Live models. Peridot holds 66700-66716, so the rows ship (PRC-7).
+- **Decided:** (a). Ship Live's rows when Peridot's item table has the dummies, or when the dummies were released by the Rain of Fear era (RoF2's own content); otherwise they wait for the final polish item with the Live models. Peridot holds 66700-66716, so the rows ship (PRC-7), as db_str rows that export_client_files writes (the owner, 2026-10-23), not a patched file.
 
 - **Question:** The training dummy's menus use dbstr category-28 rows 100-106, 200-205, 300, 400-407 and 500-504, which RoF2's dbstr_us.txt lacks entirely (45 Live dummy menus use them). Ship Live's rows?
 - **Options:** (a) ship the rows through the patcher; (b) relabel the actions with strings RoF2 has; (c) leave the dummy's actions out.
@@ -838,7 +839,7 @@ Questions: Q18.
 
 Questions: Q15.
 
-- **RCL-1** `fix` **Reclaim rules: Live's.** Player plot reclaimed (items packed, plot released) 90 days after escrow expired (UnpaidUpkeepEvictionDays 90, from upkeep_expired_time); guild plot when its guild has under GuildPlotMinimumMembers (10) or 90 days after expiry; an expired house on a paid plot never (it stays locked). Drop InactivityDays/GuildInactivityDays and :449's last_login; patch eqstr 13333/13334 to Live's text (13333's village clause per Q15). Fix D7 (:155, :468), :153-155, ruletypes.h:1186-1188, :513. *After:* RCL-2, Q15.
+- **RCL-1** `fix` **Reclaim rules: Live's.** Player plot reclaimed (items packed, plot released) 90 days after escrow expired (UnpaidUpkeepEvictionDays 90, from upkeep_expired_time); guild plot when its guild has under GuildPlotMinimumMembers (10) or 90 days after expiry; an expired house on a paid plot never (it stays locked). Drop InactivityDays/GuildInactivityDays and :449's last_login; set eqstr 13333/13334 to Live's text in eq_str (PAT-8; 13333's village clause per Q15). Fix D7 (:155, :468), :153-155, ruletypes.h:1186-1188, :513. *After:* RCL-2, Q15.
   <sub>Sources: G1-03 · C1-46 · C1-47 · C1-48 · G1-06 · chunk1-missed-8 · report:contradiction-7 · report:question-2 · report:planfix-reclaimRules · report:settled-expiredHouseOnPaidPlot</sub>
 - **RCL-2** `liveCheck` **Observe the 90-day reclaim.** Bristlebane after 2026-11-11 19:00 UTC: Neighborhood window, 'Fu World Order Village III', Go, /peridotlive dump; realEstateId 29661343 absent = reclaimed (if present, right-click his Monel domicile). Quizp's 133141067 after 2026-12-10 20:00 UTC. Optionally 44730591 after 2026-12-28 07:30 UTC. **Time-bound:** after 2026-11-11 19:00 UTC; 2026-12-10 20:00 UTC; optionally 2026-12-28 07:30 UTC. **Live's own text (2026-10-14):** the Manage and Purchase windows say plots are packed, their items sent to the owner and the plot freed when escrow has been expired for 90 days, or 30 days after the owner's guild membership changed in a guild neighborhood with at least 10 guild members; the RoF2 window text ('if the owner of the plot has not logged in within 90 days') is the 2013 rule. The dates below test the 90 days.
   <sub>Sources: G1-04 · report:liveresearch-3</sub>
@@ -1088,7 +1089,7 @@ Questions: Q16.
 
 Questions: Q13.
 
-- **PAT-1** `fix` **Training dummy labels: ship Live's dbstr rows.** Ship dbstr_us.txt category-28 rows 100-106, 200-205, 300, 400-407, 500-504 with Live's text in a patched RoF2 dbstr_us.txt (RoF2 has none of 100-504; 45 Live dummy menus use them).
+- **PAT-1** `fix` **Training dummy labels: ship Live's dbstr rows.** Ship dbstr_us.txt category-28 rows 100-106, 200-205, 300, 400-407, 500-504 with Live's text (RoF2 has none of 100-504; 45 Live dummy menus use them) as db_str type-28 rows in the content SQL; export_client_files writes them into dbstr_us.txt (the owner, 2026-10-23: no patched file).
   <sub>Sources: G5-05 · C5-36 · C5-37 · report:question-15</sub>
 - **PAT-2** `done` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked. **Result (2026-10-14):** on Live the six RENW_Show*_Btn are checked when the window first opens after login (${Window[RealEstateNeighborhoodWnd].Child[...].Checked} TRUE for all six, none touched), and the character's UI ini stores no filter state, so it is the client's default. **Owner (2026-10-23):** ditched; the patcher ships no UI file, and RoF2's window starts with the six filters unticked, as stock.
   <sub>Sources: README:48</sub>
@@ -1101,6 +1102,7 @@ Questions: Q13.
 - **PAT-6** `fix` **The 55 S3D housepet races, global as on Live.** Live loads them globally (GlobalLoad.txt phase 4 and GlobalLoad_chr.txt); RoF2 has them only in zone archives (content/zoneOnlyPetModels.tsv). Add 'tag,archive' lines to RoF2's GlobalLoad_chr.txt (mismatched prefix -> loader 0x4899c0 at 0x493658, as poknowledge_chr.txt's 'frt,innothule_chr') and raise line 1's count (parser 0x48cb80 drops lines past it). *After:* PAT-7.
   <sub>Sources: XA:A11 · XA:Av4 · XA:Av5 · XA:Av6</sub>
 - **PAT-7** `peridotTest` **Load cost of the client file additions.** With PAT-4 to PAT-6 applied: client start time and memory, and the DLL's on-demand pool counters (format at 0x10138dd8, used at 0x1005ab89) in a busy zone.
+- **PAT-8** `fix` **eqstr_us.txt from a table through EQEmu's client-file tooling (build step 7).** An eq_str table (id, value; its repository; an EQEmu-wide migration outside the housing schema, as db_str is) that import_client_files fills from import/eqstr_us.txt (RoF2's: the EQST0002 header, the count line, then id and text), that content SQL alters (13333/13334 to Live's text, RCL-1), and that export_client_files writes whole to export/eqstr_us.txt with the header and count. The server never reads the text (it sends ids). Live's file is EQST0004; the table holds RoF2's set. Deploy (PRC-4): import once, load the content, export. The owner's decision (2026-10-23).
   <sub>Sources: XA:A11</sub>
 
 ### docs (DOC)
