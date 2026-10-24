@@ -76,6 +76,8 @@ namespace housing {
     const ZoneTemplate *zoneTemplate(uint32 dzId) const;
     bool isZoneTemplate(uint32 zoneId, uint16 zoneVersion) const;
     const NpcItem *npcItem(uint32 itemId) const;
+    // The NPC items of the items table that no usable real_estate_npc_items row names; they cannot be placed.
+    const std::set<uint32> &npcItemsWithoutRow() const { return npcItemsWithoutRows; }
     const AuraItem *auraItem(uint32 itemId) const;
     std::set<uint32> auraSpellIds() const;
     std::set<uint32> auraItemIds() const;
@@ -90,6 +92,7 @@ namespace housing {
     std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> regions;
     std::map<uint32, ZoneTemplate> templates;
     std::map<uint32, NpcItem> npcItems;
+    std::set<uint32> npcItemsWithoutRows;
     std::map<uint32, AuraItem> auraItems;
     std::vector<std::string> lastProblems;
     bool loaded = false;

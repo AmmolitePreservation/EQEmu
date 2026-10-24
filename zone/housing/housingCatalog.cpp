@@ -44,7 +44,11 @@ namespace housing {
     regions.clear();
     templates.clear();
     loaded = false;
+    // problems are faults of the catalog's core (definitions, costs, regions, templates, unreadable tables): the catalog stays
+    // invalid and housing off in this zone. itemProblems are faults of single items (an NPC item without its row, a bad row, an
+    // aura item): logged, the item left out and unplaceable, housing on.
     std::vector<std::string> problems;
+    std::vector<std::string> itemProblems;
 
     for (const auto &row : RealEstateDefinitionsRepository::All(content_db)) {
       definitions[row.id].row = row;
@@ -206,20 +210,24 @@ namespace housing {
     }
 
     npcItems.clear();
+    npcItemsWithoutRows.clear();
     const std::set<uint32> npcItemIdSet = npcItemIds();
     for (const auto &row : RealEstateNpcItemsRepository::All(content_db)) {
       if (!npcItemIdSet.count(row.item_id)) {
-        problems.push_back(fmt::format("real_estate_npc_items names item [{}], which is not an NPC item (a house-pet name and not interactive)", row.item_id));
+        itemProblems.push_back(fmt::format("real_estate_npc_items names item [{}], which is not an NPC item (a house-pet name and not interactive)", row.item_id));
         continue;
       }
       if (!content_db.LoadNPCTypesData(row.npc_type_id)) {
-        problems.push_back(fmt::format("NPC item [{}] spawns NPC type [{}], which does not exist", row.item_id, row.npc_type_id));
+        itemProblems.push_back(fmt::format("NPC item [{}] spawns NPC type [{}], which does not exist; it cannot be placed", row.item_id, row.npc_type_id));
+        continue;
       }
       if (row.mount_npc_type_id && !content_db.LoadNPCTypesData(row.mount_npc_type_id)) {
-        problems.push_back(fmt::format("NPC item [{}] rides NPC type [{}], which does not exist", row.item_id, row.mount_npc_type_id));
+        itemProblems.push_back(fmt::format("NPC item [{}] rides NPC type [{}], which does not exist; it cannot be placed", row.item_id, row.mount_npc_type_id));
+        continue;
       }
       if (row.race_tag.size() != 3 || !std::all_of(row.race_tag.begin(), row.race_tag.end(), [](unsigned char c) { return std::isupper(c) || std::isdigit(c); })) {
-        problems.push_back(fmt::format("NPC item [{}] has race tag [{}]; RoF2 reads three upper-case characters", row.item_id, row.race_tag));
+        itemProblems.push_back(fmt::format("NPC item [{}] has race tag [{}]; RoF2 reads three upper-case characters; it cannot be placed", row.item_id, row.race_tag));
+        continue;
       }
       npcItems[row.item_id] = NpcItem{row.npc_type_id, row.mount_npc_type_id, row.race_tag, row.training_dummy != 0, {}};
     }
@@ -232,19 +240,32 @@ namespace housing {
       const uint32 action = Strings::ToUnsignedInt(row[1]);
       auto npcItem = npcItems.find(itemId);
       if (npcItem == npcItems.end()) {
-        problems.push_back(fmt::format("NPC item action [{}] names item [{}], which has no real_estate_npc_items row", action, itemId));
+        itemProblems.push_back(fmt::format("NPC item action [{}] names item [{}], which has no usable real_estate_npc_items row", action, itemId));
         continue;
       }
       if (!isPetAction(action)) {
-        problems.push_back(fmt::format("NPC item [{}] has action [{}], which is not one of Live's pet actions", itemId, action));
+        itemProblems.push_back(fmt::format("NPC item [{}] has action [{}], which is not one of Live's pet actions", itemId, action));
         continue;
       }
       npcItem->second.actions.push_back(action);
     }
     for (uint32 itemId : npcItemIdSet) {
       if (!npcItems.count(itemId)) {
-        problems.push_back(fmt::format("NPC item [{}] has no real_estate_npc_items row naming the NPC it spawns", itemId));
+        npcItemsWithoutRows.insert(itemId);
       }
+    }
+    if (!npcItemsWithoutRows.empty()) {
+      constexpr size_t listed = 24;
+      std::vector<std::string> ids;
+      for (uint32 itemId : npcItemsWithoutRows) {
+        if (ids.size() == listed) {
+          ids.push_back(fmt::format("and {} more", npcItemsWithoutRows.size() - listed));
+          break;
+        }
+        ids.push_back(std::to_string(itemId));
+      }
+      itemProblems.push_back(fmt::format("[{}] NPC items have no usable real_estate_npc_items row naming the NPC they spawn and cannot be placed: {}",
+        npcItemsWithoutRows.size(), Strings::Join(ids, ", ")));
     }
 
     auraItems.clear();
@@ -257,15 +278,17 @@ namespace housing {
       const uint32 auraType = Strings::ToUnsignedInt(row[1]);
       const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
       if (!tail || !tail->placeable || npcItemIdSet.count(itemId)) {
-        problems.push_back(fmt::format("aura item [{}] is not a placeable item outside the NPC items", itemId));
+        itemProblems.push_back(fmt::format("aura item [{}] is not a placeable item outside the NPC items; its aura is left out", itemId));
+        continue;
       }
       if (!row[2]) {
-        problems.push_back(fmt::format("aura item [{}] runs aura [{}], which has no auras row", itemId, auraType));
+        itemProblems.push_back(fmt::format("aura item [{}] runs aura [{}], which has no auras row; its aura is left out", itemId, auraType));
         continue;
       }
       const uint32 spellId = Strings::ToUnsignedInt(row[2]);
       if (!IsValidSpell(spellId)) {
-        problems.push_back(fmt::format("aura item [{}]'s aura [{}] casts spell [{}], which does not exist", itemId, auraType, spellId));
+        itemProblems.push_back(fmt::format("aura item [{}]'s aura [{}] casts spell [{}], which does not exist; its aura is left out", itemId, auraType, spellId));
+        continue;
       }
       auraItems[itemId] = AuraItem{auraType, spellId};
     }
@@ -304,10 +327,15 @@ namespace housing {
     for (const auto &problem : problems) {
       LogError("Housing catalog: {}", problem);
     }
+    for (const auto &problem : itemProblems) {
+      LogError("Housing catalog: {}", problem);
+    }
     lastProblems = problems;
+    lastProblems.insert(lastProblems.end(), itemProblems.begin(), itemProblems.end());
     loaded = problems.empty();
-    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs with [{}] of [{}] options enabled, [{}] regions, [{}] zone templates",
-      loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), optionCount, storedOptions.size(), regions.size(), templates.size());
+    LogHousing("Catalog [{}]: [{}] definitions, [{}] costs with [{}] of [{}] options enabled, [{}] regions, [{}] zone templates, [{}] NPC items placeable and [{}] without a row",
+      loaded ? "valid" : "INVALID, housing disabled in this zone", definitions.size(), costs.size(), optionCount, storedOptions.size(), regions.size(), templates.size(),
+      npcItems.size(), npcItemsWithoutRows.size());
     return loaded;
   }
 
