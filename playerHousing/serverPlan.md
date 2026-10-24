@@ -622,6 +622,7 @@ Live runs no polls, so Peridot runs none by default. **The client asks for the p
 | `tools/makeNpcItemsSql.py` | `sql/npcItems.sql`, the NPC behind every NPC item (274): the migrated NPC item set from Peridot's exports and Live's records, the owner's section 1 and 4 decisions, Live's standard looks voted whole across every server's captures, the summoned creatures from EQEmu's horses and pets rows, the merchant lists, the actions, the house-pet names; refuses an item it cannot compose, a look that ties, a name past 31 characters |
 | `tools/testNpcItems.py` | the generator on its data: the counts by look source, the services' and dummies' rows, the lists, the actions, the race tags, the tints, the house-pet names, the refusals (42 checks) |
 | `tools/testNpcItemsSql.py` | `sql/npcItems.sql` loaded into MariaDB on Peridot's npc_types, merchantlist and npc_types_tint definitions with the two housing tables: every count and sampled row, the names filled only where empty, a refused second run, the race tag and action constraints |
+| `tools/testDeployHousingContent.py` | `tools/deployHousingContent.py` with a stand-in client: the migration version gate, the content files' order, the stop at a missing or failing file, the one-database rule, check mode, the password's path (a defaults file, never an argument) |
 
 The code itself is verified by reading it against Peridot's source and the research (no EQEmu build in the sandbox).
 
@@ -629,8 +630,8 @@ The code itself is verified by reading it against Peridot's source and the resea
 
 1. **Back up the database** (`mysqldump` of `peq`) before the new build first starts: the `items` migration renames 18 columns (its own `items_housing_capture` keeps the raw capture, but a full backup covers everything).
 2. Pull, build and restart (the Peridot build loop).
-3. **World runs the custom migrations at boot** (1: the item tail; 2 and 3: the housing schema; 4: Live's item values). Check: `world:version` reports custom database version 4; `SHOW COLUMNS FROM items LIKE 'real_estate_upkeep_id'` finds it; `items_housing_capture` holds every item; the 23 tables exist; **`rule_values` has the `Housing:` rules** (injected at boot).
-4. Load the content: `sql/housingCatalog.sql` (the catalog: definitions, costs, regions, neighborhood words), the interior and guild hall zone rows, the NPC item types, the trophy benefits. World then creates the random neighborhoods itself at its next boot (D11). Then `export_client_files` writes `dbstr_us.txt` and `eqstr_us.txt` from `db_str` and `eq_str` for players to download (PAT-1, PAT-8).
+3. **World runs the custom migrations at boot** (1: the item tail; 2 and 3: the housing schema; 4: Live's item values; 5 to 11: the column files on EQEmu's tables). Check: `world:version` reports custom database version 11; `SHOW COLUMNS FROM items LIKE 'real_estate_upkeep_id'` finds it; `items_housing_capture` holds every item; the 24 tables exist; **`rule_values` has the `Housing:` rules** (injected at boot).
+4. Load the content with `tools/deployHousingContent.py --config <eqemu_config.json>` (`--check` first): the catalog, the housing zone rows and their settings, the guild border doors, the housing doors, the NPC items, the guild services, in that order, each refusing a second run; a missing file stops it before anything loads. World then creates the random neighborhoods itself at its next boot (D11). Then `export_client_files` writes `dbstr_us.txt` and `eqstr_us.txt` from `db_str` and `eq_str` for players to download (PAT-1, PAT-8).
 
 ### Validating in game, in dependency order
 
