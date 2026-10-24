@@ -1,10 +1,12 @@
 """Tests sql/guildLobby.sql against a local MariaDB: EQEmu's zone, doors, zone_points and instance_list as Peridot defines them (the
 schema export), seeded as PEQ stands (the version 0 zone row and zone point, the 36 version 1 doors the SQL names, two version 0
 doors); the content caps version 0, adds version 1 with its instance and zone point, renumbers the doors to Live's ids, and refuses a
-second run.
+second run. Then Peridot's own sql/peridot/guildLobbyExpansions.sql: refused before the split, moving the split to Planes of Power after
+it, refused again.
 
 Usage: python testGuildLobbySql.py <schema json> <sql folder>   (a local MariaDB with a `peq` database, root without a password; the folder
-holds guildLobby.sql and the column migrations zoneHeaderColumns.sql and doorColumns.sql, which run first as world's migrations do)
+holds guildLobby.sql, peridot/guildLobbyExpansions.sql and the column migrations zoneHeaderColumns.sql and doorColumns.sql, which run
+first as world's migrations do)
 """
 import json, os, re, subprocess, sys
 
@@ -60,6 +62,10 @@ sql('INSERT INTO doors (zone, version, doorid, name, opentype, pos_x, pos_y, pos
 sql("INSERT INTO instance_list (id, zone, version, is_global, start_time, duration, never_expires, notes) VALUES (5, 27, 1, 1, 0, 0, 1, 'Lavastorm - Dragons of Norrath');")
 print('tables made and seeded as PEQ: one lobby zone row, one zone point, 2 version 0 and 36 version 1 doors')
 
+peridotContent = open(os.path.join(sqlFolder, 'peridot', 'guildLobbyExpansions.sql'), encoding='utf-8').read()
+error = sql(peridotContent, expectError=True)
+assert 'not split at House of Thule' in error, f"Peridot's SQL ran before the split: {error[:300]}"
+print("Peridot's lobby SQL is refused before the split")
 sql(content)
 check('version 0 ends at Underfoot, version 1 runs from House of Thule with no end', "SELECT version, min_expansion, max_expansion FROM zone WHERE short_name = 'guildlobby' ORDER BY version", '0\t-1\t16\n1\t17\t-1')
 check("version 1 copies version 0's row and carries the note", "SELECT zoneidnumber, long_name, expansion, safe_x, safe_y, safe_z, LEFT(note, 23) FROM zone WHERE short_name = 'guildlobby' AND version = 1",
@@ -75,4 +81,11 @@ error = sql(content, expectError=True)
 assert 'already has a version 1 zone row' in error, f'a second run was not refused: {error[:300]}'
 print('a second run is refused by the first guard')
 check('and changes nothing', "SELECT COUNT(*) FROM zone WHERE short_name = 'guildlobby'", '2')
+sql(peridotContent)
+check("Peridot's SQL moves the split to Planes of Power: version 0 through Luclin, version 1 from Planes of Power",
+      "SELECT version, min_expansion, max_expansion FROM zone WHERE short_name = 'guildlobby' ORDER BY version", '0\t-1\t3\n1\t4\t-1')
+check('the other zone rows are untouched', "SELECT min_expansion, max_expansion FROM zone WHERE short_name = 'lavastorm'", '9\t99')
+error = sql(peridotContent, expectError=True)
+assert 'or this ran already' in error, f"Peridot's SQL ran twice: {error[:300]}"
+print("Peridot's lobby SQL is refused a second time")
 print('all Guild Lobby SQL checks passed')
