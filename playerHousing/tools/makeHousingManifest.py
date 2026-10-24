@@ -57,6 +57,10 @@ columnFiles = [
   (10, '2026_10_23_guild_members_trophy_column', 'guildMembersColumns.sql', 'guild_members', 'trophy_tribute_enable', 'false'),
   (11, '2026_10_23_guild_tributes_trophy_columns', 'guildTributesColumns.sql', 'guild_tributes', 'trophy_id_1', 'false'),
 ]
+# (version, description, SQL file, the table it creates, content database)
+tableFiles = [
+  (12, '2026_10_24_eq_str', 'eqStr.sql', 'eq_str', 'false'),
+]
 
 itemTail = statements(open(os.path.join(here, '..', 'sql', 'itemHousingTail.sql')).read())
 itemAdoption = statements(open(os.path.join(here, '..', 'sql', 'itemHousingAdoption.sql')).read())
@@ -70,4 +74,6 @@ print(entry(1, '2026_09_26_items_housing_tail', "SHOW COLUMNS FROM `items` LIKE 
       + entry(4, '2026_10_19_items_housing_live_values', "SHOW TABLES LIKE 'items'", 'not_empty', itemAdoption, 'true')
       + ''.join(entry(version, description, f"SHOW COLUMNS FROM `{table}` LIKE '{column}'", 'empty',
                       statements(open(os.path.join(here, '..', 'sql', file)).read()), content)
-                for version, description, file, table, column, content in columnFiles), end='')
+                for version, description, file, table, column, content in columnFiles)
+      + ''.join(entry(version, description, f"SHOW TABLES LIKE '{table}'", 'empty', statements(open(os.path.join(here, '..', 'sql', file)).read()), content)
+                for version, description, file, table, content in tableFiles), end='')

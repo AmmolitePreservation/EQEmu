@@ -213,6 +213,7 @@ SET(repositories
     repositories/base/base_damageshieldtypes_repository.h
     repositories/base/base_data_buckets_repository.h
     repositories/base/base_db_str_repository.h
+    repositories/base/base_eq_str_repository.h
     repositories/base/base_discord_webhooks_repository.h
     repositories/base/base_discovered_items_repository.h
     repositories/base/base_doors_repository.h
@@ -427,6 +428,7 @@ SET(repositories
     repositories/damageshieldtypes_repository.h
     repositories/data_buckets_repository.h
     repositories/db_str_repository.h
+    repositories/eq_str_repository.h
     repositories/discord_webhooks_repository.h
     repositories/discovered_items_repository.h
     repositories/doors_repository.h

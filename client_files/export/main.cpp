@@ -31,6 +31,7 @@
 #include "../../common/path_manager.h"
 #include "../../common/repositories/base_data_repository.h"
 #include "../../common/repositories/db_str_repository.h"
+#include "../../common/repositories/eq_str_repository.h"
 #include "../../common/repositories/skill_caps_repository.h"
 #include "../../common/repositories/spells_new_repository.h"
 #include "../../common/file.h"
@@ -42,6 +43,7 @@ void ExportSpells(SharedDatabase *db);
 void ExportSkillCaps(SharedDatabase *db);
 void ExportBaseData(SharedDatabase *db);
 void ExportDBStrings(SharedDatabase *db);
+void ExportEqStrings(SharedDatabase *db);
 
 int main(int argc, char **argv)
 {
@@ -115,12 +117,16 @@ int main(int argc, char **argv)
 	} else if (Strings::EqualFold(export_type, "dbstr") || Strings::EqualFold(export_type, "dbstring")) {
 		ExportDBStrings(&database);
 		return 0;
+	} else if (Strings::EqualFold(export_type, "eqstr") || Strings::EqualFold(export_type, "eqstring")) {
+		ExportEqStrings(&database);
+		return 0;
 	}
 
 	ExportSpells(&content_db);
 	ExportSkillCaps(&content_db);
 	ExportBaseData(&content_db);
 	ExportDBStrings(&database);
+	ExportEqStrings(&database);
 
 	EQEmuLogSys::Instance()->CloseFileLogs();
 
@@ -201,5 +207,27 @@ void ExportDBStrings(SharedDatabase *db)
 	file.close();
 
 	LogInfo("Exported [{}] Database String{}", lines.size(), lines.size() != 1 ? "s" : "");
+}
+
+void ExportEqStrings(SharedDatabase *db)
+{
+	std::ofstream file(fmt::format("{}/export/eqstr_us.txt", PathManager::Instance()->GetServerPath()), std::ios::binary);
+	if (!file || !file.is_open()) {
+		LogError("Unable to open export/eqstr_us.txt to write, skipping.");
+		return;
+	}
+
+	const auto& lines = EqStrRepository::GetEqStrFileLines(*db);
+
+	// The RoF2 client's file: its format tag (Live's client writes EQST0004), a line counting the strings, then the strings, every
+	// line ending in CR LF.
+	file << "EQST0002\r\n" << fmt::format("0 {}\r\n", lines.size());
+	for (const auto& line : lines) {
+		file << line << "\r\n";
+	}
+
+	file.close();
+
+	LogInfo("Exported [{}] Client String{}", lines.size(), lines.size() != 1 ? "s" : "");
 }
 

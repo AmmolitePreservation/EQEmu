@@ -1,0 +1,3 @@
+id	text	source
+13333	Plots will pack up all items, send them to the owner, and become available for purchase again if escrow has been expired for 90 days.	Live's 13333 (RCL-1, Q24) without its guild-village clause, which waits for Q15
+13334	Guild plots will pack up all items, send them to the owner, and become available for purchase again if you have less than 10 guild members or 90 days after escrow expires.	Live's 13334 (RCL-1, Q24)

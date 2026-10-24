@@ -1,11 +1,13 @@
 """Loads the housing content into a server's database, in order, once the build's world has run the housing migrations.
 
 The migrations (world runs them at its first boot on the build: the item tail, the schema, Live's item values and the column
-files, versions 1 to 11 of db_version.custom_version) must be in; then each content file loads through the MariaDB client in this
+files and the eq_str table, versions 1 to 12 of db_version.custom_version) must be in; then each content file loads through the MariaDB client in this
 order, each refusing a second run itself: the catalog, the housing zone rows, their settings, the guild border doors, the housing
-doors, the NPC items, the guild services. A missing file stops the deploy before anything loads; a failing file stops it there,
-the files before it loaded. The connection is the server's own, from eqemu_config.json; the password reaches the client through a
-defaults file, never an argument. Housing expects one database: a content_database that differs from the database is refused.
+doors, the NPC items, the guild services, the training dummies' dbstr labels, the eqstr changes (eq_str must already hold the
+client's eqstr_us.txt, from import_client_files). A missing file stops the deploy before anything loads; a failing file stops it
+there, the files before it loaded. Afterwards export_client_files writes dbstr_us.txt and eqstr_us.txt for players. The connection
+is the server's own, from eqemu_config.json; the password reaches the client through a defaults file, never an argument. Housing
+expects one database: a content_database that differs from the database is refused.
 
 Usage: python deployHousingContent.py --config <eqemu_config.json> [--mariadb <client command>] [--sql <folder>] [--check]
 """
@@ -13,8 +15,8 @@ import argparse, json, os, shlex, subprocess, sys, tempfile
 
 here = os.path.dirname(os.path.abspath(__file__))
 contentFiles = ('housingCatalog.sql', 'housingZones.sql', 'housingZoneSettings.sql', 'guildBorderDoors.sql', 'housingDoors.sql', 'npcItems.sql',
-                'guildServices.sql')
-requiredCustomVersion = 11
+                'guildServices.sql', 'dbStrings.sql', 'eqStrings.sql')
+requiredCustomVersion = 12
 
 
 class DeployError(Exception):
@@ -86,7 +88,7 @@ def deploy(configPath, clientCommand, sqlFolder, checkOnly):
       print(f'loaded {os.path.basename(path)}')
   finally:
     client.close()
-  print('housing content loaded; world creates the random neighborhoods at its next boot')
+  print('housing content loaded; world creates the random neighborhoods at its next boot; export_client_files now writes dbstr_us.txt and eqstr_us.txt for players')
 
 
 def main():
