@@ -13,7 +13,7 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 
 | Behavior | Why | Source |
 |---|---|---|
-| **The neighborhood list is empty even though the server sent neighborhoods** | all six filter checkboxes start **unchecked** in stock RoF2 (no `<Checked>` in the XML), and an unchecked box hides its category; the patcher sets `<Checked>true</Checked>` on the six buttons, as Live's client starts them (PAT-2) | `windows/RealEstateNeighborhoodWnd.md`, chunk 1 |
+| **The neighborhood list is empty even though the server sent neighborhoods** | all six filter checkboxes start **unchecked** in stock RoF2 (no `<Checked>` in the XML), and an unchecked box hides its category; tick them (the owner ships no UI patch, PAT-2; Live's client starts them ticked) | `windows/RealEstateNeighborhoodWnd.md`, chunk 1 |
 | **Opening the window shows nothing and sends nothing** | the list is only filled by a `0x2691` reply (search results, or a server push with `showWindow`) | chunk 1 |
 | **Go is greyed out** | it's enabled only while a neighborhood row is selected | chunk 1–2 |
 | **Pressing Enter in the search box does nothing** | only the Search button searches | chunk 2 |

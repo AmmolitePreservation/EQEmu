@@ -94,7 +94,7 @@ The existing housing code (written through 2026-09-30) against serverPlan.md, th
 | pH/tools/makeTrophyTributesSql.py → pH/sql/trophyTributes.sql | tributes and tribute_levels for the trophy ids items name | TRO-5, PRC-4 |
 | pH/tools/makeHousingDoorsSql.py | Front doors, hall doors, guildhalllrg's 26 interior doors, 345 v2 guild door, the door map; door rules | DOR-1, DOR-3, DOR-10 |
 | pH/tools/deployHousingContent.py | Load the content in order; fail on a missing file | PRC-4 |
-| Patcher (none exists in the repo) | On-demand lines, race lines, GlobalLoad_chr lines and count, dbstr 28 and 18 rows, the six RENW_Show*_Btn checked, front-door lines; polish: border/pad/portal, eqgame flag, host chr | PAT-1, PAT-2, PAT-4, PAT-5, PAT-6, EXT-11..13, EXT-15, EXT-31 |
+| Patcher (none exists in the repo) | On-demand lines, race lines, GlobalLoad_chr lines and count, dbstr 28 and 18 rows, front-door lines; polish: border/pad/portal, eqgame flag, host chr | PAT-1, PAT-4, PAT-5, PAT-6, EXT-11..13, EXT-15, EXT-31 |
 | mqPeridot/plugins/MQPeridotEmu | cursorItem section and the seven Lua suites | PRC-5 |
 
 **Already in code, nothing to do:** CAT-2, CAT-5, ITM-7, REG-1 data, REG-3, ZIN-3, ZIN-4, the CMake entries for existing files, database_schema.h lists, the 22 repositories, the access evaluator's named-group replacement, Owner/Leader bypass and expansion gates, activeGuildId, guild rank defaults (ACC-5), the purchase-limit and transfer-expiry rules, the hooks T18-T24, the incoming placement/menu/poll/trophy opcodes, the item tail fields, the poll/trophy/NPC tables, the catalog's dz_ids, OP_RealEstateLeave, door wire flags 0081/0083.
