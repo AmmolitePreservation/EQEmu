@@ -649,8 +649,8 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.trophy_tribute_active          = row[104] ? static_cast<uint32_t>(strtoul(row[104], nullptr, 10)) : 0;
-			e.trophy_tribute_time_remaining          = row[105] ? static_cast<uint32_t>(strtoul(row[105], nullptr, 10)) : 0;
+			e.trophy_tribute_active          = row[106] ? static_cast<uint32_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.trophy_tribute_time_remaining          = row[107] ? static_cast<uint32_t>(strtoul(row[107], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -789,8 +789,8 @@ public:
 		v.push_back(columns[103] + " = " + std::to_string(e.e_last_invsnapshot));
 		v.push_back(columns[104] + " = FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 		v.push_back(columns[105] + " = " + std::to_string(e.illusion_block));
-		v.push_back(columns[104] + " = " + std::to_string(e.trophy_tribute_active));
-		v.push_back(columns[105] + " = " + std::to_string(e.trophy_tribute_time_remaining));
+		v.push_back(columns[106] + " = " + std::to_string(e.trophy_tribute_active));
+		v.push_back(columns[107] + " = " + std::to_string(e.trophy_tribute_time_remaining));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -1196,8 +1196,8 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.trophy_tribute_active          = row[104] ? static_cast<uint32_t>(strtoul(row[104], nullptr, 10)) : 0;
-			e.trophy_tribute_time_remaining          = row[105] ? static_cast<uint32_t>(strtoul(row[105], nullptr, 10)) : 0;
+			e.trophy_tribute_active          = row[106] ? static_cast<uint32_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.trophy_tribute_time_remaining          = row[107] ? static_cast<uint32_t>(strtoul(row[107], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -1328,8 +1328,8 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.trophy_tribute_active          = row[104] ? static_cast<uint32_t>(strtoul(row[104], nullptr, 10)) : 0;
-			e.trophy_tribute_time_remaining          = row[105] ? static_cast<uint32_t>(strtoul(row[105], nullptr, 10)) : 0;
+			e.trophy_tribute_active          = row[106] ? static_cast<uint32_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.trophy_tribute_time_remaining          = row[107] ? static_cast<uint32_t>(strtoul(row[107], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
