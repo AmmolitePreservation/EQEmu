@@ -28,14 +28,21 @@
 #include "../../common/zone_store.h"
 #include "../../common/path_manager.h"
 #include "../../common/repositories/base_data_repository.h"
+#include "../../common/repositories/eq_str_repository.h"
 #include "../../common/file.h"
 #include "../../common/events/player_event_logs.h"
 #include "../../common/evolving_items.h"
+
+#include <algorithm>
+#include <fstream>
+#include <string>
+#include <vector>
 
 void ImportSpells(SharedDatabase *db);
 void ImportSkillCaps(SharedDatabase *db);
 void ImportBaseData(SharedDatabase *db);
 void ImportDBStrings(SharedDatabase *db);
+void ImportEqStrings(SharedDatabase *db);
 
 int main(int argc, char **argv) {
 	RegisterExecutablePlatform(ExePlatformClientImport);
@@ -94,6 +101,7 @@ int main(int argc, char **argv) {
 	ImportSkillCaps(&content_db);
 	ImportBaseData(&content_db);
 	ImportDBStrings(&database);
+	ImportEqStrings(&database);
 
 	EQEmuLogSys::Instance()->CloseFileLogs();
 
@@ -262,7 +270,8 @@ void ImportBaseData(SharedDatabase *db)
 
 	const auto& file_contents = File::GetContents(file_name);
 	if (!file_contents.error.empty()) {
-		LogError("{}", file_contents.error);
+		LogError("{}, skipping.", file_contents.error);
+		return;
 	}
 
 	db->QueryDatabase("DELETE FROM base_data");
@@ -347,4 +356,49 @@ void ImportDBStrings(SharedDatabase *db) {
 	}
 
 	fclose(f);
+}
+
+void ImportEqStrings(SharedDatabase *db) {
+	LogInfo("Importing Client Strings");
+
+	std::string path = fmt::format("{}/import/eqstr_us.txt", PathManager::Instance()->GetServerPath());
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open()) {
+		LogError("Unable to open {} to read, skipping.", path);
+		return;
+	}
+
+	// The client's file: a format tag (EQST0002 for RoF2), a line counting the strings, then one string a line as the id, a space and
+	// the text, which may be empty; lines end in CR LF.
+	std::string line;
+	if (!std::getline(file, line) || line.rfind("EQST", 0) != 0) {
+		LogError("{} does not start with the client's EQST tag, skipping.", path);
+		return;
+	}
+	std::getline(file, line);
+
+	std::vector<EqStrRepository::EqStr> strings;
+	while (std::getline(file, line)) {
+		if (!line.empty() && line.back() == '\r') {
+			line.pop_back();
+		}
+		if (line.empty()) {
+			continue;
+		}
+		auto space = line.find(' ');
+		auto e = EqStrRepository::NewEntity();
+		e.id    = Strings::ToInt(line.substr(0, space));
+		e.value = space == std::string::npos ? "" : line.substr(space + 1);
+		strings.push_back(e);
+	}
+
+	db->QueryDatabase("DELETE FROM eq_str");
+
+	const size_t chunk = 500;
+	for (size_t start = 0; start < strings.size(); start += chunk) {
+		std::vector<EqStrRepository::EqStr> part(strings.begin() + start, strings.begin() + std::min(strings.size(), start + chunk));
+		EqStrRepository::InsertMany(*db, part);
+	}
+
+	LogInfo("Imported [{}] Client String{}", strings.size(), strings.size() != 1 ? "s" : "");
 }

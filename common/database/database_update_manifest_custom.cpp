@@ -517,6 +517,21 @@ std::vector<ManifestEntry> manifest_entries_custom = {
 )",
 		.content_schema_update = false,
 	},
+	ManifestEntry{
+		.version = 12,
+		.description = "2026_10_24_eq_str",
+		.check = "SHOW TABLES LIKE 'eq_str'",
+		.condition = "empty",
+		.match = "",
+		.sql =
+			R"(CREATE TABLE IF NOT EXISTS `eq_str` (
+  `id` INT(11) NOT NULL,
+  `value` TEXT NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+)",
+		.content_schema_update = false,
+	},
 // Used for testing
 //	ManifestEntry{
 //		.version = 9229,

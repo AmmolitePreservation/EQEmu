@@ -41,7 +41,7 @@ def check(label, actual, expected):
   print(f'{label}: {actual!r}')
 
 
-def run(*extra, version='11'):
+def run(*extra, version=str(deploy.requiredCustomVersion)):
   if os.path.exists(logPath):
     os.remove(logPath)
   result = subprocess.run([sys.executable, os.path.join(here, 'deployHousingContent.py'), '--config', configPath, '--mariadb', stubCommand, '--sql', sqlFolder, *extra],
@@ -52,7 +52,8 @@ def run(*extra, version='11'):
 
 manifest = open(os.path.join(here, 'makeHousingManifest.py'), encoding='utf-8').read()
 check('the required custom version is the manifest\'s highest', deploy.requiredCustomVersion, max(int(v) for v in re.findall(r"^\s+\((\d+), '", manifest, re.M)))
-check('the seven content files, catalog first, guild services last', deploy.contentFiles[0], 'housingCatalog.sql')
+check('nine content files, the catalog first, the eqstr changes last', (len(deploy.contentFiles), deploy.contentFiles[0], deploy.contentFiles[-1]),
+      (9, 'housingCatalog.sql', 'eqStrings.sql'))
 check('the housing doors load after the guild border doors', deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildBorderDoors.sql'), True)
 check('the guild services load after the NPC items', deploy.contentFiles.index('guildServices.sql') > deploy.contentFiles.index('npcItems.sql'), True)
 check('every content file exists in the repository', deploy.contentPaths(os.path.join(here, '..', 'sql')) != [], True)
@@ -71,7 +72,7 @@ result, calls = run('--check')
 check('check mode queries the version and loads nothing', (result.returncode, len(calls), 'content files in order' in result.stdout), (0, 1, True))
 
 result, calls = run(version='4')
-check('migrations behind the build are refused before any load', (result.returncode, len(calls), 'custom version 4, not 11' in result.stderr), (1, 1, True))
+check('migrations behind the build are refused before any load', (result.returncode, len(calls), f'custom version 4, not {deploy.requiredCustomVersion}' in result.stderr), (1, 1, True))
 
 with open(os.path.join(sqlFolder, 'guildBorderDoors.sql'), 'w', encoding='utf-8') as file:
   file.write('-- guildBorderDoors.sql\nFAIL;\n')

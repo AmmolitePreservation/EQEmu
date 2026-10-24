@@ -297,6 +297,7 @@ namespace DatabaseSchema {
 			"command_subsettings",
 			"content_flags",
 			"db_str",
+			"eq_str",
 			"eqtime",
 			"launcher",
 			"launcher_zones",
