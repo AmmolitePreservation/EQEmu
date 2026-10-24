@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 141, liveCheck 27, clientAnalysis 27, peridotTest 52, question 28, done 119; 394 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
+**Counts.** fix 140, liveCheck 27, clientAnalysis 27, peridotTest 52, question 28, done 120; 394 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -41,6 +41,7 @@
 - **Selling refunds no price (2026-10-23, STT-13):** no Housing:SellRefundPercent rule; a sale refunds none of the purchase price, as on Live (D6), and nothing records the price paid (STT-14).
 - **Poll rules (2026-10-23, POL-4):** one vote per account on every poll, cast or changed from any of its characters, with no plot-ownership requirement; results show as running totals while a poll is open, unless the poll keeps them unpublished. The other first-pass rules stand: a property vote names the occupied plot the voter stands on and skips an opted-out one, ties share a rank, a prompting question poll opens the vote window, and the unknown fields go out as 0 (POL-5). Polls stay in the first build and are tested there; Peridot creates and runs them in game with `#realestate poll`.
 - **Trophy tribute data (2026-10-23, REU-8):** EQEmu's tribute tables, extended with care, not housing's four trophy tables: trophy tribute is Live's second tribute set on the same definitions and currency. EQEmu's own saves rewrite whole rows, so each one that would drop or zero the trophy data is fixed with the columns; the guild edit lock is world's, not the database's (TRO-8). Decided ahead of build step 8 because it shapes the one migration.
+- **Neighborhood window filters (2026-10-23, PAT-2):** no UI patch. RoF2's Neighborhood window keeps its stock start, the six Show filters unticked until the player ticks them; the patcher ships no UI file.
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
 
 ## Questions to work through
@@ -321,7 +322,7 @@ In order: process and foundational first, then the extras (structure before cont
 
 ### Q26. Neighborhood window filter defaults (PAT-2, after a Live check) (decided)
 
-- **Decided:** (a): follow Live. PAT-2 runs with the other Live checks through PRC-6.
+- **Decided:** (b), stock RoF2 (the owner, 2026-10-23). Live starts the six filters ticked (PAT-2's check), but the patcher ships no UI file; players tick them.
 
 - **Question:** RoF2's stock Neighborhood window hides every row until the player ticks the six Show filters. If PAT-2's Live check finds them ticked on a fresh login, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml?
 - **Options:** (a) ship the XML change through the patcher; (b) stock RoF2: players tick the filters themselves.
@@ -1089,7 +1090,7 @@ Questions: Q13.
 
 - **PAT-1** `fix` **Training dummy labels: ship Live's dbstr rows.** Ship dbstr_us.txt category-28 rows 100-106, 200-205, 300, 400-407, 500-504 with Live's text in a patched RoF2 dbstr_us.txt (RoF2 has none of 100-504; 45 Live dummy menus use them).
   <sub>Sources: G5-05 · C5-36 · C5-37 · report:question-15</sub>
-- **PAT-2** `fix` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked. **Result (2026-10-14):** on Live the six RENW_Show*_Btn are checked when the window first opens after login (${Window[RealEstateNeighborhoodWnd].Child[...].Checked} TRUE for all six, none touched), and the character's UI ini stores no filter state, so it is the client's default. Ship <Checked>true</Checked> on the six buttons in RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher.
+- **PAT-2** `done` **Neighborhood window filters: checked on Live?.** Open Live's Neighborhood window fresh after login: are the six RENW_Show*_Btn checked? (Live's XML has no <Checked> either.) If checked, add <Checked>true</Checked> to RoF2's EQUI_RealEstateNeighborhoodWnd.xml through the patcher; RoF2's stock XML hides every row until ticked. **Result (2026-10-14):** on Live the six RENW_Show*_Btn are checked when the window first opens after login (${Window[RealEstateNeighborhoodWnd].Child[...].Checked} TRUE for all six, none touched), and the character's UI ini stores no filter state, so it is the client's default. **Owner (2026-10-23):** ditched; the patcher ships no UI file, and RoF2's window starts with the six filters unticked, as stock.
   <sub>Sources: README:48</sub>
 - **PAT-3** `done` **Neighborhood map labels: Live ships the same file.** Live's maps/neighborhood_2.txt is byte-identical to RoF2's; ship no corrected map.
   <sub>Sources: summary:s5-client-maps</sub>

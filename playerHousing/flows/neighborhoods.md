@@ -12,7 +12,7 @@ A player finds a neighborhood (by browsing, by name, by player or guild, or thei
 |---|---|---|---|
 | N1 | Neighborhood rows (id, name, guild id, plot counts) | `0x2691` reply modes 0/1 | the list (the server can also open the window with `showWindow`) |
 | N2 | Guild names for listed guild ids | the client's guild-name cache (it requests misses) | the Guild column, the guild plot list |
-| N3 | Filter checkboxes ticked | the patcher's XML, which starts all six checked as Live's client does (PAT-2); stock RoF2's starts them unchecked | otherwise every row is hidden |
+| N3 | Filter checkboxes ticked | the player ticks the six Show filters: stock RoF2 starts them unticked, Live's client ticked, and the owner ships no UI patch (PAT-2) | otherwise every row is hidden |
 
 ## 3. Sequence
 
