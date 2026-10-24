@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+#include <cstring>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 namespace housing {
   enum class EventType : uint32 {
     catalogChanged = 1,
@@ -29,6 +34,30 @@ namespace housing {
     uint32 previousGuildId;
     uint32 guildId;
   };
+
+  // An itemListChanged event carries the records whose place changed, so the zone showing their property removes a withdrawn
+  // record's world object or spawn and shows a placed one (INT-30); the lists themselves are re-read from the database (D2).
+  struct ItemListChangedRecord {
+    uint32 recordId;
+    uint32 propertyId;
+    uint32 itemId;
+    uint32 placed;
+  };
+
+  inline std::string itemListChangedPayload(const std::vector<ItemListChangedRecord> &records) {
+    return std::string(reinterpret_cast<const char *>(records.data()), records.size() * sizeof(ItemListChangedRecord));
+  }
+
+  inline std::vector<ItemListChangedRecord> itemListChangedRecords(const uint8 *payload, uint32 size) {
+    if (size % sizeof(ItemListChangedRecord) != 0) {
+      throw std::invalid_argument("an item list payload of " + std::to_string(size) + " bytes is not whole records of " + std::to_string(sizeof(ItemListChangedRecord)));
+    }
+    std::vector<ItemListChangedRecord> records(size / sizeof(ItemListChangedRecord));
+    if (size) {
+      memcpy(records.data(), payload, size);
+    }
+    return records;
+  }
 
   // A zone tells world a writ was used; world makes the guild's village of the writ's definition (EXT-33).
   struct WritUsedPayload {

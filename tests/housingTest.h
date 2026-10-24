@@ -4,6 +4,7 @@
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
 #include "../common/housingAugmentaterRules.h"
+#include "../common/housingEventTypes.h"
 #include "../common/housingInstanceNumbers.h"
 #include "../common/housingNames.h"
 #include "../common/housingPlacementRules.h"
@@ -75,6 +76,7 @@ public:
     TEST_ADD(HousingTest::voteKeysFitTheSelectionType);
     TEST_ADD(HousingTest::pollResultsRankTiesTogether);
     TEST_ADD(HousingTest::houseSwapNeedsRoomForThePlacedHousesItems);
+    TEST_ADD(HousingTest::itemListPayloadIsSixteenBytesARecordAndRefusesATornOne);
   }
 
 private:
@@ -797,6 +799,29 @@ private:
     TEST_ASSERT(housing::swapCapacityResult(space) == housing::ItemResult::success);
     TEST_ASSERT(static_cast<uint32>(housing::ItemResult::swapNoHousePlaced) == 53 && static_cast<uint32>(housing::ItemResult::swapAlreadyPlaced) == 55 &&
       static_cast<uint32>(housing::ItemResult::swapPlacedCrate) == 59);
+  }
+
+  void itemListPayloadIsSixteenBytesARecordAndRefusesATornOne() {
+    const std::vector<housing::ItemListChangedRecord> records{{501, 77, 35120, 1}, {502, 77, 3000123, 0}};
+    const std::string payload = housing::itemListChangedPayload(records);
+    TEST_ASSERT_EQUALS(payload.size(), 32u);
+    const auto decoded = housing::itemListChangedRecords(reinterpret_cast<const uint8 *>(payload.data()), static_cast<uint32>(payload.size()));
+    TEST_ASSERT_EQUALS(decoded.size(), 2u);
+    TEST_ASSERT_EQUALS(decoded[0].recordId, 501u);
+    TEST_ASSERT_EQUALS(decoded[0].placed, 1u);
+    TEST_ASSERT_EQUALS(decoded[1].recordId, 502u);
+    TEST_ASSERT_EQUALS(decoded[1].propertyId, 77u);
+    TEST_ASSERT_EQUALS(decoded[1].itemId, 3000123u);
+    TEST_ASSERT_EQUALS(decoded[1].placed, 0u);
+    TEST_ASSERT(housing::itemListChangedRecords(nullptr, 0).empty());
+    bool refused = false;
+    try {
+      housing::itemListChangedRecords(reinterpret_cast<const uint8 *>(payload.data()), 31);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
   }
 };
 

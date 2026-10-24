@@ -344,8 +344,8 @@ namespace housing {
     sendPropertyChanged(plotId, PropertyChangedPayload{plot.owner_character_id, 0, plot.guild_id, 0});
     if (crateId) {
       sendPropertyChanged(crateId, PropertyChangedPayload{plot.owner_character_id, crateCarriesProperty ? client->CharacterID() : 0, 0, 0});
-      sendEvent(EventType::itemListChanged, EventTarget::property, crateId, crateId, {});
+      sendItemListChanged(crateId, {});
     }
-    sendEvent(EventType::itemListChanged, EventTarget::property, plotId, plotId, {});
+    sendItemListChanged(plotId, {});
   }
 }

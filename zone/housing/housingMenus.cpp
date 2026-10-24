@@ -519,7 +519,11 @@ namespace housing {
     strn0cpy(delivery->send_to, ownerName.c_str(), sizeof(delivery->send_to));
     worldserver.SendPacket(pack.get());
     sendItemResult(client, ItemResult::success);
-    sendEvent(EventType::itemListChanged, EventTarget::property, propertyId, propertyId, {});
+    std::vector<ItemListChangedRecord> withdrawn;
+    if (mailed.placed) {
+      withdrawn.push_back(ItemListChangedRecord{mailed.id, mailed.property_id, mailed.item_id, 0});
+    }
+    sendItemListChanged(propertyId, withdrawn);
     LogHousing("[{}] mailed record [{}] (item [{}]) to its owner [{}]", client->GetCleanName(), recordId, mailed.item_id, ownerName);
   }
 }
