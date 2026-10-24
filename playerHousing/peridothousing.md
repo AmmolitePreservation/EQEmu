@@ -9,7 +9,7 @@ Claude's server for building and validating player housing, apart from Peridot a
 | Proxmox | VM 144 on labradorite, a full clone of Peridot (VM 104) made 2026-10-24 with the guest filesystem frozen for the copy |
 | Size | 8 cores, 16 GB (Peridot has 16 and 32); no autostart; tags `peridothousing;eqemu;ubuntu` |
 | Disk | `alpha:144/vm-144-disk-0.qcow2`, 350 GB virtual |
-| Network | DHCP on `ens18`, MAC `BC:24:11:4D:E5:B4`, leased `10.111.111.47`; A record `peridothousing.strata.unseencolor.com` on olivine; no DHCP reservation yet |
+| Network | DHCP on `ens18`, MAC `BC:24:11:4D:E5:B4`, reserved `10.111.111.238` on the SonicWall (PeridotHousing); A record `peridothousing.strata.unseencolor.com` on olivine |
 | Access | facet host `peridothousing`; Claude's login is Peridot's account, copied to OpenBao `hosts/peridothousing/claude`; SSH host keys regenerated on the clone |
 
 What was changed from Peridot's copy, before its network link came up: the hostname and `/etc/hosts`, the Zabbix agent's `Hostname`, the Alloy `host` labels, the Zabbix MySQL plugin's address, the akk-stack `.env` `IP_ADDRESS` and the world's `address` and `localaddress` in `server/eqemu_config.json` (`peridothousing.strata.unseencolor.com`). The containers were recreated for the new address, and the services Peridot keeps stopped (backup-cron, phpmyadmin, ftp-quests, peq-editor) were stopped again. The login server is the stack's own on `5998`/`5999`; nothing registers with a public login server.
@@ -24,6 +24,5 @@ The akk-stack at `/opt/eqemu/akk-stack`, Peridot's database as it stood at the c
 
 ## Open
 
-- A DHCP reservation for `BC:24:11:4D:E5:B4` (the sonicwall MCP, once its session reads OpenBao).
 - A Zabbix host for the agent, which now reports as peridothousing.
 - The claudelink spare path.
