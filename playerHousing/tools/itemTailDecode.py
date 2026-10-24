@@ -9,16 +9,21 @@ must be plausible. serverPlan.md, D1, records the results; the migration does th
 Usage: python3 itemTailDecode.py itemTailFull.txt
 """
 import collections, struct, sys
-rows=[]
-with open(sys.argv[1]) as f:
-  lines=f.read().split('\n')
-start=[i for i,l in enumerate(lines) if l.startswith('id\tName')][0]
-cols=lines[start].split('\t')
-for l in lines[start+1:]:
-  if not l.strip(): continue
-  p=l.split('\t'); r=dict(zip(cols,p))
-  for c in cols[2:]: r[c]=int(r[c])
-  r['id']=int(r['id']); rows.append(r)
+
+
+def readRows(path):
+  with open(path) as f:
+    lines=f.read().split('\n')
+  start=[i for i,l in enumerate(lines) if l.startswith('id\tName')][0]
+  cols=lines[start].split('\t')
+  rows=[]
+  for l in lines[start+1:]:
+    if not l.strip(): continue
+    p=l.split('\t'); r=dict(zip(cols,p))
+    for c in cols[2:]: r[c]=int(r[c])
+    r['id']=int(r['id']); rows.append(r)
+  return cols, rows
+
 
 u32=lambda v: v & 0xffffffff
 def i32(v): v&=0xffffffff; return v-(1<<32) if v>=1<<31 else v
@@ -50,39 +55,59 @@ def problems(d, r, layout):
   if d['interactive'] not in (0,1): bad.append(f"interactive {d['interactive']}")
   return bad
 
-stats=collections.Counter(); ambiguous=[]; neither=[]; chosen={}
-for r in rows:
+def classify(r):
   a,s=aligned(r),shifted(r)
   pa,ps=problems(a,r,'aligned'),problems(s,r,'shifted')
-  if not pa and not ps: ambiguous.append((r,a,s)); stats['both plausible']+=1; chosen[r['id']]=('ambiguous',a,s)
-  elif not pa: stats['aligned']+=1; chosen[r['id']]=('aligned',a,None)
-  elif not ps: stats['shifted']+=1; chosen[r['id']]=('shifted',s,None)
-  else: neither.append((r,pa,ps)); stats['neither']+=1
-print('rows',len(rows),dict(stats))
-print('--- ambiguous examples'); [print(' ',r['id'],r['Name'][:32],'| aligned',{k:(round(v,3) if isinstance(v,float) else v) for k,v in a.items()},'| shifted',{k:(round(v,3) if isinstance(v,float) else v) for k,v in s.items()}) for r,a,s in ambiguous[:4]]
-print('--- neither examples'); [print(' ',r['id'],r['Name'][:32],'| aligned:',pa,'| shifted:',ps) for r,pa,ps in neither[:8]]
+  if not pa and not ps: return 'ambiguous',a,s
+  if not pa: return 'aligned',a,None
+  if not ps: return 'shifted',s,None
+  return 'neither',pa,ps
 
-print('\n=== decoded tail fields (both layouts)')
-dist=collections.defaultdict(collections.Counter)
-byLayout=collections.defaultdict(collections.Counter)
-for r in rows:
-  layout,d,_=chosen[r['id']]
-  for k in ('trophy','rotation','free','respawn','interactive'): dist[k][d[k]]+=1
-  for k in ('scale','heading','pitch','roll'): dist[k][round(d[k],4)]+=1
-  byLayout[layout][(d['rotation'],d['free'])]+=1
-for k in ('trophy','rotation','free','interactive','respawn','scale','heading','pitch','roll'):
-  items=dist[k].most_common(8); print(f'{k:12s} {len(dist[k]):3d} distinct:', items)
-print('rotation/free by layout:', {k:dict(v) for k,v in byLayout.items()})
 
-print('\n=== already-aligned columns')
-bitmask=collections.Counter(r['UNK224'] for r in rows); print('placeable bitmask:', sorted(bitmask.items()), '| outside 0x8F:', [b for b in bitmask if b & ~0x8f and b!=-1])
-for c,label in (('UNK223','subclass'),('UNK225','ignoreCollisions'),('UNK226','placementType'),('UNK227','realEstateDefinitionId'),('UNK230','upkeepId'),('UNK231','maxPerRealEstate'),('UNK232','housepet column')):
-  v=collections.Counter(r[c] for r in rows); print(f'{label:24s} {len(v):3d} distinct:', sorted(v.items())[:24])
-for c,label in (('UNK228','scaleMin'),('UNK229','scaleMax')):
-  v=collections.Counter(round(f32(r[c]),4) for r in rows); print(f'{label:24s}', sorted(v.items()))
+def decode(r):
+  """The one plausible decoding of a captured row; raises when both layouts or neither are plausible."""
+  layout,d,_=classify(r)
+  if layout in ('ambiguous','neither'): raise ValueError(f"item {r['id']}: the captured tail has {'two plausible layouts' if layout=='ambiguous' else 'no plausible layout'}")
+  return d
 
-print('\n=== bitmask -1 row'); [print(' ',r['id'],r['Name'],{c:r[c] for c in cols[2:]}) for r in rows if r['UNK224']==-1]
-print('=== trophy items (decoded id -> name)')
-trophies=[(chosen[r['id']][1]['trophy'],r['id'],r['Name'],chosen[r['id']][0]) for r in rows if chosen[r['id']][1]['trophy']!=-1]
-for t in sorted(trophies)[:14]: print('  ',t)
-print('  ... layouts of trophy rows:', collections.Counter(t[3] for t in trophies))
+
+def report(cols, rows):
+  stats=collections.Counter(); ambiguous=[]; neither=[]; chosen={}
+  for r in rows:
+    layout,d,extra=classify(r)
+    if layout=='ambiguous': ambiguous.append((r,d,extra)); stats['both plausible']+=1; chosen[r['id']]=(layout,d,extra)
+    elif layout=='neither': neither.append((r,d,extra)); stats['neither']+=1
+    else: stats[layout]+=1; chosen[r['id']]=(layout,d,None)
+  print('rows',len(rows),dict(stats))
+  print('--- ambiguous examples'); [print(' ',r['id'],r['Name'][:32],'| aligned',{k:(round(v,3) if isinstance(v,float) else v) for k,v in a.items()},'| shifted',{k:(round(v,3) if isinstance(v,float) else v) for k,v in s.items()}) for r,a,s in ambiguous[:4]]
+  print('--- neither examples'); [print(' ',r['id'],r['Name'][:32],'| aligned:',pa,'| shifted:',ps) for r,pa,ps in neither[:8]]
+
+  print('\n=== decoded tail fields (both layouts)')
+  dist=collections.defaultdict(collections.Counter)
+  byLayout=collections.defaultdict(collections.Counter)
+  for r in rows:
+    layout,d,_=chosen[r['id']]
+    for k in ('trophy','rotation','free','respawn','interactive'): dist[k][d[k]]+=1
+    for k in ('scale','heading','pitch','roll'): dist[k][round(d[k],4)]+=1
+    byLayout[layout][(d['rotation'],d['free'])]+=1
+  for k in ('trophy','rotation','free','interactive','respawn','scale','heading','pitch','roll'):
+    items=dist[k].most_common(8); print(f'{k:12s} {len(dist[k]):3d} distinct:', items)
+  print('rotation/free by layout:', {k:dict(v) for k,v in byLayout.items()})
+
+  print('\n=== already-aligned columns')
+  bitmask=collections.Counter(r['UNK224'] for r in rows); print('placeable bitmask:', sorted(bitmask.items()), '| outside 0x8F:', [b for b in bitmask if b & ~0x8f and b!=-1])
+  for c,label in (('UNK223','subclass'),('UNK225','ignoreCollisions'),('UNK226','placementType'),('UNK227','realEstateDefinitionId'),('UNK230','upkeepId'),('UNK231','maxPerRealEstate'),('UNK232','housepet column')):
+    v=collections.Counter(r[c] for r in rows); print(f'{label:24s} {len(v):3d} distinct:', sorted(v.items())[:24])
+  for c,label in (('UNK228','scaleMin'),('UNK229','scaleMax')):
+    v=collections.Counter(round(f32(r[c]),4) for r in rows); print(f'{label:24s}', sorted(v.items()))
+
+  print('\n=== bitmask -1 row'); [print(' ',r['id'],r['Name'],{c:r[c] for c in cols[2:]}) for r in rows if r['UNK224']==-1]
+  print('=== trophy items (decoded id -> name)')
+  trophies=[(chosen[r['id']][1]['trophy'],r['id'],r['Name'],chosen[r['id']][0]) for r in rows if chosen[r['id']][1]['trophy']!=-1]
+  for t in sorted(trophies)[:14]: print('  ',t)
+  print('  ... layouts of trophy rows:', collections.Counter(t[3] for t in trophies))
+
+
+if __name__=='__main__':
+  columns,captured=readRows(sys.argv[1])
+  report(columns,captured)
