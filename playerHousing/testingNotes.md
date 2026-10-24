@@ -36,8 +36,10 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 | **Windows can't be clicked during placement** | placement captures the mouse like mouse-look | *Global effects* |
 | **A long press doesn't commit** | only a quick click (< 500 ms) commits | `placementMode.md` |
 | **The preview is always red** | no `0x49df` regions, region ids ≠ definition `+0x1c`, or no code-0 region in `0x626e` | `placementMode.md`, *Validation* |
+| **A fresh preview floats at eye height and is refused locally (code 29, 'not flat enough', or 17 when its box leaves the plot)** | begin starts the preview at the camera and pushes it out along the view; until the mouse moves it in Cursor mode it isn't on a surface. Move it with the mouse; with no mouse (automation), look down first (`/look -60`), which puts it on the floor | `placementMode.md`, *Begin's distance handling* |
 | **Walking off the plot doesn't cancel placement** | player movement never cancels it; validity follows the item, not the player | *Scenario* |
 | **Left-clicking a placed item does nothing** | a left click sends `0x218c`/`0x050c`, which Peridot only logs; a house enters only from its door or the menu's Enter; the menu comes from a right click (`0x21ec`), which the server answers with the `0x21ec` menu | `flows/editPlacedItem.md` |
+| **MacroQuest shows no item for a placed entry** | a placed entry's item has only the shared definition, which the client reads at `+0x144` (getter `0x554fb0`); MacroQuest's emu `ItemClient` reads it at `+0x148` and returns null. The probe (mqperidotemu) reads the client's offset | mqperidotemu `probeSpec.md` |
 | **Layouts appear for every character** | layout files (`.\userdata\RE_Layout_*.xml`) have no character in the name | *Layouts* |
 | **A loaded layout lands in the wrong place** | positions are relative to the plot definition's layout origin/heading (definition fields 15–18) | `flows/layouts.md` |
 | **Use Inventory has no effect when loading a layout** | it's silently turned off without permission 9, 6 or 4 (or GM) | *How Load plans* |
