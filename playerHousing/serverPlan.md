@@ -627,6 +627,7 @@ Live runs no polls, so Peridot runs none by default. **The client asks for the p
 | `tools/makeEqStringsSql.py` / `tools/testEqStrings.py` | `sql/eqStrings.sql`: the eqstr changes from content/eqStringChanges.tsv (13333 without the guild-village clause, 13334), refusing an empty eq_str or a missing id |
 | `tools/makeGuildLobbySql.py` / `tools/testGuildLobby.py` | `sql/guildLobby.sql`: the Guild Lobby's version 1 from Live's 36 doors (the gate 38), version 0 through Underfoot, version 1 from House of Thule, the zone point and the global instance EQEmu routes by |
 | `tools/testGuildLobbySql.py` | `sql/guildLobby.sql` loaded into MariaDB on Peridot's zone, doors, zone_points and instance_list definitions, seeded as PEQ stands: the two versions and their expansions, the renumbered doors, the copied zone point, the instance, a refused second run |
+| `tools/makeClientFiles.py` / `tools/testClientFiles.py` | the eqemu-client-files `rof2/` tree from a clean RoF2 install and Live's client: OnDemandResources.txt with Live's 56 furniture and 255 race lines, GlobalLoad_chr.txt with the 55 S3D housepet races and the raised count, Live's guildlobby.eqg; refuses a stock file already carrying a line, a Live file or archive missing what the lists name, a differing guildlobby.zon |
 
 The code itself is verified by reading it against Peridot's source and the research (no EQEmu build in the sandbox).
 
