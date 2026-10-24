@@ -640,7 +640,7 @@ The code itself is verified by reading it against Peridot's source and the resea
 
 ### Validating in game, in dependency order
 
-Each stage needs the ones before it; the diagnostics plugin's sections and findings show what the client holds, and a Lua suite (the harness in `mqperidotemu`) asserts it and records the evidence on a failure. **Stop at the first stage that fails**: everything after it depends on it.
+The server is peridothousing, a clone of Peridot (`peridothousing.md`), and the client `S:\Research\EverQuest\peridothousing`, the stock RoF2 install with the eqemu-client-files tree over it. Each stage needs the ones before it; the diagnostics plugin's sections and findings show what the client holds, and a Lua suite (the harness in `mqperidotemu`) asserts it and records the evidence on a failure. **Stop at the first stage that fails**: everything after it depends on it.
 
 | Stage | Checks | Probe | Lua suite |
 |---|---|---|---|
