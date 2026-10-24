@@ -339,6 +339,11 @@ namespace housing {
     }
 
     ItemResult judge(Client *client, const View &view, const Candidate &candidate, const Property &destination, bool intoStorage, uint32 quantity) {
+      // An NPC item the catalog has no usable row for spawns nothing, so it stays in inventory or storage (the catalog logged it at load).
+      if (!intoStorage && isNpcItemId(candidate.item->ID) && !catalog().npcItem(candidate.item->ID)) {
+        LogHousing("[{}] tried to place NPC item [{}], which has no usable real_estate_npc_items row", client->GetCleanName(), candidate.item->ID);
+        return ItemResult::notPlaceable;
+      }
       return placementResult(factsFor(client, view, candidate, destination, intoStorage, quantity));
     }
 
