@@ -20,9 +20,10 @@ The akk-stack at `/opt/eqemu/akk-stack`, Peridot's database as it stood at the c
 
 ## The client
 
-`S:\Research\EverQuest\peridothousing`: a copy of the stock RoF2 install (`S:\Research\EverQuest\housingclient`, which stays stock as the clean install makeClientFiles.py reads) with the eqemu-client-files `rof2/` tree laid over it and `eqhost.txt` at `peridothousing.strata.unseencolor.com:5999`. claudelink's spare path still names housingclient, so driving this client needs claudelink to accept a second spare.
+`S:\Research\EverQuest\peridothousing`: a copy of the stock RoF2 install (`S:\Research\EverQuest\housingclient`, which stays stock as the clean install makeClientFiles.py reads) with the eqemu-client-files `rof2/` tree laid over it and `eqhost.txt` at `peridothousing.strata.unseencolor.com:5999`. claudelink drives it as it drives any client copy: `launchClient(clientFolder = S:\Research\EverQuest\peridothousing, loginServer = Peridot, login = services/peridothousing/eqLogin, character)`.
+
+Claude's account there is `claudehousing`, its password in OpenBao at `services/peridothousing/eqLogin`; the clone's login server creates accounts at their first login (`login.json` `auto_create_accounts`), and the first launch on 2026-10-24 made login account 85 and game account 86 at status 0. Before a character enters the world: the game account's status raised for the GM commands the validation uses, and the per-character MacroQuest config `Peridot_<character>.cfg` in mqPeridot's config folder (MQ2EQBC and mq2netbots unloaded, MQClaudeLink loaded, each with `noauto`), as claudeperidot's character has, so the client never joins the owner's EQBCS.
 
 ## Open
 
 - A Zabbix host for the agent, which now reports as peridothousing.
-- The claudelink spare path.
