@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 127, liveCheck 27, clientAnalysis 28, peridotTest 52, question 28, done 136; 398 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
+**Counts.** fix 127, liveCheck 27, clientAnalysis 28, peridotTest 52, question 28, done 137; 399 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -1207,6 +1207,8 @@ Questions: Q1.
 
 - **PRC-7** `done` **Training dummies predate RoF2; their menus don't.** Items 66700-66716 were sold by Brent Harnak as 'Decorative Dummy: Azia'..'Qela' by 2011-11-19 (Veil of Alaris; Allakhazam NPC 38576, prices equal Live's vendorItems.tsv to the copper), and Peridot's data holds them under those names. The menus came later: Modify Level, Armor Class and Body Type plus house placement and ranks 66717-66719 on 2015-02-25 (ZAM patch notes); the 'Training Dummy: <expansion>' names, Modify HP, larger level steps and 66720-66730 on 2026-04-15 (everquest.com update notes). RoF2 eqgame.exe is 2013-05-10. Per Q25 the dbstr rows ship, and the menus are Live's (MNU).
 - **PRC-8** `fix` **Coordinate sweep (polish).** Research and processing mixed axis orders and signs: Live's dumps and the wire put y first, MQ's /loc prints y first, EQEmu and the zone files swap x and y, headings run in opposite directions between MQ's degrees and the client's 0-512, and some values were inverted along the way. After the standard system works, sweep every coordinate and heading in the generators, content files, SQL and code (catalog switches, regions, exit and arrival points, zone headers, doors, placed-item transforms, region matrices, NPC item spawns) against its Live source, naming each value's axis order and heading convention at the point it enters, and check in game on Peridot that each lands where Live's does.
+
+- **PRC-9** `done` **World's custom database version stayed at 5 (found deploying to peridothousing, 2026-10-24).** common/version.h's CUSTOM_BINARY_DATABASE_VERSION was never raised past the fifth migration while the manifest grew to twelve, so world compared 5 with 5 at boot, ran none of 6 to 12 and deployHousingContent.py refused the database at version 12; the earlier eq_str roundtrip had applied sql/eqStr.sql by hand and never saw it. **Result (2026-10-24):** version.h 12; tools/testHousingManifest.py checks that the manifest in the code is what makeHousingManifest.py generates and that version.h's constant and deployHousingContent.py's requiredCustomVersion equal its last version.
   <sub>Sources: owner:Q25 · workflow wf_4ade3261-801</sub>
 
 ### eqemuReuse (REU)
