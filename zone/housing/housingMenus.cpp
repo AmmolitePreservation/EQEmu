@@ -34,6 +34,8 @@ extern WorldServer worldserver;
 namespace housing {
   namespace {
     constexpr size_t menuSize = 0x300;
+    constexpr size_t guidOffset = 0x00;
+    constexpr size_t guidFieldLength = 18;
     constexpr size_t titleOffset = 0x2c;
     constexpr size_t titleLength = 64;
     constexpr size_t entriesOffset = 0x6c;
@@ -255,6 +257,10 @@ namespace housing {
       }
       const MenuInteractions menu = buildMenu(client, *state, *located);
       std::string reply(request);
+      const std::string guid = itemGuid(located->item);
+      std::string guidField(guidFieldLength, '\0');
+      guidField.replace(0, guid.size(), guid);
+      reply.replace(guidOffset, guidFieldLength, guidField);
       std::string title(titleLength, '\0');
       memcpy(title.data(), item->Name, std::min(strlen(item->Name), titleLength - 1));
       reply.replace(titleOffset, titleLength, title);
