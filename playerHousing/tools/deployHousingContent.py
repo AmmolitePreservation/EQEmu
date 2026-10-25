@@ -3,7 +3,7 @@
 The migrations (world runs them at its first boot on the build: the item tail, the schema, Live's item values and the column
 files and the eq_str table, versions 1 to 12 of db_version.custom_version) must be in; then each content file loads through the MariaDB client in this
 order, each refusing a second run itself: the catalog, the housing zone rows, their settings, the Guild Lobby's version 1, the guild
-border doors, the housing doors, the NPC items, the guild services, the training dummies' dbstr labels, the eqstr changes (eq_str must already hold the
+border doors, the housing doors, the neighborhood spawns PEQ captured from Live players' NPC items (removed), the NPC items, the guild services, the training dummies' dbstr labels, the eqstr changes (eq_str must already hold the
 client's eqstr_us.txt, from import_client_files). A missing file stops the deploy before anything loads; a failing file stops it
 there, the files before it loaded, and once it is put right the deploy resumes at it with --from. Afterwards export_client_files
 writes dbstr_us.txt and eqstr_us.txt for players. The connection is the server's own, from eqemu_config.json; the password reaches
@@ -16,7 +16,7 @@ import argparse, json, os, shlex, subprocess, sys, tempfile
 
 here = os.path.dirname(os.path.abspath(__file__))
 contentFiles = ('housingCatalog.sql', 'housingZones.sql', 'housingZoneSettings.sql', 'guildLobby.sql', 'guildBorderDoors.sql', 'housingDoors.sql',
-                'npcItems.sql', 'guildServices.sql', 'dbStrings.sql', 'eqStrings.sql')
+                'neighborhoodSpawns.sql', 'npcItems.sql', 'guildServices.sql', 'dbStrings.sql', 'eqStrings.sql')
 requiredCustomVersion = 12
 
 

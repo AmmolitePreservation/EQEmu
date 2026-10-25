@@ -52,8 +52,8 @@ def run(*extra, version=str(deploy.requiredCustomVersion)):
 
 manifest = open(os.path.join(here, 'makeHousingManifest.py'), encoding='utf-8').read()
 check('the required custom version is the manifest\'s highest', deploy.requiredCustomVersion, max(int(v) for v in re.findall(r"^\s+\((\d+), '", manifest, re.M)))
-check('ten content files, the catalog first, the eqstr changes last', (len(deploy.contentFiles), deploy.contentFiles[0], deploy.contentFiles[-1]),
-      (10, 'housingCatalog.sql', 'eqStrings.sql'))
+check('eleven content files, the catalog first, the eqstr changes last', (len(deploy.contentFiles), deploy.contentFiles[0], deploy.contentFiles[-1]),
+      (11, 'housingCatalog.sql', 'eqStrings.sql'))
 check('the housing doors load after the guild border doors and the Guild Lobby', deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildBorderDoors.sql')
       and deploy.contentFiles.index('housingDoors.sql') > deploy.contentFiles.index('guildLobby.sql'), True)
 check('the guild services load after the NPC items', deploy.contentFiles.index('guildServices.sql') > deploy.contentFiles.index('npcItems.sql'), True)
