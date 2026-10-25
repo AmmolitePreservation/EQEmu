@@ -54,6 +54,8 @@ Behaviors of the RoF2 client (with the stock XML files) that are easy to mistake
 | **Anyone can open Manage on an owned plot** | only the Access tab is gated (permission 12 or GM) | chunk 1 |
 | **Deposits/withdrawals by non-owners reach the server** | the client checks no permissions on `0x2aa6`; withdrawals need permission 2 server-side | chunk 2 |
 | **Withdraw All happens without asking** | it has no confirmation | chunk 2 |
+| **Coin lines show two spaces** ("You spend  21 platinum...") | RoF2's coin text (`%$`) always starts with a space, and the stock eqstr_us.txt puts one before `%$1`; Peridot's exported eqstr_us.txt drops it (STT-15), so a client without that file shows two | `content/eqStringChanges.tsv` |
+| **Withdrawn coin is not in the purse** | the server puts withdrawn coin on the cursor (as Live does) and tells the client with an `0x2aa6` update; MacroQuest's `${Me.Copper}` counts the purse only | chunk 2 |
 | **Only coin can be deposited** | escrowable currencies are the ones used in the `0x2698` cost table | chunk 2 |
 | **The upkeep list is empty** | items need an upkeep cost id matching a cost element (EQEmu writes 0) | chunk 3 |
 | **Time Left ignores a currency** | currencies not in the character's alt-currency table are left out of the totals | chunk 3 |
