@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 126, liveCheck 29, clientAnalysis 28, peridotTest 51, question 28, done 153; 415 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
+**Counts.** fix 126, liveCheck 29, clientAnalysis 29, peridotTest 51, question 28, done 154; 417 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -606,6 +606,7 @@ Questions: Q19, Q20.
 - **REC-13** `clientAnalysis` **When Live's client clears property records.** RoF2 never calls its full reset (0x5b1cf0 has no callers), so records outlive zoning and logout; Live's 0x140340e50 has callers 0x140236832, 0x1403353b7 and 0x14035f3f0. Identify them; if Live clears at zone change or logout, send 0x4f09 removals at the same points.
 - **REC-14** `peridotTest` **The serialized item's leading GUID.** rof2.cpp SerializeItemForHousing writes the placed row's GUID over the item header's first 17 bytes (unknown000). That the client matches item-list entries, Inspect (0x58c7) and the menus to the item through it is unverified: check in game once placement works (build step 4). *After:* REC-3, REC-4.
   <sub>Sources: XA:PMv2</sub>
+- **REC-15** `done` **The interaction menu sent no GUID.** Found in the shakeout (2026-10-24): Adjust Placement from a placed house's menu was refused ('record [2] of property [100525] is not item [0000000000000000]', code 9). The client's 0x21ec request carries no GUID, the server copied the request back as its reply with only the title, entries and spawn id filled, and the client's type 2 entry sends the menu's GUID (+0x00) in its 0x626e. Live's menus carry each record's GUID (the menu scans: house 117754115's records 1-5, 20e308i0000uOW00 and so on). **Result (2026-10-24):** the reply writes the record's GUID at +0x00 as REC-3 listed (71556b7d8; a first fix that accepted a zero GUID was reverted, 2e2326d51); in game Adjust Placement from the menu begins with a000000000000002 and the house moves.
 
 ### regions (REG)
 
@@ -981,6 +982,7 @@ Questions: Q2, Q14.
 
 - **INT-36** `done` **housingZones.sql took PEQ to lack the interior zone rows; Peridot has 24 of the 25 (found deploying to peridothousing, 2026-10-24).** The file refused a database holding any of its rows, and Peridot (PEQ) carries every housing interior and hall row but guildhall version 2, with its own safe points and an hour's shutdown delay, so the deploy stopped at the second file. **Result (2026-10-24):** makeHousingZonesSql.py writes each insert behind its own NOT EXISTS and refuses only a clash (the id and version under another short name, or the short name and version under another id); the rows a server has get Live's values from housingZoneSettings.sql as before. tools/testHousingZonesSql.py on Peridot's zone definition seeded as Peridot stands (MariaDB 10.5.4 on peridothousing, passed): guildhall version 2 alone added with the hall's row and the neighborhood's gates, a second run adding nothing, both clashes refused, the settings on all 25 and the neighborhood (Live's safe points, the hall interior's zone type 2), a missing row refused.
   <sub>Sources: owner:2026-10-23 · REU-7 · INT-13 · INT-31</sub>
+- **INT-37** `clientAnalysis` **Which name the neighborhood's zone-in line uses.** Leaving a house by /leaverealestate printed 'You have entered Cedar Colonial Lake.' (the neighborhood's name) and by its front door 'You have entered Sunrise Hills.' (the zone's long name), though both go through leaveForExitPoint to the same exit point and the server logged the same zone-in (current property 100456) (seen 2026-10-24). Find where RoF2 picks the line's name at zone-in and what state differs after the two leaves; Live's front-door leave printed no other text (INT-11), so its zone-in line is still to note.
 
 ### doors (DOR)
 
