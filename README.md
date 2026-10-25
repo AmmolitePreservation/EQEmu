@@ -2,9 +2,9 @@
 
 This repository is **Peridot's EQEmu server source**: upstream EQEmu at `ab45d4358` (v23.8.1) plus Peridot's own commits. It is built locally on the Peridot server and never pulls from upstream.
 
-## Current work: player housing
+## Current work: GUIDs and player housing
 
-**The primary purpose of the current work is server-side player housing (real estate) for the RoF2 client.** The client-side research that drives it lives in [`playerHousing/`](playerHousing/README.md); start with its *Start here* section.
+**The current work is Live-style item GUIDs and server-side player housing (real estate) for the RoF2 client, as equal peers, GUIDs first.** GUIDs are built on the `guids` branch (its `guids/` folder has the design and worklist); housing on this branch is paused until `guids` is merged and migrated, then reworked on top of it. The client-side research that drives housing lives in [`playerHousing/`](playerHousing/README.md); start with its *Start here* section.
 
 *Everything below this line is upstream EQEmu's README.*
 

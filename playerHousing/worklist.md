@@ -8,7 +8,7 @@
 
 **Status legend.** `fix`: change code, SQL or docs (the content is given). `liveCheck`: observe Live. `clientAnalysis`: disassemble a client. `peridotTest`: run on Peridot. `question`: the owner decides. `done`: settled, kept for the record. **BLOCKING**: the build or the client fails until it lands.
 
-**Counts.** fix 126, liveCheck 29, clientAnalysis 29, peridotTest 51, question 28, done 154; 417 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
+**Counts.** fix 130, liveCheck 29, clientAnalysis 29, peridotTest 51, question 28, done 154; 421 in all. Of the 28 questions, 23 are decided or settled by Live, 3 wait for the testing phase (Q9-Q11), 1 for the final polish item (Q12) and 1 is a polish question (Q15); none are open. **BLOCKING:** none.
 
 ## Owner decisions
 
@@ -46,6 +46,7 @@
 - **Client files repo (2026-10-24):** the finished files no table drives go to the private repo AmmolitePreservation/eqemu-client-files, laid out per client folder (rof2/Resources/OnDemandResources.txt, rof2/Resources/GlobalLoad_chr.txt, rof2/guildlobby.eqg; guildlobby.zon is byte-identical in both clients), built by tools/makeClientFiles.py from a clean RoF2 install and Live's client (PAT-9). A launcher or patcher reads that repo later; until then the test client is updated by hand from it.
 - **A faulty item never disables housing (2026-10-24):** EQEmu does not switch off a subsystem over bad rows, and neither does housing: an NPC item without a usable real_estate_npc_items row, a row naming a missing NPC type or a bad race tag, a stray action or a bad aura item is logged as an error and that item is left unplaceable (the client's 0x24, 'You can only do this with placeable items'); only faults of the catalog's core (definitions, costs, regions, templates, an unreadable table) keep the catalog invalid and housing off in the zone.
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
+- **GUIDs first (2026-10-25):** the work is now GUIDs and PlayerHousing, equal peers, GUIDs first. Live-style item GUIDs are built on their own branch, `guids` (from 954266eaa, before housing), with their own migration, design doc and worklist in its `guids/` folder, and tested on peridotguids. Housing, the Chunk 8 shakeout included, is paused until `guids` is finished, merged into `claude` and migrated; then housing is reworked on top of real GUIDs (REC-16 to REC-18, DOC-39) and the shakeout resumes from peridothousing.md's "Chunk 8 in game" with a fresh pass.
 
 ## Questions to work through
 
@@ -607,6 +608,9 @@ Questions: Q19, Q20.
 - **REC-14** `peridotTest` **The serialized item's leading GUID.** rof2.cpp SerializeItemForHousing writes the placed row's GUID over the item header's first 17 bytes (unknown000). That the client matches item-list entries, Inspect (0x58c7) and the menus to the item through it is unverified: check in game once placement works (build step 4). *After:* REC-3, REC-4.
   <sub>Sources: XA:PMv2</sub>
 - **REC-15** `done` **The interaction menu sent no GUID.** Found in the shakeout (2026-10-24): Adjust Placement from a placed house's menu was refused ('record [2] of property [100525] is not item [0000000000000000]', code 9). The client's 0x21ec request carries no GUID, the server copied the request back as its reply with only the title, entries and spawn id filled, and the client's type 2 entry sends the menu's GUID (+0x00) in its 0x626e. Live's menus carry each record's GUID (the menu scans: house 117754115's records 1-5, 20e308i0000uOW00 and so on). **Result (2026-10-24):** the reply writes the record's GUID at +0x00 as REC-3 listed (71556b7d8; a first fix that accepted a zero GUID was reverted, 2e2326d51); in game Adjust Placement from the menu begins with a000000000000002 and the house moves.
+- **REC-16** `fix` **Real item GUIDs replace the derived ones.** Everywhere REC-3's derived GUID goes (item-list entries, 0x1045, 0x2a9e, 0x626e's begin object, the spawn binding of NPC-3, 0x21ec, the menu reply of REC-15, SerializeItemForHousing's item header) carries the item's own GUID from the `guids` item table; housingItems.cpp's itemGuid goes. Rerun REC-4 and REC-14 with real GUIDs. *After:* the `guids` merge.
+- **REC-17** `fix` **A packed property names its container item by GUID.** real_estate_properties points at the crate or house item's GUID (a foreign key to the item table), replacing the propertyItemKey entry in the item's custom_data (housingPlacement.cpp:405, housingSell.cpp:95) and the contained_in_item flag, which follows from the reference. *After:* the `guids` merge.
+- **REC-18** `fix` **real_estate_items becomes the placement side table, keyed by GUID.** The item columns (item_id, charges, color, the augments, instnodrop, custom_data, the ornaments, the owner) move to the item table; real_estate_items keeps the property, placed, upkeep_expired_at and the transform, with a foreign key to the item table. *After:* the `guids` merge.
 
 ### regions (REG)
 
@@ -1206,6 +1210,8 @@ Questions: Q13.
 - **DOC-37** `done` **A left click on a house.** **Owner (2026-10-20):** a left click on the house does nothing; a left click on the house's door enters it, and so does the right-click menu's Enter; the two paths are independent. serverPlan.md, worldLayer.md, flows/editPlacedItem.md and testingNotes.md say so; the door click's wire path is INT-19.
 - **DOC-38** `fix` **Documents the step 5 analysis corrects.** README.md:208 (0x613d's byte is written, INT-8) and its 0x7bb1 section (on the wire the offer is a NUL-terminated name, five u32s and a length-prefixed name, not a fixed 0x54 bytes; the accept is the fixed struct); worldLayer.md's left click (a "hit" is the POINT1-4 door quad, INT-19) and :224; flows/purchase.md:30, :104 and serverWork.md's To verify per DOR-3; windows/RealEstateItemsWnd.md's container buttons (the 0x1228 latch clear).
   <sub>Sources: build step 5 client analysis</sub>
+- **DOC-39** `fix` **GUIDs are not hex.** placedItemsAndProperties.md:67 and :177 and REC-3 call the placed item's GUID 16 hex characters. RoF2's alphabet is `0-9A-Za-z+-` (decode 0x80c6a0, encode 0x80c520; the setter 0x80c920 keeps only a string that survives decode and encode), carrying three little-endian words: the stamping character, the world (with a reserved half) and that character's counter. The `guids` design doc has the full format.
+  <sub>Sources: GUID research 2026-10-24/25</sub>
 
 ### process (PRC)
 
