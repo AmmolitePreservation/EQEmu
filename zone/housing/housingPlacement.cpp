@@ -31,8 +31,6 @@ namespace housing {
     constexpr size_t storeRequestSize = 48;
     constexpr size_t houseSwapSize = 24;
     constexpr size_t guidLength = 0x14;
-    // RoF2's menu Adjust Placement (an interaction menu type 2 entry) names a placed record by its ids alone, with this GUID.
-    constexpr const char *unnamedGuid = "0000000000000000";
     constexpr uint32 none = 0xFFFFFFFF;
     constexpr uint32 possessionsType = 0;
 
@@ -192,7 +190,7 @@ namespace housing {
         throw ItemRefusal(ItemResult::notFound, fmt::format("property [{}] is not one this zone sent", request.propertyId));
       }
       auto row = placedItem(request.propertyId, request.recordId);
-      if (!row || (request.guid != unnamedGuid && itemGuid(*row) != request.guid)) {
+      if (!row || itemGuid(*row) != request.guid) {
         throw ItemRefusal(ItemResult::notFound, fmt::format("record [{}] of property [{}] is not item [{}]", request.recordId, request.propertyId, request.guid));
       }
       Candidate candidate;
@@ -202,7 +200,7 @@ namespace housing {
       }
       candidate.item = candidate.instance->GetItem();
       candidate.row = row;
-      candidate.guid = itemGuid(*row);
+      candidate.guid = request.guid;
       describeCarrier(candidate);
       return candidate;
     }
