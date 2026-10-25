@@ -112,7 +112,7 @@ Checks in order. Messages print (chat, color `0xd`) only when `showMessages` ≠
 | Guild Plot, character guild ≠ plot guild | 9 | `0x2ef` |
 | **the plot's item container isn't loaded** (`0x57c3c0`: manager container map `+0x64`/`+0x68`, and the container reports data; i.e. the client hasn't received the plot's `0x1cef` list) | 1 | default |
 | player Plot, House of Thule bit missing | 7 | "You must either empty all of the items from this plot or purchase the House of Thule…" |
-| **a non-empty moving crate in the character's inventory or bank** (`0x57ef90`: item search `0x5b7f10` / `0x5b68a0` over character stores `+0x1ea0`, `+0x1ed8` and a third) | 3 | "You already have a non-empty moving crate in your inventory or bank…" |
+| **a non-empty moving crate in the character's inventory or bank** (`0x57ef90` with the plot: item search `0x5b7f10` / `0x5b68a0` over character stores `+0x1ea0`, `+0x1ed8` and a third), **when the sale would hand over another**: an empty plot sells (seen 2026-10-24, STT-18) | 3 | "You already have a non-empty moving crate in your inventory or bank…" |
 | **no placed moving crate on the plot** (`0x5b47d0`: the plot's container, a crate-kind definition `0x7f62c0`, `0x5b45b0`) | 4 | "…the plot does not contain a placed [crate]…" |
 | **the placed crate has no room** (`0x5b65b0`) | 5 | "…the placed crate cannot add another…" |
 | **no permission 3 "Remove Crate"** (`0x4ff6c0(3, …)`) | 6 | "…you do not have permission to remove…" |

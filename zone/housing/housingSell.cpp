@@ -211,11 +211,6 @@ namespace housing {
           throw SellRefusal("the seller lacks House of Thule", needsHouseOfThule);
         }
       }
-      for (uint32 carried : carriedCrateIds(client->CharacterID())) {
-        if (hasContents(carried)) {
-          throw SellRefusal("the seller already carries a non-empty crate", holdsFullCrate);
-        }
-      }
       const auto rows = RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {} ORDER BY id", plotId));
       std::map<uint32, PlacedItem> rowCarrying;
       for (const auto &row : rows) {
@@ -236,6 +231,14 @@ namespace housing {
         }
       }
       const size_t movedRows = rows.size() - (crateRow ? 1 : 0);
+      // The seller may carry one non-empty crate, so only a sale that hands over another is refused, as the client's gate (0x57ef90 with the plot) lets an empty plot go.
+      if (movedRows > 0 || (crateRow && hasContents(crate.id))) {
+        for (uint32 carried : carriedCrateIds(client->CharacterID())) {
+          if (hasContents(carried)) {
+            throw SellRefusal("the seller already carries a non-empty crate", holdsFullCrate);
+          }
+        }
+      }
       if (movedRows > 0) {
         if (!crateRow) {
           throw SellRefusal("the plot holds items and no placed crate", noCrateWithRoom);
