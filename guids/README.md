@@ -40,6 +40,10 @@ Trades in both directions (a stack of 26 Tiny Daggers, `moyY06W0003d0000`), Baza
 
 Live sends all zeros for unlimited merchant stock and for a corpse's loot before it is looted.
 
+### Inspecting a Bazaar listing
+
+Any listed item can be inspected from the Bazaar search window without opening its trader: with Pariator in the Plane of Knowledge on 2026-10-26, a search for "Spider Silk" returned 14 rows, and Inspect (`BZR_RequestItemButton`) on the first opened the item display for that listing (Bloodied Frozen Crystal Spider Silk) from a trader never visited. The request (RoF2 `BazaarInspect_Struct`) names the trader, the item's GUID and its item number. EQEmu answers it today with a fresh copy of the base item, never the listed instance.
+
 ### The per-session instance number
 
 Besides the GUID, Live gives every item a per-session number (eqlib's `MerchantSlot` at the item's +0xf8): consecutive across one character's inventory as it is sent, new numbers after a relog, new items later in the session getting later numbers (Anastrel 81832095..., then 82795264... after a relog). It is a server counter advanced per item sent, not per login. Evolving items get it like every other item (seven tradeskill trophies, 84007286... inside the run 84006972-84007527).
