@@ -2,7 +2,7 @@
 
 The work for Live-style item GUIDs ([README.md](README.md) has what Live does and the design). Statuses: `fix` (write code, SQL or docs; the content is given), `liveCheck` (observe Live), `peridotTest` (run on peridotguids), `question` (the owner decides), `polish` (after the first pass works), `done` (kept for the record).
 
-**Counts.** fix 22, liveCheck 0, peridotTest 4, question 1, polish 4, done 3; 34 in all.
+**Counts.** fix 23, liveCheck 0, peridotTest 4, question 2, polish 4, done 4; 37 in all.
 
 ## Owner decisions
 
@@ -13,8 +13,11 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 ## Process (PRC)
 
 - **PRC-1** `done` **The branch and its docs.** `guids` from 954266eaa in its own worktree; this folder.
-- **PRC-2** `fix` **peridotguids.** A new Proxmox clone of Peridot (VM 104 is read-only; never restart its services), set up as peridothousing was (claude's playerHousing/peridothousing.md is the recipe: hostname, hosts, Zabbix, Alloy, akk-stack `.env` and eqemu_config addresses, stopped services, a database dump first), building this branch inside its eqemu-server container. Add it to facet's inventory. A RoF2 client copy pointed at it for claudelink.
+- **PRC-2** `done` **peridotguids.** VM 145, a clone of Peridot set up as peridothousing was, building this branch; in facet's inventory, with a claudelink login, a RoF2 client copy and the snapshots `pristine` and `ready` ([peridotguids.md](peridotguids.md)).
 - **PRC-3** `fix` **README.md's current work.** The repository README names GUIDs as this branch's work (as `claude`'s names housing).
+- **PRC-4** `question` **Peridot runs an unpushed checkout.** Peridot's `code/` is at 142d48ef7 on `claude` (2026-09-28, "Export: which of the NPC item worksheet's 113 items..."), on no branch of the GitHub repository: 954266eaa plus 6,232 commits carrying an early housing implementation (zone/housing and more) with custom migrations 1 to 3 (`items_housing_tail`, `real_estate_catalog`, `real_estate_state`) in code and `CUSTOM_BINARY_DATABASE_VERSION` 3, while its database stands at custom 0, so none of them ran. Whether that checkout is kept, pushed somewhere or replaced when `guids` and housing land on Peridot.
+- **PRC-5** `fix` **The stack does not come back after a reboot.** On peridotguids' reboot during setup, `akk-stack-eqemu-server-1` and `akk-stack-mariadb-1` exited with 255 and stayed down despite `restart: unless-stopped`, until `docker compose up -d` recreated them. Find why, so a reboot or a disk-only snapshot rollback brings the server back.
+- **PRC-6** `fix` **A Zabbix host for peridotguids.** Its agent now reports as `peridotguids` (with Peridot's PSK identity), and Zabbix has no host for it; peridothousing has the same gap.
 
 ## Schema (SCH)
 
