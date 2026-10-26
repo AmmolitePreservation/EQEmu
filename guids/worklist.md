@@ -59,7 +59,7 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 ## Migration (MIG)
 
 - **MIG-1** `fix` **Its own migration.** Every existing item and augment gets a row in a fixed order (table, then row key): character-held items take their holder's counter (bots their owner, parcels their recipient); the shared bank, the guild bank, ground drops and world-container contents take Live's server stamp, generated exactly as 0x80c890, with the process id and start time recorded so a rerun reproduces every GUID. Every character is stamped with the world rule; #4460's serials are discarded.
-- **MIG-2** `fix` **Pre-GUID inventory snapshots are cleared.** They name items by slot and item number and map to no row, so the migration recreates `inventory_snapshots` in the GUID shape, empty, and says so in its notes; Peridot has none (the feature is off there), so nothing is lost. Tested with peridotguids' `seeded` state (peridotguids.md): three pre-GUID snapshots on Claudeguids, gone after the migration, and `#invsnapshot capture` and `restore` working on GUID rows after it; the owner's decision 2026-10-26, so a PR to upstream carries a tested path.
+- **MIG-2** `fix` **Pre-GUID inventory snapshots are cleared.** They name items by slot and item number and map to no row, so the migration recreates `inventory_snapshots` in the GUID shape, empty, and says so in its notes; Peridot has none (the feature is off there), so nothing is lost. Tested with peridotguids' `preGuids` state (peridotguids.md): three pre-GUID snapshots on Claudeguids, gone after the migration, and `#invsnapshot capture` and `restore` working on GUID rows after it; the owner's decision 2026-10-26, so a PR to upstream carries a tested path.
 
 ## Snapshots and recovery (SNP)
 
