@@ -27,7 +27,7 @@
      "claim": "Zone-in completes in Client::CompleteConnect() at zone/client_packet.cpp:531",
      "basis": "eqemu-source",
      "status": "confirmed",
-     "evidence": "origin/main line 531; on the claude branch it is now line 568 (housing edits shifted it)",
+     "evidence": "origin/main line 531; on the housing branch it is now line 568 (housing edits shifted it)",
      "notes": "Line refs are upstream-baseline lines"
     },
     {
@@ -36,7 +36,7 @@
      "claim": "One handler Client::Handle_OP_Housing mapped for the 34 client-to-server housing opcodes",
      "basis": "design-decision",
      "status": "confirmed",
-     "evidence": "Chunk 2 opcode table (serverPlan.md 228-310): 24 C->S + 10 both = 34 of 74 rows; claude branch zone/client_packet.cpp has 34 ConnectedOpcodes[OP_RealEstate*/OP_Poll*/OP_Trophy*] entries"
+     "evidence": "Chunk 2 opcode table (serverPlan.md 228-310): 24 C->S + 10 both = 34 of 74 rows; housing branch zone/client_packet.cpp has 34 ConnectedOpcodes[OP_RealEstate*/OP_Poll*/OP_Trophy*] entries"
     },
     {
      "id": "C1-05",
@@ -327,7 +327,7 @@
      "claim": "Cross-zone updates first-class via one ServerOP_Housing forwarded to all zones; transactions plus a per-property revision",
      "basis": "design-decision",
      "status": "owner-decision",
-     "evidence": "Mechanisms exist: dbcore.h:34-36 TransactionBegin/Commit/Rollback; claude branch servertalk.h:118 ServerOP_Housing 0x0092"
+     "evidence": "Mechanisms exist: dbcore.h:34-36 TransactionBegin/Commit/Rollback; housing branch servertalk.h:118 ServerOP_Housing 0x0092"
     },
     {
      "id": "C1-40",
@@ -560,7 +560,7 @@
      "claim": "Nothing here is code yet; designed first, then written in full",
      "basis": "design-decision",
      "status": "contradicted",
-     "evidence": "The peridot claude branch has zone/housing/ (18 files), world/housingUpkeep.cpp, the Housing rules in common/ruletypes.h:1181-1214, and custom manifest versions 1-3"
+     "evidence": "The peridot housing branch has zone/housing/ (18 files), world/housingUpkeep.cpp, the Housing rules in common/ruletypes.h:1181-1214, and custom manifest versions 1-3"
     },
     {
      "id": "C1-68",
@@ -692,7 +692,7 @@
      "severity": "important",
      "whatsMissing": "A world-side hook: T12 forwards and also hands property-changed events to world's housing component. Otherwise D11 must poll on the world tick.",
      "proposedAction": "Amend T12 (and T16's sources) to give the case a world-side observe step for D11, or restate D11 as a periodic balance in the world tick.",
-     "dumpsSearched": "Plan text; claude branch world/zoneserver.cpp and world/housingUpkeep.cpp"
+     "dumpsSearched": "Plan text; housing branch world/zoneserver.cpp and world/housingUpkeep.cpp"
     },
     {
      "id": "G1-10",
@@ -757,12 +757,12 @@
     {
      "id": "G1-16",
      "location": "serverPlan.md:3 and 9 (status and development model)",
-     "description": "'Nothing here is code yet' is stale. The claude branch has zone/housing (18 files), world/housingUpkeep.cpp (chargeDueUpkeep declared with no body), the Housing rules and manifest versions 1-3.",
+     "description": "'Nothing here is code yet' is stale. The housing branch has zone/housing (18 files), world/housingUpkeep.cpp (chargeDueUpkeep declared with no body), the Housing rules and manifest versions 1-3.",
      "kind": "plan-fix",
      "severity": "minor",
      "whatsMissing": "Current status line",
      "proposedAction": "Update the status, and note that the code audit follows the plan review.",
-     "dumpsSearched": "peridot claude branch tree and git log"
+     "dumpsSearched": "peridot housing branch tree and git log"
     },
     {
      "id": "G1-17",
@@ -889,7 +889,7 @@
      "auditorStatus": "contradicted",
      "verdict": "upheld",
      "finalStatus": "contradicted (minor wording)",
-     "evidence": "- origin/main common/spdat.h:1499-1500 has '//#define SE_TeleporttoAnchor 437 // *not implemented' and '//#define SE_TranslocatetoAnchor 438': commented out.\n- The claude branch now uncomments both ('implemented ... player housing'), and zone/spell_effects.cpp:503-506 calls housing::handleAnchorEffect.\n- The plan's 'defined, not implemented today' is wrong about upstream."
+     "evidence": "- origin/main common/spdat.h:1499-1500 has '//#define SE_TeleporttoAnchor 437 // *not implemented' and '//#define SE_TranslocatetoAnchor 438': commented out.\n- The housing branch now uncomments both ('implemented ... player housing'), and zone/spell_effects.cpp:503-506 calls housing::handleAnchorEffect.\n- The plan's 'defined, not implemented today' is wrong about upstream."
     },
     {
      "id": "C1-29",
@@ -903,7 +903,7 @@
      "auditorStatus": "contradicted",
      "verdict": "upheld",
      "finalStatus": "contradicted",
-     "evidence": "- The peridot claude branch has zone/housing/ (21 files), world/housingUpkeep.cpp, ruletypes.h:1181-1215 and custom manifest versions 1-3 (CUSTOM_BINARY_DATABASE_VERSION 3).\n- Also, world/housingUpkeep.cpp declares chargeDueUpkeep() in an anonymous namespace and calls it at lines 31 and 38, with no definition anywhere. The world build would fail at link."
+     "evidence": "- The peridot housing branch has zone/housing/ (21 files), world/housingUpkeep.cpp, ruletypes.h:1181-1215 and custom manifest versions 1-3 (CUSTOM_BINARY_DATABASE_VERSION 3).\n- Also, world/housingUpkeep.cpp declares chargeDueUpkeep() in an anonymous namespace and calls it at lines 31 and 38, with no definition anywhere. The world build would fail at link."
     },
     {
      "id": "C1-70",
@@ -1169,14 +1169,14 @@
      "auditorStatus": "confirmed",
      "verdict": "upheld",
      "finalStatus": "confirmed",
-     "evidence": "Plan opcode table direction column: 24 C->S, 40 S->C, 10 both. The claude branch's zone/client_packet.cpp has 34 ConnectedOpcodes[...] = &Client::Handle_OP_Housing lines and one definition at :17407."
+     "evidence": "Plan opcode table direction column: 24 C->S, 40 S->C, 10 both. The housing branch's zone/client_packet.cpp has 34 ConnectedOpcodes[...] = &Client::Handle_OP_Housing lines and one definition at :17407."
     },
     {
      "id": "C1-06",
      "auditorStatus": "confirmed",
      "verdict": "upheld",
      "finalStatus": "confirmed",
-     "evidence": "- origin/main manifest_custom version 1 '2025_05_16_new_database_check_test' creates new_table; version.h:47 CUSTOM_BINARY_DATABASE_VERSION 0.\n- The claude branch has versions 1/2/3 (2026_09_26 items_housing_tail, real_estate_catalog, real_estate_state) and CUSTOM_BINARY_DATABASE_VERSION 3."
+     "evidence": "- origin/main manifest_custom version 1 '2025_05_16_new_database_check_test' creates new_table; version.h:47 CUSTOM_BINARY_DATABASE_VERSION 0.\n- The housing branch has versions 1/2/3 (2026_09_26 items_housing_tail, real_estate_catalog, real_estate_state) and CUSTOM_BINARY_DATABASE_VERSION 3."
     },
     {
      "id": "C1-13",
@@ -1218,7 +1218,7 @@
      "auditorStatus": "confirmed",
      "verdict": "upheld",
      "finalStatus": "confirmed (code differs slightly from D2's wording)",
-     "evidence": "origin/main world/zoneserver.cpp:1362-1399: ServerOP_CZ* cases fall through to ZSList::Instance()->SendPacket(pack). The claude branch :1676 ServerOP_Housing uses SendPacketToBootedZones, not the SendPacket that D2 names."
+     "evidence": "origin/main world/zoneserver.cpp:1362-1399: ServerOP_CZ* cases fall through to ZSList::Instance()->SendPacket(pack). The housing branch :1676 ServerOP_Housing uses SendPacketToBootedZones, not the SendPacket that D2 names."
     }
    ],
    "verifiedGaps": [
@@ -1282,7 +1282,7 @@
      "id": "G1-09",
      "verdict": "real",
      "severity": "important",
-     "evidence": "The claude branch's world/zoneserver.cpp:1676 ServerOP_Housing only does SendPacketToBootedZones. D11 (serverPlan.md:458) relies on world seeing every ownership change.",
+     "evidence": "The housing branch's world/zoneserver.cpp:1676 ServerOP_Housing only does SendPacketToBootedZones. D11 (serverPlan.md:458) relies on world seeing every ownership change.",
      "refinedAction": "Amend T12 so world also hands ServerOP_Housing 'property changed' events whose owner changed to world's housing component (D11 balance), and list that source under T16. Or restate D11 as a periodic balance in the D4 world tick."
     },
     {
@@ -1324,14 +1324,14 @@
      "id": "G1-15",
      "verdict": "real",
      "severity": "minor",
-     "evidence": "origin/main spdat.h:1499-1500 has them only as comments; the claude branch has since defined them.",
+     "evidence": "origin/main spdat.h:1499-1500 has them only as comments; the housing branch has since defined them.",
      "refinedAction": "Reword T22 and S10 'Anchors' to 'documented in comments upstream; housing defines them'."
     },
     {
      "id": "G1-16",
      "verdict": "real",
      "severity": "minor",
-     "evidence": "The claude branch has housing code. world/housingUpkeep.cpp declares chargeDueUpkeep() with no definition but calls it (lines 31, 38), which would not link.",
+     "evidence": "The housing branch has housing code. world/housingUpkeep.cpp declares chargeDueUpkeep() with no definition but calls it (lines 31, 38), which would not link.",
      "refinedAction": "Update the status lines :3 and :11 to say that code exists and the code audit follows the plan review. Note the missing chargeDueUpkeep body for that audit."
     },
     {
@@ -1454,7 +1454,7 @@
      "description": "D2 says world forwards with ZSList::Instance()->SendPacket (to every zone server, as ServerOP_CZ* does). The code uses SendPacketToBootedZones. That is probably the better choice, but the plan and code disagree.",
      "kind": "plan-fix",
      "severity": "minor",
-     "evidence": "origin/main world/zoneserver.cpp:1362-1399 against the claude branch :1676-1678."
+     "evidence": "origin/main world/zoneserver.cpp:1362-1399 against the housing branch :1676-1678."
     }
    ]
   }
@@ -2372,7 +2372,7 @@
     },
     {
      "location": "zone/client_packet.cpp:17407-17410; zone/housing/housing.h:18",
-     "description": "T3's forwarding handler calls housing::handlePacket, which is declared but defined nowhere. With housing/*.cpp in zone/CMakeLists.txt, the committed claude branch's zone fails at link time. 'Each maps to the forwarding handler' holds only on paper.",
+     "description": "T3's forwarding handler calls housing::handlePacket, which is declared but defined nowhere. With housing/*.cpp in zone/CMakeLists.txt, the committed housing branch's zone fails at link time. 'Each maps to the forwarding handler' holds only on paper.",
      "kind": "contradiction",
      "severity": "important",
      "evidence": "- grep -rn handlePacket zone/ returns only the declaration (housing.h:18) and the call (client_packet.cpp:17409).\n- zone/CMakeLists.txt:47-56 lists housing/housing.cpp and the other housing sources.\n- HEAD is 56e2ac4d9."

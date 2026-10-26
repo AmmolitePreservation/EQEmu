@@ -209,7 +209,7 @@
     - *Live headers and arrivals:* houses (0, -12, 5) with arrival heading 0; guildhall3_int and guildhallsml_int (255, 2, -10, 386).
 27. **Standard hall version.** *Plan:* "a version of its own" (serverPlan.md:513; serverWork F3). *Catalog:* row 38 is (345, 0), and makeHousingCatalogSql.py:235 always writes 0. No SQL creates the version.
 28. **phinterior1d1.** *Plan and work list:* a dragon house Live "never sold" (serverPlan.md:564; serverWork S13). *Live:* zone 723 hosts definition 30, Hermit's Hideaway (deed 54999); serverPlan.md:517 says so too. Also, plhbixieint (774), plhpirateshipint (786) and dragonhouseinta (877) are outside RoF2's zone range (1-767), and RoF2 has none of their files.
-29. **Spell effects 437/438 "defined, not implemented" upstream.** *Plan:* serverPlan.md:60, :556, :571. *Upstream:* spdat.h:1499-1500 has them only as commented-out `#define`s. The claude branch now defines them.
+29. **Spell effects 437/438 "defined, not implemented" upstream.** *Plan:* serverPlan.md:60, :556, :571. *Upstream:* spdat.h:1499-1500 has them only as commented-out `#define`s. The housing branch now defines them.
 30. **Status vs code.**
     - serverPlan.md:3 says "nothing here is code yet", and :11 says "ready to implement", "verified by reading" (:609).
     - In fact zone/housing has 21 files, and neither process links: `housing::handlePacket` is declared (housing.h:18) and called (client_packet.cpp:17409) with no definition, and `chargeDueUpkeep()` is declared and called (world/housingUpkeep.cpp:12, :31, :38) with no body.

@@ -46,7 +46,7 @@
 - **Client files repo (2026-10-24):** the finished files no table drives go to the private repo AmmolitePreservation/eqemu-client-files, laid out per client folder (rof2/Resources/OnDemandResources.txt, rof2/Resources/GlobalLoad_chr.txt, rof2/guildlobby.eqg; guildlobby.zon is byte-identical in both clients), built by tools/makeClientFiles.py from a clean RoF2 install and Live's client (PAT-9). A launcher or patcher reads that repo later; until then the test client is updated by hand from it.
 - **A faulty item never disables housing (2026-10-24):** EQEmu does not switch off a subsystem over bad rows, and neither does housing: an NPC item without a usable real_estate_npc_items row, a row naming a missing NPC type or a bad race tag, a stray action or a bad aura item is logged as an error and that item is left unplaceable (the client's 0x24, 'You can only do this with placeable items'); only faults of the catalog's core (definitions, costs, regions, templates, an unreadable table) keep the catalog invalid and housing off in the zone.
 - **Live research paused (2026-10-20):** no Live research until the coding work has moved further; liveCheck items wait, and the time-bound ones already scheduled (RCL-2, UPK-6) are the only exceptions.
-- **GUIDs first (2026-10-25):** the work is now GUIDs and PlayerHousing, equal peers, GUIDs first. Live-style item GUIDs are built on their own branch, `guids` (from 954266eaa, before housing), with their own migration, design doc and worklist in its `guids/` folder, and tested on peridotguids. Housing, the Chunk 8 shakeout included, is paused until `guids` is finished, merged into `claude` and migrated; then housing is reworked on top of real GUIDs (REC-16 to REC-18, DOC-39) and the shakeout resumes from peridothousing.md's "Chunk 8 in game" with a fresh pass.
+- **GUIDs first (2026-10-25):** the work is now GUIDs and PlayerHousing, equal peers, GUIDs first. Live-style item GUIDs are built on their own branch, `guids` (from `main`'s tip 6fedcae84, before housing), with their own migration, design doc and worklist in its `guids/` folder, and tested on peridotguids. Housing, the Chunk 8 shakeout included, is paused until `guids` is finished, merged into `housing` and migrated; then housing is reworked on top of real GUIDs (REC-16 to REC-18, DOC-39) and the shakeout resumes from peridothousing.md's "Chunk 8 in game" with a fresh pass.
 
 ## Questions to work through
 
@@ -1136,7 +1136,7 @@ Questions: Q13.
 
 ### docs (DOC)
 
-- **DOC-1** `fix` **Plan status lines are stale.** serverPlan.md:3, :11, :609: code exists on the claude branch and is under audit (zone/housing 21 files, world/housingUpkeep.cpp, Housing rules ruletypes.h:1181-1215, custom manifest versions 1-3); name the link gaps (BLD-1, BLD-2).
+- **DOC-1** `fix` **Plan status lines are stale.** serverPlan.md:3, :11, :609: code exists on the housing branch and is under audit (zone/housing 21 files, world/housingUpkeep.cpp, Housing rules ruletypes.h:1181-1215, custom manifest versions 1-3); name the link gaps (BLD-1, BLD-2).
   <sub>Sources: G1-16 · C1-67 · report:contradiction-30 · report:planfix-status</sub>
 - **DOC-2** `fix` **Item display line 5289/5288.** serverPlan.md:341: nothing prints unless the property and its item list are loaded; then 5289 when the record name is non-empty, 5288 (count only) when empty (RoF2 0x6a06b0). *After:* REC-5.
   <sub>Sources: G3-10 · C3-43 · report:planfix-itemDisplayLine</sub>
