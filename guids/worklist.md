@@ -2,7 +2,7 @@
 
 The work for Live-style item GUIDs ([README.md](README.md) has what Live does and the design). Statuses: `fix` (write code, SQL or docs; the content is given), `liveCheck` (observe Live), `peridotTest` (run on peridotguids), `question` (the owner decides), `polish` (after the first pass works), `done` (kept for the record).
 
-**Counts.** fix 21, liveCheck 0, peridotTest 5, question 1, polish 4, done 7; 38 in all.
+**Counts.** fix 22, liveCheck 0, peridotTest 5, question 1, polish 4, done 7; 39 in all.
 
 ## Owner decisions
 
@@ -33,6 +33,7 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 - **ISS-2** `fix` **Stacks and use.** Split = new GUID from the splitter; merge = destination keeps, the piece retires `stacked`; partial use decrements; last unit retires `consumed`; partial sale or destroy splits first.
 - **ISS-3** `fix` **Retirement reasons.** destroyed, sold, stacked, consumed, expired, decayed, characterDeleted, removedByGM, rolledBack, set at every point an item leaves play (destroy, sell, merge, combine, hand-in, task delivery, charges, no-rent and temporary expiry, corpse rot, ground despawn, hard character delete, GM removal, rollback).
 - **ISS-4** `fix` **No all-zero item.** An item instance without a GUID is a server error; things that aren't items yet are sent as zeros.
+- **ISS-5** `fix` **Moves are written through, exchanges are transactions, counter collisions retry.** Every move writes the item's row at once, as EQEmu writes `inventory` today (one `SaveInventory` per slot change); a move between holders is one `UPDATE` of the row's location, never a delete and insert, which is what makes one item, one place hold. An exchange that moves several rows together (a trade, a Bazaar buy with its coin, a parcel retrieve with a bag's contents, a merge) runs in one database transaction, so a crash mid-way leaves either the old state or the new. The issuing path's `INSERT ... SELECT MAX(third) + 1` retries a key collision up to three times, then fails loudly; the collision is logged with the character and the two counters.
 
 ## Trust (SEC)
 
