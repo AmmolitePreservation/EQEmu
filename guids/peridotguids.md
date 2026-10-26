@@ -21,7 +21,7 @@ Changed from Peridot's copy while its network link was still down (`link_down=1`
 | `pristine` | The clone set up, the `guids` build running, the database at 9325 / bots 0 / custom 0 with no migration applied; RAM included |
 | `ready` | `pristine` plus the claudelink login and character below, camped; RAM included |
 
-`qm rollback 145 ready` (or `pristine`) returns to that running state. Both include RAM because the stack's server and database containers did not come back by themselves after a reboot of the clone (PRC-4).
+`qm rollback 145 ready` (or `pristine`) returns to that running state. A plain reboot also brings the server back by itself: Docker restarts the stack's containers and Spire starts the launcher (`spire.launcher_start` in eqemu_config.json). The containers carried over from Peridot first had to be recreated, since their ports were pinned to Peridot's address (PRC-4).
 
 ## The server
 

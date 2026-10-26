@@ -2,7 +2,7 @@
 
 The work for Live-style item GUIDs ([README.md](README.md) has what Live does and the design). Statuses: `fix` (write code, SQL or docs; the content is given), `liveCheck` (observe Live), `peridotTest` (run on peridotguids), `question` (the owner decides), `polish` (after the first pass works), `done` (kept for the record).
 
-**Counts.** fix 23, liveCheck 0, peridotTest 4, question 1, polish 4, done 4; 36 in all.
+**Counts.** fix 22, liveCheck 0, peridotTest 4, question 1, polish 4, done 5; 36 in all.
 
 ## Owner decisions
 
@@ -15,7 +15,7 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 - **PRC-1** `done` **The branch and its docs.** `guids` from 954266eaa in its own worktree; this folder.
 - **PRC-2** `done` **peridotguids.** VM 145, a clone of Peridot set up as peridothousing was, building this branch; in facet's inventory, with a claudelink login, a RoF2 client copy and the snapshots `pristine` and `ready` ([peridotguids.md](peridotguids.md)).
 - **PRC-3** `fix` **README.md's current work.** The repository README names GUIDs as this branch's work (as `claude`'s names housing).
-- **PRC-4** `fix` **The stack does not come back after a reboot.** On peridotguids' reboot during setup, `akk-stack-eqemu-server-1` and `akk-stack-mariadb-1` exited with 255 and stayed down despite `restart: unless-stopped`, until `docker compose up -d` recreated them. Find why, so a reboot or a disk-only snapshot rollback brings the server back.
+- **PRC-4** `done` **The stack comes back after a reboot.** The containers carried over from Peridot had their ports pinned to Peridot's address (`${IP_ADDRESS}` in docker-compose.yml, 10.111.111.211), which the clone does not have, so at its first reboot Docker could not bind them and `akk-stack-eqemu-server-1` and `akk-stack-mariadb-1` exited with 255. `docker compose up -d --force-recreate` re-pinned them to 10.111.111.239; Spire then starts the launcher at boot (`spire.launcher_start` true in eqemu_config.json). A reboot on 2026-10-26 brought back the four containers, world, the login server, UCS and 11 zones with nothing done by hand.
 - **PRC-5** `fix` **A Zabbix host for peridotguids.** Its agent now reports as `peridotguids` (with Peridot's PSK identity), and Zabbix has no host for it; peridothousing has the same gap.
 
 ## Schema (SCH)
