@@ -6,13 +6,13 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 
 ## Owner decisions
 
-- **GUIDs first (2026-10-25):** the work is GUIDs and PlayerHousing, equal peers, GUIDs first: this branch (`guids`, from `main`'s tip 6fedcae84) with its own migration, tested on peridotguids (a new clone of Peridot); housing on `claude` is paused until `guids` is merged into `claude` and migrated, then reworked on top (its REC-16 to REC-18, DOC-39).
+- **GUIDs first (2026-10-25):** the work is GUIDs and PlayerHousing, equal peers, GUIDs first: this branch (`guids`, from `main`'s tip 6fedcae84) with its own migration, tested on peridotguids (a new clone of Peridot); housing on `housing` is paused until `guids` is merged into `housing` and migrated, then reworked on top (its REC-16 to REC-18, DOC-39).
 - **Live dictates.** Everything Live shows is copied exactly, the server stamp included; EQEmu's own structures are kept where they serve (side tables keyed by GUID, snapshots, the session serial).
 - **Every decision in README.md's "The design"** was made with the owner on 2026-10-24/25: the format and world rule, the item table and its derived counter, side tables with foreign keys, the receiver rule and the single issuing path, the quest API, stacks and use, the nine retirement reasons and `World:RecoverableItemStates`, the session serial, the encoders, snapshots with skip-and-log plus `reissue`, and the migration's holder counter plus Live's server stamp.
 
 ## Process (PRC)
 
-- **PRC-1** `done` **The branch and its docs.** `guids` from `main`'s tip 6fedcae84 in its own worktree (first cut from 954266eaa, `claude`'s rewritten copy of the same tree, and rebased so a merge into `main` carries only this branch's commits); this folder.
+- **PRC-1** `done` **The branch and its docs.** `guids` from `main`'s tip 6fedcae84 in its own worktree (first cut from 954266eaa, a rewritten copy of the same tree, and rebased so a merge into `main` carries only this branch's commits); this folder.
 - **PRC-2** `done` **peridotguids.** VM 145, a clone of Peridot set up as peridothousing was, building this branch; in facet's inventory, with a claudelink login, a RoF2 client copy and the snapshots `pristine` and `ready` ([peridotguids.md](peridotguids.md)).
 - **PRC-3** `done` **README.md's current work.** The repository README names GUIDs as this branch's work, points to this folder and its worklist, and names peridotguids as the test server.
 - **PRC-4** `done` **The stack comes back after a reboot.** The containers carried over from Peridot had their ports pinned to Peridot's address (`${IP_ADDRESS}` in docker-compose.yml, 10.111.111.211), which the clone does not have, so at its first reboot Docker could not bind them and `akk-stack-eqemu-server-1` and `akk-stack-mariadb-1` exited with 255. `docker compose up -d --force-recreate` re-pinned them to 10.111.111.239; Spire then starts the launcher at boot (`spire.launcher_start` true in eqemu_config.json). A reboot on 2026-10-26 brought back the four containers, world, the login server, UCS and 11 zones with nothing done by hand.
