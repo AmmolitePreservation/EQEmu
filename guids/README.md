@@ -133,11 +133,13 @@ A split piece is a new item with the splitter's next number. A merge keeps the d
 | `characterDeleted` | held by a character who was hard-deleted (a soft delete keeps everything) |
 | `removedByGM` | taken by a GM command |
 | `rolledBack` | removed by an inventory snapshot restore |
+| `petDonated` | held by a pet that died, was dismissed or depopped (no owned NPC leaves a corpse) |
+| `botDonated` | held by a bot that was deleted |
 
 Which states a merchant's Recovery tab may bring back is a rule:
 
 ```cpp
-RULE_STRING(World, RecoverableItemStates, "destroyed,decayed", "Comma-delimited list of retirement states whose items can be recovered from a merchant's Recovery tab. Values: destroyed | sold | consumed | expired | decayed | characterDeleted | removedByGM | rolledBack. Live allows recovery of destroyed items; it does not allow recovery of sold items.")
+RULE_STRING(World, RecoverableItemStates, "destroyed,decayed", "Comma-delimited list of retirement states whose items can be recovered from a merchant's Recovery tab. Values: destroyed | sold | consumed | expired | decayed | characterDeleted | removedByGM | rolledBack | petDonated | botDonated. Live allows recovery of destroyed items; it does not allow recovery of sold items.")
 ```
 
 An unknown name fails loudly when the rule loads; `stacked` is refused, since the merged units already live on in the stack they joined. A recovered item is the same row, so it keeps its GUID.
