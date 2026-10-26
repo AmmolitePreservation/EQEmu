@@ -156,4 +156,4 @@ Its own migration, separate from housing's. Every existing item, each augment pu
 
 ## Where the work lives
 
-Branch `guids` of AmmolitePreservation/EQEmu, from 954266eaa ("Peridot local changes", the commit housing began from), in its own worktree; this folder for the design and worklist; tested on **peridotguids**, a new clone of Peridot. Housing is paused on `claude` (its worklist's "GUIDs first" decision, REC-16 to REC-18, DOC-39) until this branch is merged into `claude` and migrated.
+Branch `guids` of AmmolitePreservation/EQEmu, from `main`'s tip 6fedcae84 ("Peridot local changes", the code Peridot runs; `claude` sits on a rewritten copy of the same history, 954266eaa, with the same tree), in its own worktree; this folder for the design and worklist; tested on **peridotguids**, a new clone of Peridot. Housing is paused on `claude` (its worklist's "GUIDs first" decision, REC-16 to REC-18, DOC-39) until this branch is merged into `claude` and migrated.
