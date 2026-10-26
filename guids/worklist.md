@@ -2,7 +2,7 @@
 
 The work for Live-style item GUIDs ([README.md](README.md) has what Live does and the design). Statuses: `fix` (write code, SQL or docs; the content is given), `liveCheck` (observe Live), `peridotTest` (run on peridotguids), `question` (the owner decides), `polish` (after the first pass works), `done` (kept for the record).
 
-**Counts.** fix 21, liveCheck 0, peridotTest 4, question 1, polish 4, done 7; 37 in all.
+**Counts.** fix 21, liveCheck 0, peridotTest 5, question 1, polish 4, done 7; 38 in all.
 
 ## Owner decisions
 
@@ -71,6 +71,7 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 - **TST-2** `peridotTest` **The counter.** Consecutive, never reused after a destroy, survives zoning, crashes and restarts.
 - **TST-3** `peridotTest` **The migration.** On a copy of Peridot's data: every item has a row, a rerun gives the same GUIDs, server stamps decode as Live's do.
 - **TST-4** `peridotTest` **Snapshots.** A restore with an item traded away (skipped and logged), with `reissue`, and undone by the "before restore" snapshot.
+- **TST-5** `peridotTest` **Spoofed GUIDs are refused (SEC-1).** With two characters on peridotguids (Claudeguids and a second on a new account made at its first login, so nothing of Peridot's data is touched), each attempt is refused, nothing changes, and the log carries the character, the GUID and the scope tried: a Bazaar buy naming trader A's id with a GUID listed by trader B, and with a GUID B holds but has not listed; a Bazaar inspect naming a GUID in B's inventory but not listed; a price update on a GUID the character does not list; an evolving XP transfer naming the other character's evolving item as source or destination; a parcel retrieve naming another character's parcel; a Recovery request for a GUID another character destroyed; an all-zero GUID, a placeholder `{0, 0, 1}` and text that fails the round-trip decode, on the buy path. The real client cannot be made to send these, so each case is a crafted packet in the RoF2 shapes sent through the link; that sender is part of this item.
 
 ## Research (RES)
 
