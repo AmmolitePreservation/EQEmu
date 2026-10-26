@@ -40,6 +40,12 @@ Trades in both directions (a stack of 26 Tiny Daggers, `moyY06W0003d0000`), Baza
 
 Live sends all zeros for unlimited merchant stock and for a corpse's loot before it is looted.
 
+### World objects and dropped items
+
+The client holds no item for a ground object, static or dropped. In the Plane of Knowledge on 2026-10-26 (Pariator, Bristlebane) the client's ground-object list held 37 entries: forges, ovens, looms, brew barrels, kilns, pottery wheels and the pickable ground spawns, every one with its `Item` pointer null, and 174 zone dumps from the Live tests of 2026-10-24/25 hold no ground object with an attached item either. A world container is not an item, and a ground spawn becomes one only when picked up.
+
+A player's own drop is the same. On Firiona Vie on 2026-10-26, Xekirley (a new Iksar monk) looted a Snake Egg stamped `5fGS06y000070000` (entity 1872918, world 111, counter 7), dropped it in Crescent Reach, and the client's ground list gained object 319 (`IT63_ACTORDEF`, zonefile id none, weight 2, expiry 4500) with no item attached, while every other ground object kept the far-future expiry 2141454933; picked up again, the egg carried `5fGS06y000070000` unchanged. So the GUID lives on the server while an item lies on the ground and nobody, the owner included, can read it from the ground object; only the pickup brings it back (as the Lightstone showed on Bristlebane). Firiona Vie stamps world 111, and a new character's creation grants take its first counters: the egg, the monk's first loot, was its seventh stamp.
+
 ### Inspecting a Bazaar listing
 
 Any listed item can be inspected from the Bazaar search window without opening its trader: with Pariator in the Plane of Knowledge on 2026-10-26, a search for "Spider Silk" returned 14 rows, and Inspect (`BZR_RequestItemButton`) on the first opened the item display for that listing (Bloodied Frozen Crystal Spider Silk) from a trader never visited. The request (RoF2 `BazaarInspect_Struct`) names the trader, the item's GUID and its item number. EQEmu answers it today with a fresh copy of the base item, never the listed instance.
