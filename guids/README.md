@@ -112,6 +112,10 @@ One path in the item layer issues, retires and updates; everything else, quest s
 
 Scripts get `GetGUID()` and a lookup by GUID; `GetEvolveUniqueID` is replaced by the GUID; `GetSerialNumber` stays as the session handle; no script can set a GUID.
 
+### Trust
+
+A GUID the client sends is a selector, never an authority: the server decides from the session whose items a packet may name (the character's own, the current listings of the trader a Bazaar request names, the character's own retired items for recovery), and the GUID only picks one item within that scope, through one scoped lookup in the item layer. GUIDs are predictable (character, world, counter), so knowing one proves nothing; a GUID outside the scope, a placeholder or an all-zero one, or text that fails the round-trip decode is refused and logged, and no update can be expressed against an item the character does not hold.
+
 ### Stacks and use
 
 A split piece is a new item with the splitter's next number. A merge keeps the destination's GUID and retires the merged piece as `stacked`. Using part of a stack (reagents, arrows, food, charges) decrements the row; the last unit retires it as `consumed`. Selling or destroying part of a stack splits it first, so the sold or destroyed units have a row of their own.

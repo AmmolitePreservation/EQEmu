@@ -2,7 +2,7 @@
 
 The work for Live-style item GUIDs ([README.md](README.md) has what Live does and the design). Statuses: `fix` (write code, SQL or docs; the content is given), `liveCheck` (observe Live), `peridotTest` (run on peridotguids), `question` (the owner decides), `polish` (after the first pass works), `done` (kept for the record).
 
-**Counts.** fix 20, liveCheck 0, peridotTest 4, question 1, polish 4, done 7; 36 in all.
+**Counts.** fix 21, liveCheck 0, peridotTest 4, question 1, polish 4, done 7; 37 in all.
 
 ## Owner decisions
 
@@ -33,6 +33,10 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 - **ISS-2** `fix` **Stacks and use.** Split = new GUID from the splitter; merge = destination keeps, the piece retires `stacked`; partial use decrements; last unit retires `consumed`; partial sale or destroy splits first.
 - **ISS-3** `fix` **Retirement reasons.** destroyed, sold, stacked, consumed, expired, decayed, characterDeleted, removedByGM, rolledBack, set at every point an item leaves play (destroy, sell, merge, combine, hand-in, task delivery, charges, no-rent and temporary expiry, corpse rot, ground despawn, hard character delete, GM removal, rollback).
 - **ISS-4** `fix` **No all-zero item.** An item instance without a GUID is a server error; things that aren't items yet are sent as zeros.
+
+## Trust (SEC)
+
+- **SEC-1** `fix` **A client-sent GUID is a selector, never an authority.** The server decides whose items a packet may name from the session, and the GUID only picks one item within that scope. One scoped lookup in the item layer, `lookup(scope, guid)`, serves every handler; no handler runs a bare lookup by GUID on the item table. The scopes: the character's own held items (inventory, bank, cursor, their trader listings, their parcels); the current listings of the trader a Bazaar request names (buy and inspect, as Live allows); the character's own retired items (the Recovery tab). A GUID outside the scope, an all-zero or placeholder GUID (`{0, 0, n}`, what the client gives a locally split stack), or text that fails the round-trip decode is refused and logged at Warning with the character, the GUID and the scope tried; what follows is the server owner's call. Every update, move, listing, sale, destruction or recovery follows only from a scoped lookup, so one expressed against an item the character does not hold cannot be written. The paths on this branch: Bazaar buy and inspect, trader price update, evolving XP transfer, parcels, the Recovery tab.
 
 ## Quest API (QST)
 
