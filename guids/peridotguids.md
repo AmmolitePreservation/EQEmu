@@ -20,10 +20,9 @@ Changed from Peridot's copy while its network link was still down (`link_down=1`
 |---|---|
 | `pristine` | The clone set up, the `guids` build running, the database at 9325 / bots 0 / custom 0 with no migration applied; RAM included |
 | `ready` | `pristine` plus the claudelink login and character below, camped; RAM included |
-| `seeded` | `ready` plus the first seed (snapshots on, evolving items); RAM included |
-| `seedComplete` | `seeded` plus the full pre-migration seed set below, every character camped; RAM included. **The state TST-3 and TST-6 run from** |
+| `preGuids` | `ready` plus the full pre-migration seed set below, every character camped; RAM included. **The state TST-3 and TST-6 run from** |
 
-`qm rollback 145 seedComplete` (or an earlier one) returns to that running state. A plain reboot also brings the server back by itself: Docker restarts the stack's containers and Spire starts the launcher (`spire.launcher_start` in eqemu_config.json). The containers carried over from Peridot first had to be recreated, since their ports were pinned to Peridot's address (PRC-4).
+`qm rollback 145 preGuids` (or `ready`, or `pristine`) returns to that running state. A plain reboot also brings the server back by itself: Docker restarts the stack's containers and Spire starts the launcher (`spire.launcher_start` in eqemu_config.json). The containers carried over from Peridot first had to be recreated, since their ports were pinned to Peridot's address (PRC-4).
 
 ## The server
 
@@ -35,7 +34,7 @@ The akk-stack at `/opt/eqemu/akk-stack`, Peridot's database as it stood at the c
 
 Claude's account is `claudeguids` (login account 85, game account 86 at status 250), its password in OpenBao at `services/peridotguids/eqLogin`; the login server made it at the first login. `Claudeguids` (character 117) is a level 1 human male wizard bound at the Plane of Knowledge's safe point, written with the rows EQEmu's character creation writes, as Claudehousing and Claudewright were.
 
-## The pre-migration seed set (snapshot `seedComplete`)
+## The pre-migration seed set (snapshot `preGuids`)
 
 What Peridot's own data holds, as copied (2026-10-26): 2,994 `inventory` rows (1,844 in banks, 28 with augments), 72 `sharedbank`, 81 `guild_bank`, 106 `object` rows with an item, 193 `merchantlist_temp`; nothing in `character_corpse_items`, `character_parcels`, `character_pet_inventory`, `object_contents` or `inventory_snapshots`; no bot tables; `items_evolving_details` has 443 rows, 6 with a required amount. Three facts about what a migration can meet: `trader` is empty at every boot (world's `ClearTraderDetails`); a player's ground drop is never written to `object` (only `#object save` persists one), so `object` rows with an item are static ground spawns; the resale list persists because Peridot sets `World:ClearTempMerchantlist` false (EQEmu's default would clear it at boot), and nothing else on the server empties it (no cron job, no database event, no global quest).
 
@@ -47,4 +46,6 @@ Written straight into the database, where only the database holds the state when
 
 Evolving items, with required amounts written into `items_evolving_details` for these eight item numbers on this server only (Peridot's rows carry 0; the zones cache the table at boot, so a change needs the launcher restarted): Broken Club of the Warcaller 86900 (stage 1 of 5) 0 of 1000, not activated; Wand of Infused Chitin 86982 (3 of 5) 1000 of 4000, activated; Twisted Shank 86940 (1 of 6) 500 of 1000, activated, in the bank; Blade of the Once Bitten 89310 (1 of 6) 1500 of 2000, not activated; Blade of the New Moon 86951 (2 of 7) 1000 of 1000, activated; Roarm, Light in the Darkness 89532 (final, 3 of 3) 500 of 500, activated; The Clawed Hammer of Grokui 90010 (final, 10 of 10) 1000 of 1000, not activated, attuned; Club of the Warcaller 86941 (2 of 5) 300 of 1000, activated, on corpse 473. The client shows the percentages (`${FindItem[...].Evolving.ExpPct}`).
 
-Totals at `seedComplete`: 3,007 `inventory`, 75 `sharedbank`, 84 `guild_bank`, 4 `character_parcels` with 3 container rows, 2 `character_pet_inventory`, 8 `character_corpse_items` on 2 corpses, 107 `object` rows with an item, 2 `object_contents`, 195 `merchantlist_temp`, 8 `character_evolving_items`, 58 `inventory_snapshots` rows in 5 snapshots.
+Also written: a no-rent Shadowed Long Sword (5101) in Claudeguids' bank slot 2003, a Rusty Short Sword carrying three augments in general slot 32, a Ruined Heretic Longsword with its augment inside the general-slot-1 bag (4013), a hero-model ornament on the tinted cap, and Bone Chips x20 in account 87's shared bank. Cursor-queue items are saved in the cursor-bag range (6010 and up; a bag's slot count is 200 here, so general bags run 4010 to 6009, bank bags from 6210 and shared-bank bags from 11010). Peridot's data has no orphan rows (every inventory, shared-bank, guild-bank, corpse-item and merchant-temp row has its owner and its item number), except 46 `object` rows whose item number is not in `items`.
+
+Totals at `preGuids`: 3,010 `inventory`, 76 `sharedbank`, 84 `guild_bank`, 4 `character_parcels` with 3 container rows, 2 `character_pet_inventory`, 8 `character_corpse_items` on 2 corpses, 107 `object` rows with an item, 2 `object_contents`, 195 `merchantlist_temp`, 8 `character_evolving_items`, 58 `inventory_snapshots` rows in 5 snapshots.
