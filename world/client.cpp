@@ -2375,7 +2375,9 @@ bool Client::StoreCharacter(
 		p_player_profile_struct->zone_id = Zones::QEYNOS;
 	}
 
-	database.SaveCharacterCreate(character_id, account_id, p_player_profile_struct);
+	if (!database.SaveCharacterCreate(character_id, account_id, p_player_profile_struct)) {
+		return false;
+	}
 
 	std::vector<InventoryRepository::Inventory> v;
 

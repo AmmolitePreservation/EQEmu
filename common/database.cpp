@@ -429,10 +429,17 @@ bool Database::DeleteCharacter(const std::string& name)
 
 bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, PlayerProfile_Struct *pp)
 {
+	const int world_id = RuleI(World, WorldID);
+	if (world_id < 0 || world_id > std::numeric_limits<uint16>::max()) {
+		LogError("Rule World:WorldID [{}] is outside 0 to 65535; character [{}] was not created", world_id, pp->name);
+		return false;
+	}
+
 	auto c = CharacterDataRepository::NewEntity();
 
 	c.id                      = character_id;
 	c.account_id              = account_id;
+	c.world_id                = static_cast<uint16_t>(world_id);
 	c.name                    = pp->name;
 	c.last_name               = pp->last_name;
 	c.gender                  = pp->gender;

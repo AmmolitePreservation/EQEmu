@@ -70,7 +70,7 @@ Live's merchant window has a Recovery page listing the character's destroyed ite
 
 ### Identity
 
-- **The world id** is a World rule, default 0 (0 is a valid single-realm id), which operators may set. `character_data` gains a 16-bit world column: character creation stamps the rule's value and the migration stamps every existing character with it. Duplicate world ids are only detectable where two realms meet; a transfer tool refuses them. Each character is sent its own GUID in the player record.
+- **The world id** is the rule `World:WorldID`, default 0 (0 is a valid single-realm id), which operators may set from 0 to 65535. `character_data.world_id` (16 bits, migration 9327) holds each character's: character creation stamps the rule's value, refusing the character and logging an error when the rule is outside that range, and the migration stamps every existing character with it. Changing the rule never restamps a character; the world is its origin. Duplicate world ids are only detectable where two realms meet; a transfer tool refuses them. Each character is sent its own GUID in the player record.
 - **No all-zero item.** An item instance always has a valid GUID; an item without one is a server error. Things that aren't items yet are sent as all zeros, as Live does.
 - **The reserved half** is 0 in every character GUID; it is Live's and unused by EQEmu.
 
