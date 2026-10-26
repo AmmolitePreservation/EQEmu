@@ -439,6 +439,7 @@ SET(repositories
     repositories/inventory_repository.h
     repositories/inventory_snapshots_repository.h
     repositories/ip_exemptions_repository.h
+    repositories/item_instances_repository.h
     repositories/items_repository.h
     repositories/items_evolving_details_repository.h
     repositories/ldon_trap_entries_repository.h
@@ -604,6 +605,7 @@ SET(common_headers
     ip_util.h
     item_data.h
     item_fieldlist.h
+    item_guid.h
     item_instance.h
     json_config.h
     light_source.h

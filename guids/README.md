@@ -76,14 +76,31 @@ Live's merchant window has a Recovery page listing the character's destroyed ite
 
 ### The item table
 
-One row per item instance, never deleted:
+`item_instances`, one row per item instance, never deleted; created by database migration 9326 (`CURRENT_BINARY_DATABASE_VERSION`), the way EQEmu's own migrations are done:
 
-- **Key:** the GUID as its three raw 32-bit words. A character GUID's second word is the world id (the reserved half is 0); a server-stamped GUID uses all three words freely. Server-stamped second words are over a billion and a world id fits in 16 bits, so the two never collide.
-- **The item:** item number, charges or count, color, attunement, custom data, ornament icon, IDFile and hero model.
-- **Location:** holder type (inventory, bank, shared bank, corpse, parcel, bot, pet, guild bank, housing, ground), holder id and slot; bag contents and augments name their parent's GUID and the index or socket. One row per item makes "one item, one place" a property of the table.
-- **Retirement:** a state and its time (below).
-- **The next counter** is derived, not stored: the issuing `INSERT ... SELECT MAX(third) + 1 ... WHERE first = character AND second = world`, one index seek on the key. Two racing issues for one character collide on the key and fail loudly, a retryable fault. Correct because no row is ever deleted.
-- **Writes:** `INSERT` and `UPDATE` only, never `REPLACE INTO` (the generated `ReplaceOne` is not used on it); deletes of item rows are restricted, so a stray delete fails loudly.
+- **Key:** the GUID as its three raw 32-bit words, `guid_first`, `guid_second`, `guid_third`. A character GUID's second word is the world id (the reserved half is 0); a server-stamped GUID uses all three words freely. Server-stamped second words are over a billion and a world id fits in 16 bits, so the two never collide. The first word is never 0 (a CHECK): a character's id or a server stamp's sequence value, never a client placeholder.
+- **The item:** item number (never 0), charges (signed; -1 is unlimited, stored as itself rather than as `inventory`'s 32767), color, attuned, custom data, ornament icon, IDFile and hero model. Augments are rows of their own, not columns of their parent. No foreign key to `items`: content may live in a separate database, and a row must outlive a content change.
+- **Location:** a top-level item has a holder type, holder id and slot; a bag's contents and an augment have their parent's GUID and an index (the bag slot or the augment socket) instead, so moving a bag or an augmented item is one `UPDATE` of its own row. A CHECK makes every row exactly one of the two. Slots are numbered within their holder, as RoF2's and Live's slot addresses are (`{Type, Slot, SubIndex, AugIndex}`); `InventoryProfile` converts between them and EQEmu's global slot ids, which stay the server's in-memory address:
+
+  | Holder type | Holder id | Slot |
+  |---|---|---|
+  | `inventory` | character | worn and general, 0-32 |
+  | `cursor` | character | queue position, 0 on the cursor |
+  | `bank` | character | 0-23 |
+  | `shared_bank` | account | 0-1 |
+  | `corpse` | corpse | corpse slot |
+  | `parcel` | character | parcel slot |
+  | `pet`, `suspended_pet` | owning character | pet equipment slot |
+  | `bot` | bot | bot slot |
+  | `guild_bank_deposit`, `guild_bank_main` | guild | slot |
+  | `ground` | zone | none; the ground-drop table holds the position |
+
+  Housing adds its holder type when it is reworked on this branch's tables.
+- **One item, one place:** unique indexes on the holder and slot, and on the parent and index, over generated columns that are NULL once a row is retired, so a retired item keeps its last location (the Recovery tab lists a character's retired items by it) without holding the slot.
+- **Retirement:** a state (ENUM of the reasons below, NULL while the item is in play) and its time; a CHECK keeps the two together.
+- **The next counter** is derived, not stored: `MAX(third) + 1` for the character and world, answered from the key alone, and the new row is inserted with it. Two racing issues for one character collide on the key and fail loudly, a retryable fault. Correct because no row is ever deleted.
+- **Writes:** `INSERT` and `UPDATE` only. A `BEFORE DELETE` trigger refuses every delete, `REPLACE` included (a delete and an insert); once a side table has a foreign key to it, `TRUNCATE` is refused too. It stops code and mistaken SQL, not an administrator who drops the trigger or the table. Creating a trigger needs the `TRIGGER` privilege (EQEmu's usual all-privileges grant on its database has it) and, on a server with binary logging, `SUPER` or `log_bin_trust_function_creators`.
+- **The repository** (`ItemInstancesRepository`) is written by hand and on the generator's ignore list: the generator keys a table by one column, cannot write NULL, and emits `ReplaceOne` and `DeleteOne`.
 
 ### Side tables
 
@@ -95,7 +112,7 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 | `character_parcels` | sender, note, sent date | item columns, recipient, slot |
 | `guild_bank` | area, permissions, `who_for`, donator | item columns |
 | `character_evolving_items` | activated, equipped, amount, progression, final item | its own id, item number, character |
-| ground drops (from `object`) | zone, position, heading | `object` keeps only static content |
+| ground drops (from `object`) | instance, position, heading (the zone is the item row's holder id) | `object` keeps only static content |
 | `real_estate_items` (housing, after the merge) | property, placed, transform, upkeep | item columns |
 
 Tables that only record location are absorbed into the item table and dropped: `inventory`, `sharedbank`, `character_corpse_items`, `bot_inventories`, `character_pet_inventory`, `character_parcels_containers`, `object_contents`. A side table is a child, so `REPLACE` on it is safe.

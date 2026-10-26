@@ -7136,6 +7136,64 @@ ADD COLUMN `entity_variables` TEXT DEFAULT NULL AFTER `rezzable`;
 )",
 		.content_schema_update = false
 	},
+	ManifestEntry{
+		.version = 9326,
+		.description = "2026_10_26_item_instances.sql",
+		.check = "SHOW TABLES LIKE 'item_instances'",
+		.condition = "empty",
+		.match = "",
+		.sql = R"(
+CREATE TABLE `item_instances` (
+	`guid_first` INT(10) UNSIGNED NOT NULL,
+	`guid_second` INT(10) UNSIGNED NOT NULL,
+	`guid_third` INT(10) UNSIGNED NOT NULL,
+	`item_id` INT(10) UNSIGNED NOT NULL,
+	`charges` SMALLINT(5) NOT NULL DEFAULT '0',
+	`color` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`attuned` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`custom_data` TEXT NOT NULL DEFAULT '',
+	`ornament_icon` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`ornament_idfile` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`ornament_hero_model` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`holder_type` ENUM('inventory', 'cursor', 'bank', 'shared_bank', 'corpse', 'parcel', 'pet', 'suspended_pet', 'bot', 'guild_bank_deposit', 'guild_bank_main', 'ground') NULL DEFAULT NULL,
+	`holder_id` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`slot` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_first` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_second` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_third` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_index` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
+	`retirement_state` ENUM('destroyed', 'sold', 'stacked', 'consumed', 'expired', 'decayed', 'characterDeleted', 'removedByGM', 'rolledBack', 'petDonated', 'botDonated') NULL DEFAULT NULL,
+	`retired_at` DATETIME NULL DEFAULT NULL,
+	`held_slot` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `slot`, NULL)) PERSISTENT,
+	`held_parent_index` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `parent_index`, NULL)) PERSISTENT,
+	PRIMARY KEY (`guid_first`, `guid_second`, `guid_third`),
+	UNIQUE INDEX `held_in_holder` (`holder_type`, `holder_id`, `held_slot`),
+	UNIQUE INDEX `held_in_parent` (`parent_guid_first`, `parent_guid_second`, `parent_guid_third`, `held_parent_index`),
+	CONSTRAINT `fk_item_instances_parent` FOREIGN KEY (`parent_guid_first`, `parent_guid_second`, `parent_guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`) ON UPDATE RESTRICT ON DELETE RESTRICT,
+	CONSTRAINT `item_instances_guid` CHECK (`guid_first` <> 0),
+	CONSTRAINT `item_instances_item` CHECK (`item_id` <> 0),
+	CONSTRAINT `item_instances_location` CHECK (
+		(
+			`holder_type` IS NOT NULL AND `holder_id` IS NOT NULL AND (`slot` IS NULL) = (`holder_type` = 'ground') AND
+			`parent_guid_first` IS NULL AND `parent_guid_second` IS NULL AND `parent_guid_third` IS NULL AND `parent_index` IS NULL
+		) OR (
+			`holder_type` IS NULL AND `holder_id` IS NULL AND `slot` IS NULL AND
+			`parent_guid_first` IS NOT NULL AND `parent_guid_second` IS NOT NULL AND `parent_guid_third` IS NOT NULL AND `parent_index` IS NOT NULL
+		)
+	),
+	CONSTRAINT `item_instances_not_own_parent` CHECK (
+		NOT (`parent_guid_first` <=> `guid_first` AND `parent_guid_second` <=> `guid_second` AND `parent_guid_third` <=> `guid_third`)
+	),
+	CONSTRAINT `item_instances_retirement` CHECK ((`retirement_state` IS NULL) = (`retired_at` IS NULL))
+)
+COLLATE='latin1_swedish_ci'
+ENGINE=InnoDB
+;
+CREATE TRIGGER `item_instances_no_delete` BEFORE DELETE ON `item_instances` FOR EACH ROW
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'item_instances rows are never deleted; retire them';
+)",
+		.content_schema_update = false
+	},
 // -- template; copy/paste this when you need to create a new entry
 //	ManifestEntry{
 //		.version = 9228,

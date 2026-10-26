@@ -163,6 +163,7 @@ namespace DatabaseSchema {
 			"instance_list_player",
 			"inventory",
 			"inventory_snapshots",
+			"item_instances",
 			"keyring",
 			"mail",
 			"petitions",
