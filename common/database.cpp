@@ -439,7 +439,7 @@ bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, Playe
 
 	c.id                      = character_id;
 	c.account_id              = account_id;
-	c.world_id                = static_cast<uint16_t>(world_id);
+	c.origin_world_id         = static_cast<uint16_t>(world_id);
 	c.name                    = pp->name;
 	c.last_name               = pp->last_name;
 	c.gender                  = pp->gender;

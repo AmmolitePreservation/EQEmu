@@ -125,7 +125,7 @@ public:
 		uint32_t    e_last_invsnapshot;
 		time_t      deleted_at;
 		uint8_t     illusion_block;
-		uint16_t    world_id;
+		uint16_t    origin_world_id;
 	};
 
 	static std::string PrimaryKey()
@@ -242,7 +242,7 @@ public:
 			"e_last_invsnapshot",
 			"deleted_at",
 			"illusion_block",
-			"world_id",
+			"origin_world_id",
 		};
 	}
 
@@ -355,7 +355,7 @@ public:
 			"e_last_invsnapshot",
 			"UNIX_TIMESTAMP(deleted_at)",
 			"illusion_block",
-			"world_id",
+			"origin_world_id",
 		};
 	}
 
@@ -502,7 +502,7 @@ public:
 		e.e_last_invsnapshot      = 0;
 		e.deleted_at              = 0;
 		e.illusion_block          = 0;
-		e.world_id                = 0;
+		e.origin_world_id         = 0;
 
 		return e;
 	}
@@ -645,7 +645,7 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.world_id                = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.origin_world_id         = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -784,7 +784,7 @@ public:
 		v.push_back(columns[103] + " = " + std::to_string(e.e_last_invsnapshot));
 		v.push_back(columns[104] + " = FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 		v.push_back(columns[105] + " = " + std::to_string(e.illusion_block));
-		v.push_back(columns[106] + " = " + std::to_string(e.world_id));
+		v.push_back(columns[106] + " = " + std::to_string(e.origin_world_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -912,7 +912,7 @@ public:
 		v.push_back(std::to_string(e.e_last_invsnapshot));
 		v.push_back("FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 		v.push_back(std::to_string(e.illusion_block));
-		v.push_back(std::to_string(e.world_id));
+		v.push_back(std::to_string(e.origin_world_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -1048,7 +1048,7 @@ public:
 			v.push_back(std::to_string(e.e_last_invsnapshot));
 			v.push_back("FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 			v.push_back(std::to_string(e.illusion_block));
-			v.push_back(std::to_string(e.world_id));
+			v.push_back(std::to_string(e.origin_world_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -1188,7 +1188,7 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.world_id                = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.origin_world_id         = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -1319,7 +1319,7 @@ public:
 			e.e_last_invsnapshot      = row[103] ? static_cast<uint32_t>(strtoul(row[103], nullptr, 10)) : 0;
 			e.deleted_at              = strtoll(row[104] ? row[104] : "-1", nullptr, 10);
 			e.illusion_block          = row[105] ? static_cast<uint8_t>(strtoul(row[105], nullptr, 10)) : 0;
-			e.world_id                = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
+			e.origin_world_id         = row[106] ? static_cast<uint16_t>(strtoul(row[106], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -1500,7 +1500,7 @@ public:
 		v.push_back(std::to_string(e.e_last_invsnapshot));
 		v.push_back("FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 		v.push_back(std::to_string(e.illusion_block));
-		v.push_back(std::to_string(e.world_id));
+		v.push_back(std::to_string(e.origin_world_id));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -1629,7 +1629,7 @@ public:
 			v.push_back(std::to_string(e.e_last_invsnapshot));
 			v.push_back("FROM_UNIXTIME(" + (e.deleted_at > 0 ? std::to_string(e.deleted_at) : "null") + ")");
 			v.push_back(std::to_string(e.illusion_block));
-			v.push_back(std::to_string(e.world_id));
+			v.push_back(std::to_string(e.origin_world_id));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

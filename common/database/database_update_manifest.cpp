@@ -7196,13 +7196,13 @@ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'item_instances rows are never delete
 	},
 	ManifestEntry{
 		.version = 9327,
-		.description = "2026_10_26_character_data_world_id.sql",
-		.check = "SHOW COLUMNS FROM `character_data` LIKE 'world_id'",
+		.description = "2026_10_26_character_data_origin_world_id.sql",
+		.check = "SHOW COLUMNS FROM `character_data` LIKE 'origin_world_id'",
 		.condition = "empty",
 		.match = "",
 		.sql = R"(
 ALTER TABLE `character_data`
-	ADD COLUMN `world_id` SMALLINT(5) UNSIGNED NOT NULL DEFAULT 0 AFTER `illusion_block`;
+	ADD COLUMN `origin_world_id` SMALLINT(5) UNSIGNED NOT NULL DEFAULT 0 AFTER `illusion_block`;
 )",
 		.content_schema_update = false
 	},
