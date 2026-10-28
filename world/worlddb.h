@@ -20,7 +20,7 @@
 
 #include "../common/shareddb.h"
 #include "../common/eq_packet.h"
-#include "../common/repositories/inventory_repository.h"
+#include "../common/item_layer.h"
 #include "../common/repositories/character_data_repository.h"
 
 struct PlayerProfile_Struct;
@@ -46,7 +46,7 @@ private:
 	void SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc);
 
 	bool GetCharSelInventory(
-		const std::vector<InventoryRepository::Inventory> &inventories,
+		const std::vector<ItemLayer::Held> &inventories,
 		const CharacterDataRepository::CharacterData &character,
 		EQ::InventoryProfile *inv
 	);

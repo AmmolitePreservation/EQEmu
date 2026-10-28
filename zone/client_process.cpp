@@ -765,7 +765,6 @@ void Client::BulkSendInventoryItems()
 			int16 free_slot_id = m_inv.FindFreeSlot(inst->IsClassBag(), true, inst->GetItem()->Size, is_arrow);
 			LogInventory("Incomplete Trade Transaction: Moving [{}] from slot [{}] to [{}]", inst->GetItem()->Name, slot_id, free_slot_id);
 			PutItemInInventory(free_slot_id, *inst, false);
-			database.SaveInventory(character_id, nullptr, slot_id);
 			safe_delete(inst);
 		}
 	}
@@ -1209,7 +1208,7 @@ void Client::OPMemorizeSpell(const EQApplicationPacket* app)
 
 				if (item && item->Scroll.Effect == static_cast<int32>(m->spell_id)) {
 					ScribeSpell(m->spell_id, m->slot);
-					DeleteItemInInventory(EQ::invslot::slotCursor, 1, true);
+					DeleteItemInInventory(EQ::invslot::slotCursor, 1, true, ItemRetirement::Consumed);
 				} else {
 					Message(Chat::Red, "Scribing spell: Item Instance exists but item does not or spell ids do not match.");
 				}

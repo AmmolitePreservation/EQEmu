@@ -4760,7 +4760,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 		} else if (return_iterator.from_bot_slot >= invslot::TRADE_BEGIN && return_iterator.from_bot_slot <= invslot::TRADE_END) { // failed trade returns
 			client->PutItemInInventory(return_iterator.to_client_slot, *return_iterator.return_item_instance);
 			client->SendItemPacket(return_iterator.to_client_slot, return_iterator.return_item_instance, ItemPacketTrade);
-			client->DeleteItemInInventory(return_iterator.from_bot_slot);
+			client->RemoveItemFromInventory(return_iterator.from_bot_slot);
 		} else { // successful trade returns
 			auto return_instance = m_inv.PopItem(return_iterator.from_bot_slot);
 
@@ -4794,14 +4794,16 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 				linker.SetLinkType(EQ::saylink::SayLinkItemInst);
 				linker.SetItemInst(return_instance);
 				auto item_link = linker.GenerateLink();
-
 				OwnerMessage(
 					fmt::format(
 						"I have returned {}.",
 						item_link
 					)
 				);
-
+				const auto guid = ItemLayer::FindGUID(database, ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), return_iterator.from_bot_slot));
+				if (guid) {
+					ItemLayer::AssignGUID(*return_instance, *guid);
+				}
 				client->PutItemInInventory(return_iterator.to_client_slot, *return_instance, true);
 			}
 
@@ -4855,8 +4857,12 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 		}
 
 		trade_iterator.trade_item_instance = nullptr; // actual deletion occurs in client delete below
-
-		client->DeleteItemInInventory(trade_iterator.from_client_slot, 0, (trade_iterator.from_client_slot == EQ::invslot::slotCursor));
+		ItemLayer::MoveRow(
+			database,
+			m_inv.GetItem(trade_iterator.to_bot_slot)->GetGUID(),
+			ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), trade_iterator.to_bot_slot)
+		);
+		client->RemoveItemFromInventory(trade_iterator.from_client_slot, (trade_iterator.from_client_slot == EQ::invslot::slotCursor));
 
 		// database currently has unattuned item saved in inventory..it will be attuned on next bot load
 		// this prevents unattuned item returns in the mean time (TODO: re-work process)
@@ -4883,7 +4889,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 			EQ::ItemInstance* insts[1] = { 0 };
 			user_inv = client->GetInv();
 			insts[0] = user_inv.GetItem(invslot::slotCursor);
-			client->DeleteItemInInventory(invslot::slotCursor);
+			client->DeleteItemInInventory(invslot::slotCursor, 0, false, ItemRetirement::Consumed);
 
 			// copy to be filtered by task updates, null trade slots preserved for quest event arg
 			std::vector<EQ::ItemInstance*> items(insts, insts + std::size(insts));
@@ -4901,7 +4907,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 			user_inv = client->GetInv();
 			for (int i = EQ::invslot::TRADE_BEGIN; i <= EQ::invslot::TRADE_END; ++i) {
 				insts[i - EQ::invslot::TRADE_BEGIN] = user_inv.GetItem(i);
-				client->DeleteItemInInventory(i);
+				client->DeleteItemInInventory(i, 0, false, ItemRetirement::Consumed);
 			}
 
 			// copy to be filtered by task updates, null trade slots preserved for quest event arg

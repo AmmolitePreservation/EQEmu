@@ -29,7 +29,7 @@
 #include "worldserver.h"
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/character_corpses_repository.h"
-#include "../common/repositories/character_corpse_items_repository.h"
+#include "../common/item_layer.h"
 #include <iostream>
 #include "queryserv.h"
 #include "../common/json/json.hpp"
@@ -362,38 +362,12 @@ Corpse::Corpse(Client *c, int32 rez_exp, KilledByTypes in_killed_by) : Mob(
 		}
 
 		database.TransactionBegin();
-
-		// this should not be modified to include the entire range of invtype::TYPE_POSSESSIONS slots by default..
-		// ..due to the possibility of 'hidden' items from client version bias..or, possibly, soul-bound items (WoW?)
-		if (!removed_list.empty()) {
-			auto iter = removed_list.begin();
-
-			if (iter != removed_list.end()) {
-				std::stringstream ss("");
-				ss << "DELETE FROM `inventory` WHERE `character_id` = " << c->CharacterID();
-				ss << " AND `slot_id` IN (" << (*iter);
-				++iter;
-
-				while (iter != removed_list.end()) {
-					ss << ", " << (*iter);
-					++iter;
-				}
-				ss << ")";
-
-				database.QueryDatabase(ss.str().c_str());
-			}
-		}
-
-		auto start  = c->GetInv().cursor_cbegin();
-		auto finish = c->GetInv().cursor_cend();
-		database.SaveCursor(c->CharacterID(), start, finish);
-
+		database.SaveCursor(c);
 		c->CalcBonuses();
 		c->Save();
-
 		IsRezzed(false);
 		Save();
-
+		MoveItemRowsToCorpse();
 		database.TransactionCommit();
 
 		UpdateEquipmentLight();
@@ -411,8 +385,19 @@ Corpse::Corpse(Client *c, int32 rez_exp, KilledByTypes in_killed_by) : Mob(
 	Save();
 }
 
+static void AugmentGUIDs(const EQ::ItemInstance *inst, ItemGUID *augment_guids)
+{
+	for (uint8 socket = 0; socket < EQ::invaug::SOCKET_COUNT; ++socket) {
+		const auto *augment = inst->GetAugment(socket);
+		augment_guids[socket] = augment ? augment->GetGUID() : ItemGUID{};
+	}
+}
+
 void Corpse::MoveItemToCorpse(Client *client, EQ::ItemInstance *inst, int16 equipSlot, std::list<uint32> &removedList)
 {
+	ItemGUID augment_guids[EQ::invaug::SOCKET_COUNT];
+	AugmentGUIDs(inst, augment_guids);
+
 	AddItem(
 		inst->GetItem()->ID,
 		inst->GetCharges(),
@@ -427,7 +412,9 @@ void Corpse::MoveItemToCorpse(Client *client, EQ::ItemInstance *inst, int16 equi
 		inst->GetCustomDataString(),
 		inst->GetOrnamentationIcon(),
 		inst->GetOrnamentationIDFile(),
-		inst->GetOrnamentHeroModel()
+		inst->GetOrnamentHeroModel(),
+		inst->GetGUID(),
+		augment_guids
 	);
 
 	removedList.push_back(equipSlot);
@@ -440,7 +427,7 @@ void Corpse::MoveItemToCorpse(Client *client, EQ::ItemInstance *inst, int16 equi
 			int16 real_bag_slot = EQ::InventoryProfile::CalcSlotId(equipSlot, sub_index);
 			auto  bag_inst      = client->GetInv().GetItem(real_bag_slot);
 			if (bag_inst == nullptr) { continue; }
-
+			AugmentGUIDs(bag_inst, augment_guids);
 			AddItem(
 				bag_inst->GetItem()->ID,
 				bag_inst->GetCharges(),
@@ -455,15 +442,32 @@ void Corpse::MoveItemToCorpse(Client *client, EQ::ItemInstance *inst, int16 equi
 				bag_inst->GetCustomDataString(),
 				bag_inst->GetOrnamentationIcon(),
 				bag_inst->GetOrnamentationIDFile(),
-				bag_inst->GetOrnamentHeroModel()
+				bag_inst->GetOrnamentHeroModel(),
+				bag_inst->GetGUID(),
+				augment_guids
 			);
-
 			removedList.push_back(real_bag_slot);
-			client->DeleteItemInInventory(real_bag_slot, 0, true, false);
+			client->RemoveItemFromInventory(real_bag_slot, true);
 		}
 		break;
 	}
-	client->DeleteItemInInventory(equipSlot, 0, true, false);
+	client->RemoveItemFromInventory(equipSlot, true);
+}
+
+// The corpse's top-level items take the corpse's row location; bag contents and augments stay under their parents.
+void Corpse::MoveItemRowsToCorpse()
+{
+	for (const auto &item : m_item_list) {
+		if (item->guid.IsZero() || EQ::InventoryProfile::CalcSlotId(item->equip_slot) != INVALID_INDEX) {
+			continue;
+		}
+
+		ItemLayer::MoveRow(
+			database,
+			item->guid,
+			ItemLocation::InHolder(ItemHolderType::Corpse, m_corpse_db_id, static_cast<uint16>(item->equip_slot))
+		);
+	}
 }
 
 // To be called from LoadFromDBData
@@ -691,28 +695,6 @@ bool Corpse::Save()
 		LogCorpses("Corpse entity_variables: %s", ce.entity_variables.c_str());
 	}
 
-	for (auto &item: m_item_list) {
-		CharacterCorpseItemEntry e;
-
-		e.item_id             = item->item_id;
-		e.equip_slot          = item->equip_slot;
-		e.charges             = item->charges;
-		e.lootslot            = item->lootslot;
-		e.aug_1               = item->aug_1;
-		e.aug_2               = item->aug_2;
-		e.aug_3               = item->aug_3;
-		e.aug_4               = item->aug_4;
-		e.aug_5               = item->aug_5;
-		e.aug_6               = item->aug_6;
-		e.attuned             = item->attuned;
-		e.custom_data         = item->custom_data;
-		e.ornamenticon        = item->ornamenticon;
-		e.ornamentidfile      = item->ornamentidfile;
-		e.ornament_hero_model = item->ornament_hero_model;
-
-		ce.items.emplace_back(std::move(e));
-	}
-
 	if (m_corpse_db_id == 0) {
 		m_corpse_db_id = database.SaveCharacterCorpse(
 			m_character_id,
@@ -744,6 +726,7 @@ bool Corpse::Save()
 void Corpse::Delete()
 {
 	if (IsPlayerCorpse() && m_corpse_db_id != 0) {
+		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Corpse, m_corpse_db_id), ItemRetirement::Decayed);
 		database.DeleteCharacterCorpse(m_corpse_db_id);
 	}
 
@@ -815,17 +798,20 @@ void Corpse::AddItem(
 	const std::string &custom_data,
 	uint32 ornamenticon,
 	uint32 ornamentidfile,
-	uint32 ornament_hero_model
+	uint32 ornament_hero_model,
+	const ItemGUID &guid,
+	const ItemGUID *augment_guids
 )
 {
-
 	if (!database.GetItem(itemnum)) {
 		return;
 	}
-
 	m_is_corpse_changed = true;
-
 	auto i = new LootItem;
+	i->guid = guid;
+	if (augment_guids) {
+		std::copy(augment_guids, augment_guids + EQ::invaug::SOCKET_COUNT, i->augment_guids);
+	}
 
 	i->item_id             = itemnum;
 	i->charges             = charges;
@@ -944,6 +930,9 @@ void Corpse::RemoveItemByID(uint32 item_id, int quantity)
 			if ((removed_count + stack_size) <= quantity) {
 				removed_count += stack_size;
 				m_is_corpse_changed = true;
+				if (!sitem->guid.IsZero()) {
+					ItemLayer::RetireRow(database, sitem->guid, ItemRetirement::Consumed);
+				}
 				m_item_list.erase(current_item);
 			}
 			else {
@@ -956,6 +945,9 @@ void Corpse::RemoveItemByID(uint32 item_id, int quantity)
 					}
 					else if (stack_size == amount_left) {
 						removed_count += amount_left;
+						if (!sitem->guid.IsZero()) {
+							ItemLayer::RetireRow(database, sitem->guid, ItemRetirement::Consumed);
+						}
 						m_item_list.erase(current_item);
 					}
 				}
@@ -1517,6 +1509,9 @@ void Corpse::LootCorpseItem(Client *c, const EQApplicationPacket *app)
 				item_data->custom_data, item_data->ornamenticon,
 				item_data->ornamentidfile, item_data->ornament_hero_model
 			);
+			if (inst) {
+				ItemLayer::AssignLootGUIDs(*inst, *item_data);
+			}
 		}
 		else {
 			inst = database.CreateItem(item);
@@ -1682,30 +1677,14 @@ void Corpse::LootCorpseItem(Client *c, const EQApplicationPacket *app)
 			c->UpdateTasksOnLoot(this, item->ID, count);
 		}
 
-		/* Remove it from Corpse */
+		/* Remove it from Corpse; the looter's landing moved its row */
 		if (item_data) {
-			/* Delete needs to be before RemoveItem because its deletes the pointer for
-			* item_data/bag_item_data */
-			database.DeleteItemOffCharacterCorpse(
-				m_corpse_db_id, item_data->equip_slot,
-				item_data->item_id
-			);
-			/* Delete Item Instance */
 			RemoveItem(item_data->lootslot);
 		}
-
 		/* Remove Bag Contents */
 		if (item->IsClassBag() && (GetPlayerKillItem() != -1 || GetPlayerKillItem() != 1)) {
 			for (int i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
 				if (bag_item_data[i]) {
-					/* Delete needs to be before RemoveItem because its deletes the pointer for
-					* item_data/bag_item_data */
-					database.DeleteItemOffCharacterCorpse(
-						m_corpse_db_id,
-						bag_item_data[i]->equip_slot,
-						bag_item_data[i]->item_id
-					);
-					/* Delete Item Instance */
 					RemoveItem(bag_item_data[i]);
 				}
 			}
@@ -2355,6 +2334,30 @@ void Corpse::CastRezz(uint16 spell_id, Mob *caster)
 	safe_delete(outapp);
 }
 
+LootItem *Corpse::LootItemFor(const EQ::ItemInstance &inst, int16 equip_slot)
+{
+	auto *loot_item = new LootItem{
+		.item_id             = inst.GetID(),
+		.equip_slot          = equip_slot,
+		.charges             = static_cast<uint16>(inst.GetCharges()),
+		.lootslot            = 0,
+		.aug_1               = inst.GetAugmentItemID(0),
+		.aug_2               = inst.GetAugmentItemID(1),
+		.aug_3               = inst.GetAugmentItemID(2),
+		.aug_4               = inst.GetAugmentItemID(3),
+		.aug_5               = inst.GetAugmentItemID(4),
+		.aug_6               = inst.GetAugmentItemID(5),
+		.attuned             = inst.IsAttuned(),
+		.custom_data         = inst.GetCustomDataString(),
+		.ornamenticon        = inst.GetOrnamentationIcon(),
+		.ornamentidfile      = inst.GetOrnamentationIDFile(),
+		.ornament_hero_model = inst.GetOrnamentHeroModel(),
+		.guid                = inst.GetGUID()
+	};
+	AugmentGUIDs(&inst, loot_item->augment_guids);
+	return loot_item;
+}
+
 Corpse *Corpse::LoadCharacterCorpse(
 	const CharacterCorpsesRepository::CharacterCorpses &cc,
 	const glm::vec4 &position
@@ -2365,31 +2368,21 @@ Corpse *Corpse::LoadCharacterCorpse(
 		return nullptr;
 	}
 
-	const auto &items = CharacterCorpseItemsRepository::GetWhere(
-		database,
-		fmt::format(
-			"`corpse_id` = {}",
-			cc.id
-		)
-	);
-
 	LootItems item_list;
-	for (auto &i: items) {
-		item_list.push_back(
-			new LootItem{
-				.item_id    = i.item_id,
-				.equip_slot = static_cast<int16>(i.equip_slot),
-				.charges    = static_cast<uint16>(i.charges),
-				.lootslot   = 0,
-				.aug_1      = i.aug_1,
-				.aug_2      = i.aug_2,
-				.aug_3      = i.aug_3,
-				.aug_4      = i.aug_4,
-				.aug_5      = i.aug_5,
-				.aug_6      = static_cast<uint32>(i.aug_6),
-				.attuned    = static_cast<bool>(i.attuned)
+	for (auto &held : ItemLayer::Load(database, database, ItemLayer::HolderFilter(ItemHolderType::Corpse, cc.id))) {
+		const int16 equip_slot = held.location.slot ? static_cast<int16>(*held.location.slot) : EQ::invslot::SLOT_INVALID;
+		item_list.push_back(LootItemFor(*held.inst, equip_slot));
+
+		if (held.inst->IsClassBag() && EQ::InventoryProfile::SupportsContainers(equip_slot)) {
+			for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; ++index) {
+				const auto *content = held.inst->GetItem(index);
+				if (content) {
+					item_list.push_back(LootItemFor(*content, EQ::InventoryProfile::CalcSlotId(equip_slot, index)));
+				}
 			}
-		);
+		}
+
+		safe_delete(held.inst);
 	}
 
 	auto c = new Corpse(

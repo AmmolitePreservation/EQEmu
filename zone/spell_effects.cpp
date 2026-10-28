@@ -688,7 +688,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							strstr(transI->GetItem()->Name, "Flesh") ||
 							strstr(transI->GetItem()->Name, "parts") ||
 							strstr(transI->GetItem()->Name, "Parts")){
-							CastToClient()->DeleteItemInInventory(EQ::invslot::slotCursor, fcharges, true);
+							CastToClient()->DeleteItemInInventory(EQ::invslot::slotCursor, fcharges, true, ItemRetirement::Consumed);
 							CastToClient()->SummonItem(13073, fcharges);
 						}
 						else{

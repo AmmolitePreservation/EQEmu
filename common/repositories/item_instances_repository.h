@@ -3,130 +3,33 @@
 
 #include "../database.h"
 #include "../strings.h"
-#include "../item_guid.h"
-#include <array>
+#include "../item_location.h"
 #include <ctime>
 #include <limits>
 #include <optional>
 #include <stdexcept>
-#include <string_view>
 
 // Written by hand and on the generator's ignore list: the generator keys a table by one column, cannot write NULL,
 // and emits ReplaceOne and DeleteOne, which this table's delete trigger refuses.
 class ItemInstancesRepository {
 public:
-	enum class HolderType : uint8 {
-		Inventory,
-		Cursor,
-		Bank,
-		SharedBank,
-		Corpse,
-		Parcel,
-		Pet,
-		SuspendedPet,
-		Bot,
-		GuildBankDeposit,
-		GuildBankMain,
-		Ground,
-	};
-
-	enum class RetirementState : uint8 {
-		Destroyed,
-		Sold,
-		Stacked,
-		Consumed,
-		Expired,
-		Decayed,
-		CharacterDeleted,
-		RemovedByGM,
-		RolledBack,
-		PetDonated,
-		BotDonated,
-	};
-
 	struct ItemInstances {
-		ItemGUID                       guid;
-		uint32_t                       item_id;
-		int16_t                        charges;
-		uint32_t                       color;
-		bool                           attuned;
-		std::string                    custom_data;
-		uint32_t                       ornament_icon;
-		uint32_t                       ornament_idfile;
-		uint32_t                       ornament_hero_model;
-		std::optional<HolderType>      holder_type;
-		std::optional<uint32_t>        holder_id;
-		std::optional<uint16_t>        slot;
-		std::optional<ItemGUID>        parent_guid;
-		std::optional<uint16_t>        parent_index;
-		std::optional<RetirementState> retirement_state;
-		std::optional<time_t>          retired_at;
+		ItemGUID                      guid;
+		uint32_t                      item_id;
+		int16_t                       charges;
+		uint32_t                      color;
+		bool                          attuned;
+		std::string                   custom_data;
+		uint32_t                      ornament_icon;
+		uint32_t                      ornament_idfile;
+		uint32_t                      ornament_hero_model;
+		ItemLocation                  location;
+		std::optional<ItemRetirement> retirement_state;
+		std::optional<time_t>         retired_at;
 	};
 
-	static constexpr std::array<std::string_view, 12> holder_type_names = {
-		"inventory",
-		"cursor",
-		"bank",
-		"shared_bank",
-		"corpse",
-		"parcel",
-		"pet",
-		"suspended_pet",
-		"bot",
-		"guild_bank_deposit",
-		"guild_bank_main",
-		"ground",
-	};
-	static_assert(holder_type_names.size() == static_cast<size_t>(HolderType::Ground) + 1);
-
-	static constexpr std::array<std::string_view, 11> retirement_state_names = {
-		"destroyed",
-		"sold",
-		"stacked",
-		"consumed",
-		"expired",
-		"decayed",
-		"characterDeleted",
-		"removedByGM",
-		"rolledBack",
-		"petDonated",
-		"botDonated",
-	};
-	static_assert(retirement_state_names.size() == static_cast<size_t>(RetirementState::BotDonated) + 1);
-
-	static constexpr size_t key_column_count = 3;
-
-	static std::string_view HolderTypeName(HolderType holder_type)
-	{
-		return holder_type_names[static_cast<size_t>(holder_type)];
-	}
-
-	static std::optional<HolderType> HolderTypeFromName(std::string_view name)
-	{
-		for (size_t i = 0; i < holder_type_names.size(); ++i) {
-			if (holder_type_names[i] == name) {
-				return static_cast<HolderType>(i);
-			}
-		}
-
-		return std::nullopt;
-	}
-
-	static std::string_view RetirementStateName(RetirementState retirement_state)
-	{
-		return retirement_state_names[static_cast<size_t>(retirement_state)];
-	}
-
-	static std::optional<RetirementState> RetirementStateFromName(std::string_view name)
-	{
-		for (size_t i = 0; i < retirement_state_names.size(); ++i) {
-			if (retirement_state_names[i] == name) {
-				return static_cast<RetirementState>(i);
-			}
-		}
-
-		return std::nullopt;
-	}
+	static constexpr size_t key_column_count       = 3;
+	static constexpr size_t location_column_offset = 11;
 
 	static std::string TableName()
 	{
@@ -161,28 +64,9 @@ public:
 
 	static std::vector<std::string> SelectColumns()
 	{
-		return {
-			"guid_first",
-			"guid_second",
-			"guid_third",
-			"item_id",
-			"charges",
-			"color",
-			"attuned",
-			"custom_data",
-			"ornament_icon",
-			"ornament_idfile",
-			"ornament_hero_model",
-			"holder_type",
-			"holder_id",
-			"slot",
-			"parent_guid_first",
-			"parent_guid_second",
-			"parent_guid_third",
-			"parent_index",
-			"retirement_state",
-			"UNIX_TIMESTAMP(retired_at)",
-		};
+		auto columns = Columns();
+		columns.back() = "UNIX_TIMESTAMP(retired_at)";
+		return columns;
 	}
 
 	static std::string BaseSelect()
@@ -203,17 +87,19 @@ public:
 		);
 	}
 
+	static std::string KeyFilter(const ItemGUID &guid)
+	{
+		return fmt::format(
+			"guid_first = {} AND guid_second = {} AND guid_third = {}",
+			guid.first,
+			guid.second,
+			guid.third
+		);
+	}
+
 	static std::optional<ItemInstances> FindOne(Database &db, const ItemGUID &guid)
 	{
-		auto results = db.QueryDatabase(
-			fmt::format(
-				"{} WHERE guid_first = {} AND guid_second = {} AND guid_third = {}",
-				BaseSelect(),
-				guid.first,
-				guid.second,
-				guid.third
-			)
-		);
+		auto results = db.QueryDatabase(fmt::format("{} WHERE {}", BaseSelect(), KeyFilter(guid)));
 
 		if (!results.Success() || results.RowCount() != 1) {
 			return std::nullopt;
@@ -226,23 +112,34 @@ public:
 
 	static std::vector<ItemInstances> GetWhere(Database &db, const std::string &where_filter)
 	{
-		std::vector<ItemInstances> entries;
+		return Collect(db.QueryDatabase(fmt::format("{} WHERE {}", BaseSelect(), where_filter)));
+	}
 
-		auto results = db.QueryDatabase(
-			fmt::format(
-				"{} WHERE {}",
-				BaseSelect(),
-				where_filter
+	// The rows in play whose holder matches the filter, then every row inside them (bag contents, augments, the
+	// augments of bag contents), parents before children.
+	static std::vector<ItemInstances> GetHeld(Database &db, const std::string &holder_filter)
+	{
+		const auto select_columns = Strings::Implode(", ", SelectColumns());
+		const auto plain_columns  = Strings::Implode(", ", Columns());
+
+		return Collect(
+			db.QueryDatabase(
+				fmt::format(
+					"WITH RECURSIVE held AS ("
+					"SELECT {columns}, 0 AS depth FROM {table} WHERE retirement_state IS NULL AND ({filter}) "
+					"UNION ALL "
+					"SELECT {child_columns}, held.depth + 1 FROM {table} AS child JOIN held "
+					"ON child.parent_guid_first = held.guid_first AND child.parent_guid_second = held.guid_second "
+					"AND child.parent_guid_third = held.guid_third WHERE child.retirement_state IS NULL"
+					") SELECT {select_columns} FROM held ORDER BY depth, guid_first, guid_second, guid_third",
+					fmt::arg("columns", plain_columns),
+					fmt::arg("child_columns", Strings::Replace(plain_columns, ", ", ", child.").insert(0, "child.")),
+					fmt::arg("table", TableName()),
+					fmt::arg("filter", holder_filter),
+					fmt::arg("select_columns", select_columns)
+				)
 			)
 		);
-
-		entries.reserve(results.RowCount());
-
-		for (auto row = results.begin(); row != results.end(); ++row) {
-			entries.push_back(FromRow(row));
-		}
-
-		return entries;
 	}
 
 	// The next number in a character's counter: derived, never stored, and correct because no row is ever deleted.
@@ -272,36 +169,70 @@ public:
 
 	static MySQLRequestResult InsertOne(Database &db, const ItemInstances &e)
 	{
-		return db.QueryDatabase(
-			fmt::format(
-				"{} VALUES ({})",
-				BaseInsert(),
-				Strings::Implode(",", Values(e))
-			)
-		);
+		return db.QueryDatabase(fmt::format("{} VALUES ({})", BaseInsert(), Strings::Implode(",", Values(e))));
 	}
 
-	static bool InsertMany(Database &db, const std::vector<ItemInstances> &entries)
+	static MySQLRequestResult InsertMany(Database &db, const std::vector<ItemInstances> &entries)
 	{
-		if (entries.empty()) {
-			return true;
-		}
-
 		std::vector<std::string> insert_chunks;
 
 		for (const auto &e : entries) {
 			insert_chunks.push_back("(" + Strings::Implode(",", Values(e)) + ")");
 		}
 
+		return db.QueryDatabase(fmt::format("{} VALUES {}", BaseInsert(), Strings::Implode(",", insert_chunks)));
+	}
+
+	static bool UpdateLocation(Database &db, const ItemGUID &guid, const ItemLocation &location)
+	{
+		const auto columns = Columns();
+		const auto values  = LocationValues(location);
+
+		std::vector<std::string> v;
+
+		for (size_t i = 0; i < values.size(); ++i) {
+			v.push_back(columns[location_column_offset + i] + " = " + values[i]);
+		}
+
 		auto results = db.QueryDatabase(
-			fmt::format(
-				"{} VALUES {}",
-				BaseInsert(),
-				Strings::Implode(",", insert_chunks)
-			)
+			fmt::format("UPDATE {} SET {} WHERE {}", TableName(), Strings::Implode(", ", v), KeyFilter(guid))
 		);
 
 		return results.Success();
+	}
+
+	// Retires one row in play; the rows changed, so a retired or unknown row answers 0.
+	static int Retire(Database &db, const ItemGUID &guid, ItemRetirement reason)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET retirement_state = '{}', retired_at = NOW() WHERE {} AND retirement_state IS NULL",
+				TableName(),
+				ItemRetirementName(reason),
+				KeyFilter(guid)
+			)
+		);
+
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
+	}
+
+	static int RetireKeys(Database &db, const std::vector<ItemGUID> &guids, ItemRetirement reason)
+	{
+		std::vector<std::string> keys;
+		for (const auto &guid : guids) {
+			keys.push_back(fmt::format("({}, {}, {})", guid.first, guid.second, guid.third));
+		}
+
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET retirement_state = '{}', retired_at = NOW() WHERE (guid_first, guid_second, guid_third) IN ({}) AND retirement_state IS NULL",
+				TableName(),
+				ItemRetirementName(reason),
+				Strings::Implode(", ", keys)
+			)
+		);
+
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
 	static bool UpdateOne(Database &db, const ItemInstances &e)
@@ -316,14 +247,7 @@ public:
 		}
 
 		auto results = db.QueryDatabase(
-			fmt::format(
-				"UPDATE {} SET {} WHERE guid_first = {} AND guid_second = {} AND guid_third = {}",
-				TableName(),
-				Strings::Implode(", ", v),
-				e.guid.first,
-				e.guid.second,
-				e.guid.third
-			)
+			fmt::format("UPDATE {} SET {} WHERE {}", TableName(), Strings::Implode(", ", v), KeyFilter(e.guid))
 		);
 
 		return results.Success();
@@ -336,9 +260,22 @@ private:
 		return value ? std::to_string(*value) : std::string("NULL");
 	}
 
-	static std::vector<std::string> Values(const ItemInstances &e)
+	static std::vector<std::string> LocationValues(const ItemLocation &l)
 	{
 		return {
+			l.holder_type ? fmt::format("'{}'", ItemHolderTypeName(*l.holder_type)) : std::string("NULL"),
+			l.holder_type ? std::to_string(l.holder_id) : std::string("NULL"),
+			NullableValue(l.slot),
+			l.parent_guid ? std::to_string(l.parent_guid->first) : std::string("NULL"),
+			l.parent_guid ? std::to_string(l.parent_guid->second) : std::string("NULL"),
+			l.parent_guid ? std::to_string(l.parent_guid->third) : std::string("NULL"),
+			l.parent_guid ? std::to_string(l.parent_index) : std::string("NULL"),
+		};
+	}
+
+	static std::vector<std::string> Values(const ItemInstances &e)
+	{
+		std::vector<std::string> v = {
 			std::to_string(e.guid.first),
 			std::to_string(e.guid.second),
 			std::to_string(e.guid.third),
@@ -350,16 +287,33 @@ private:
 			std::to_string(e.ornament_icon),
 			std::to_string(e.ornament_idfile),
 			std::to_string(e.ornament_hero_model),
-			e.holder_type ? fmt::format("'{}'", HolderTypeName(*e.holder_type)) : std::string("NULL"),
-			NullableValue(e.holder_id),
-			NullableValue(e.slot),
-			e.parent_guid ? std::to_string(e.parent_guid->first) : std::string("NULL"),
-			e.parent_guid ? std::to_string(e.parent_guid->second) : std::string("NULL"),
-			e.parent_guid ? std::to_string(e.parent_guid->third) : std::string("NULL"),
-			NullableValue(e.parent_index),
-			e.retirement_state ? fmt::format("'{}'", RetirementStateName(*e.retirement_state)) : std::string("NULL"),
-			e.retired_at ? fmt::format("FROM_UNIXTIME({})", *e.retired_at) : std::string("NULL"),
 		};
+
+		for (const auto &value : LocationValues(e.location)) {
+			v.push_back(value);
+		}
+
+		v.push_back(e.retirement_state ? fmt::format("'{}'", ItemRetirementName(*e.retirement_state)) : std::string("NULL"));
+		v.push_back(e.retired_at ? fmt::format("FROM_UNIXTIME({})", *e.retired_at) : std::string("NULL"));
+
+		return v;
+	}
+
+	static std::vector<ItemInstances> Collect(MySQLRequestResult results)
+	{
+		std::vector<ItemInstances> entries;
+
+		if (!results.Success()) {
+			throw std::runtime_error(fmt::format("item_instances query failed: {}", results.ErrorMessage()));
+		}
+
+		entries.reserve(results.RowCount());
+
+		for (auto row = results.begin(); row != results.end(); ++row) {
+			entries.push_back(FromRow(row));
+		}
+
+		return entries;
 	}
 
 	static ItemInstances FromRow(MySQLRequestRow &row)
@@ -382,34 +336,27 @@ private:
 		e.ornament_hero_model = static_cast<uint32_t>(strtoul(row[10], nullptr, 10));
 
 		if (row[11]) {
-			e.holder_type = HolderTypeFromName(row[11]);
-			if (!e.holder_type) {
+			e.location.holder_type = ItemHolderTypeFromName(row[11]);
+			if (!e.location.holder_type) {
 				throw std::runtime_error(fmt::format("item_instances holder_type [{}] is unknown", row[11]));
+			}
+			e.location.holder_id = static_cast<uint32_t>(strtoul(row[12], nullptr, 10));
+			if (row[13]) {
+				e.location.slot = static_cast<uint16_t>(strtoul(row[13], nullptr, 10));
 			}
 		}
 
-		if (row[12]) {
-			e.holder_id = static_cast<uint32_t>(strtoul(row[12], nullptr, 10));
-		}
-
-		if (row[13]) {
-			e.slot = static_cast<uint16_t>(strtoul(row[13], nullptr, 10));
-		}
-
 		if (row[14]) {
-			e.parent_guid = ItemGUID{
+			e.location.parent_guid = ItemGUID{
 				static_cast<uint32_t>(strtoul(row[14], nullptr, 10)),
 				static_cast<uint32_t>(strtoul(row[15], nullptr, 10)),
 				static_cast<uint32_t>(strtoul(row[16], nullptr, 10)),
 			};
-		}
-
-		if (row[17]) {
-			e.parent_index = static_cast<uint16_t>(strtoul(row[17], nullptr, 10));
+			e.location.parent_index = static_cast<uint16_t>(strtoul(row[17], nullptr, 10));
 		}
 
 		if (row[18]) {
-			e.retirement_state = RetirementStateFromName(row[18]);
+			e.retirement_state = ItemRetirementFromName(row[18]);
 			if (!e.retirement_state) {
 				throw std::runtime_error(fmt::format("item_instances retirement_state [{}] is unknown", row[18]));
 			}

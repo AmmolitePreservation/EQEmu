@@ -386,7 +386,8 @@ bool Client::DoEvolveCheckProgression(EQ::ItemInstance &inst)
 
 	PlayerEvent::EvolveItem e{};
 
-	RemoveItemBySerialNumber(inst.GetSerialNumber());
+	ItemLayer::CarryGUID(inst, *new_inst);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst.GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(inst, e);
 	e.status = "Evolved Item due to obtaining progression - Old Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
@@ -490,8 +491,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 		return;
 	}
 
-	std::unique_ptr<const EQ::ItemInstance> const inst_from_new(database.CreateItem(results.item_from_id));
-	std::unique_ptr<const EQ::ItemInstance> const inst_to_new(database.CreateItem(results.item_to_id));
+	std::unique_ptr<EQ::ItemInstance> const inst_from_new(database.CreateItem(results.item_from_id));
+	std::unique_ptr<EQ::ItemInstance> const inst_to_new(database.CreateItem(results.item_to_id));
 
 	if (!inst_from_new || !inst_to_new) {
 		Message(Chat::Red, "Transfer Failed.  Incompatible Items.");
@@ -506,7 +507,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 
 	PlayerEvent::EvolveItem e{};
 
-	RemoveItemBySerialNumber(inst_from->GetSerialNumber());
+	ItemLayer::CarryGUID(*inst_from, *inst_from_new);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst_from->GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*inst_from, e);
 	e.status = "Transfer XP - Original FROM Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
@@ -516,7 +518,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 	e.status = "Transfer XP - Updated FROM item placed in inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
 
-	RemoveItemBySerialNumber(inst_to->GetSerialNumber());
+	ItemLayer::CarryGUID(*inst_to, *inst_to_new);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst_to->GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*inst_to, e);
 	e.status = "Transfer XP - Original TO Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);

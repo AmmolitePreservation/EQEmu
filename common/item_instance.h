@@ -36,6 +36,7 @@ class EvolveInfo;			// Stores information about an evolving item family
 #include "../common/deity.h"
 #include "../common/memory_buffer.h"
 #include "../common/repositories/character_evolving_items_repository.h"
+#include "../common/item_guid.h"
 
 #include <map>
 
@@ -59,6 +60,7 @@ enum OrnamentationAugmentTypes {
 };
 
 class SharedDatabase;
+class ItemLayer;
 
 // ########################################
 // Class: EQ::ItemInstance
@@ -229,6 +231,9 @@ namespace EQ
 		void Serialize(OutBuffer& ob, int16 slot_id) const { InternalSerializedItem_Struct isi; isi.slot_id = slot_id; isi.inst = (const void*)this; ob.write((const char*)&isi, sizeof(isi)); }
 
 		inline int32 GetSerialNumber() const { return m_SerialNumber; }
+		// The item's GUID, zero until the item layer issues one when the item first lands with a character.
+		inline const ItemGUID& GetGUID() const { return m_guid; }
+		inline bool HasGUID() const { return !m_guid.IsZero(); }
 		inline void SetSerialNumber(int32 id) { m_SerialNumber = id; }
 
 		std::map<std::string, ::Timer>& GetTimers() const { return m_timers; }
@@ -342,6 +347,7 @@ namespace EQ
 		// Protected Members
 		//////////////////////////
 		friend class InventoryProfile;
+		friend class ::ItemLayer;
 
 		std::map<uint8, ItemInstance*>::const_iterator _cbegin() { return m_contents.cbegin(); }
 		std::map<uint8, ItemInstance*>::const_iterator _cend() { return m_contents.cend(); }
@@ -358,6 +364,7 @@ namespace EQ
 		bool             m_attuned{false};
 		int32            m_merchantcount{1};//number avaliable on the merchant, -1=unlimited
 		int32            m_SerialNumber{0}; // Unique identifier for this instance of an item. Needed for Bazaar.
+		ItemGUID         m_guid{};
 		uint32           m_exp{0};
 		int8             m_evolveLvl{0};
 		ItemData *       m_scaledItem{nullptr};

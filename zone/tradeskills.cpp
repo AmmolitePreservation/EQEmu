@@ -240,7 +240,7 @@ void Object::HandleAugmentation(Client* user, const AugmentItem_Struct* in_augme
 			for (uint8 i = EQ::invbag::SLOT_BEGIN; i < EQ::invtype::WORLD_SIZE; i++) {
 				const EQ::ItemInstance* inst = container->GetItem(i);
 				if (inst) {
-					user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_augment->container_slot, i), 0, true);
+					user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_augment->container_slot, i), 0, true, ItemRetirement::Consumed);
 				}
 			}
 
@@ -331,27 +331,18 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 		const EQ::ItemInstance *inst = container->GetItem(0);
 		bool AllowAll = RuleB(Inventory, AllowAnyWeaponTransformation);
 		if (inst && EQ::ItemInstance::CanTransform(inst->GetItem(), container->GetItem(), AllowAll)) {
-			const EQ::ItemData *new_weapon = inst->GetItem();
-			user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, 0), 0, true);
+			// The transformed weapon is the same item with an ornament.
+			auto *weapon = inst->Clone();
+			weapon->SetOrnamentIcon(container->GetItem()->Icon);
+			weapon->SetOrnamentationIDFile(Strings::ToInt(container->GetItem()->IDFile + 2));
+			weapon->SetOrnamentHeroModel(0);
+			user->RemoveItemFromInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, 0), true);
 			container->Clear();
-			user->SummonItem(
-				new_weapon->ID,
-				inst->GetCharges(),
-				inst->GetAugmentItemID(0),
-				inst->GetAugmentItemID(1),
-				inst->GetAugmentItemID(2),
-				inst->GetAugmentItemID(3),
-				inst->GetAugmentItemID(4),
-				inst->GetAugmentItemID(5),
-				inst->IsAttuned(),
-				EQ::invslot::slotCursor,
-				container->GetItem()->Icon,
-				Strings::ToInt(container->GetItem()->IDFile + 2)
-			);
-
-			user->MessageString(Chat::LightBlue, TRANSFORM_COMPLETE, inst->GetItem()->Name);
+			user->PushItemOnCursor(*weapon, true);
+			user->MessageString(Chat::LightBlue, TRANSFORM_COMPLETE, weapon->GetItem()->Name);
+			safe_delete(weapon);
 			if (RuleB(Inventory, DeleteTransformationMold)) {
-				user->DeleteItemInInventory(in_combine->container_slot, 0, true);
+				user->DeleteItemInInventory(in_combine->container_slot, 0, true, ItemRetirement::Consumed);
 			}
 		}
 		else if (inst) {
@@ -375,11 +366,15 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 
 		const EQ::ItemInstance* inst = container->GetItem(0);
 		if (inst && inst->GetOrnamentationIcon()) {
-			const EQ::ItemData* new_weapon = inst->GetItem();
-			user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, 0), 0, true);
+			auto *weapon = inst->Clone();
+			weapon->SetOrnamentIcon(0);
+			weapon->SetOrnamentationIDFile(0);
+			weapon->SetOrnamentHeroModel(0);
+			user->RemoveItemFromInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, 0), true);
 			container->Clear();
-			user->SummonItem(new_weapon->ID, inst->GetCharges(), inst->GetAugmentItemID(0), inst->GetAugmentItemID(1), inst->GetAugmentItemID(2), inst->GetAugmentItemID(3), inst->GetAugmentItemID(4), inst->GetAugmentItemID(5), inst->IsAttuned(), EQ::invslot::slotCursor, 0, 0);
-			user->MessageString(Chat::LightBlue, TRANSFORM_COMPLETE, inst->GetItem()->Name);
+			user->PushItemOnCursor(*weapon, true);
+			user->MessageString(Chat::LightBlue, TRANSFORM_COMPLETE, weapon->GetItem()->Name);
+			safe_delete(weapon);
 		}
 		else if (inst) {
 			user->MessageString(Chat::LightBlue, DETRANSFORM_FAILED, inst->GetItem()->Name);
@@ -524,7 +519,7 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 		for (uint8 i = EQ::invbag::SLOT_BEGIN; i < EQ::invtype::WORLD_SIZE; i++) {
 			const EQ::ItemInstance* inst = container->GetItem(i);
 			if (inst) {
-				user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, i), 0, true);
+				user->DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(in_combine->container_slot, i), 0, true, ItemRetirement::Consumed);
 			}
 		}
 		container->Clear();
@@ -550,10 +545,9 @@ void Object::HandleCombine(Client* user, const NewCombine_Struct* in_combine, Ob
 			LogError("Replace container combine executed in a world container");
 		}
 		else {
-			user->DeleteItemInInventory(in_combine->container_slot, 0, true);
+			user->DeleteItemInInventory(in_combine->container_slot, 0, true, ItemRetirement::Consumed);
 		}
 	}
-
 	if (success) {
 		if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::COMBINE_SUCCESS)) {
 			auto e = PlayerEvent::CombineEvent{
@@ -768,9 +762,9 @@ void Object::HandleAutoCombine(Client* user, const RecipeAutoCombine_Struct* rac
 			const EQ::ItemInstance* inst = user_inv.GetItem(slot);
 
 			if (inst && !inst->IsStackable())
-				user->DeleteItemInInventory(slot, 0, true);
+				user->DeleteItemInInventory(slot, 0, true, ItemRetirement::Consumed);
 			else
-				user->DeleteItemInInventory(slot, 1, true);
+				user->DeleteItemInInventory(slot, 1, true, ItemRetirement::Consumed);
 		}
 	}
 

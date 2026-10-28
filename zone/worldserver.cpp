@@ -3826,7 +3826,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 				RecordPlayerEventLogWithClient(trader_pc, PlayerEvent::TRADER_SELL, e);
 			}
 
-			trader_pc->RemoveItemBySerialNumber(item_sn, in->trader_buy_struct.quantity);
+			trader_pc->RemoveItemBySerialNumber(item_sn, in->trader_buy_struct.quantity, ItemRetirement::Sold);
 			trader_pc->AddMoneyToPP(in->trader_buy_struct.price * in->trader_buy_struct.quantity, true);
 			trader_pc->QueuePacket(outapp.get());
 

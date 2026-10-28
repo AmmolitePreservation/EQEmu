@@ -1726,7 +1726,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 						inv_slot_id = c->GetInv().HasItem(component, 1, invWhereWorn|invWherePersonal);
 						if(inv_slot_id != -1)
 						{
-							c->DeleteItemInInventory(inv_slot_id, 1, true);
+							c->DeleteItemInInventory(inv_slot_id, 1, true, ItemRetirement::Consumed);
 						}
 						else
 						{	// some kind of error in the code if this happens
@@ -1772,7 +1772,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 	TryTriggerOnCastFocusEffect(focusTriggerOnCast, spell_id);
 
 	if (IsClient() && DeleteChargeFromSlot >= 0) {
-		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);
+		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true, ItemRetirement::Consumed);
 	}
 	else if (IsBot() && DeleteChargeFromSlot >= 0) {
 		EQ::ItemInstance* inst = CastToBot()->GetBotItem(DeleteChargeFromSlot);
@@ -7320,7 +7320,7 @@ void Mob::DoBardCastingFromItemClick(bool is_casting_bard_song, uint32 cast_time
 		int16 DeleteChargeFromSlot = GetItemSlotToConsumeCharge(spell_id, item_slot);
 		if (SpellFinished(spell_id, entity_list.GetMob(target_id), CastingSlot::Item, 0, item_slot)) {
 			if (IsClient() && DeleteChargeFromSlot >= 0) {
-				CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);
+				CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true, ItemRetirement::Consumed);
 			}
 			else if (IsBot() && DeleteChargeFromSlot >= 0) {
 				EQ::ItemInstance* inst = CastToBot()->GetBotItem(DeleteChargeFromSlot);

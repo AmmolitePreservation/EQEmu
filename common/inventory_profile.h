@@ -26,6 +26,7 @@
 
 
 #include "item_instance.h"
+#include "item_location.h"
 #include "classes.h"
 #include "races.h"
 
@@ -68,6 +69,7 @@ public:
 	EQ::ItemInstance* pop();
 	EQ::ItemInstance* pop_back();
 	EQ::ItemInstance* peek_front() const;
+	EQ::ItemInstance* peek_back() const;
 
 protected:
 	/////////////////////////
@@ -183,6 +185,10 @@ namespace EQ
 
 		// Calculate slot_id for an item within a bag
 		static int16 CalcSlotId(int16 slot_id); // Calc parent bag's slot_id
+		// The item table's location for a top-level slot id, and the slot id for such a location. Bag slots, whose
+		// rows name their bag, world container slots and tribute slots, which are never saved, have none.
+		static std::optional<ItemLocation> LocationForSlot(int16 slot_id, uint32 character_id, uint32 account_id);
+		static int16 SlotForLocation(const ItemLocation& location);
 		static int16 CalcSlotId(int16 bagslot_id, uint8 bagidx); // Calc slot_id for item inside bag
 		static uint8 CalcBagIdx(int16 slot_id); // Calc bagidx for slot_id
 		static int16 CalcSlotFromMaterial(uint8 material);
@@ -205,6 +211,7 @@ namespace EQ
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, int value);
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, float value);
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, bool value);
+		void SaveCustomItemData(uint32 character_id, int16 slot_id);
 		std::string GetCustomItemData(int16 slot_id, const std::string& identifier);
 		static const int GetItemStatValue(uint32 item_id, const std::string& identifier);
 

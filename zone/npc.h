@@ -569,6 +569,7 @@ public:
 		uint32           count              = 0;
 		EQ::ItemInstance *item              = nullptr;
 		bool             is_multiquest_item = false; // state
+		bool             returned_to_player = false; // state
 	};
 
 	struct HandinMoney {
@@ -596,8 +597,11 @@ public:
 		std::vector<EQ::ItemInstance *> items
 	);
 	Handin ReturnHandinItems(Client *c);
+	void MarkHandinItemReturned(const EQ::ItemInstance *inst);
+	void RetireKeptHandinItems();
 	void ResetHandin();
 	void ResetMultiQuest();
+	int16 GetEquipSlotForItem(uint32 item_id) const;
 	bool HasProcessedHandinReturn() { return m_has_processed_handin_return; }
 	bool HandinStarted() { return m_handin_started; }
 

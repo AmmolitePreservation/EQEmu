@@ -91,6 +91,11 @@ EQ::ItemInstance* ItemInstQueue::peek_front() const
 	return (m_list.empty()) ? nullptr : m_list.front();
 }
 
+EQ::ItemInstance* ItemInstQueue::peek_back() const
+{
+	return (m_list.empty()) ? nullptr : m_list.back();
+}
+
 //
 // class EQ::InventoryProfile
 //
@@ -1089,6 +1094,55 @@ int16 EQ::InventoryProfile::CalcSlotId(int16 slot_id)
 	}
 
 	return parent_slot_id;
+}
+
+std::optional<ItemLocation> EQ::InventoryProfile::LocationForSlot(int16 slot_id, uint32 character_id, uint32 account_id)
+{
+	if (EQ::ValueWithin(slot_id, invslot::EQUIPMENT_BEGIN, invslot::GENERAL_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Inventory, character_id, static_cast<uint16>(slot_id));
+	}
+
+	if (slot_id == invslot::slotCursor) {
+		return ItemLocation::InHolder(ItemHolderType::Cursor, character_id, 0);
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::BANK_BEGIN, invslot::BANK_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Bank, character_id, static_cast<uint16>(slot_id - invslot::BANK_BEGIN));
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::SHARED_BANK_BEGIN, invslot::SHARED_BANK_END)) {
+		return ItemLocation::InHolder(ItemHolderType::SharedBank, account_id, static_cast<uint16>(slot_id - invslot::SHARED_BANK_BEGIN));
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::TRADE_BEGIN, invslot::TRADE_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Trade, character_id, static_cast<uint16>(slot_id - invslot::TRADE_BEGIN));
+	}
+
+	return std::nullopt;
+}
+
+int16 EQ::InventoryProfile::SlotForLocation(const ItemLocation& location)
+{
+	if (!location.holder_type) {
+		return INVALID_INDEX;
+	}
+
+	const int16 slot = location.slot ? static_cast<int16>(*location.slot) : 0;
+
+	switch (*location.holder_type) {
+		case ItemHolderType::Inventory:
+			return slot;
+		case ItemHolderType::Cursor:
+			return invslot::slotCursor;
+		case ItemHolderType::Bank:
+			return invslot::BANK_BEGIN + slot;
+		case ItemHolderType::SharedBank:
+			return invslot::SHARED_BANK_BEGIN + slot;
+		case ItemHolderType::Trade:
+			return invslot::TRADE_BEGIN + slot;
+		default:
+			return INVALID_INDEX;
+	}
 }
 
 // Calculate slot_id for an item within a bag

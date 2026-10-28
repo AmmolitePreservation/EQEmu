@@ -21,6 +21,7 @@
 #include "../common/repositories/trader_repository.h"
 #include "../common/repositories/character_parcels_repository.h"
 #include "../common/repositories/character_parcels_containers_repository.h"
+#include "../common/item_layer.h"
 #include "worldserver.h"
 #include "string_ids.h"
 #include "client.h"
@@ -451,14 +452,22 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				CharacterParcelsContainersRepository::InsertMany(database, all_entries);
 			}
 
-			RemoveItemBySerialNumber(inst->GetSerialNumber(), parcel_out.quantity == 0 ? 1 : parcel_out.quantity);
+			const auto parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot));
+			if (inst->IsStackable() && (quantity - parcel_in->quantity > 0)) {
+				// A sent part of a stack is a new item split off by the sender; the stack keeps its row.
+				auto *piece = database.CreateItem(inst->GetItem(), parcel_in->quantity);
+				ItemLayer::Save(database, *piece, parcel_location, ItemOwner());
+				safe_delete(piece);
+				inst->SetCharges(quantity - parcel_in->quantity);
+				SaveInventory(parcel_in->item_slot);
+				SendSlotChange(parcel_in->item_slot, inst, false, parcel_in->quantity, true);
+			}
+			else {
+				ItemLayer::MoveRow(database, inst->GetGUID(), parcel_location);
+				RemoveItemFromInventory(parcel_in->item_slot, true);
+			}
 			std::unique_ptr<EQApplicationPacket> outapp(new EQApplicationPacket(OP_ShopSendParcel));
 			QueuePacket(outapp.get());
-
-			if (inst->IsStackable() && (quantity - parcel_in->quantity > 0)) {
-				inst->SetCharges(quantity - parcel_in->quantity);
-				PutItemInInventory(parcel_in->item_slot, *inst, true);
-			}
 
 			MessageString(
 				Chat::Yellow,
@@ -730,6 +739,26 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 					}
 				}
 
+				auto held = ItemLayer::Load(
+					database,
+					database,
+					fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, CharacterID()), parcel_in.parcel_slot_id)
+				);
+				if (held.size() == 1) {
+					ItemLayer::AssignGUID(*inst, held.front().inst->GetGUID());
+					for (auto &[index, content] : *inst->GetContents()) {
+						const auto *held_content = held.front().inst->GetItem(index);
+						if (content && held_content) {
+							ItemLayer::AssignGUID(*content, held_content->GetGUID());
+						}
+					}
+				}
+				else {
+					LogError("Parcel slot [{}] of character [{}] holds [{}] rows, not 1", parcel_in.parcel_slot_id, CharacterID(), held.size());
+				}
+				for (auto &h : held) {
+					safe_delete(h.inst);
+				}
 				auto const free_id = GetInv().FindFirstFreeSlotThatFitsItemWithStacking(inst.get());
 				if (free_id == INVALID_INDEX) {
 					SendParcelRetrieveAck();

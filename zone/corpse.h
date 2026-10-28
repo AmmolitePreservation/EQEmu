@@ -174,9 +174,12 @@ public:
 		const std::string &custom_data = std::string(),
 		uint32 ornamenticon = 0,
 		uint32 ornamentidfile = 0,
-		uint32 ornament_hero_model = 0
+		uint32 ornament_hero_model = 0,
+		const ItemGUID &guid = ItemGUID{},
+		const ItemGUID *augment_guids = nullptr
 	);
-
+	void MoveItemRowsToCorpse();
+	static LootItem *LootItemFor(const EQ::ItemInstance &inst, int16 equip_slot);
 	/* Corpse: Coin */
 	void SetCash(uint32 in_copper, uint32 in_silver, uint32 in_gold, uint32 in_platinum);
 	void RemoveCash();

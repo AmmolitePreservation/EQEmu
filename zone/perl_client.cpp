@@ -751,12 +751,12 @@ int Perl_Client_GetHorseId(Client* self) // @categories Account and Character, S
 
 uint32 Perl_Client_NukeItem(Client* self, uint32 item_id) // @categories Inventory and Items
 {
-	return self->NukeItem(item_id, 0xFF);
+	return self->NukeItem(item_id, ItemRetirement::Consumed, 0xFF);
 }
 
 uint32 Perl_Client_NukeItem(Client* self, uint32 item_id, uint8 slot_to_check) // @categories Inventory and Items
 {
-	return self->NukeItem(item_id, slot_to_check);
+	return self->NukeItem(item_id, ItemRetirement::Consumed, slot_to_check);
 }
 
 void Perl_Client_SetTint(Client* self, int16 slot_id, uint32 color) // @categories Inventory and Items
@@ -786,17 +786,17 @@ int Perl_Client_GetAugmentIDAt(Client* self, int16 slot_id, uint8 aug_slot) // @
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id);
+	self->DeleteItemInInventory(slot_id, 0, false, ItemRetirement::Consumed);
 }
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id, int16 quantity) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id, quantity);
+	self->DeleteItemInInventory(slot_id, quantity, false, ItemRetirement::Consumed);
 }
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id, int16 quantity, bool client_update) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id, quantity, client_update);
+	self->DeleteItemInInventory(slot_id, quantity, client_update, ItemRetirement::Consumed);
 }
 
 void Perl_Client_SummonItem(Client* self, uint32 item_id) // @categories Inventory and Items, Script Utility

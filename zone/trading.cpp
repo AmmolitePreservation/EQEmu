@@ -132,11 +132,14 @@ void Trade::AddEntity(uint16 trade_slot_id, uint32 stack_size) {
 
 		LogTrading("[{}] added partial item [{}] stack (qty: [{}]) to trade slot [{}]", owner->GetName(), inst->GetItem()->Name, stack_size, trade_slot_id);
 
-		if (_stack_size > 0)
+		if (_stack_size > 0) {
 			inst->SetCharges(_stack_size);
-		else
-			client->DeleteItemInInventory(EQ::invslot::slotCursor);
-
+			client->SaveCursor();
+		}
+		else {
+			client->DeleteItemInInventory(EQ::invslot::slotCursor, 0, false, ItemRetirement::Stacked);
+		}
+		client->SaveInventory(trade_slot_id);
 		SendItemData(inst2, trade_slot_id);
 	}
 	else {
@@ -150,7 +153,7 @@ void Trade::AddEntity(uint16 trade_slot_id, uint32 stack_size) {
 		LogTrading("[{}] added item [{}] to trade slot [{}]", owner->GetName(), inst->GetItem()->Name, trade_slot_id);
 
 		client->PutItemInInventory(trade_slot_id, *inst);
-		client->DeleteItemInInventory(EQ::invslot::slotCursor);
+		client->RemoveItemFromInventory(EQ::invslot::slotCursor);
 	}
 }
 
@@ -213,11 +216,9 @@ void Client::ResetTrade() {
 			else {
 				DropInst(inst);
 			}
-
-			DeleteItemInInventory(trade_slot);
+			RemoveItemFromInventory(trade_slot);
 		}
 	}
-
 	// step 2a: process stackables
 	for (int16 trade_slot = EQ::invslot::TRADE_BEGIN; trade_slot <= EQ::invslot::TRADE_END; ++trade_slot) {
 		EQ::ItemInstance* inst = GetInv().GetItem(trade_slot);
@@ -254,10 +255,8 @@ void Client::ResetTrade() {
 
 				PutItemInInventory(free_slot, *partial_inst);
 				SendItemPacket(free_slot, partial_inst, ItemPacketTrade);
-
 				if (inst->GetCharges() == 0) {
-					DeleteItemInInventory(trade_slot);
-
+					DeleteItemInInventory(trade_slot, 0, false, ItemRetirement::Stacked);
 					break;
 				}
 			}
@@ -290,15 +289,14 @@ void Client::ResetTrade() {
 					inst->SetCharges(0);
 				}
 
+				SaveInventory(bias_slot);
 				if (inst->GetCharges() == 0) {
-					DeleteItemInInventory(trade_slot);
-
+					DeleteItemInInventory(trade_slot, 0, false, ItemRetirement::Stacked);
 					break;
 				}
 			}
 		}
 	}
-
 	// step 3: process everything else
 	for (int16 trade_slot = EQ::invslot::TRADE_BEGIN; trade_slot <= EQ::invslot::TRADE_END; ++trade_slot) {
 		const EQ::ItemInstance* inst = m_inv[trade_slot];
@@ -313,8 +311,7 @@ void Client::ResetTrade() {
 			else {
 				DropInst(inst);
 			}
-
-			DeleteItemInInventory(trade_slot);
+			RemoveItemFromInventory(trade_slot);
 		}
 	}
 }
@@ -329,7 +326,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 
 		if(other) {
 			LogTrading("Finishing trade with client [{}]", other->GetName());
-
+			database.TransactionBegin();
 			AddMoneyToPP(other->trade->cp, other->trade->sp, other->trade->gp, other->trade->pp, true);
 
 			// step 1: process bags
@@ -366,8 +363,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 						LogTrading("Container [{}] ([{}]) is NoDrop, returning to giver", inst->GetItem()->Name, inst->GetItem()->ID);
 						PushItemOnCursor(*inst, true);
 					}
-
-					DeleteItemInInventory(trade_slot);
+					RemoveItemFromInventory(trade_slot);
 				}
 			}
 
@@ -428,13 +424,12 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 						}
 
 						if (inst->GetCharges() == 0) {
-							DeleteItemInInventory(trade_slot);
+							DeleteItemInInventory(trade_slot, 0, false, ItemRetirement::Stacked);
 							break;
 						}
 					}
 				}
 			}
-
 			// step 2b: adjust trade stack bias
 			// (if any partial stacks exist before the final stack, FindFreeSlotForTradeItem() will return that slot in step 3 and an overwrite will occur)
 			for (int16 trade_slot = EQ::invslot::TRADE_END; trade_slot >= EQ::invslot::TRADE_BEGIN; --trade_slot) {
@@ -463,14 +458,14 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 							inst->SetCharges(0);
 						}
 
+						SaveInventory(bias_slot);
 						if (inst->GetCharges() == 0) {
-							DeleteItemInInventory(trade_slot);
+							DeleteItemInInventory(trade_slot, 0, false, ItemRetirement::Stacked);
 							break;
 						}
 					}
 				}
 			}
-
 			// step 3: process everything else
 			for (int16 trade_slot = EQ::invslot::TRADE_BEGIN; trade_slot <= EQ::invslot::TRADE_END; ++trade_slot) {
 				const EQ::ItemInstance* inst = m_inv[trade_slot];
@@ -501,11 +496,10 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 						LogTrading("Item [{}] ([{}]) is NoDrop, returning to giver", inst->GetItem()->Name, inst->GetItem()->ID);
 						PushItemOnCursor(*inst, true);
 					}
-
-					DeleteItemInInventory(trade_slot);
+					RemoveItemFromInventory(trade_slot);
 				}
 			}
-
+			database.TransactionCommit();
 			//Do not reset the trade here, done by the caller.
 		}
 	}
@@ -520,7 +514,6 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 		EQ::ItemInstance* insts[4] = { 0 };
 		for (int i = EQ::invslot::TRADE_BEGIN; i <= EQ::invslot::TRADE_NPC_END; ++i) {
 			insts[i - EQ::invslot::TRADE_BEGIN] = m_inv.PopItem(i);
-			database.SaveInventory(CharacterID(), nullptr, i);
 		}
 
 		// copy to be filtered by task updates, null trade slots preserved for quest event arg
@@ -566,6 +559,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 								lde.equip_item   = 1;
 								lde.item_charges = static_cast<int8>(baginst->GetCharges());
 								with->AddLootDrop(baginst->GetItem(), lde, true);
+								MoveItemToPet(*baginst, with);
 								inst->DeleteItem(bslot);
 								item_count++;
 							}
@@ -580,6 +574,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 							lde.equip_item   = 1;
 							lde.item_charges = static_cast<int8>(inst->GetCharges());
 							with->AddLootDrop(item, lde, true);
+							MoveItemToPet(*inst, with);
 							inst = nullptr;
 						}
 					}
@@ -589,6 +584,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 						lde.equip_item   = 1;
 						lde.item_charges = static_cast<int8>(inst->GetCharges());
 						with->AddLootDrop(item, lde, true);
+						MoveItemToPet(*inst, with);
 						inst = nullptr;
 					}
 				}
@@ -687,6 +683,18 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 			}
 		}
 	}
+}
+
+// A pet keeps the item in the equipment slot its loot entry took; the row follows it there.
+void Client::MoveItemToPet(const EQ::ItemInstance &inst, NPC *pet)
+{
+	const int16 slot = pet->GetEquipSlotForItem(inst.GetID());
+	if (slot == EQ::invslot::SLOT_INVALID) {
+		LogError("Pet [{}] took item [{}] from [{}] without an equipment slot; its row stays where it was", pet->GetCleanName(), inst.GetID(), GetCleanName());
+		return;
+	}
+
+	ItemLayer::MoveRow(database, inst.GetGUID(), ItemLocation::InHolder(ItemHolderType::Pet, CharacterID(), static_cast<uint16>(slot)));
 }
 
 bool Client::CheckTradeLoreConflict(Client* other)
@@ -940,8 +948,9 @@ void Client::TraderEndTrader()
 	SetTrader(false);
 }
 
-void Client::SendTraderItem(uint32 ItemID, uint16 Quantity, TraderRepository::Trader &t) {
-
+// A bought item keeps the seller's GUID; a bought part of a stack is split off by the seller, issued from the
+// seller's counter in transit, and lands with the buyer from there.
+void Client::SendTraderItem(uint32 ItemID, uint16 Quantity, TraderRepository::Trader &t, Client *seller, const EQ::ItemInstance *sold) {
 	std::string Packet;
 	int16 FreeSlotID=0;
 
@@ -964,6 +973,15 @@ void Client::SendTraderItem(uint32 ItemID, uint16 Quantity, TraderRepository::Tr
 			t.aug_slot_6
 		)
 	);
+
+	if (inst && seller && sold)
+	{
+		if (!sold->IsStackable() || Quantity >= sold->GetCharges()) {
+			ItemLayer::CarryGUID(*sold, *inst);
+		} else {
+			ItemLayer::Save(database, *inst, ItemLocation::InTransit(seller->CharacterID()), seller->ItemOwner());
+		}
+	}
 
 	if (inst)
 	{
@@ -1180,10 +1198,10 @@ void Client::NukeTraderItem(
 
 		m_inv.DeleteItem(slot);
 	}
-	// This updates the trader. Removes it from his trading bags.
-	//
-	const EQ::ItemInstance *Inst = m_inv[slot];
-	database.SaveInventory(CharacterID(), Inst, slot);
+	// A sold part of a stack leaves the trader's stack smaller; a whole item's row moved with the buyer's landing.
+	if (quantity < charges) {
+		database.SaveInventory(this, slot);
+	}
 
 	EQApplicationPacket *outapp2;
 
@@ -1237,7 +1255,7 @@ void Client::FindAndNukeTraderItem(int32 serial_number, int16 quantity, Client *
 		);
 
 		if (charges <= quantity || (charges <= 0 && quantity == 1) || !stackable) {
-			DeleteItemInInventory(slot_id, quantity);
+			RemoveItemFromInventory(slot_id);
 			auto   trader_items = TraderRepository::GetWhere(database, fmt::format("`char_id` = '{}'", CharacterID()));
 			uint32 item_limit   = trader_items.size() >= GetInv().GetLookup()->InventoryTypeSize.Bazaar ?
 				GetInv().GetLookup()->InventoryTypeSize.Bazaar :
@@ -1538,7 +1556,9 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	SendTraderItem(
 		buy_item->GetItem()->ID,
 		buy_item->IsStackable() ? outtbs->quantity : buy_item->GetCharges(),
-		t
+		t,
+		Trader,
+		buy_item
 	);
 
 	if (RuleB(Bazaar, AuditTrail)) {

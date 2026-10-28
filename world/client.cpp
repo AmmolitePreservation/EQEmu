@@ -51,7 +51,7 @@
 #include "../common/zone_store.h"
 #include "../common/repositories/account_repository.h"
 #include "../common/repositories/player_event_logs_repository.h"
-#include "../common/repositories/inventory_repository.h"
+#include "../common/item_layer.h"
 #include "../common/events/player_event_logs.h"
 #include "../common/content/world_content_service.h"
 #include "../common/repositories/group_id_repository.h"
@@ -2379,50 +2379,24 @@ bool Client::StoreCharacter(
 		return false;
 	}
 
-	std::vector<InventoryRepository::Inventory> v;
+	const ItemLayer::Owner owner{character_id, static_cast<uint16>(RuleI(World, WorldID))};
 
-	auto e = InventoryRepository::NewEntity();
-
-	e.character_id = character_id;
-
-	for (int16 slot_id = EQ::invslot::EQUIPMENT_BEGIN; slot_id <= EQ::invbag::BANK_BAGS_END;) {
-		const auto inst = p_inventory_profile->GetItem(slot_id);
+	for (int16 slot_id = EQ::invslot::EQUIPMENT_BEGIN; slot_id <= EQ::invslot::BANK_END;) {
+		auto *inst = p_inventory_profile->GetItem(slot_id);
 		if (inst) {
-			e.slot_id             = slot_id;
-			e.item_id             = inst->GetItem()->ID;
-			e.charges             = inst->GetCharges();
-			e.color               = inst->GetColor();
-			e.augment_one         = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN);
-			e.augment_two         = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 1);
-			e.augment_three       = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 2);
-			e.augment_four        = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 3);
-			e.augment_five        = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 4);
-			e.augment_six         = inst->GetAugmentItemID(EQ::invaug::SOCKET_END);
-			e.instnodrop          = inst->IsAttuned() ? 1 : 0;
-			e.ornament_icon       = inst->GetOrnamentationIcon();
-			e.ornament_idfile     = inst->GetOrnamentationIDFile();
-			e.ornament_hero_model = inst->GetOrnamentHeroModel();
-			e.guid                = inst->GetSerialNumber();
-
-			v.emplace_back(e);
+			const auto location = EQ::InventoryProfile::LocationForSlot(slot_id, character_id, account_id);
+			if (!location || !ItemLayer::Save(database, *inst, *location, owner)) {
+				LogError("Starting item [{}] in slot [{}] of new character [{}] was not saved", inst->GetID(), slot_id, character_id);
+				return false;
+			}
 		}
 
 		if (slot_id == EQ::invslot::slotCursor) {
-			slot_id = EQ::invbag::GENERAL_BAGS_BEGIN;
-			continue;
-		} else if (slot_id == EQ::invbag::CURSOR_BAG_END) {
 			slot_id = EQ::invslot::BANK_BEGIN;
-			continue;
-		} else if (slot_id == EQ::invslot::BANK_END) {
-			slot_id = EQ::invbag::BANK_BAGS_BEGIN;
 			continue;
 		}
 
 		slot_id++;
-	}
-
-	if (!v.empty()) {
-		InventoryRepository::InsertMany(database, v);
 	}
 
 	return true;

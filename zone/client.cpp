@@ -70,7 +70,6 @@ extern volatile bool RunLoops;
 #include "../common/repositories/character_pet_name_repository.h"
 #include "../common/repositories/completed_tasks_repository.h"
 #include "../common/repositories/discovered_items_repository.h"
-#include "../common/repositories/inventory_repository.h"
 #include "../common/repositories/keyring_repository.h"
 #include "../common/repositories/tradeskill_recipe_repository.h"
 #include "../common/events/player_events.h"
@@ -3448,8 +3447,7 @@ void Client::Disarm(Client* disarmer, int chance) {
 					else
 						mi->number_in_stack = 0;
 					FastQueuePacket(&outapp); // this deletes item from the weapon slot on the client
-					if (PutItemInInventory(slot_id, *InvItem, true))
-						database.SaveInventory(CharacterID(), NULL, slot);
+					PutItemInInventory(slot_id, *InvItem, true);
 					auto matslot = (slot == EQ::invslot::slotPrimary ? EQ::textures::weaponPrimary : EQ::textures::weaponSecondary);
 					if (matslot != EQ::textures::materialInvalid)
 						SendWearChange(matslot);
@@ -3490,7 +3488,7 @@ bool Client::BindWound(Mob *bindmob, bool start, bool fail)
 				safe_delete(outapp);
 				return (true);
 			}
-			DeleteItemInInventory(bslot, 1, true); // do we need client update?
+			DeleteItemInInventory(bslot, 1, true, ItemRetirement::Consumed); // do we need client update?
 
 			// start complete timer
 			bindwound_timer.Start(10000);
@@ -8819,7 +8817,7 @@ void Client::Consume(const EQ::ItemData *item, uint8 type, int16 slot, bool auto
 
 		LogFood("Consuming food, points added to hunger_level: [{}] - current_hunger: [{}]", increase, m_pp.hunger_level);
 
-		DeleteItemInInventory(slot, 1);
+		DeleteItemInInventory(slot, 1, false, ItemRetirement::Consumed);
 
 		if (!auto_consume) // no message if the client consumed for us
 			entity_list.MessageCloseString(this, true, 50, 0, EATING_MESSAGE, GetName(), item->Name);
@@ -8829,7 +8827,7 @@ void Client::Consume(const EQ::ItemData *item, uint8 type, int16 slot, bool auto
 	} else {
 		m_pp.thirst_level += increase;
 
-		DeleteItemInInventory(slot, 1);
+		DeleteItemInInventory(slot, 1, false, ItemRetirement::Consumed);
 
 		LogFood("Consuming drink, points added to thirst_level: [{}] current_thirst: [{}]", increase, m_pp.thirst_level);
 
@@ -9687,30 +9685,10 @@ void Client::SetPrimaryWeaponOrnamentation(uint32 model_id)
 {
 	auto primary_item = m_inv.GetItem(EQ::invslot::slotPrimary);
 	if (primary_item) {
-		auto l = InventoryRepository::GetWhere(
-			database,
-			fmt::format(
-				"`character_id` = {} AND `slot_id` = {}",
-				character_id,
-				EQ::invslot::slotPrimary
-			)
-		);
-
-		if (l.empty()) {
-			return;
-		}
-
-		auto e = l.front();
-
-		e.ornament_idfile = model_id;
-
-		const int updated = InventoryRepository::UpdateOne(database, e);
-
-		if (updated) {
-			primary_item->SetOrnamentationIDFile(model_id);
+		primary_item->SetOrnamentationIDFile(model_id);
+		if (database.SaveInventory(this, EQ::invslot::slotPrimary)) {
 			SendItemPacket(EQ::invslot::slotPrimary, primary_item, ItemPacketTrade);
 			WearChange(EQ::textures::weaponPrimary, model_id, 0);
-
 			Message(Chat::Yellow, "Your primary weapon appearance has been modified.");
 		}
 	}
@@ -9720,30 +9698,10 @@ void Client::SetSecondaryWeaponOrnamentation(uint32 model_id)
 {
 	auto secondary_item = m_inv.GetItem(EQ::invslot::slotSecondary);
 	if (secondary_item) {
-		auto l = InventoryRepository::GetWhere(
-			database,
-			fmt::format(
-				"`character_id` = {} AND `slot_id` = {}",
-				character_id,
-				EQ::invslot::slotSecondary
-			)
-		);
-
-		if (l.empty()) {
-			return;
-		}
-
-		auto e = l.front();
-
-		e.ornament_idfile = model_id;
-
-		const int updated = InventoryRepository::UpdateOne(database, e);
-
-		if (updated) {
-			secondary_item->SetOrnamentationIDFile(model_id);
+		secondary_item->SetOrnamentationIDFile(model_id);
+		if (database.SaveInventory(this, EQ::invslot::slotSecondary)) {
 			SendItemPacket(EQ::invslot::slotSecondary, secondary_item, ItemPacketTrade);
 			WearChange(EQ::textures::weaponSecondary, model_id, 0);
-
 			Message(Chat::Yellow, "Your secondary weapon appearance has been modified.");
 		}
 	}
@@ -11072,12 +11030,12 @@ void Client::RemoveItem(uint32 item_id, uint32 quantity)
 			uint32 stack_size = std::max(charges, static_cast<uint32>(1));
 			if ((removed_count + stack_size) <= quantity) {
 				removed_count += stack_size;
-				DeleteItemInInventory(slot_id, charges, true);
+				DeleteItemInInventory(slot_id, charges, true, ItemRetirement::Consumed);
 			} else {
 				uint32 amount_left = (quantity - removed_count);
 				if (amount_left > 0 && stack_size >= amount_left) {
 					removed_count += amount_left;
-					DeleteItemInInventory(slot_id, amount_left, true);
+					DeleteItemInInventory(slot_id, amount_left, true, ItemRetirement::Consumed);
 				}
 			}
 		}
@@ -11788,7 +11746,7 @@ void Client::Undye()
 
 		if (inst) {
 			inst->SetColor(inst->GetItem()->Color);
-			database.SaveInventory(CharacterID(), inst, inventory_slot);
+			database.SaveInventory(this, inventory_slot);
 		}
 
 		m_pp.item_tint.Slot[slot].Color = 0;
@@ -12685,35 +12643,43 @@ uint16 Client::GetSkill(EQ::skills::SkillType skill_id) const
 	return 0;
 }
 
-void Client::RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity)
+void Client::RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason)
 {
 	EQ::ItemInstance *item = nullptr;
-
 	uint32 removed_count = 0;
-
 	const auto& slot_ids = GetInventorySlots();
-
 	for (const int16& slot_id : slot_ids) {
 		if (removed_count == quantity) {
 			break;
 		}
-
 		item = GetInv().GetItem(slot_id);
 		if (item && item->GetSerialNumber() == serial_number) {
 			uint32 charges    = item->IsStackable() ? item->GetCharges() : 0;
 			uint32 stack_size = std::max(charges, static_cast<uint32>(1));
 			if ((removed_count + stack_size) <= quantity) {
 				removed_count += stack_size;
-				DeleteItemInInventory(slot_id, charges, true);
+				DeleteItemInInventory(slot_id, charges, true, reason);
 			} else {
 				uint32 amount_left = (quantity - removed_count);
 				if (amount_left > 0 && stack_size >= amount_left) {
 					removed_count += amount_left;
-					DeleteItemInInventory(slot_id, amount_left, true);
+					DeleteItemInInventory(slot_id, amount_left, true, reason);
 				}
 			}
 		}
 	}
+}
+
+int16 Client::SlotOfSerialNumber(uint32 serial_number)
+{
+	for (const int16& slot_id : GetInventorySlots()) {
+		const auto *item = GetInv().GetItem(slot_id);
+		if (item && item->GetSerialNumber() == serial_number) {
+			return slot_id;
+		}
+	}
+
+	return EQ::invslot::SLOT_INVALID;
 }
 
 void Client::SendTopLevelInventory()

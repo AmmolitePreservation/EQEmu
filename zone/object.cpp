@@ -156,7 +156,6 @@ decay_timer(300000)
 {
 	user = nullptr;
 	last_user = nullptr;
-
 	// Initialize members
 	m_id           = 0;
 	m_inst         = (inst) ? inst->Clone() : nullptr;
@@ -164,6 +163,9 @@ decay_timer(300000)
 	m_icon         = 0;
 	m_ground_spawn = false;
 	m_fix_z        = false;
+	if (m_inst && m_inst->HasGUID()) {
+		ItemLayer::MoveRow(database, m_inst->GetGUID(), ItemLocation::OnGround(zone->GetZoneID()));
+	}
 
 	// Set as much struct data as we can
 	memset(&m_data, 0, sizeof(Object_Struct));
@@ -521,6 +523,9 @@ void Object::CreateDeSpawnPacket(EQApplicationPacket* app)
 
 bool Object::Process(){
 	if (m_type == ObjectTypes::Temporary && decay_timer.Enabled() && decay_timer.Check()) {
+		if (m_inst && m_inst->HasGUID()) {
+			ItemLayer::Retire(database, *m_inst, ItemRetirement::Decayed);
+		}
 		// Send click to all clients (removes entity on client)
 		auto outapp = new EQApplicationPacket(OP_ClickObject, sizeof(ClickObject_Struct));
 		ClickObject_Struct* click_object = (ClickObject_Struct*)outapp->pBuffer;
@@ -601,7 +606,7 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 
 				const int16 lore_item_slot = sender->GetInv().HasItem(item->ID, 0, invWhereBank);
 				if (lore_item_slot != INVALID_INDEX) { // if the duplicate is in the bank, delete it.
-					sender->DeleteItemInInventory(lore_item_slot);
+					sender->DeleteItemInInventory(lore_item_slot, 0, false, ItemRetirement::Destroyed);
 				} else { // otherwise, we delete the new one
 					cursor_delete = true;
 				}
@@ -664,7 +669,7 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 			sender->CheckItemDiscoverability(m_inst->GetID());
 
 			if (cursor_delete) {    // delete the item if it's a duplicate lore. We have to do this because the client expects the item packet
-				sender->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true);
+				sender->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true, ItemRetirement::Destroyed);
 			}
 
 			if (!m_ground_spawn) {

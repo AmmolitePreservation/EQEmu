@@ -3261,7 +3261,7 @@ int QuestManager::collectitems_processSlot(
 
 		// Remove item from inventory
 		if (remove) {
-			initiator->DeleteItemInInventory(slot_id, 0, true);
+			initiator->DeleteItemInInventory(slot_id, 0, true, ItemRetirement::Consumed);
 		}
 
 		return quantity;

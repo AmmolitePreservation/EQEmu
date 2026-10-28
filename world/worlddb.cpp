@@ -26,7 +26,7 @@
 #include <vector>
 #include "sof_char_create_data.h"
 #include "../common/repositories/character_instance_safereturns_repository.h"
-#include "../common/repositories/inventory_repository.h"
+#include "../common/item_layer.h"
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/zone_store.h"
 #include "../common/repositories/character_data_repository.h"
@@ -77,10 +77,11 @@ void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **o
 		character_ids.push_back(e.id);
 	}
 
-	const auto& inventories = InventoryRepository::GetWhere(
+	auto inventories = ItemLayer::Load(
 		*this,
+		content_db,
 		fmt::format(
-			"`character_id` IN ({}) AND `slot_id` BETWEEN {} AND {}",
+			"holder_type = 'inventory' AND holder_id IN ({}) AND slot BETWEEN {} AND {}",
 			Strings::Join(character_ids, ","),
 			EQ::invslot::slotHead,
 			EQ::invslot::slotFeet
@@ -379,6 +380,10 @@ void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **o
 			printf("Error loading inventory for %s\n", cse->Name);
 		}
 		buff_ptr += sizeof(CharacterSelectEntry_Struct);
+	}
+
+	for (auto &held : inventories) {
+		safe_delete(held.inst);
 	}
 }
 
@@ -833,7 +838,7 @@ bool WorldDatabase::LoadCharacterCreateCombos()
 }
 
 bool WorldDatabase::GetCharSelInventory(
-	const std::vector<InventoryRepository::Inventory> &inventories,
+	const std::vector<ItemLayer::Held> &inventories,
 	const CharacterDataRepository::CharacterData &character,
 	EQ::InventoryProfile *inv
 )
@@ -842,12 +847,13 @@ bool WorldDatabase::GetCharSelInventory(
 		return false;
 	}
 
-	for (const auto& e : inventories) {
-		if (e.character_id != character.id) {
+	for (const auto &held : inventories) {
+		if (held.location.holder_id != character.id || !held.location.slot) {
 			continue;
 		}
 
-		switch (e.slot_id) {
+		const int16 slot_id = static_cast<int16>(*held.location.slot);
+		switch (slot_id) {
 			case EQ::invslot::slotFace:
 			case EQ::invslot::slotEar2:
 			case EQ::invslot::slotNeck:
@@ -860,54 +866,7 @@ bool WorldDatabase::GetCharSelInventory(
 				break;
 		}
 
-
-		uint32 augment_ids[EQ::invaug::SOCKET_COUNT] = {
-			e.augment_one,
-			e.augment_two,
-			e.augment_three,
-			e.augment_four,
-			e.augment_five,
-			e.augment_six
-		};
-
-		const EQ::ItemData* item = content_db.GetItem(e.item_id);
-		if (!item) {
-			continue;
-		}
-
-		EQ::ItemInstance *inst = content_db.CreateBaseItem(item, e.charges);
-
-		if (!inst) {
-			continue;
-		}
-
-		inst->SetCharges(e.charges);
-
-		if (e.color > 0) {
-			inst->SetColor(e.color);
-		}
-
-		if (item->IsClassCommon()) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				if (augment_ids[i]) {
-					inst->PutAugment(this, i, augment_ids[i]);
-				}
-			}
-		}
-
-		inst->SetAttuned(e.instnodrop);
-
-		if (!e.custom_data.empty()) {
-			inst->SetCustomDataString(e.custom_data);
-		}
-
-		inst->SetOrnamentIcon(e.ornament_icon);
-		inst->SetOrnamentationIDFile(e.ornament_idfile);
-		inst->SetOrnamentHeroModel(e.ornament_hero_model);
-
-		inv->PutItem(e.slot_id, *inst);
-
-		safe_delete(inst);
+		inv->PutItem(slot_id, *held.inst);
 	}
 
 	return true;

@@ -128,20 +128,20 @@ void Client::DoTributeUpdate() {
 			uint32 tid = m_pp.tributes[r].tribute;
 			if(tid == TRIBUTE_NONE) {
 				if (m_inv[EQ::invslot::TRIBUTE_BEGIN + r])
-					DeleteItemInInventory(EQ::invslot::TRIBUTE_BEGIN + r);
+					RemoveItemFromInventory(EQ::invslot::TRIBUTE_BEGIN + r);
 				continue;
 			}
 
 			if(tribute_list.count(tid) != 1) {
 				if (m_inv[EQ::invslot::TRIBUTE_BEGIN + r])
-					DeleteItemInInventory(EQ::invslot::TRIBUTE_BEGIN + r);
+					RemoveItemFromInventory(EQ::invslot::TRIBUTE_BEGIN + r);
 				continue;
 			}
 
 			//sanity check
 			if(m_pp.tributes[r].tier >= MAX_TRIBUTE_TIERS) {
 				if (m_inv[EQ::invslot::TRIBUTE_BEGIN + r])
-					DeleteItemInInventory(EQ::invslot::TRIBUTE_BEGIN + r);
+					RemoveItemFromInventory(EQ::invslot::TRIBUTE_BEGIN + r);
 				m_pp.tributes[r].tier = 0;
 				continue;
 			}
@@ -163,7 +163,7 @@ void Client::DoTributeUpdate() {
 		//unequip tribute items...
 		for (r = 0; r < EQ::invtype::TRIBUTE_SIZE; r++) {
 			if (m_inv[EQ::invslot::TRIBUTE_BEGIN + r])
-				DeleteItemInInventory(EQ::invslot::TRIBUTE_BEGIN + r);
+				RemoveItemFromInventory(EQ::invslot::TRIBUTE_BEGIN + r);
 		}
 	}
 	CalcBonuses();
@@ -249,10 +249,10 @@ int32 Client::TributeItem(uint32 slot, uint32 quantity) {
 	if(inst->IsStackable()) {
 		if(inst->GetCharges() < (int32)quantity)	//dont have enough....
 			return(0);
-		DeleteItemInInventory(slot, quantity);
+		DeleteItemInInventory(slot, quantity, false, ItemRetirement::Consumed);
 	} else {
 		quantity = 1;
-		DeleteItemInInventory(slot);
+		DeleteItemInInventory(slot, 0, false, ItemRetirement::Consumed);
 	}
 
 	pts *= quantity;
@@ -459,7 +459,7 @@ void Client::DoGuildTributeUpdate()
 			auto inst_level = d1.tiers[guild->tribute.id_1_tier].level;
 			if (m_inv[EQ::invslot::GUILD_TRIBUTE_BEGIN]) {
 				LogGuilds("Guild Tribute DELETE Item in Slot 450");
-				DeleteItemInInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN);
+				RemoveItemFromInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN);
 			}
 
 			if ((RuleB(Guild,UseCharacterMaxLevelForGuildTributes) && RuleI(Character, MaxLevel) >= inst_level && GetLevel() >= inst_level) ||
@@ -480,7 +480,7 @@ void Client::DoGuildTributeUpdate()
 			}
 			auto inst_level = d2.tiers[guild->tribute.id_2_tier].level;
 			if (m_inv[EQ::invslot::GUILD_TRIBUTE_BEGIN + 1]) {
-				DeleteItemInInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN + 1);
+				RemoveItemFromInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN + 1);
 				LogGuilds("Guild Tribute DELETE Item in Slot 451");
 			}
 
@@ -495,10 +495,10 @@ void Client::DoGuildTributeUpdate()
 	}
 	else {
 		if (m_inv[EQ::invslot::GUILD_TRIBUTE_BEGIN]) {
-			DeleteItemInInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN);
+			RemoveItemFromInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN);
 		}
 		if (m_inv[EQ::invslot::GUILD_TRIBUTE_BEGIN + 1]) {
-			DeleteItemInInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN + 1);
+			RemoveItemFromInventory(EQ::invslot::GUILD_TRIBUTE_BEGIN + 1);
 		}
 	}
 	CalcBonuses();

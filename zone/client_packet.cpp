@@ -2358,7 +2358,7 @@ void Client::Handle_OP_AdventureMerchantSell(const EQApplicationPacket *app)
 
 	if (!inst->IsStackable())
 	{
-		DeleteItemInInventory(ams_in->slot);
+		DeleteItemInInventory(ams_in->slot, 0, false, ItemRetirement::Sold);
 	}
 	else
 	{
@@ -2373,7 +2373,7 @@ void Client::Handle_OP_AdventureMerchantSell(const EQApplicationPacket *app)
 			return;
 		}
 
-		DeleteItemInInventory(ams_in->slot, ams_in->charges);
+		DeleteItemInInventory(ams_in->slot, ams_in->charges, false, ItemRetirement::Sold);
 		price *= ams_in->charges;
 	}
 
@@ -2766,7 +2766,7 @@ void Client::Handle_OP_AltCurrencyReclaim(const EQApplicationPacket *app)
 
 	/* Item to Currency Storage */
 	if (reclaim->reclaim_flag == 1) {
-		uint32 removed = NukeItem(item_id, invWhereWorn | invWherePersonal | invWhereCursor);
+		uint32 removed = NukeItem(item_id, ItemRetirement::Consumed, invWhereWorn | invWherePersonal | invWhereCursor);
 		if (removed > 0) {
 			AddAlternateCurrencyValue(reclaim->currency_id, removed);
 		}
@@ -2864,7 +2864,7 @@ void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 
 		if (!inst->IsStackable())
 		{
-			DeleteItemInInventory(sell->slot_id);
+			DeleteItemInInventory(sell->slot_id, 0, false, ItemRetirement::Sold);
 		}
 		else
 		{
@@ -2879,7 +2879,7 @@ void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 				return;
 			}
 
-			DeleteItemInInventory(sell->slot_id, sell->charges);
+			DeleteItemInInventory(sell->slot_id, sell->charges, false, ItemRetirement::Sold);
 			cost *= sell->charges;
 		}
 
@@ -3071,7 +3071,7 @@ void Client::Handle_OP_ApplyPoison(const EQApplicationPacket *app)
 		}
 
 		// Live always deletes the item, success or failure. Even if too high.
-		DeleteItemInInventory(ApplyPoisonData->inventorySlot, 1, true);
+		DeleteItemInInventory(ApplyPoisonData->inventorySlot, 1, true, ItemRetirement::Consumed);
 	}
 
 	auto outapp = new EQApplicationPacket(OP_ApplyPoison, nullptr, sizeof(ApplyPoison_Struct));
@@ -3331,17 +3331,26 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 							break;
 						}
 
+						const bool split_augment = new_aug->IsStackable() && new_aug->GetCharges() > 1;
+						if (split_augment) {
+							ItemLayer::ClearGUID(*aug);
+							aug->SetCharges(1);
+						}
 						item_one_to_push = tobe_auged->Clone();
 						if (old_aug) {
 							item_two_to_push = old_aug->Clone();
 						}
-
 						if (item_one_to_push) { // Must push items after the items in inventory are deleted - necessary due to lore items...
-							DeleteItemInInventory(item_slot, 0, true);
-							DeleteItemInInventory(EQ::invslot::slotCursor, new_aug->IsStackable() ? 1 : 0, true);
-
+							RemoveItemFromInventory(item_slot, true);
+							if (split_augment) {
+								new_aug->SetCharges(new_aug->GetCharges() - 1);
+								SaveCursor();
+								SendSlotChange(EQ::invslot::slotCursor, new_aug, false, 1, true);
+							} else {
+								RemoveItemFromInventory(EQ::invslot::slotCursor, true);
+							}
 							if (solvent) { // Consume the augment distiller
-								DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true);
+								DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true, ItemRetirement::Consumed);
 							}
 
 							if (item_two_to_push) { // This is a swap. Return the old aug to the player's cursor.
@@ -3413,10 +3422,9 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 
 				if (item_one_to_push && item_two_to_push) {
 					if (solvent) {
-						DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true); // Consume the augment distiller
+						DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true, ItemRetirement::Consumed); // Consume the augment distiller
 					}
-
-					DeleteItemInInventory(item_slot, 0, true); // Remove the augmented item
+					RemoveItemFromInventory(item_slot, true); // Remove the augmented item
 
 					if (!PutItemInInventory(item_slot, *item_one_to_push, true)) { // Replace it with the unaugmented item
 						LogError("Problem returning equipment item to player's inventory after safe augment removal");
@@ -3481,12 +3489,12 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 					break;
 				}
 
+				ItemLayer::Retire(database, *aug, ItemRetirement::Destroyed);
 				tobe_auged->DeleteAugment(in_augment->augment_index);
 				tobe_auged->UpdateOrnamentationInfo();
-
 				item_one_to_push = tobe_auged->Clone();
 				if (item_one_to_push) {
-					DeleteItemInInventory(item_slot, 0, true);
+					RemoveItemFromInventory(item_slot, true);
 
 					if (!PutItemInInventory(item_slot, *item_one_to_push, true)) {
 						LogError("Problem returning equipment item to player's inventory after augment deletion");
@@ -4180,7 +4188,7 @@ void Client::Handle_OP_BookButton(const EQApplicationPacket* app)
 	{
 		// todo: cast spell button (unknown if anything on live uses this)
 		ScribeRecipes(inst->GetItem()->ID);
-		DeleteItemInInventory(book->invslot, 1, true);
+		DeleteItemInInventory(book->invslot, 1, true, ItemRetirement::Consumed);
 	}
 
 	EQApplicationPacket outapp(OP_FinishWindow, 0);
@@ -5593,8 +5601,8 @@ void Client::Handle_OP_CrystalCreate(const EQApplicationPacket *app)
 
 void Client::Handle_OP_CrystalReclaim(const EQApplicationPacket *app)
 {
-	const uint32 ebon    = NukeItem(RuleI(Zone, EbonCrystalItemID), invWhereWorn | invWherePersonal | invWhereCursor);
-	const uint32 radiant = NukeItem(RuleI(Zone, RadiantCrystalItemID), invWhereWorn | invWherePersonal | invWhereCursor);
+	const uint32 ebon    = NukeItem(RuleI(Zone, EbonCrystalItemID), ItemRetirement::Consumed, invWhereWorn | invWherePersonal | invWhereCursor);
+	const uint32 radiant = NukeItem(RuleI(Zone, RadiantCrystalItemID), ItemRetirement::Consumed, invWhereWorn | invWherePersonal | invWhereCursor);
 	if ((ebon + radiant) > 0) {
 		AddEbonCrystals(ebon, true);
 		AddRadiantCrystals(radiant, true);
@@ -5726,7 +5734,7 @@ void Client::Handle_OP_DeleteItem(const EQApplicationPacket *app)
 		}
 	}
 
-	DeleteItemInInventory(alc->from_slot, 1);
+	DeleteItemInInventory(alc->from_slot, 1, false, ItemRetirement::Destroyed);
 }
 
 void Client::Handle_OP_DeleteSpawn(const EQApplicationPacket *app)
@@ -7832,7 +7840,12 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 
 			if (GuildBanks->AddItem(item, this)) {
 				GuildBankDepositAck(false, sentAction);
-				DeleteItemInInventory(EQ::invslot::slotCursor, 0, false);
+				ItemLayer::MoveRow(
+					database,
+					cursor_item_inst->GetGUID(),
+					ItemLocation::InHolder(ItemHolderType::GuildBankDeposit, GuildID(), static_cast<uint16>(item.slot))
+				);
+				RemoveItemFromInventory(EQ::invslot::slotCursor);
 
 				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::GUILD_BANK_DEPOSIT)) {
 					PlayerEvent::GuildBankTransaction log{};
@@ -7905,7 +7918,13 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			if (inst->GetCharges() > 0 || inst->IsStackable() || inst->GetItem()->MaxCharges > 0) {
 				gbwis->Quantity = inst->GetCharges();
 			}
-
+			if (!inst->IsStackable()) {
+				const auto area = gbwis->Area == GuildBankDepositArea ? ItemHolderType::GuildBankDeposit : ItemHolderType::GuildBankMain;
+				const auto guid = ItemLayer::FindGUID(database, ItemLocation::InHolder(area, GuildID(), gbwis->SlotID));
+				if (guid) {
+					ItemLayer::AssignGUID(*inst, *guid);
+				}
+			}
 			PushItemOnCursor(*inst.get());
 			SendItemPacket(EQ::invslot::slotCursor, inst.get(), ItemPacketLimbo);
 			GuildBanks->DeleteItem(GuildID(), gbwis->Area, gbwis->SlotID, gbwis->Quantity, this);
@@ -9456,14 +9475,14 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 	const EQ::ItemInstance* inst = m_inv[slot_id];
 	if (!inst) {
 		Message(Chat::Red, "Error: item not found in inventory slot #%i", slot_id);
-		DeleteItemInInventory(slot_id, 0, true);
+		RemoveItemFromInventory(slot_id, true);
 		return;
 	}
 
 	const EQ::ItemData* item = inst->GetItem();
 	if (!item) {
 		Message(Chat::Red, "Error: item not found in inventory slot #%i", slot_id);
-		DeleteItemInInventory(slot_id, 0, true);
+		RemoveItemFromInventory(slot_id, true);
 		return;
 	}
 
@@ -9569,7 +9588,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 					Strings::BeginsWith(item->Name, "Skill: ")
 				)
 			) {
-				DeleteItemInInventory(slot_id, 1, true);
+				DeleteItemInInventory(slot_id, 1, true, ItemRetirement::Consumed);
 				TrainDiscipline(item->ID);
 			}
 			else if (item->ItemType == EQ::item::ItemTypeSpell)
@@ -9594,7 +9613,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 							return;
 						}
 					}
-					DeleteItemInInventory(slot_id, 1, true);
+					DeleteItemInInventory(slot_id, 1, true, ItemRetirement::Consumed);
 					MemorizeSpellFromItem(item->ID);
 					return;
 				} else {
@@ -10959,7 +10978,6 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 
 				if (move.item) {
 					items.push_back(move);
-					database.SaveInventory(CharacterID(), NULL, from_slot); // We have to manually save inventory here.
 				} else {
 					LinkDead();
 					return; // Prevent inventory desync here. Forcing a resync would be better, but we don't have a MoveItem struct to work with.
@@ -11998,7 +12016,7 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 	std::string response;
 	switch (popup_response->popupid) {
 		case POPUPID_REPLACE_SPELLWINDOW:
-			DeleteItemInInventory(Strings::ToInt(GetEntityVariable("slot_id")), 1, true);
+			DeleteItemInInventory(Strings::ToInt(GetEntityVariable("slot_id")), 1, true, ItemRetirement::Consumed);
 			MemorizeSpellFromItem(Strings::ToInt(GetEntityVariable("spell_id")));
 			return;
 			break;
@@ -14444,7 +14462,9 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 			!inst->IsStackable() ?
 			0 :
 			mp->quantity
-		)
+		),
+		false,
+		ItemRetirement::Sold
 	);
 
 
@@ -17065,10 +17085,10 @@ void Client::Handle_OP_GuildTributeDonateItem(const EQApplicationPacket *app)
 			if (inst->GetCharges() < (int32) in->quantity) {
 				favor = 0;
 			}
-			DeleteItemInInventory(in->slot, in->quantity, false, true);
+			DeleteItemInInventory(in->slot, in->quantity, false, ItemRetirement::Consumed);
 		}
 		else {
-			DeleteItemInInventory(in->slot, 0, false, true);
+			DeleteItemInInventory(in->slot, 0, false, ItemRetirement::Consumed);
 		}
 
 		SendGuildTributeDonateItemReply(in, favor);

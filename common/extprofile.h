@@ -56,6 +56,7 @@ struct ExtendedProfile_Struct {
 	int32				mercState; /* Not Used */
 	uint32				last_invsnapshot_time; /* Used */
 	uint32				next_invsnapshot_time; /* Used */
+	uint16				origin_world_id; /* Used: the world the character was created on */
 };
 
 #pragma pack()

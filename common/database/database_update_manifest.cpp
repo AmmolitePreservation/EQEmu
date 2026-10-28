@@ -7155,7 +7155,7 @@ CREATE TABLE `item_instances` (
 	`ornament_icon` INT(10) UNSIGNED NOT NULL DEFAULT '0',
 	`ornament_idfile` INT(10) UNSIGNED NOT NULL DEFAULT '0',
 	`ornament_hero_model` INT(10) UNSIGNED NOT NULL DEFAULT '0',
-	`holder_type` ENUM('inventory', 'cursor', 'bank', 'shared_bank', 'corpse', 'parcel', 'pet', 'suspended_pet', 'bot', 'guild_bank_deposit', 'guild_bank_main', 'ground') NULL DEFAULT NULL,
+	`holder_type` ENUM('inventory', 'cursor', 'bank', 'shared_bank', 'corpse', 'parcel', 'pet', 'suspended_pet', 'bot', 'guild_bank_deposit', 'guild_bank_main', 'ground', 'trade', 'world_container') NULL DEFAULT NULL,
 	`holder_id` INT(10) UNSIGNED NULL DEFAULT NULL,
 	`slot` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
 	`parent_guid_first` INT(10) UNSIGNED NULL DEFAULT NULL,

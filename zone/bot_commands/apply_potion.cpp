@@ -70,7 +70,7 @@ void bot_command_apply_potion(Client* c, const Seperator* sep)
 			c->Message(Chat::White, "Failed to apply %s to %s's buff effects.", potion_data->Name, my_bot->GetCleanName());
 		}
 
-		c->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true);
+		c->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true, ItemRetirement::Consumed);
 	}
 	else {
 

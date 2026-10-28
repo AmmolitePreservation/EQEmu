@@ -4803,6 +4803,7 @@ NPC::Handin NPC::ReturnHandinItems(Client *c)
 					}
 
 					c->PushItemOnCursor(*i.item, true);
+					MarkHandinItemReturned(i.item);
 					LogNpcHandin(
 						"Hand-in failed, returning item [{}] i.is_multiquest_item [{}]",
 						i.item->GetItem()->Name,
@@ -4913,12 +4914,43 @@ NPC::Handin NPC::ReturnHandinItems(Client *c)
 	return returned;
 }
 
+int16 NPC::GetEquipSlotForItem(uint32 item_id) const
+{
+	for (const auto *loot_item : m_loot_items) {
+		if (loot_item->item_id == item_id && loot_item->equip_slot != EQ::invslot::SLOT_INVALID) {
+			return loot_item->equip_slot;
+		}
+	}
+
+	return EQ::invslot::SLOT_INVALID;
+}
+
+void NPC::MarkHandinItemReturned(const EQ::ItemInstance *inst)
+{
+	for (auto &i : m_hand_in.original_items) {
+		if (i.item == inst) {
+			i.returned_to_player = true;
+		}
+	}
+}
+
+// A handed-in item the player did not get back was kept by the NPC: consumed.
+void NPC::RetireKeptHandinItems()
+{
+	for (auto &i : m_hand_in.original_items) {
+		if (i.item && i.item->HasGUID() && !i.returned_to_player) {
+			ItemLayer::Retire(database, *i.item, ItemRetirement::Consumed);
+		}
+	}
+}
+
 void NPC::ResetHandin()
 {
 	LogNpcHandin("Resetting hand-in bucket for [{}]", GetCleanName());
 	m_has_processed_handin_return = false;
 	m_handin_started              = false;
 	if (!IsMultiQuestEnabled()) {
+		RetireKeptHandinItems();
 		for (auto &i: m_hand_in.original_items) {
 			safe_delete(i.item);
 		}
@@ -4929,6 +4961,7 @@ void NPC::ResetHandin()
 
 void NPC::ResetMultiQuest() {
 	LogNpcHandin("Resetting multi-quest hand-in bucket for [{}]", GetCleanName());
+	RetireKeptHandinItems();
 	for (auto &i: m_hand_in.original_items) {
 		safe_delete(i.item);
 	}

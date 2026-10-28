@@ -96,7 +96,7 @@ void bot_command_apply_poison(Client* c, const Seperator* sep)
 				my_rogue_bot->GetCleanName());
 		}
 
-		c->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true);
+		c->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true, ItemRetirement::Consumed);
 	} else {
 
 		c->Message(Chat::White, "Item on cursor is not a weapon poison!");

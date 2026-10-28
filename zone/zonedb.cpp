@@ -38,7 +38,6 @@
 #include "../common/repositories/character_item_recast_repository.h"
 #include "../common/repositories/account_repository.h"
 #include "../common/repositories/respawn_times_repository.h"
-#include "../common/repositories/object_contents_repository.h"
 #include "../common/repositories/mercs_repository.h"
 #include "../common/repositories/merc_buffs_repository.h"
 #include "../common/repositories/merc_inventory_repository.h"
@@ -48,7 +47,7 @@
 #include "../common/repositories/character_exp_modifiers_repository.h"
 #include "../common/repositories/character_data_repository.h"
 #include "../common/repositories/character_corpses_repository.h"
-#include "../common/repositories/character_corpse_items_repository.h"
+#include "../common/item_layer.h"
 #include "../common/repositories/zone_repository.h"
 
 #include "../common/repositories/trader_repository.h"
@@ -217,47 +216,30 @@ void ZoneDatabase::LoadWorldContainer(uint32 parent_id, EQ::ItemInstance* contai
 		return;
 	}
 
-	const auto& l = ObjectContentsRepository::GetWhere(
-		database,
-		fmt::format(
-			"`parentid` = {}",
-			parent_id
-		)
-	);
-
-	for (const auto& e : l) {
-		const uint32 augments[EQ::invaug::SOCKET_COUNT] = {
-			e.augslot1,
-			e.augslot2,
-			e.augslot3,
-			e.augslot4,
-			e.augslot5,
-			static_cast<uint32>(e.augslot6)
-		};
-
-		auto inst = database.CreateItem(e.itemid, e.charges);
-
-		if (inst && inst->GetItem()->IsClassCommon()) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				if (augments[i]) {
-					inst->PutAugment(&database, i, augments[i]);
-				}
-			}
-
-			container->PutItem(e.bagidx, *inst);
+	for (auto &held : ItemLayer::Load(database, database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id))) {
+		if (!held.location.slot || *held.location.slot > EQ::invbag::SLOT_END) {
+			LogError("World container [{}] holds a row without a valid slot; skipped", parent_id);
+			safe_delete(held.inst);
+			continue;
 		}
 
-		safe_delete(inst);
+		container->PutItem(static_cast<uint8>(*held.location.slot), *held.inst);
+		safe_delete(held.inst);
 	}
 }
 
+// A dropped bag's contents stay under the bag; a world container's contents take its slots. Items reach either from
+// an inventory, so they already have GUIDs.
 void ZoneDatabase::SaveWorldContainer(uint32 zone_id, uint32 parent_id, const EQ::ItemInstance* container)
 {
 	if (!container) {
 		return;
 	}
 
-	DeleteWorldContainer(parent_id, zone_id);
+	if (container->HasGUID()) {
+		ItemLayer::Update(database, *container, ItemLocation::OnGround(zone_id));
+		return;
+	}
 
 	for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; index++) {
 		auto inst = container->GetItem(index);
@@ -265,45 +247,14 @@ void ZoneDatabase::SaveWorldContainer(uint32 zone_id, uint32 parent_id, const EQ
 			continue;
 		}
 
-		uint32 augments[EQ::invaug::SOCKET_COUNT] = { 0, 0, 0, 0, 0, 0 };
-
-		if (inst->IsType(EQ::item::ItemClassCommon)) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				auto augment = inst->GetAugment(i);
-				augments[i] = (augment && augment->GetItem()) ? augment->GetItem()->ID : 0;
-			}
-		}
-
-		ObjectContentsRepository::ReplaceOne(
-			database,
-			ObjectContentsRepository::ObjectContents{
-				.zoneid = zone_id,
-				.parentid = parent_id,
-				.bagidx = index,
-				.itemid = inst->GetItem()->ID,
-				.charges = inst->GetCharges(),
-				.droptime = std::time(nullptr),
-				.augslot1 = augments[0],
-				.augslot2 = augments[1],
-				.augslot3 = augments[2],
-				.augslot4 = augments[3],
-				.augslot5 = augments[4],
-				.augslot6 = static_cast<int32_t>(augments[5])
-			}
-		);
+		ItemLayer::Update(database, *inst, ItemLocation::InHolder(ItemHolderType::WorldContainer, parent_id, index));
 	}
 }
 
+// A combine consumed the container's contents.
 void ZoneDatabase::DeleteWorldContainer(uint32 parent_id, uint32 zone_id)
 {
-	ObjectContentsRepository::DeleteWhere(
-		database,
-		fmt::format(
-			"`parentid` = {} AND `zoneid` = {}",
-			parent_id,
-			zone_id
-		)
-	);
+	ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id), ItemRetirement::Consumed);
 }
 
 std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char_id, int serial_number)
@@ -561,6 +512,7 @@ bool ZoneDatabase::LoadCharacterData(uint32 character_id, PlayerProfile_Struct* 
 	m_epp->perAA                 = e.e_percent_to_aa;
 	m_epp->expended_aa           = e.e_expended_aa_spent;
 	m_epp->last_invsnapshot_time = e.e_last_invsnapshot;
+	m_epp->origin_world_id       = e.origin_world_id;
 	m_epp->next_invsnapshot_time = m_epp->last_invsnapshot_time + (RuleI(Character, InvSnapshotMinIntervalM) * 60);
 
 	return true;
@@ -3773,36 +3725,6 @@ uint32 ZoneDatabase::SaveCharacterCorpse(
 
 	e = CharacterCorpsesRepository::InsertOne(*this, e);
 
-	std::vector<CharacterCorpseItemsRepository::CharacterCorpseItems> v;
-
-	v.reserve(c.items.size());
-
-	auto ci = CharacterCorpseItemsRepository::NewEntity();
-
-	for (const auto& i : c.items) {
-		ci.corpse_id           = e.id;
-		ci.equip_slot          = i.equip_slot;
-		ci.item_id             = i.item_id;
-		ci.charges             = i.charges;
-		ci.aug_1               = i.aug_1;
-		ci.aug_2               = i.aug_2;
-		ci.aug_3               = i.aug_3;
-		ci.aug_4               = i.aug_4;
-		ci.aug_5               = i.aug_5;
-		ci.aug_6               = i.aug_6;
-		ci.attuned             = i.attuned;
-		ci.custom_data         = i.custom_data;
-		ci.ornamenticon        = i.ornamenticon;
-		ci.ornamentidfile      = i.ornamentidfile;
-		ci.ornament_hero_model = i.ornament_hero_model;
-
-		v.emplace_back(ci);
-	}
-
-	if (!v.empty()) {
-		CharacterCorpseItemsRepository::ReplaceMany(*this, v);
-	}
-
 	return e.id;
 }
 
@@ -4019,19 +3941,6 @@ uint32 ZoneDatabase::GetFirstCorpseID(uint32 character_id)
 	}
 
 	return l[0].id;
-}
-
-bool ZoneDatabase::DeleteItemOffCharacterCorpse(uint32 corpse_id, uint32 slot_id, uint32 item_id)
-{
-	return CharacterCorpseItemsRepository::DeleteWhere(
-		*this,
-		fmt::format(
-			"`corpse_id` = {} AND `equip_slot` = {} AND `item_id` = {}",
-			corpse_id,
-			slot_id,
-			item_id
-		)
-	);
 }
 
 bool ZoneDatabase::BuryCharacterCorpse(uint32 corpse_id)
