@@ -369,12 +369,13 @@ public:
 					const char *message9 = nullptr);
 	void Tell_StringID(uint32 string_id, const char *who, const char *message);
 	void SendColoredText(uint32 color, std::string message);
-	void SendTraderItem(uint32 item_id, uint16 quantity, TraderRepository::Trader &trader, Client *seller = nullptr, const EQ::ItemInstance *sold = nullptr);
+	void SendTraderItem(const EQ::ItemInstance &sold, uint16 quantity, Client *seller);
 	void DoBazaarSearch(BazaarSearchCriteria_Struct search_criteria);
 	uint16 FindTraderItem(int32 SerialNumber,uint16 Quantity);
 	uint32 FindTraderItemSerialNumber(int32 ItemID);
 	EQ::ItemInstance* FindTraderItemBySerialNumber(int32 SerialNumber);
 	void FindAndNukeTraderItem(int32 serial_number, int16 quantity, Client* customer, uint16 trader_slot);
+	void RemoveSoldListing(uint32 serial_number, int16 quantity);
 	void NukeTraderItem(uint16 slot, int16 charges, int16 quantity, Client* customer, uint16 trader_slot, int32 serial_number, int32 item_id = 0);
 	void ReturnTraderReq(const EQApplicationPacket* app,int16 traderitemcharges, uint32 itemid = 0);
 	void TradeRequestFailed(const EQApplicationPacket* app);
@@ -392,6 +393,7 @@ public:
 	void DoParcelSend(const Parcel_Struct *parcel_in);
 	void DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in);
 	void SendParcel(Parcel_Struct &parcel);
+	void SendParcelPacket(const CharacterParcelsRepository::CharacterParcels &parcel);
 	void SendParcelStatus();
 	void SendParcelAck();
 	void SendParcelRetrieveAck();

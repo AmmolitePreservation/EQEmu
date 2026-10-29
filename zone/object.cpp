@@ -30,6 +30,7 @@
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/ground_spawns_repository.h"
+#include "../common/repositories/ground_items_repository.h"
 #include "../common/repositories/object_repository.h"
 #include "queryserv.h"
 
@@ -163,10 +164,6 @@ decay_timer(300000)
 	m_icon         = 0;
 	m_ground_spawn = false;
 	m_fix_z        = false;
-	if (m_inst && m_inst->HasGUID()) {
-		ItemLayer::MoveRow(database, m_inst->GetGUID(), ItemLocation::OnGround(zone->GetZoneID()));
-	}
-
 	// Set as much struct data as we can
 	memset(&m_data, 0, sizeof(Object_Struct));
 
@@ -216,6 +213,11 @@ decay_timer(300000)
 	}
 
 	FixZ();
+
+	if (m_inst && m_inst->HasGUID()) {
+		ItemLayer::MoveRow(database, m_inst->GetGUID(), ItemLocation::OnGround(zone->GetZoneID()));
+		GroundItemsRepository::Place(database, m_inst->GetGUID(), zone->GetInstanceID(), m_data.x, m_data.y, m_data.z, m_data.heading);
+	}
 }
 
 Object::Object(
@@ -525,6 +527,7 @@ bool Object::Process(){
 	if (m_type == ObjectTypes::Temporary && decay_timer.Enabled() && decay_timer.Check()) {
 		if (m_inst && m_inst->HasGUID()) {
 			ItemLayer::Retire(database, *m_inst, ItemRetirement::Decayed);
+			GroundItemsRepository::Remove(database, m_inst->GetGUID());
 		}
 		// Send click to all clients (removes entity on client)
 		auto outapp = new EQApplicationPacket(OP_ClickObject, sizeof(ClickObject_Struct));
@@ -654,16 +657,22 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 
 					safe_delete(outapp);
 
+					if (m_inst->HasGUID()) {
+						ItemLayer::Retire(database, *m_inst, ItemRetirement::Consumed);
+						GroundItemsRepository::Remove(database, m_inst->GetGUID());
+					}
+
 					sender->SetTradeskillObject(nullptr);
-
 					user = nullptr;
-
 					return true;
 				}
 			}
 
 			// Transfer item to client
 			sender->PutItemInInventory(EQ::invslot::slotCursor, *m_inst, false);
+			if (m_inst->HasGUID()) {
+				GroundItemsRepository::Remove(database, m_inst->GetGUID());
+			}
 			sender->SendItemPacket(EQ::invslot::slotCursor, m_inst, ItemPacketTrade);
 
 			sender->CheckItemDiscoverability(m_inst->GetID());

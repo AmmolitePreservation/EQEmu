@@ -1952,17 +1952,6 @@ void EQ::ItemInstance::ClearGUIDMap()
 	guids.clear();
 }
 
-bool EQ::ItemInstance::TransferOwnership(Database &db, const uint32 to_char_id) const
-{
-	if (!to_char_id || !IsEvolving()) {
-		return false;
-	}
-
-	SetEvolveCharID(to_char_id);
-	CharacterEvolvingItemsRepository::UpdateCharID(db, GetEvolveUniqueID(), to_char_id);
-	return true;
-}
-
 uint32 EQ::ItemInstance::GetAugmentEvolveUniqueID(uint8 augment_index) const
 {
 	if (!m_item || !m_item->IsClassCommon()) {

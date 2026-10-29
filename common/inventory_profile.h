@@ -133,6 +133,7 @@ namespace EQ
 
 		// Get cursor item in front of queue
 		ItemInstance* GetCursorItem();
+		ItemInstance* GetLastCursorItem() const { return m_cursor.peek_back(); }
 
 		// Swap items in inventory
 		enum SwapItemFailState : int8 { swapInvalid = -1, swapPass = 0, swapNotAllowed, swapNullData, swapRaceClass, swapDeity, swapLevel };

@@ -1,6 +1,7 @@
 #include "item_layer.h"
 #include "eqemu_logsys.h"
 #include "misc_functions.h"
+#include "repositories/character_data_repository.h"
 #include "repositories/item_instances_repository.h"
 #include "shareddb.h"
 #include "strings.h"
@@ -71,6 +72,54 @@ constexpr int issue_attempts = 3;
 std::string ItemLayer::HolderFilter(ItemHolderType holder_type, uint32 holder_id)
 {
 	return fmt::format("holder_type = '{}' AND holder_id = {}", ItemHolderTypeName(holder_type), holder_id);
+}
+
+std::string ItemLayer::GUIDFilter(const ItemGUID &guid)
+{
+	return ItemInstancesRepository::KeyFilter(guid);
+}
+
+EQ::ItemInstance *ItemLayer::LoadOne(Database &db, SharedDatabase &content_db, const ItemGUID &guid)
+{
+	auto held = Load(db, content_db, GUIDFilter(guid));
+	if (held.size() != 1) {
+		LogError("guid [{} {} {}] loaded [{}] held items, not 1", guid.first, guid.second, guid.third, held.size());
+		for (auto &h : held) {
+			safe_delete(h.inst);
+		}
+		return nullptr;
+	}
+
+	return held.front().inst;
+}
+
+bool ItemLayer::SetCharges(Database &db, const ItemGUID &guid, int16 charges)
+{
+	auto results = db.QueryDatabase(
+		fmt::format(
+			"UPDATE {} SET charges = {} WHERE {} AND retirement_state IS NULL",
+			ItemInstancesRepository::TableName(),
+			charges,
+			ItemInstancesRepository::KeyFilter(guid)
+		)
+	);
+	if (!results.Success()) {
+		LogError("Failed to set charges [{}] on guid [{} {} {}]", charges, guid.first, guid.second, guid.third);
+		return false;
+	}
+
+	return true;
+}
+
+std::optional<ItemLayer::Owner> ItemLayer::OwnerOf(Database &db, uint32 character_id)
+{
+	const auto c = CharacterDataRepository::FindOne(db, character_id);
+	if (!c.id) {
+		LogError("Character [{}] does not exist, so nothing can be issued from its counter", character_id);
+		return std::nullopt;
+	}
+
+	return Owner{c.id, static_cast<uint16>(c.origin_world_id)};
 }
 
 bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const std::optional<Owner> &owner)

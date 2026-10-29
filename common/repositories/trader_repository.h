@@ -4,6 +4,7 @@
 #include "../../common/shareddb.h"
 #include "../strings.h"
 #include "base/base_trader_repository.h"
+#include "../item_guid.h"
 #include "items_repository.h"
 #include "../../common/item_data.h"
 #include "../../common/races.h"
@@ -29,9 +30,23 @@ public:
 	};
 
 	struct BazaarTraderSearch_Struct {
-		Trader trader;
+		Trader      trader;
 		std::string trader_name;
+		uint32      item_id;
+		int32       charges;
 	};
+
+	static ItemGUID GUIDOf(const Trader &e)
+	{
+		return ItemGUID{e.guid_first, e.guid_second, e.guid_third};
+	}
+
+	static void SetGUID(Trader &e, const ItemGUID &guid)
+	{
+		e.guid_first  = guid.first;
+		e.guid_second = guid.second;
+		e.guid_third  = guid.third;
+	}
 
 	struct WelcomeData_Struct {
 		uint32 count_of_traders;
@@ -113,88 +128,46 @@ public:
 		return e;
 	}
 
-	static int UpdateItem(Database &db, uint32 char_id, uint32 new_price, uint32 item_id, uint32 item_charges)
+	// Every listing of this item the trader has up, or only those with this many charges when charges is not zero.
+	static std::string ItemFilter(uint32 char_id, uint32 item_id, int32 charges)
 	{
-		std::vector<BaseTraderRepository::Trader> items{};
-		if (item_charges == 0) {
-			items = GetWhere(
-				db,
-				fmt::format(
-					"char_id = '{}' AND item_id = '{}'",
-					char_id,
-					item_id
-				)
-			);
-		}
-		else {
-			items = GetWhere(
-				db,
-				fmt::format(
-					"char_id = '{}' AND item_id = '{}' AND item_charges = '{}'",
-					char_id,
-					item_id,
-					item_charges
-				)
-			);
-		}
-
-		if (items.empty()) {
-			return 0;
-		}
-
-		for (auto &i: items) {
-			i.item_cost    = new_price;
-			i.listing_date = time(nullptr);
-		}
-
-		return ReplaceMany(db, items);
-	}
-
-	static Trader GetTraderItem(Database &db, uint32 trader_id, uint32 item_id, uint32 item_cost)
-	{
-		Trader item{};
-
-		auto query   = fmt::format(
-			"SELECT t.char_id, t.item_id, t.serialnumber, t.charges, t.item_cost, t.slot_id, t.entity_id FROM trader AS t "
-			"WHERE t.entity_id = {} AND t.item_id = {} AND t.item_cost = {} "
-			"LIMIT 1;",
-			trader_id,
+		return fmt::format(
+			"t.char_id = {} AND i.item_id = {}{}",
+			char_id,
 			item_id,
-			item_cost
+			charges ? fmt::format(" AND i.charges = {}", charges) : ""
 		);
-		auto results = db.QueryDatabase(query);
-
-		if (results.RowCount() == 0) {
-			return item;
-		}
-
-		auto row = results.begin();
-		item.char_id      = Strings::ToInt(row[0]);
-		item.item_id      = Strings::ToInt(row[1]);
-		item.item_sn      = Strings::ToInt(row[2]);
-		item.item_charges = Strings::ToInt(row[3]);
-		item.item_cost    = Strings::ToInt(row[4]);
-		item.slot_id      = Strings::ToInt(row[5]);
-
-		return item;
 	}
 
-	static int UpdateQuantity(Database &db, uint32 char_id, uint32 serial_number, int16 quantity)
+	static std::string ItemJoin()
 	{
-		const auto trader_item = GetWhere(
-			db,
-			fmt::format("char_id = '{}' AND item_sn = '{}' ", char_id, serial_number)
+		return fmt::format(
+			"{} t JOIN item_instances i ON i.guid_first = t.guid_first AND i.guid_second = t.guid_second AND i.guid_third = t.guid_third",
+			TableName()
+		);
+	}
+
+	static int UpdatePriceByItem(Database &db, uint32 char_id, uint32 item_id, int32 charges, uint32 new_price)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET t.item_cost = {}, t.listing_date = NOW() WHERE {}",
+				ItemJoin(),
+				new_price,
+				ItemFilter(char_id, item_id, charges)
+			)
 		);
 
-		if (trader_item.empty() || trader_item.size() > 1) {
-			return 0;
-		}
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
+	}
 
-		auto m = trader_item[0];
-		m.item_charges = quantity;
-		m.listing_date = time(nullptr);
+	static int DeleteByItem(Database &db, uint32 char_id, uint32 item_id)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format("DELETE t FROM {} WHERE {}", ItemJoin(), ItemFilter(char_id, item_id, 0))
+		);
 
-		return UpdateOne(db, m);
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
 	static Trader GetItemBySerialNumber(Database &db, uint32 serial_number, uint32 trader_id)
@@ -295,13 +268,16 @@ public:
 		std::vector<BazaarTraderSearch_Struct> all_entries{};
 
 		auto query = fmt::format(
-			"SELECT trader.*, c.`name` FROM `trader` INNER JOIN character_data AS c ON trader.char_id = c.id "
+			"SELECT trader.id, trader.char_id, trader.guid_first, trader.guid_second, trader.guid_third, trader.item_sn, "
+			"trader.item_cost, trader.slot_id, trader.char_entity_id, trader.char_zone_id, trader.char_zone_instance_id, "
+			"trader.active_transaction, UNIX_TIMESTAMP(trader.listing_date), c.`name`, i.item_id, i.charges "
+			"FROM `trader` INNER JOIN character_data AS c ON trader.char_id = c.id "
+			"INNER JOIN item_instances AS i ON i.guid_first = trader.guid_first AND i.guid_second = trader.guid_second "
+			"AND i.guid_third = trader.guid_third "
 			"WHERE {} ORDER BY trader.char_id ASC",
 			search_criteria_trader
 		);
-
 		auto results = db.QueryDatabase(query);
-
 		if (results.RowCount() == 0) {
 			return all_entries;
 		}
@@ -309,26 +285,22 @@ public:
 		all_entries.reserve(results.RowCount());
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			BazaarTraderSearch_Struct e{};
-
 			e.trader.id                    = row[0] ? strtoull(row[0], nullptr, 10) : 0;
 			e.trader.char_id               = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.trader.item_id               = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.trader.aug_slot_1            = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.trader.aug_slot_2            = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.trader.aug_slot_3            = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.trader.aug_slot_4            = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.trader.aug_slot_5            = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.trader.aug_slot_6            = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.trader.item_sn               = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.trader.item_charges          = row[10] ? static_cast<int32_t>(atoi(row[10])) : 0;
-			e.trader.item_cost             = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.trader.slot_id               = row[12] ? static_cast<uint8_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.trader.char_entity_id        = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.trader.char_zone_id          = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.trader.char_zone_instance_id = row[15] ? static_cast<int32_t>(atoi(row[15])) : 0;
-			e.trader.active_transaction    = row[16] ? static_cast<uint8_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.trader_name                  = row[17] ? row[17] : std::string("");
-
+			e.trader.guid_first            = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.trader.guid_second           = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.trader.guid_third            = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.trader.item_sn               = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.trader.item_cost             = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.trader.slot_id               = row[7] ? static_cast<uint8_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.trader.char_entity_id        = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
+			e.trader.char_zone_id          = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
+			e.trader.char_zone_instance_id = row[10] ? static_cast<int32_t>(atoi(row[10])) : 0;
+			e.trader.active_transaction    = row[11] ? static_cast<uint8_t>(strtoul(row[11], nullptr, 10)) : 0;
+			e.trader.listing_date          = row[12] ? strtoll(row[12], nullptr, 10) : 0;
+			e.trader_name                  = row[13] ? row[13] : std::string("");
+			e.item_id                      = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
+			e.charges                      = row[15] ? static_cast<int32_t>(atoi(row[15])) : 0;
 			all_entries.push_back(e);
 		}
 

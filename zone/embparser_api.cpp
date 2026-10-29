@@ -5928,23 +5928,36 @@ bool Perl__send_parcel(perl::reference table_ref)
 	const std::string& from_name = table.exists("from_name") ? table["from_name"] : std::string();
 	const std::string& note      = table.exists("note") ? table["note"] : std::string();
 
+	std::unique_ptr<EQ::ItemInstance> inst(
+		database.CreateItem(item_id, quantity, augment_one, augment_two, augment_three, augment_four, augment_five, augment_six)
+	);
+	const auto owner = ItemLayer::OwnerOf(database, character_id);
+	if (!inst || !owner) {
+		return false;
+	}
+
 	auto e = CharacterParcelsRepository::NewEntity();
+	e.char_id   = character_id;
+	e.slot_id   = next_parcel_slot;
+	e.from_name = from_name;
+	e.note      = note;
+	e.sent_date = std::time(nullptr);
 
-	e.char_id    = character_id;
-	e.item_id    = item_id;
-	e.aug_slot_1 = augment_one;
-	e.aug_slot_2 = augment_two;
-	e.aug_slot_3 = augment_three;
-	e.aug_slot_4 = augment_four;
-	e.aug_slot_5 = augment_five;
-	e.aug_slot_6 = augment_six;
-	e.slot_id    = next_parcel_slot;
-	e.quantity   = quantity;
-	e.from_name  = from_name;
-	e.note       = note;
-	e.sent_date  = std::time(nullptr);
+	// The parcel's item is issued from the recipient's counter, into the parcel slot.
+	database.TransactionBegin();
+	uint32 out = 0;
+	if (ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Parcel, character_id, static_cast<uint16>(next_parcel_slot)), *owner)) {
+		CharacterParcelsRepository::SetGUID(e, inst->GetGUID());
+		out = CharacterParcelsRepository::InsertOne(database, e).id;
+	}
 
-	auto out = CharacterParcelsRepository::InsertOne(database, e).id;
+	if (!out) {
+		database.TransactionRollback();
+		return false;
+	}
+
+	database.TransactionCommit();
+
 	if (out) {
 		Parcel_Struct ps{};
 		ps.item_slot = e.slot_id;

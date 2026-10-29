@@ -964,11 +964,7 @@ void Client::DeleteItemInInventory(int16 slot_id, int16 quantity, bool client_up
 		return;
 	}
 
-	const uint64 evolve_id  = inst->GetEvolveUniqueID();
-	const bool   is_deleted = m_inv.DeleteItem(slot_id, quantity);
-	if (is_deleted && evolve_id && (slot_id > EQ::invslot::TRADE_END || slot_id < EQ::invslot::TRADE_BEGIN)) {
-		CharacterEvolvingItemsRepository::SoftDelete(database, evolve_id);
-	}
+	const bool is_deleted = m_inv.DeleteItem(slot_id, quantity);
 
 	// The deleted instance stays allocated until the profile cleans its dirty list, so its GUIDs are still readable here.
 	if (is_deleted) {
@@ -1055,15 +1051,14 @@ void Client::SendSlotChange(int16 slot_id, const EQ::ItemInstance *remaining, bo
 bool Client::PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update)
 {
 	LogInventory("Putting item [{}] ([{}]) on the cursor", inst.GetItem()->Name, inst.GetItem()->ID);
-
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), EQ::invslot::slotCursor, inst);
 	m_inv.PushCursor(inst);
-
 	if (client_update) {
 		SendItemPacket(EQ::invslot::slotCursor, &inst, ItemPacketLimbo);
 	}
-
-	return database.SaveCursor(this);
+	const bool saved = database.SaveCursor(this);
+	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
+	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
+	return saved;
 }
 
 // Puts an item into the person's inventory, replacing whatever was there, and saves the item where it now is.
@@ -1075,17 +1070,15 @@ bool Client::PutItemInInventory(int16 slot_id, const EQ::ItemInstance& inst, boo
 		return PushItemOnCursor(inst, client_update);
 	}
 
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, inst);
 	m_inv.PutItem(slot_id, inst);
-
 	if (client_update)
 	{
 		SendItemPacket(slot_id, &inst, ItemPacketTrade);
 	}
-
 	CalcBonuses();
-
-	return database.SaveInventory(this, slot_id);
+	const bool saved = database.SaveInventory(this, slot_id);
+	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
+	return saved;
 }
 
 void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data)
@@ -1093,16 +1086,15 @@ void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, Loo
 	LogInventory("Putting loot item [{}] ([{}]) into slot [{}]", inst.GetItem()->Name, inst.GetItem()->ID, slot_id);
 
 	bool cursor_empty = m_inv.CursorEmpty();
-
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, inst);
-
 	if (slot_id == EQ::invslot::slotCursor) {
 		m_inv.PushCursor(inst);
 		database.SaveCursor(this);
+		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetLastCursorItem());
 	}
 	else {
 		m_inv.PutItem(slot_id, inst);
 		database.SaveInventory(this, slot_id);
+		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
 	}
 
 	// Subordinate items in cursor buffer must be sent via ItemPacketSummonItem or we just overwrite the visible cursor and desync the client

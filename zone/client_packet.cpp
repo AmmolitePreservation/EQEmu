@@ -7817,9 +7817,9 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 				return;
 			}
 
-			auto item        = GuildBankRepository::NewEntity();
-			item.guild_id    = GuildID();
+			GuildBankRepository::GuildBankItem item{};
 			item.area        = GuildBankDepositArea;
+			item.guid        = cursor_item_inst->GetGUID();
 			item.item_id     = cursor_item->ID;
 			item.quantity    = 1;
 			if (cursor_item_inst->GetCharges() > 0 || cursor_item_inst->IsStackable() || cursor_item->MaxCharges > 0) {
@@ -7828,40 +7828,43 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 
 			item.donator     = GetCleanName();
 			item.permissions = GuildBankBankerOnly;
-			if (cursor_item_inst->IsAugmented()) {
-				auto const augs       = cursor_item_inst->GetAugmentIDs();
-				item.augment_one_id   = augs.at(0);
-				item.augment_two_id   = augs.at(1);
-				item.augment_three_id = augs.at(2);
-				item.augment_four_id  = augs.at(3);
-				item.augment_five_id  = augs.at(4);
-				item.augment_six_id   = augs.at(5);
+
+			// The side row and the item row's move are one deposit.
+			database.TransactionBegin();
+			bool deposited = GuildBanks->AddItem(GuildID(), item, this);
+			if (deposited && !ItemLayer::MoveRow(database, item.guid, ItemLocation::InHolder(ItemHolderType::GuildBankDeposit, GuildID(), static_cast<uint16>(item.slot)))) {
+				GuildBanks->DeleteItem(GuildID(), GuildBankDepositArea, item.slot, item.quantity, this);
+				deposited = false;
 			}
 
-			if (GuildBanks->AddItem(item, this)) {
-				GuildBankDepositAck(false, sentAction);
-				ItemLayer::MoveRow(
-					database,
-					cursor_item_inst->GetGUID(),
-					ItemLocation::InHolder(ItemHolderType::GuildBankDeposit, GuildID(), static_cast<uint16>(item.slot))
-				);
-				RemoveItemFromInventory(EQ::invslot::slotCursor);
-
-				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::GUILD_BANK_DEPOSIT)) {
-					PlayerEvent::GuildBankTransaction log{};
-					log.char_id        = CharacterID();
-					log.guild_id       = GuildID();
-					log.item_id        = item.item_id;
-					log.quantity       = item.quantity;
-					log.aug_slot_one   = item.augment_one_id;
-					log.aug_slot_two   = item.augment_two_id;
-					log.aug_slot_three = item.augment_three_id;
-					log.aug_slot_four  = item.augment_four_id;
-					log.aug_slot_five  = item.augment_five_id;
-					log.aug_slot_six   = item.augment_six_id;
-
-					RecordPlayerEventLog(PlayerEvent::GUILD_BANK_DEPOSIT, log);
+			if (!deposited) {
+				database.TransactionRollback();
+				GuildBankDepositAck(true, sentAction);
+				if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
+					GetInv().PopItem(EQ::invslot::slotCursor);
+					PushItemOnCursor(*cursor_item_inst, true);
 				}
+				break;
+			}
+
+			database.TransactionCommit();
+			GuildBankDepositAck(false, sentAction);
+			RemoveItemFromInventory(EQ::invslot::slotCursor);
+
+			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::GUILD_BANK_DEPOSIT)) {
+				PlayerEvent::GuildBankTransaction log{};
+				log.char_id        = CharacterID();
+				log.guild_id       = GuildID();
+				log.item_id        = item.item_id;
+				log.quantity       = item.quantity;
+				log.aug_slot_one   = cursor_item_inst->GetAugmentItemID(0);
+				log.aug_slot_two   = cursor_item_inst->GetAugmentItemID(1);
+				log.aug_slot_three = cursor_item_inst->GetAugmentItemID(2);
+				log.aug_slot_four  = cursor_item_inst->GetAugmentItemID(3);
+				log.aug_slot_five  = cursor_item_inst->GetAugmentItemID(4);
+				log.aug_slot_six   = cursor_item_inst->GetAugmentItemID(5);
+
+				RecordPlayerEventLog(PlayerEvent::GUILD_BANK_DEPOSIT, log);
 			}
 
 			break;
@@ -7917,13 +7920,6 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			gbwis->Quantity = 1;
 			if (inst->GetCharges() > 0 || inst->IsStackable() || inst->GetItem()->MaxCharges > 0) {
 				gbwis->Quantity = inst->GetCharges();
-			}
-			if (!inst->IsStackable()) {
-				const auto area = gbwis->Area == GuildBankDepositArea ? ItemHolderType::GuildBankDeposit : ItemHolderType::GuildBankMain;
-				const auto guid = ItemLayer::FindGUID(database, ItemLocation::InHolder(area, GuildID(), gbwis->SlotID));
-				if (guid) {
-					ItemLayer::AssignGUID(*inst, *guid);
-				}
 			}
 			PushItemOnCursor(*inst.get());
 			SendItemPacket(EQ::invslot::slotCursor, inst.get(), ItemPacketLimbo);

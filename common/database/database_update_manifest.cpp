@@ -7206,6 +7206,63 @@ ALTER TABLE `character_data`
 )",
 		.content_schema_update = false
 	},
+	ManifestEntry{
+		.version = 9328,
+		.description = "2026_10_29_item_side_tables_by_guid.sql",
+		.check = "SHOW TABLES LIKE 'ground_items'",
+		.condition = "empty",
+		.match = "",
+		.sql = R"(
+TRUNCATE TABLE `trader`;
+ALTER TABLE `trader`
+	DROP INDEX `idx_trader_item`,
+	DROP COLUMN `item_id`,
+	DROP COLUMN `aug_slot_1`,
+	DROP COLUMN `aug_slot_2`,
+	DROP COLUMN `aug_slot_3`,
+	DROP COLUMN `aug_slot_4`,
+	DROP COLUMN `aug_slot_5`,
+	DROP COLUMN `aug_slot_6`,
+	DROP COLUMN `item_charges`,
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL AFTER `char_id`,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL AFTER `guid_first`,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL AFTER `guid_second`,
+	ADD UNIQUE INDEX `idx_trader_guid` (`guid_first`, `guid_second`, `guid_third`),
+	ADD CONSTRAINT `fk_trader_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+ALTER TABLE `guild_bank`
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD UNIQUE INDEX `idx_guild_bank_guid` (`guid_first`, `guid_second`, `guid_third`),
+	ADD CONSTRAINT `fk_guild_bank_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+ALTER TABLE `character_parcels`
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `char_id`,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	MODIFY COLUMN `money` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_third`,
+	ADD UNIQUE INDEX `idx_character_parcels_guid` (`guid_first`, `guid_second`, `guid_third`),
+	ADD CONSTRAINT `fk_character_parcels_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+ALTER TABLE `character_evolving_items`
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD UNIQUE INDEX `idx_character_evolving_items_guid` (`guid_first`, `guid_second`, `guid_third`),
+	ADD CONSTRAINT `fk_character_evolving_items_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+CREATE TABLE `ground_items` (
+	`guid_first` INT(10) UNSIGNED NOT NULL,
+	`guid_second` INT(10) UNSIGNED NOT NULL,
+	`guid_third` INT(10) UNSIGNED NOT NULL,
+	`instance_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
+	`x` FLOAT NOT NULL DEFAULT 0,
+	`y` FLOAT NOT NULL DEFAULT 0,
+	`z` FLOAT NOT NULL DEFAULT 0,
+	`heading` FLOAT NOT NULL DEFAULT 0,
+	PRIMARY KEY (`guid_first`, `guid_second`, `guid_third`),
+	CONSTRAINT `fk_ground_items_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+)",
+		.content_schema_update = false
+	},
 // -- template; copy/paste this when you need to create a new entry
 //	ManifestEntry{
 //		.version = 9228,

@@ -38,64 +38,10 @@ void Client::SendBulkParcels()
 		return;
 	}
 
-	ParcelMessaging_Struct pms{};
-	pms.packet_type = ItemPacketParcel;
-
-	std::stringstream           ss;
-	cereal::BinaryOutputArchive ar(ss);
-
-	for (auto &p: m_parcels) {
-		auto item = database.GetItem(p.second.item_id);
-		if (item) {
-			std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(
-				item,
-				p.second.quantity,
-				p.second.aug_slot_1,
-				p.second.aug_slot_2,
-				p.second.aug_slot_3,
-				p.second.aug_slot_4,
-				p.second.aug_slot_5,
-				p.second.aug_slot_6
-			));
-			if (inst) {
-				inst->SetCharges(p.second.quantity);
-				inst->SetMerchantCount(1);
-				inst->SetMerchantSlot(p.second.slot_id);
-				if (inst->IsStackable()) {
-					inst->SetCharges(p.second.quantity);
-				}
-
-				if (item->ID == PARCEL_MONEY_ITEM_ID) {
-					inst->SetPrice(p.second.quantity);
-					inst->SetCharges(1);
-				}
-
-				pms.player_name     = p.second.from_name;
-				pms.sent_time       = p.second.sent_date;
-				pms.note            = p.second.note;
-				pms.serialized_item = inst->Serialize(p.second.slot_id);
-				pms.slot_id         = p.second.slot_id;
-				ar(pms);
-
-				uint32 packet_size = ss.str().length();
-				std::unique_ptr<EQApplicationPacket> out(new EQApplicationPacket(OP_ItemPacket, packet_size));
-				if (out->size != packet_size) {
-					LogError(
-						"Attempted to send a parcel packet of mismatched size {} with a buffer size of {}.",
-						out->Size(),
-						packet_size
-					);
-					return;
-				}
-				memcpy(out->pBuffer, ss.str().data(), out->size);
-				QueuePacket(out.get());
-
-				ss.str("");
-				ss.clear();
-			}
-		}
-
+	for (auto &p : m_parcels) {
+		SendParcelPacket(p.second);
 	}
+
 	if (m_parcels.size() >= RuleI(Parcel, ParcelMaxItems) + PARCEL_LIMIT) {
 		LogError(
 			"Found {} parcels for Character {}.  List truncated to the ParcelMaxItems rule [{}] + PARCEL_LIMIT.",
@@ -125,81 +71,56 @@ void Client::SendParcel(Parcel_Struct &parcel_in)
 
 	const auto& r = results.front();
 
+	SendParcelPacket(r);
+	m_parcels.emplace(r.slot_id, r);
+}
+
+// The parcel's item is its row; money is shown as the money item priced at the amount.
+void Client::SendParcelPacket(const CharacterParcelsRepository::CharacterParcels &p)
+{
+	std::unique_ptr<EQ::ItemInstance> inst;
+	if (CharacterParcelsRepository::IsMoney(p)) {
+		inst.reset(database.CreateItem(PARCEL_MONEY_ITEM_ID, 1));
+		if (inst) {
+			inst->SetPrice(p.money);
+		}
+	}
+	else {
+		inst.reset(ItemLayer::LoadOne(database, database, CharacterParcelsRepository::GUIDOf(p)));
+	}
+
+	if (!inst) {
+		return;
+	}
+
+	inst->SetMerchantCount(1);
+	inst->SetMerchantSlot(p.slot_id);
+
 	ParcelMessaging_Struct pms{};
-	pms.packet_type = ItemPacketParcel;
+	pms.packet_type     = ItemPacketParcel;
+	pms.player_name     = p.from_name;
+	pms.sent_time       = p.sent_date;
+	pms.note            = p.note;
+	pms.serialized_item = inst->Serialize(p.slot_id);
+	pms.slot_id         = p.slot_id;
 
 	std::stringstream           ss;
 	cereal::BinaryOutputArchive ar(ss);
+	ar(pms);
 
-	CharacterParcelsRepository::CharacterParcels p{};
-
-	p.from_name  = r.from_name;
-	p.id         = r.id;
-	p.note       = r.note;
-	p.quantity   = r.quantity;
-	p.sent_date  = r.sent_date;
-	p.item_id    = r.item_id;
-	p.aug_slot_1 = r.aug_slot_1;
-	p.aug_slot_2 = r.aug_slot_2;
-	p.aug_slot_3 = r.aug_slot_3;
-	p.aug_slot_4 = r.aug_slot_4;
-	p.aug_slot_5 = r.aug_slot_5;
-	p.aug_slot_6 = r.aug_slot_6;
-	p.slot_id    = r.slot_id;
-	p.char_id    = r.char_id;
-
-	auto item = database.GetItem(p.item_id);
-	if (item) {
-		std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(
-			item,
-			p.quantity,
-			p.aug_slot_1,
-			p.aug_slot_2,
-			p.aug_slot_3,
-			p.aug_slot_4,
-			p.aug_slot_5,
-			p.aug_slot_6
-		));
-		if (inst) {
-			inst->SetCharges(p.quantity);
-			inst->SetMerchantCount(1);
-			inst->SetMerchantSlot(p.slot_id);
-			if (inst->IsStackable()) {
-				inst->SetCharges(p.quantity);
-			}
-
-			if (item->ID == PARCEL_MONEY_ITEM_ID) {
-				inst->SetPrice(p.quantity);
-				inst->SetCharges(1);
-			}
-
-			pms.player_name     = p.from_name;
-			pms.sent_time       = p.sent_date;
-			pms.note            = p.note;
-			pms.serialized_item = inst->Serialize(p.slot_id);
-			pms.slot_id         = p.slot_id;
-			ar(pms);
-
-			uint32 packet_size = ss.str().length();
-			std::unique_ptr<EQApplicationPacket> out(new EQApplicationPacket(OP_ItemPacket, packet_size));
-			if (out->size != packet_size) {
-				LogError(
-					"Attempted to send a parcel packet of mismatched size {} with a buffer size of {}.",
-					out->Size(),
-					packet_size
-				);
-				return;
-			}
-
-			memcpy(out->pBuffer, ss.str().data(), out->size);
-			QueuePacket(out.get());
-
-			ss.str("");
-			ss.clear();
-
-			m_parcels.emplace(p.slot_id, p);
-		}
+	uint32 packet_size = ss.str().length();
+	std::unique_ptr<EQApplicationPacket> out(new EQApplicationPacket(OP_ItemPacket, packet_size));
+	if (out->size != packet_size) {
+		LogError(
+			"Attempted to send a parcel packet of mismatched size {} with a buffer size of {}.",
+			out->Size(),
+			packet_size
+		);
+		return;
 	}
+
+	memcpy(out->pBuffer, ss.str().data(), out->size);
+	QueuePacket(out.get());
 }
 
 void Client::DoParcelCancel()
@@ -381,34 +302,6 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				return;
 			}
 
-			uint32 quantity{};
-			if (inst->IsStackable()) {
-				quantity = parcel_in->quantity;
-			}
-			else {
-				quantity = inst->GetCharges() >= 0 ? inst->GetCharges() : parcel_in->quantity;
-			}
-
-			CharacterParcelsRepository::CharacterParcels parcel_out{};
-			parcel_out.from_name = GetName();
-			parcel_out.note      = parcel_in->note;
-			parcel_out.sent_date = time(nullptr);
-			parcel_out.quantity  = quantity;
-			parcel_out.item_id   = inst->GetID();
-			parcel_out.char_id   = send_to_client.at(0).char_id;
-			parcel_out.slot_id   = next_slot;
-			parcel_out.id        = 0;
-
-			if (inst->IsAugmented()) {
-				auto augs			  = inst->GetAugmentIDs();
-				parcel_out.aug_slot_1 = augs.at(0);
-				parcel_out.aug_slot_2 = augs.at(1);
-				parcel_out.aug_slot_3 = augs.at(2);
-				parcel_out.aug_slot_4 = augs.at(3);
-				parcel_out.aug_slot_5 = augs.at(4);
-				parcel_out.aug_slot_6 = augs.at(5);
-			}
-
 			if (!inst->IsDroppable(true)) {
 				Message(Chat::Yellow, "Unable to send a parcel that is NO-DROP or contains a NO-DROP item.");
 				SendParcelAck();
@@ -416,33 +309,59 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				return;
 			}
 
-			auto result = CharacterParcelsRepository::InsertOne(database, parcel_out);
+			CharacterParcelsRepository::CharacterParcels parcel_out{};
+			parcel_out.from_name = GetName();
+			parcel_out.note      = parcel_in->note;
+			parcel_out.sent_date = time(nullptr);
+			parcel_out.char_id   = send_to_client.at(0).char_id;
+			parcel_out.slot_id   = next_slot;
+
+			// The parcel names the item's row, moved whole or split off the sender's stack, in one transaction.
+			const auto   parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot));
+			const bool   partial         = inst->IsStackable() && parcel_in->quantity < static_cast<uint32>(inst->GetCharges());
+			const uint32 sent_quantity   = partial ? parcel_in->quantity : static_cast<uint32>(std::max<int16>(inst->GetCharges(), 1));
+
+			database.TransactionBegin();
+			bool placed = false;
+			if (partial) {
+				std::unique_ptr<EQ::ItemInstance> piece(inst->Clone());
+				ItemLayer::ClearGUID(*piece);
+				piece->SetCharges(parcel_in->quantity);
+				placed = ItemLayer::Save(database, *piece, parcel_location, ItemOwner());
+				CharacterParcelsRepository::SetGUID(parcel_out, piece->GetGUID());
+			}
+			else {
+				placed = ItemLayer::MoveRow(database, inst->GetGUID(), parcel_location);
+				CharacterParcelsRepository::SetGUID(parcel_out, inst->GetGUID());
+			}
+
+			auto result = placed ? CharacterParcelsRepository::InsertOne(database, parcel_out) : CharacterParcelsRepository::NewEntity();
 			if (!result.id) {
+				database.TransactionRollback();
 				LogError(
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
 					parcel_out.char_id,
-					parcel_out.item_id,
-					parcel_out.quantity
+					inst->GetID(),
+					sent_quantity
 				);
 				Message(Chat::Yellow, "Unable to save parcel to the database. Please see an administrator.");
+				SendParcelAck();
+				DoParcelCancel();
 				return;
 			}
 
-			const auto parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot));
-			if (inst->IsStackable() && (quantity - parcel_in->quantity > 0)) {
-				// A sent part of a stack is a new item split off by the sender; the stack keeps its row.
-				auto *piece = database.CreateItem(inst->GetItem(), parcel_in->quantity);
-				ItemLayer::Save(database, *piece, parcel_location, ItemOwner());
-				safe_delete(piece);
-				inst->SetCharges(quantity - parcel_in->quantity);
+			database.TransactionCommit();
+
+			if (partial) {
+				inst->SetCharges(inst->GetCharges() - parcel_in->quantity);
 				SaveInventory(parcel_in->item_slot);
 				SendSlotChange(parcel_in->item_slot, inst, false, parcel_in->quantity, true);
 			}
 			else {
-				ItemLayer::MoveRow(database, inst->GetGUID(), parcel_location);
 				RemoveItemFromInventory(parcel_in->item_slot, true);
 			}
+
 			std::unique_ptr<EQApplicationPacket> outapp(new EQApplicationPacket(OP_ShopSendParcel));
 			QueuePacket(outapp.get());
 
@@ -458,14 +377,14 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = parcel_out.from_name;
 				e.to_player_name   = send_to_client.at(0).character_name;
-				e.item_id          = parcel_out.item_id;
-				e.augment_1_id     = parcel_out.aug_slot_1;
-				e.augment_2_id     = parcel_out.aug_slot_2;
-				e.augment_3_id     = parcel_out.aug_slot_3;
-				e.augment_4_id     = parcel_out.aug_slot_4;
-				e.augment_5_id     = parcel_out.aug_slot_5;
-				e.augment_6_id     = parcel_out.aug_slot_6;
-				e.quantity         = parcel_out.quantity;
+				e.item_id          = inst->GetID();
+				e.augment_1_id     = inst->GetAugmentItemID(0);
+				e.augment_2_id     = inst->GetAugmentItemID(1);
+				e.augment_3_id     = inst->GetAugmentItemID(2);
+				e.augment_4_id     = inst->GetAugmentItemID(3);
+				e.augment_5_id     = inst->GetAugmentItemID(4);
+				e.augment_6_id     = inst->GetAugmentItemID(5);
+				e.quantity         = sent_quantity;
 				e.sent_date        = parcel_out.sent_date;
 
 				RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
@@ -529,8 +448,7 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 			parcel_out.from_name = GetName();
 			parcel_out.note      = parcel_in->note;
 			parcel_out.sent_date = time(nullptr);
-			parcel_out.quantity  = parcel_in->quantity;
-			parcel_out.item_id   = PARCEL_MONEY_ITEM_ID;
+			parcel_out.money     = parcel_in->quantity;
 			parcel_out.char_id   = send_to_client.at(0).char_id;
 			parcel_out.slot_id   = next_slot;
 			parcel_out.id        = 0;
@@ -541,8 +459,8 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
 					send_to_client.at(0).character_name,
-					parcel_out.item_id,
-					parcel_out.quantity
+					PARCEL_MONEY_ITEM_ID,
+					parcel_out.money
 				);
 				Message(
 					Chat::Yellow,
@@ -563,8 +481,8 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = parcel_out.from_name;
 				e.to_player_name   = send_to_client.at(0).character_name;
-				e.item_id          = parcel_out.item_id;
-				e.quantity         = parcel_out.quantity;
+				e.item_id          = PARCEL_MONEY_ITEM_ID;
+				e.quantity         = parcel_out.money;
 				e.sent_date        = parcel_out.sent_date;
 
 				RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
@@ -634,12 +552,11 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 		m_parcels.begin(),
 		m_parcels.end(),
 		[&](const std::pair<uint32, CharacterParcelsRepository::CharacterParcels> &x) {
-			return x.first == parcel_in.parcel_slot_id && x.second.item_id == parcel_in.parcel_item_id;
+			return x.first == parcel_in.parcel_slot_id;
 		}
 	);
 	if (p != m_parcels.end()) {
-		uint32 item_id       = parcel_in.parcel_item_id;
-		uint32 item_quantity = p->second.quantity;
+		uint32 item_id = parcel_in.parcel_item_id;
 		if (!item_id) {
 			LogError(
 				"Attempt to retrieve parcel with erroneous item id for client character id {}.",
@@ -651,33 +568,27 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 
 		// The parcel's item is its row, with its augments and contents; money has no row.
 		std::unique_ptr<EQ::ItemInstance> inst;
-		if (parcel_in.parcel_item_id == PARCEL_MONEY_ITEM_ID) {
-			inst.reset(database.CreateItem(item_id, item_quantity));
+		if (CharacterParcelsRepository::IsMoney(p->second)) {
+			inst.reset(database.CreateItem(PARCEL_MONEY_ITEM_ID, 1));
 		} else {
-			auto held = ItemLayer::Load(
-				database,
-				database,
-				fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, CharacterID()), parcel_in.parcel_slot_id)
-			);
-			if (held.size() != 1) {
-				LogError("Parcel slot [{}] of character [{}] holds [{}] rows, not 1", parcel_in.parcel_slot_id, CharacterID(), held.size());
-				for (auto &h : held) {
-					safe_delete(h.inst);
-				}
-				SendParcelRetrieveAck();
-				return;
-			}
-			inst.reset(held.front().inst);
+			inst.reset(ItemLayer::LoadOne(database, database, CharacterParcelsRepository::GUIDOf(p->second)));
 		}
 
-		if (!inst) {
+		if (!inst || inst->GetID() != item_id) {
+			LogError(
+				"Parcel slot [{}] of character [{}] holds item [{}], not the requested [{}]",
+				parcel_in.parcel_slot_id,
+				CharacterID(),
+				inst ? inst->GetID() : 0,
+				item_id
+			);
 			SendParcelRetrieveAck();
 			return;
 		}
 
 		switch (parcel_in.parcel_item_id) {
 			case PARCEL_MONEY_ITEM_ID: {
-				AddMoneyToPP(p->second.quantity, true);
+				AddMoneyToPP(p->second.money, true);
 				MessageString(
 					Chat::Yellow, PARCEL_DELIVERED, merchant->GetCleanName(), "Money", p->second.from_name.c_str()
 				);
@@ -726,7 +637,7 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 						Chat::Yellow,
 						PARCEL_DELIVERED_2,
 						merchant->GetCleanName(),
-						std::to_string(item_quantity).c_str(),
+						std::to_string(inst->GetCharges()).c_str(),
 						inst->GetItem()->Name,
 						p->second.from_name.c_str()
 					);
@@ -735,14 +646,14 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_RETRIEVE)) {
 					PlayerEvent::ParcelRetrieve e{};
 					e.from_player_name = p->second.from_name;
-					e.item_id          = p->second.item_id;
-					e.augment_1_id     = p->second.aug_slot_1;
-					e.augment_2_id     = p->second.aug_slot_2;
-					e.augment_3_id     = p->second.aug_slot_3;
-					e.augment_4_id     = p->second.aug_slot_4;
-					e.augment_5_id     = p->second.aug_slot_5;
-					e.augment_6_id     = p->second.aug_slot_6;
-					e.quantity         = p->second.quantity;
+					e.item_id          = inst->GetID();
+					e.augment_1_id     = inst->GetAugmentItemID(0);
+					e.augment_2_id     = inst->GetAugmentItemID(1);
+					e.augment_3_id     = inst->GetAugmentItemID(2);
+					e.augment_4_id     = inst->GetAugmentItemID(3);
+					e.augment_5_id     = inst->GetAugmentItemID(4);
+					e.augment_6_id     = inst->GetAugmentItemID(5);
+					e.quantity         = inst->GetCharges();
 					e.sent_date        = p->second.sent_date;
 					RecordPlayerEventLog(PlayerEvent::PARCEL_RETRIEVE, e);
 
@@ -841,11 +752,10 @@ void Client::AddParcel(CharacterParcelsRepository::CharacterParcels &parcel)
 	auto result = CharacterParcelsRepository::InsertOne(database, parcel);
 	if (!result.id) {
 		LogError(
-			"Failed to add parcel to database.  From {} to id {} item {} quantity {}",
+			"Failed to add parcel to database.  From {} to id {} slot {}",
 			parcel.from_name,
 			parcel.char_id,
-			parcel.item_id,
-			parcel.quantity
+			parcel.slot_id
 		);
 		Message(
 			Chat::Yellow,

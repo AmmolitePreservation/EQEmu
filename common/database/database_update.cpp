@@ -48,6 +48,7 @@ void DatabaseUpdate::CheckDbUpdates()
 {
 	InjectCustomVersionColumn();
 	InjectBotsVersionColumn();
+	InjectItemGUIDColumns();
 	auto v = GetDatabaseVersions();
 	auto b = GetBinaryDatabaseVersions();
 	if (CheckVersionsUpToDate(v, b)) {
@@ -397,6 +398,29 @@ void DatabaseUpdate::InjectBotsVersionColumn()
 	auto r = m_database->QueryDatabase("show columns from db_version where Field like '%bots_version%'");
 	if (r.RowCount() == 0) {
 		m_database->QueryDatabase("ALTER TABLE db_version ADD bots_version int(11) DEFAULT '0' AFTER version");
+	}
+}
+
+// The item side tables get their GUID columns here, before the manifest runs, because the 9328 data move fills
+// them from the old columns and has to run before 9328's SQL drops those columns and hardens these.
+void DatabaseUpdate::InjectItemGUIDColumns()
+{
+	for (const std::string &table : {"trader", "guild_bank", "character_parcels", "character_evolving_items"}) {
+		auto results = m_database->QueryDatabase(fmt::format("SHOW COLUMNS FROM `{}` LIKE 'guid_first'", table));
+		if (!results.Success() || results.RowCount() > 0) {
+			continue;
+		}
+		LogInfo("Adding item GUID columns to [{}]", table);
+		m_database->QueryDatabase(
+			fmt::format(
+				"ALTER TABLE `{}` "
+				"ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL, "
+				"ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL, "
+				"ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL{}",
+				table,
+				table == "character_parcels" ? ", ADD COLUMN `money` INT(10) UNSIGNED NULL DEFAULT NULL" : ""
+			)
+		);
 	}
 }
 

@@ -7,6 +7,17 @@
 extern QueryServ  *QServ;
 extern WorldServer worldserver;
 
+static std::string DescribeParcel(const CharacterParcelsRepository::CharacterParcels &p)
+{
+	if (CharacterParcelsRepository::IsMoney(p)) {
+		return fmt::format("money [{}]", p.money);
+	}
+
+	const auto guid = CharacterParcelsRepository::GUIDOf(p);
+
+	return fmt::format("item guid [{} {} {}]", guid.first, guid.second, guid.third);
+}
+
 void SendParcelsSubCommands(Client *c)
 {
 	c->Message(Chat::White, "#parcels listdb [Character Name]");
@@ -71,10 +82,9 @@ void command_parcels(Client *c, const Seperator *sep)
 			c->Message(
 				Chat::Yellow,
 				fmt::format(
-					"Slot [{:02}] has item id [{:10}] with quantity [{}].",
+					"Slot [{:02}] has {}.",
 					p.slot_id,
-					p.item_id,
-					p.quantity
+					DescribeParcel(p)
 				).c_str()
 			);
 		}
@@ -109,10 +119,9 @@ void command_parcels(Client *c, const Seperator *sep)
 			c->Message(
 				Chat::Yellow,
 				fmt::format(
-					"Slot [{:02}] has item id [{:10}] with quantity [{}].",
+					"Slot [{:02}] has {}.",
 					p.second.slot_id,
-					p.second.item_id,
-					p.second.quantity
+					DescribeParcel(p.second)
 				).c_str()
 			);
 		}
@@ -181,8 +190,7 @@ void command_parcels(Client *c, const Seperator *sep)
 			parcel_out.from_name = c->GetName();
 			parcel_out.note      = note;
 			parcel_out.sent_date = time(nullptr);
-			parcel_out.quantity  = quantity == 0 ? 1 : quantity;
-			parcel_out.item_id   = PARCEL_MONEY_ITEM_ID;
+			parcel_out.money     = quantity == 0 ? 1 : quantity;
 			parcel_out.char_id   = send_to_client.at(0).char_id;
 			parcel_out.slot_id   = next_slot;
 			parcel_out.id        = 0;
@@ -193,8 +201,8 @@ void command_parcels(Client *c, const Seperator *sep)
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
 					send_to_client.at(0).character_name,
-					parcel_out.item_id,
-					parcel_out.quantity
+					PARCEL_MONEY_ITEM_ID,
+					parcel_out.money
 				);
 				c->Message(
 					Chat::Yellow,
@@ -215,14 +223,14 @@ void command_parcels(Client *c, const Seperator *sep)
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = parcel_out.from_name;
 				e.to_player_name   = send_to_client.at(0).character_name;
-				e.item_id          = parcel_out.item_id;
+				e.item_id          = PARCEL_MONEY_ITEM_ID;
 				e.augment_1_id     = inst->GetAugmentItemID(0);
 				e.augment_2_id     = inst->GetAugmentItemID(1);
 				e.augment_3_id     = inst->GetAugmentItemID(2);
 				e.augment_4_id     = inst->GetAugmentItemID(3);
 				e.augment_5_id     = inst->GetAugmentItemID(4);
 				e.augment_6_id     = inst->GetAugmentItemID(5);
-				e.quantity         = parcel_out.quantity;
+				e.quantity         = parcel_out.money;
 				e.sent_date        = parcel_out.sent_date;
 
 				RecordPlayerEventLogWithClient (c, PlayerEvent::PARCEL_SEND, e);
@@ -261,24 +269,31 @@ void command_parcels(Client *c, const Seperator *sep)
 					? inst->GetItem()->MaxCharges : (int16) quantity;
 			}
 
+			inst->SetCharges(quantity);
+
 			auto parcel_out = CharacterParcelsRepository::NewEntity();
 			parcel_out.from_name = c->GetName();
 			parcel_out.note      = note.empty() ? "" : note;
 			parcel_out.sent_date = time(nullptr);
-			parcel_out.quantity  = quantity;
-			parcel_out.item_id   = item_id;
 			parcel_out.char_id   = send_to_client.at(0).char_id;
 			parcel_out.slot_id   = next_slot;
-			parcel_out.id        = 0;
 
-			auto result = CharacterParcelsRepository::InsertOne(database, parcel_out);
+			// The item is issued from the sender's counter straight into the parcel slot.
+			database.TransactionBegin();
+			auto result = CharacterParcelsRepository::NewEntity();
+			if (ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot)), c->ItemOwner())) {
+				CharacterParcelsRepository::SetGUID(parcel_out, inst->GetGUID());
+				result = CharacterParcelsRepository::InsertOne(database, parcel_out);
+			}
+
 			if (!result.id) {
+				database.TransactionRollback();
 				LogError(
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
 					send_to_client.at(0).character_name,
-					parcel_out.item_id,
-					parcel_out.quantity
+					inst->GetID(),
+					inst->GetCharges()
 				);
 				c->Message(
 					Chat::Yellow,
@@ -286,6 +301,8 @@ void command_parcels(Client *c, const Seperator *sep)
 				);
 				return;
 			}
+
+			database.TransactionCommit();
 
 			c->MessageString(
 				Chat::Yellow,
@@ -299,14 +316,14 @@ void command_parcels(Client *c, const Seperator *sep)
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = parcel_out.from_name;
 				e.to_player_name   = send_to_client.at(0).character_name;
-				e.item_id          = parcel_out.item_id;
+				e.item_id          = inst->GetID();
 				e.augment_1_id     = inst->GetAugmentItemID(0);
 				e.augment_2_id     = inst->GetAugmentItemID(1);
 				e.augment_3_id     = inst->GetAugmentItemID(2);
 				e.augment_4_id     = inst->GetAugmentItemID(3);
 				e.augment_5_id     = inst->GetAugmentItemID(4);
 				e.augment_6_id     = inst->GetAugmentItemID(5);
-				e.quantity         = parcel_out.quantity;
+				e.quantity         = inst->GetCharges();
 				e.sent_date        = parcel_out.sent_date;
 
 				RecordPlayerEventLogWithClient (c, PlayerEvent::PARCEL_SEND, e);

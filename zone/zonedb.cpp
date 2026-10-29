@@ -273,46 +273,25 @@ std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char
 		return nullptr;
 	}
 
-	int item_id = results.at(0).item_id;
-	int charges = results.at(0).item_charges;
-	int cost    = results.at(0).item_cost;
-
-	const EQ::ItemData *item = database.GetItem(item_id);
-	if (!item) {
-		LogTrading("Unable to create item.");
-		return nullptr;
-	}
-
-	if (item->NoDrop == 0) {
-		return nullptr;
-	}
-
-	std::unique_ptr<EQ::ItemInstance> inst(
-		database.CreateItem(
-			item_id,
-			charges,
-			results.at(0).aug_slot_1,
-			results.at(0).aug_slot_2,
-			results.at(0).aug_slot_3,
-			results.at(0).aug_slot_4,
-			results.at(0).aug_slot_5,
-			results.at(0).aug_slot_6
-		)
-	);
+	std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(results.at(0))));
 	if (!inst) {
-		LogTrading("Unable to create item instance.");
+		LogTrading("Listing [{}] of trader [{}] has no loadable item", results.at(0).id, char_id);
 		return nullptr;
 	}
 
-	inst->SetCharges(charges);
+	if (inst->GetItem()->NoDrop == 0) {
+		return nullptr;
+	}
+
+	const int cost = results.at(0).item_cost;
+
 	inst->SetSerialNumber(serial_number);
 	inst->SetMerchantSlot(serial_number);
 	inst->SetPrice(cost);
 
 	if (inst->IsStackable()) {
-		inst->SetMerchantCount(charges);
+		inst->SetMerchantCount(inst->GetCharges());
 	}
-
 	return std::move(inst);
 }
 
@@ -328,15 +307,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 	if (new_price == 0) {
 		LogTrading("Removing Trader items from the DB for char_id [{}], item_id [{}]", char_id, item_id);
 
-		auto results = TraderRepository::DeleteWhere(
-			database,
-			fmt::format(
-				"`char_id` = '{}' AND `item_id` = {}",
-				char_id,
-				item_id
-			)
-		);
-		if (!results) {
+		auto results = TraderRepository::DeleteByItem(database, char_id, item_id);
+		if (results < 0) {
 			LogDebug("[CLIENT] Failed to remove trader item(s): [{}] for char_id: [{}]",
 					 item_id,
 					 char_id
@@ -347,8 +319,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 	}
 
 	if (!item->Stackable) {
-		auto results = TraderRepository::UpdateItem(database, char_id, new_price, item_id, charges);
-		if (!results) {
+		auto results = TraderRepository::UpdatePriceByItem(database, char_id, item_id, charges, new_price);
+		if (results < 0) {
 			LogTrading(
 				"Failed to update price for trader item [{}] for char_id: [{}]",
 				item_id,
@@ -358,8 +330,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 		return;
 	}
 
-	auto results = TraderRepository::UpdateItem(database, char_id, new_price, item_id, 0);
-	if (!results) {
+	auto results = TraderRepository::UpdatePriceByItem(database, char_id, item_id, 0, new_price);
+	if (results < 0) {
 		LogTrading(
 			"Failed to update price for trader item [{}] for char_id: [{}]",
 			item_id,

@@ -312,11 +312,6 @@ uint64 Perl_QuestItem_GetEvolveAmount(EQ::ItemInstance* self)
 	return self->GetEvolveCurrentAmount();
 }
 
-uint32 Perl_QuestItem_GetEvolveCharacterID(EQ::ItemInstance* self)
-{
-	return self->GetEvolveCharID();
-}
-
 bool Perl_QuestItem_GetEvolveEquipped(EQ::ItemInstance* self)
 {
 	return self->GetEvolveEquipped();
@@ -324,7 +319,7 @@ bool Perl_QuestItem_GetEvolveEquipped(EQ::ItemInstance* self)
 
 uint32 Perl_QuestItem_GetEvolveItemID(EQ::ItemInstance* self)
 {
-	return self->GetEvolveItemID();
+	return self->GetID();
 }
 
 uint32 Perl_QuestItem_GetEvolveFinalItemID(EQ::ItemInstance* self)
@@ -391,7 +386,6 @@ void perl_register_questitem()
 	package.add("GetCustomDataString", &Perl_QuestItem_GetCustomDataString);
 	package.add("GetEvolveActivated", &Perl_QuestItem_GetEvolveActivated);
 	package.add("GetEvolveAmount", &Perl_QuestItem_GetEvolveAmount);
-	package.add("GetEvolveCharacterID", &Perl_QuestItem_GetEvolveCharacterID);
 	package.add("GetEvolveEquipped", &Perl_QuestItem_GetEvolveEquipped);
 	package.add("GetEvolveFinalItemID", &Perl_QuestItem_GetEvolveFinalItemID);
 	package.add("GetEvolveItemID", &Perl_QuestItem_GetEvolveItemID);

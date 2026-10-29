@@ -2261,11 +2261,9 @@ void Database::PurgeCharacterParcels()
 	auto filter  = fmt::format("sent_date < (NOW() - INTERVAL {} DAY)", RuleI(Parcel, ParcelPruneDelay));
 	auto results = CharacterParcelsRepository::GetWhere(*this, filter);
 	for (auto const &r : results) {
-		ItemLayer::RetireWhere(
-			*this,
-			fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, r.char_id), r.slot_id),
-			ItemRetirement::Expired
-		);
+		if (!CharacterParcelsRepository::IsMoney(r)) {
+			ItemLayer::RetireRow(*this, CharacterParcelsRepository::GUIDOf(r), ItemRetirement::Expired);
+		}
 	}
 	auto prune   = CharacterParcelsRepository::DeleteWhere(*this, filter);
 

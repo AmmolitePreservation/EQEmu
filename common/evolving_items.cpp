@@ -68,21 +68,19 @@ void EvolvingItemsManager::DoLootChecks(const uint32 char_id, const uint16 slot_
 	}
 
 	if (!inst.GetEvolveUniqueID()) {
-		auto e = CharacterEvolvingItemsRepository::NewEntity();
+		if (!inst.HasGUID()) {
+			LogError("Evolving item [{}] of character [{}] has no GUID yet, so its record cannot be made", inst.GetID(), char_id);
+			return;
+		}
 
-		e.character_id  = char_id;
-		e.item_id       = inst.GetID();
+		auto e = CharacterEvolvingItemsRepository::NewEntity();
+		CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
 		e.equipped      = inst.GetEvolveEquipped();
 		e.final_item_id = EvolvingItemsManager::Instance()->GetFinalItemID(inst);
-
 		auto r = CharacterEvolvingItemsRepository::InsertOne(*m_db, e);
 		e.id   = r.id;
-
 		inst.SetEvolveUniqueID(e.id);
-		inst.SetEvolveCharID(e.character_id);
-		inst.SetEvolveItemID(e.item_id);
 		inst.SetEvolveFinalItemID(e.final_item_id);
-
 		return;
 	}
 

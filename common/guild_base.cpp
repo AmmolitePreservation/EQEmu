@@ -548,23 +548,21 @@ uint32 BaseGuildManager::UpdateDbCreateGuild(std::string name, uint32 leader)
 bool BaseGuildManager::UpdateDbDeleteGuild(uint32 guild_id, bool local_delete, bool db_delete)
 {
 	auto const where_filter = fmt::format("guild_id = {}", guild_id);
-	auto const bank_items   = GuildBankRepository::GetWhere(*m_db, where_filter);
-
+	const int  bank_items   = GuildBankRepository::CountGuildItems(*m_db, guild_id);
 	if (local_delete) {
-		if (!bank_items.empty()) {
+		if (bank_items != 0) {
 			LogError(
 				"Attempt to delete guild id [{}] that still has [{}] items in the bank. Please remove them and try "
 				"again.",
 				guild_id,
-				bank_items.size()
+				bank_items
 			);
 			LogGuilds(
 				"Attempt to delete guild id [{}] that still has [{}] items in the bank. Please remove them and try "
 				"again.",
 				guild_id,
-				bank_items.size()
+				bank_items
 			);
-
 			return false;
 		}
 
@@ -578,18 +576,18 @@ bool BaseGuildManager::UpdateDbDeleteGuild(uint32 guild_id, bool local_delete, b
 	}
 
 	if (db_delete) {
-		if (!bank_items.empty()) {
+		if (bank_items != 0) {
 			LogError(
 				"Attempt to delete guild id [{}] that still has [{}] items in the bank. Please remove them and try "
 				"again.",
 				guild_id,
-				bank_items.size()
+				bank_items
 			);
 			LogGuilds(
 				"Attempt to delete guild id [{}] that still has [{}] items in the bank. Please remove them and try "
 				"again.",
 				guild_id,
-				bank_items.size()
+				bank_items
 			);
 
 			return false;

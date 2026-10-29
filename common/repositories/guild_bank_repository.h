@@ -4,47 +4,107 @@
 #include "../database.h"
 #include "../strings.h"
 #include "base/base_guild_bank_repository.h"
+#include "../item_guid.h"
+#include "../item_location.h"
 
 class GuildBankRepository: public BaseGuildBankRepository {
 public:
+	// A guild bank entry as the zone holds it: the side row with the item row's place and item. Area 1 is the main
+	// area, as GuildBankMainArea in guild_mgr.h.
+	struct GuildBankItem {
+		uint32      id;
+		ItemGUID    guid;
+		uint8       area;
+		uint32      slot;
+		uint32      item_id;
+		int32       quantity;
+		std::string donator;
+		uint8       permissions;
+		std::string who_for;
+	};
 
-    /**
-     * This file was auto generated and can be modified and extended upon
-     *
-     * Base repository methods are automatically
-     * generated in the "base" version of this repository. The base repository
-     * is immutable and to be left untouched, while methods in this class
-     * are used as extension methods for more specific persistence-layer
-     * accessors or mutators.
-     *
-     * Base Methods (Subject to be expanded upon in time)
-     *
-     * Note: Not all tables are designed appropriately to fit functionality with all base methods
-     *
-     * InsertOne
-     * UpdateOne
-     * DeleteOne
-     * FindOne
-     * GetWhere(std::string where_filter)
-     * DeleteWhere(std::string where_filter)
-     * InsertMany
-     * All
-     *
-     * Example custom methods in a repository
-     *
-     * GuildBankRepository::GetByZoneAndVersion(int zone_id, int zone_version)
-     * GuildBankRepository::GetWhereNeverExpires()
-     * GuildBankRepository::GetWhereXAndY()
-     * GuildBankRepository::DeleteWhereXAndY()
-     *
-     * Most of the above could be covered by base methods, but if you as a developer
-     * find yourself re-using logic for other parts of the code, its best to just make a
-     * method that can be re-used easily elsewhere especially if it can use a base repository
-     * method and encapsulate filters there
-     */
+	static std::string HolderFilter(uint32 guild_id)
+	{
+		return fmt::format(
+			"i.holder_type IN ('{}', '{}') AND i.holder_id = {} AND i.retirement_state IS NULL",
+			ItemHolderTypeName(ItemHolderType::GuildBankDeposit),
+			ItemHolderTypeName(ItemHolderType::GuildBankMain),
+			guild_id
+		);
+	}
 
-	// Custom extended repository methods here
+	static std::vector<GuildBankItem> GetGuildBankItems(Database &db, uint32 guild_id)
+	{
+		std::vector<GuildBankItem> all_entries;
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"SELECT b.id, b.guid_first, b.guid_second, b.guid_third, i.holder_type, i.slot, i.item_id, i.charges, "
+				"b.donator, b.permissions, b.who_for FROM {} b JOIN item_instances i ON i.guid_first = b.guid_first "
+				"AND i.guid_second = b.guid_second AND i.guid_third = b.guid_third WHERE {} ORDER BY i.holder_type, i.slot",
+				TableName(),
+				HolderFilter(guild_id)
+			)
+		);
+		all_entries.reserve(results.RowCount());
+		for (auto row : results) {
+			GuildBankItem e{};
+			e.id          = Strings::ToUnsignedInt(row[0]);
+			e.guid        = ItemGUID{Strings::ToUnsignedInt(row[1]), Strings::ToUnsignedInt(row[2]), Strings::ToUnsignedInt(row[3])};
+			e.area        = std::string_view(row[4]) == ItemHolderTypeName(ItemHolderType::GuildBankMain) ? 1 : 0;
+			e.slot        = Strings::ToUnsignedInt(row[5]);
+			e.item_id     = Strings::ToUnsignedInt(row[6]);
+			e.quantity    = Strings::ToInt(row[7]);
+			e.donator     = row[8] ? row[8] : "";
+			e.permissions = static_cast<uint8>(Strings::ToUnsignedInt(row[9]));
+			e.who_for     = row[10] ? row[10] : "";
+			all_entries.push_back(e);
+		}
 
+		return all_entries;
+	}
+
+	static uint32 InsertItem(Database &db, const GuildBankItem &e)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"INSERT INTO {} (guid_first, guid_second, guid_third, donator, permissions, who_for) VALUES ({}, {}, {}, '{}', {}, '{}')",
+				TableName(),
+				e.guid.first,
+				e.guid.second,
+				e.guid.third,
+				Strings::Escape(e.donator),
+				e.permissions,
+				Strings::Escape(e.who_for)
+			)
+		);
+
+		return results.Success() ? static_cast<uint32>(results.LastInsertedID()) : 0;
+	}
+
+	static bool UpdatePermissions(Database &db, uint32 id, uint8 permissions, const std::string &who_for)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET permissions = {}, who_for = '{}' WHERE id = {}",
+				TableName(),
+				permissions,
+				Strings::Escape(who_for),
+				id
+			)
+		);
+
+		return results.Success();
+	}
+
+	static int CountGuildItems(Database &db, uint32 guild_id)
+	{
+		auto results = db.QueryDatabase(fmt::format("SELECT COUNT(*) FROM item_instances i WHERE {}", HolderFilter(guild_id)));
+		if (!results.Success() || !results.RowCount()) {
+			return -1;
+		}
+
+		return Strings::ToInt(results.begin()[0]);
+	}
 };
 
 #endif //EQEMU_GUILD_BANK_REPOSITORY_H

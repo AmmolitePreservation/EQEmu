@@ -57,6 +57,7 @@
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/repositories/character_exp_modifiers_repository.h"
 #include "../common/repositories/merchantlist_repository.h"
+#include "../common/repositories/ground_items_repository.h"
 #include "../common/repositories/object_repository.h"
 #include "../common/repositories/rule_sets_repository.h"
 #include "../common/repositories/level_exp_mods_repository.h"
@@ -1216,6 +1217,7 @@ bool Zone::Init(bool is_static) {
 	LogInfo("Loading adventure flavor text");
 	LoadAdventureFlavor();
 	LoadGroundSpawns();
+	GroundItemsRepository::RetireStranded(database, GetZoneID(), GetInstanceID());
 	LoadZoneObjects();
 	LoadZoneDoors();
 	LoadZoneBlockedSpells();

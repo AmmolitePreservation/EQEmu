@@ -108,12 +108,14 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 
 | Table | Keeps | Loses |
 |---|---|---|
-| `trader` | price, listing, transaction | item number, augments, charges, `item_sn`, character, slot |
-| `character_parcels` | sender, note, sent date | item columns, recipient, slot |
-| `guild_bank` | area, permissions, `who_for`, donator | item columns |
-| `character_evolving_items` | activated, equipped, amount, progression, final item | its own id, item number, character |
-| ground drops (from `object`) | instance, position, heading (the zone is the item row's holder id) | `object` keeps only static content |
+| `trader` | the seller, `item_sn` (the handle the RoF2 client echoes, which selects within the seller's listings), price, listing slot and date, transaction | item number, augments, charges |
+| `character_parcels` | recipient and slot (a money parcel has no row to carry them), `money`, sender, note, sent date | item number, augments, quantity |
+| `guild_bank` | permissions, `who_for`, donator | item number, augments, quantity, guild, area and slot (the row's holder and slot) |
+| `character_evolving_items` | its id (the client's unique id), activated, equipped, amount, progression, final item | item number, character, `deleted_at` (the row's retirement) |
+| `ground_items` (new; `object` keeps only static content) | instance, position, heading (the zone is the item row's holder id) | |
 | `real_estate_items` (housing, after the merge) | property, placed, transform, upkeep | item columns |
+
+**As built (SCH-3).** The four side tables' GUID columns (and `character_parcels.money`) are added by `DatabaseUpdate::InjectItemGUIDColumns` before the manifest runs, because the 9328 data move (MIG-1) fills them from the old columns and must run before 9328's SQL drops those columns; 9328 today truncates and rebuilds `trader` (its rows live only while a Bazaar zone does), puts the unique index and foreign key on the other three, whose copied columns stay until the move, and creates `ground_items`. The code reads and writes only the GUID columns. A Bazaar listing is loaded from its row for the customer's window, inspection and a purchase; a purchase from another zone moves the whole item's row to the buyer's parcel or splits the bought part off, issued from the seller's counter, and the seller's zone only forgets the sold item from memory (`Client::RemoveSoldListing`); a price change for all identical listings joins `trader` to the item table. A guild bank entry is its side row plus the item row's place; splitting a stack issues the new piece from the splitter's counter, merging retires the absorbed stacks `stacked`, and part of a withdrawn stack leaves as a new item issued from the withdrawer. An evolving item's record is created at its first landing, after the save that issued its GUID (`DoLootChecks` runs after the save), and found by GUID at load; a toggle names a unique id the character must hold. A dropped item gets a `ground_items` row with the drop's position, removed when it is picked up or decays, and `Zone::Init` retires as `decayed` any `ground` row of its zone and instance that a dead zone left behind.
 
 Tables that only record location are absorbed into the item table and dropped: `inventory`, `sharedbank`, `character_corpse_items`, `bot_inventories`, `character_pet_inventory`, `character_parcels_containers`, `object_contents`. A side table is a child, so `REPLACE` on it is safe.
 
@@ -190,6 +192,7 @@ Its own migration, separate from housing's. Every existing item, each augment pu
 - **Character-held items** (inventory, corpses, trader, bots by their owner, pets, parcels by their recipient) get their holder's counter.
 - **Items no character holds** (the shared bank, the guild bank, ground drops and world-container contents) get Live's server stamp, generated exactly as Live's 0x80c890 does; the migration records the process id and start time it used, so a rerun reproduces every GUID.
 - Every character is stamped with the world rule's value; #4460's saved serials are discarded.
+- After the move, 9328's SQL drops the copied columns from `guild_bank`, `character_parcels` and `character_evolving_items`, makes the guild bank's and evolving items' GUID columns `NOT NULL`, adds the parcel check (a GUID or `money`, never both or neither) and drops the absorbed tables; its additive half (the trader rebuild, the unique indexes and foreign keys, `ground_items`) is in place from SCH-3.
 
 ## Where the work lives
 

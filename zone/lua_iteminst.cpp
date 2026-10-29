@@ -367,12 +367,6 @@ uint64 Lua_ItemInst::GetEvolveAmount()
 	return self->GetEvolveCurrentAmount();
 }
 
-uint32 Lua_ItemInst::GetEvolveCharacterID()
-{
-	Lua_Safe_Call_Int();
-	return self->GetEvolveCharID();
-}
-
 bool Lua_ItemInst::GetEvolveEquipped()
 {
 	Lua_Safe_Call_Bool();
@@ -388,7 +382,7 @@ uint32 Lua_ItemInst::GetEvolveFinalItemID()
 uint32 Lua_ItemInst::GetEvolveItemID()
 {
 	Lua_Safe_Call_Int();
-	return self->GetEvolveItemID();
+	return self->GetID();
 }
 
 int8 Lua_ItemInst::GetEvolveLevel()
@@ -465,7 +459,6 @@ luabind::scope lua_register_iteminst() {
 	.def("GetExp", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetExp)
 	.def("GetEvolveActivated", (bool(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveActivated)
 	.def("GetEvolveAmount", (uint64(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveAmount)
-	.def("GetEvolveCharacterID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveCharacterID)
 	.def("GetEvolveEquipped", (bool(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveEquipped)
 	.def("GetEvolveFinalItemID", (uint64(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveFinalItemID)
 	.def("GetEvolveItemID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveItemID)

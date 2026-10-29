@@ -95,7 +95,6 @@ public:
 	uint32 GetAugmentEvolveUniqueID(uint8 slot_id);
 	bool GetEvolveActivated();
 	uint64 GetEvolveAmount();
-	uint32 GetEvolveCharacterID();
 	bool GetEvolveEquipped();
 	uint32 GetEvolveFinalItemID();
 	uint32 GetEvolveItemID();

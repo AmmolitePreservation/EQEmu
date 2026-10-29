@@ -11,10 +11,27 @@ extern WorldServer worldserver;
 extern QueryServ*  QServ;
 const std::string  SUB_TYPE_DELIMITER = ".";
 
+// The evolved item carries no augments, so those still in the old one are gone with it.
+static void RetireAugmentRows(const EQ::ItemInstance &inst)
+{
+	for (uint8 socket = 0; socket < EQ::invaug::SOCKET_COUNT; socket++) {
+		const auto *augment = inst.GetAugment(socket);
+		if (augment && augment->HasGUID()) {
+			ItemLayer::RetireRow(database, augment->GetGUID(), ItemRetirement::Destroyed);
+		}
+	}
+}
+
 void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 {
 	const auto in   = reinterpret_cast<EvolveItemToggle *>(app->pBuffer);
-	auto       item = CharacterEvolvingItemsRepository::FindOne(database, in->unique_id);
+	const int16 slot = GetInv().HasEvolvingItem(in->unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
+	if (slot == INVALID_INDEX) {
+		LogWarning("Character [{}] asked to toggle evolving item [{}], which it does not hold", CharacterID(), in->unique_id);
+		return;
+	}
+
+	auto item = CharacterEvolvingItemsRepository::FindOne(database, in->unique_id);
 
 	LogEvolveItemDetail(
 		"Character ID <green>[{}] requested to set evolve item with unique id <yellow>[{}] to status <yellow>[{}]",
@@ -29,9 +46,8 @@ void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 		return;
 	}
 
-	item.activated  = in->activated;
-	const auto inst = GetInv().GetItem(GetInv().HasItem(item.item_id));
-	inst->SetEvolveActivated(item.activated ? true : false);
+	item.activated = in->activated;
+	GetInv().GetItem(slot)->SetEvolveActivated(item.activated ? true : false);
 
 	CharacterEvolvingItemsRepository::ReplaceOne(database, item);
 
@@ -337,51 +353,53 @@ bool Client::DoEvolveCheckProgression(EQ::ItemInstance &inst)
 		!RuleB(EvolvingItems, DestroyAugmentsOnEvolve) &&
 		inst.IsAugmented()
 		) {
-                auto const                                                augs = inst.GetAugmentIDs();
-                std::vector<CharacterParcelsRepository::CharacterParcels> parcels;
-                int32 next_slot = FindNextFreeParcelSlotUsingMemory();
-                for (auto const &item_id: augs) {
-                        if (!item_id) {
-                                continue;
-                        }
+		// Each augment's row leaves the evolving item's row for a parcel slot, which the parcel names.
+		std::vector<CharacterParcelsRepository::CharacterParcels> parcels;
+		int32 next_slot = FindNextFreeParcelSlotUsingMemory();
+		for (uint8 socket = 0; socket < EQ::invaug::SOCKET_COUNT; socket++) {
+			const auto *augment = inst.GetAugment(socket);
+			if (!augment || !augment->HasGUID()) {
+				continue;
+			}
 
-                        if (next_slot == INVALID_INDEX) {
-                                break;
-                        }
+			if (next_slot == INVALID_INDEX) {
+				break;
+			}
 
-                        CharacterParcelsRepository::CharacterParcels p{};
-                        p.char_id   = CharacterID();
-                        p.from_name = "Evolving Item Sub-System";
-                        p.note      = fmt::format(
-                                      "System automatically removed from {} which recently evolved.",
-                                      inst.GetItem()->Name
-                                      );
-                        p.slot_id   = next_slot;
-                        p.sent_date = time(nullptr);
-                        p.item_id   = item_id;
-                        p.quantity  = 1;
+			CharacterParcelsRepository::CharacterParcels p{};
+			p.char_id   = CharacterID();
+			p.from_name = "Evolving Item Sub-System";
+			p.note      = fmt::format("System automatically removed from {} which recently evolved.", inst.GetItem()->Name);
+			p.slot_id   = next_slot;
+			p.sent_date = time(nullptr);
+			CharacterParcelsRepository::SetGUID(p, augment->GetGUID());
+
+			if (!ItemLayer::MoveRow(database, augment->GetGUID(), ItemLocation::InHolder(ItemHolderType::Parcel, CharacterID(), static_cast<uint16>(next_slot)))) {
+				continue;
+			}
 
 			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_SEND)) {
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = p.from_name;
 				e.to_player_name   = GetCleanName();
-				e.item_id          = p.item_id;
+				e.item_id          = augment->GetID();
 				e.quantity         = 1;
 				e.sent_date        = p.sent_date;
-
 				RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
 			}
 
-                        parcels.push_back(p);
-                        m_parcels.emplace(p.slot_id, p);
-                        next_slot = FindNextFreeParcelSlotUsingMemory();
-                }
+			parcels.push_back(p);
+			m_parcels.emplace(p.slot_id, p);
+			inst.DeleteItem(socket);
+			next_slot = FindNextFreeParcelSlotUsingMemory();
+		}
 
 		CharacterParcelsRepository::InsertMany(database, parcels);
 		SendParcelStatus();
 		SendParcelIconStatus();
 	}
 
+	RetireAugmentRows(inst);
 	CheckItemDiscoverability(new_inst->GetID());
 
 	PlayerEvent::EvolveItem e{};
@@ -507,6 +525,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 
 	PlayerEvent::EvolveItem e{};
 
+	RetireAugmentRows(*inst_from);
+	RetireAugmentRows(*inst_to);
 	ItemLayer::CarryGUID(*inst_from, *inst_from_new);
 	RemoveItemFromInventory(SlotOfSerialNumber(inst_from->GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*inst_from, e);

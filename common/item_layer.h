@@ -56,6 +56,10 @@ public:
 	static std::vector<Held> Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter);
 
 	static std::string HolderFilter(ItemHolderType holder_type, uint32 holder_id);
+	static std::string GUIDFilter(const ItemGUID &guid);
+	static EQ::ItemInstance *LoadOne(Database &db, SharedDatabase &content_db, const ItemGUID &guid);
+	static bool SetCharges(Database &db, const ItemGUID &guid, int16 charges);
+	static std::optional<Owner> OwnerOf(Database &db, uint32 character_id);
 
 	// The same item in a new instance: an evolving item's next level, a bag replaced by its disenchanted kind.
 	static void CarryGUID(const EQ::ItemInstance &from, EQ::ItemInstance &to);

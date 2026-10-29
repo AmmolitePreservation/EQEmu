@@ -450,10 +450,6 @@ bool SharedDatabase::GetInventory(Client *c)
 		)
 	);
 
-	auto e_results = CharacterEvolvingItemsRepository::GetWhere(
-		*this, fmt::format("`character_id` = '{}' AND `deleted_at` IS NULL", char_id)
-	);
-
 	const auto timestamps  = GetItemRecastTimestamps(char_id);
 	auto       cv_conflict = false;
 	const auto pmask       = inv.GetLookup()->PossessionsBitmask;
@@ -501,45 +497,23 @@ bool SharedDatabase::GetInventory(Client *c)
 				inst->SetEvolveEquipped(true);
 			}
 
-			auto t = std::ranges::find_if(
-				e_results.cbegin(),
-				e_results.cend(),
-				[&](const CharacterEvolvingItemsRepository::CharacterEvolvingItems &x) {
-					return x.item_id == item->ID;
-				}
-			);
-
-			if (t == std::end(e_results)) {
-				auto e = CharacterEvolvingItemsRepository::NewEntity();
-
-				e.character_id  = char_id;
-				e.item_id       = item->ID;
+			auto e = CharacterEvolvingItemsRepository::FindByGUID(*this, inst->GetGUID());
+			if (!e.id) {
+				e = CharacterEvolvingItemsRepository::NewEntity();
+				CharacterEvolvingItemsRepository::SetGUID(e, inst->GetGUID());
 				e.equipped      = inst->GetEvolveEquipped();
 				e.final_item_id = EvolvingItemsManager::Instance()->GetFinalItemID(*inst);
 
 				auto r = CharacterEvolvingItemsRepository::InsertOne(*this, e);
 				e.id = r.id;
-				e_results.push_back(e);
+			}
 
-				inst->SetEvolveUniqueID(e.id);
-				inst->SetEvolveCharID(e.character_id);
-				inst->SetEvolveItemID(e.item_id);
-				inst->SetEvolveActivated(e.activated);
-				inst->SetEvolveEquipped(e.equipped);
-				inst->SetEvolveCurrentAmount(e.current_amount);
-				inst->CalculateEvolveProgression();
-				inst->SetEvolveFinalItemID(e.final_item_id);
-			}
-			else {
-				inst->SetEvolveUniqueID(t->id);
-				inst->SetEvolveCharID(t->character_id);
-				inst->SetEvolveItemID(t->item_id);
-				inst->SetEvolveActivated(t->activated);
-				inst->SetEvolveEquipped(t->equipped);
-				inst->SetEvolveCurrentAmount(t->current_amount);
-				inst->CalculateEvolveProgression();
-				inst->SetEvolveFinalItemID(t->final_item_id);
-			}
+			inst->SetEvolveUniqueID(e.id);
+			inst->SetEvolveActivated(e.activated);
+			inst->SetEvolveEquipped(e.equipped);
+			inst->SetEvolveCurrentAmount(e.current_amount);
+			inst->CalculateEvolveProgression();
+			inst->SetEvolveFinalItemID(e.final_item_id);
 		}
 
 		if (slot_id == EQ::invslot::slotCursor) {
