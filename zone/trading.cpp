@@ -688,7 +688,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 // A pet keeps the item in the equipment slot its loot entry took; the row follows it there.
 void Client::MoveItemToPet(const EQ::ItemInstance &inst, NPC *pet)
 {
-	const int16 slot = pet->GetEquipSlotForItem(inst.GetID());
+	const int16 slot = pet->AdoptPetItem(inst);
 	if (slot == EQ::invslot::SLOT_INVALID) {
 		LogError("Pet [{}] took item [{}] from [{}] without an equipment slot; its row stays where it was", pet->GetCleanName(), inst.GetID(), GetCleanName());
 		return;

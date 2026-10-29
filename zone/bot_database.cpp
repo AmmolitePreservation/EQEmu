@@ -30,7 +30,9 @@
 #include "../common/repositories/bot_heal_rotation_members_repository.h"
 #include "../common/repositories/bot_heal_rotation_targets_repository.h"
 #include "../common/repositories/bot_inspect_messages_repository.h"
-#include "../common/repositories/bot_inventories_repository.h"
+#include "../common/item_layer.h"
+#include "../common/repositories/character_data_repository.h"
+#include "../common/repositories/item_instances_repository.h"
 #include "../common/repositories/bot_owner_options_repository.h"
 #include "../common/repositories/bot_pets_repository.h"
 #include "../common/repositories/bot_pet_buffs_repository.h"
@@ -960,13 +962,10 @@ bool BotDatabase::QueryInventoryCount(const uint32 bot_id, uint32& item_count)
 		return false;
 	}
 
-	item_count = BotInventoriesRepository::Count(
+	item_count = ItemInstancesRepository::GetWhere(
 		database,
-		fmt::format(
-			"`bot_id` = {}",
-			bot_id
-		)
-	);
+		fmt::format("{} AND retirement_state IS NULL", ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id))
+	).size();
 
 	return true;
 }
@@ -977,82 +976,26 @@ bool BotDatabase::LoadItems(const uint32 bot_id, EQ::InventoryProfile& inventory
 		return false;
 	}
 
-	const auto& l = BotInventoriesRepository::GetWhere(
-		database,
-		fmt::format(
-			"`bot_id` = {} ORDER BY `slot_id`",
-			bot_id
-		)
-	);
-
-	if (l.empty()) {
-		return true;
-	}
-
-	for (const auto& e : l) {
-		if (!EQ::ValueWithin(e.slot_id, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+	for (auto &held : ItemLayer::Load(database, database, ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id))) {
+		auto *inst = held.inst;
+		if (!held.location.slot || !EQ::ValueWithin(*held.location.slot, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+			LogError("Warning: bot_id [{}] holds a row outside its equipment slots; skipped", bot_id);
+			safe_delete(inst);
 			continue;
 		}
 
-		auto inst = database.CreateItem(
-			e.item_id,
-			e.inst_charges,
-			e.augment_1,
-			e.augment_2,
-			e.augment_3,
-			e.augment_4,
-			e.augment_5,
-			e.augment_6
-		);
-
-		if (!inst) {
-			LogError(
-				"Warning: bot_id [{}] has an invalid item_id [{}] in slot_id [{}]",
-				bot_id,
-				e.item_id,
-				e.slot_id
-			);
-
-			continue;
-		}
-
-		if (e.inst_charges == INT16_MAX) {
-			inst->SetCharges(-1);
-		} else if (
-			e.inst_charges == 0 &&
-			inst->IsStackable()
-		) { // Stackable items need a minimum charge of 1 remain moveable.
-			inst->SetCharges(1);
-		} else {
-			inst->SetCharges(e.inst_charges);
-		}
-
-		if (e.inst_color) {
-			inst->SetColor(e.inst_color);
-		}
+		const int16 slot_id = static_cast<int16>(*held.location.slot);
 
 		if (inst->GetItem()->Attuneable) {
-			if (e.inst_no_drop) {
-				inst->SetAttuned(true);
-			} else if (EQ::ValueWithin(e.slot_id, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
-				inst->SetAttuned(true);
-			}
+			inst->SetAttuned(true);
 		}
 
-		if (!e.inst_custom_data.empty()) {
-			inst->SetCustomDataString(e.inst_custom_data);
-		}
-
-		inst->SetOrnamentIcon(e.ornament_icon);
-		inst->SetOrnamentationIDFile(e.ornament_id_file);
-		inst->SetOrnamentHeroModel(e.ornament_hero_model);
-
-		if (inventory_inst.PutItem(e.slot_id, *inst) == INVALID_INDEX) {
+		if (inventory_inst.PutItem(slot_id, *inst) == INVALID_INDEX) {
 			LogError(
 				"Warning: Invalid slot_id for item in inventory: bot_id [{}] item_id [{}] slot_id [{}]",
 				bot_id,
-				e.item_id,
-				e.slot_id
+				inst->GetID(),
+				slot_id
 			);
 		}
 
@@ -1062,13 +1005,14 @@ bool BotDatabase::LoadItems(const uint32 bot_id, EQ::InventoryProfile& inventory
 	return true;
 }
 
+// A deleted bot's items go with it.
 bool BotDatabase::DeleteItems(const uint32 bot_id)
 {
 	if (!bot_id) {
 		return false;
 	}
 
-	BotInventoriesRepository::DeleteOne(database, bot_id);
+	ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id), ItemRetirement::BotDonated);
 
 	return true;
 }
@@ -1079,22 +1023,14 @@ bool BotDatabase::LoadItemBySlot(const uint32 bot_id, const uint32 slot_id, uint
 		return false;
 	}
 
-	const auto& l = BotInventoriesRepository::GetWhere(
+	const auto rows = ItemInstancesRepository::GetWhere(
 		database,
-		fmt::format(
-			"`bot_id` = {} AND `slot_id` = {} LIMIT 1",
-			bot_id,
-			slot_id
-		)
+		fmt::format("{} AND slot = {} AND retirement_state IS NULL", ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id), slot_id)
 	);
 
-	if (l.empty()) {
-		return true;
+	if (!rows.empty()) {
+		item_id = rows.front().item_id;
 	}
-
-	auto e = l.front();
-
-	item_id = e.item_id;
 
 	return true;
 }
@@ -1105,26 +1041,17 @@ bool BotDatabase::LoadItemSlots(const uint32 bot_id, std::map<uint16, uint32>& m
 		return false;
 	}
 
-	const auto& l = BotInventoriesRepository::GetWhere(
-		database,
-		fmt::format(
-			"`bot_id` = {}",
-			bot_id
-		)
-	);
-
-	if (l.empty()) {
-		return true;
-	}
-
-	for (const auto& e : l) {
-		m.emplace(std::pair<uint16, uint32>(e.slot_id, e.item_id));
+	for (const auto &row : ItemInstancesRepository::GetWhere(database, fmt::format("{} AND retirement_state IS NULL", ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id)))) {
+		if (row.location.slot) {
+			m.emplace(std::pair<uint16, uint32>(*row.location.slot, row.item_id));
+		}
 	}
 
 	return true;
 }
 
-bool BotDatabase::SaveItemBySlot(Bot* b, const uint32 slot_id, const EQ::ItemInstance* inst)
+// A bot's item is stamped by the bot's owner.
+bool BotDatabase::SaveItemBySlot(Bot* b, const uint32 slot_id, EQ::ItemInstance* inst)
 {
 	if (
 		!b ||
@@ -1138,60 +1065,12 @@ bool BotDatabase::SaveItemBySlot(Bot* b, const uint32 slot_id, const EQ::ItemIns
 		return true;
 	}
 
-	DeleteItemBySlot(b->GetBotID(), slot_id);
-
-	uint32 augment_id[EQ::invaug::SOCKET_COUNT] = { 0, 0, 0, 0, 0, 0 };
-
-	for (uint16 slot_id = EQ::invaug::SOCKET_BEGIN; slot_id <= EQ::invaug::SOCKET_END; ++slot_id) {
-		augment_id[slot_id] = inst->GetAugmentItemID(slot_id);
+	std::optional<ItemLayer::Owner> owner;
+	if (b->GetBotOwner() && b->GetBotOwner()->IsClient()) {
+		owner = b->GetBotOwner()->CastToClient()->ItemOwner();
 	}
 
-	uint16 item_charges = 0;
-
-	if (inst->GetCharges() >= 0) {
-		item_charges = inst->GetCharges();
-	} else {
-		item_charges = INT16_MAX;
-	}
-
-	auto e = BotInventoriesRepository::NewEntity();
-
-	e.bot_id              = b->GetBotID();
-	e.slot_id             = slot_id;
-	e.item_id             = inst->GetID();
-	e.inst_charges        = item_charges;
-	e.inst_color          = inst->GetColor();
-	e.inst_no_drop        = inst->IsAttuned() ? 1 : 0;
-	e.inst_custom_data    = inst->GetCustomDataString();
-	e.ornament_icon       = inst->GetOrnamentationIcon();
-	e.ornament_id_file    = inst->GetOrnamentationIDFile();
-	e.ornament_hero_model = inst->GetOrnamentHeroModel();
-	e.augment_1           = augment_id[0];
-	e.augment_2           = augment_id[1];
-	e.augment_3           = augment_id[2];
-	e.augment_4           = augment_id[3];
-	e.augment_5           = augment_id[4];
-	e.augment_6           = augment_id[5];
-
-	return BotInventoriesRepository::InsertOne(database, e).inventories_index;
-}
-
-bool BotDatabase::DeleteItemBySlot(const uint32 bot_id, const uint32 slot_id)
-{
-	if (!bot_id || slot_id > EQ::invslot::EQUIPMENT_END) {
-		return false;
-	}
-
-	BotInventoriesRepository::DeleteWhere(
-		database,
-		fmt::format(
-			"`bot_id` = {} AND `slot_id` = {}",
-			bot_id,
-			slot_id
-		)
-	);
-
-	return true;
+	return ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Bot, b->GetBotID(), static_cast<uint16>(slot_id)), owner);
 }
 
 bool BotDatabase::SaveEquipmentColor(const uint32 bot_id, const int16 slot_id, const uint32 color)
@@ -1225,7 +1104,17 @@ bool BotDatabase::SaveEquipmentColor(const uint32 bot_id, const int16 slot_id, c
 		);
 	}
 
-	return BotInventoriesRepository::UpdateItemColors(database, bot_id, color, where_clause);
+	auto results = database.QueryDatabase(
+		fmt::format(
+			"UPDATE {} SET color = {} WHERE {} AND slot {} AND retirement_state IS NULL",
+			ItemInstancesRepository::TableName(),
+			color,
+			ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id),
+			where_clause
+		)
+	);
+
+	return results.Success();
 }
 
 bool BotDatabase::LoadPetIndex(const uint32 bot_id, uint32& pet_index)
@@ -1682,9 +1571,17 @@ bool BotDatabase::SaveAllArmorColorBySlot(const uint32 owner_id, const int16 slo
 		return false;
 	}
 
-	BotInventoriesRepository::SaveAllArmorColorsBySlot(database, owner_id, slot_id, rgb_value);
+	auto results = database.QueryDatabase(
+		fmt::format(
+			"UPDATE {} SET color = {} WHERE holder_type = 'bot' AND holder_id IN (SELECT bot_id FROM bot_data WHERE owner_id = {}) AND slot = {} AND retirement_state IS NULL",
+			ItemInstancesRepository::TableName(),
+			rgb_value,
+			owner_id,
+			slot_id
+		)
+	);
 
-	return true;
+	return results.Success();
 }
 
 bool BotDatabase::SaveAllArmorColors(const uint32 owner_id, const uint32 rgb_value)
@@ -1693,7 +1590,23 @@ bool BotDatabase::SaveAllArmorColors(const uint32 owner_id, const uint32 rgb_val
 		return false;
 	}
 
-	return BotInventoriesRepository::SaveAllArmorColors(database, owner_id, rgb_value);
+	auto results = database.QueryDatabase(
+		fmt::format(
+			"UPDATE {} SET color = {} WHERE holder_type = 'bot' AND holder_id IN (SELECT bot_id FROM bot_data WHERE owner_id = {}) AND slot IN ({}, {}, {}, {}, {}, {}, {}) AND retirement_state IS NULL",
+			ItemInstancesRepository::TableName(),
+			rgb_value,
+			owner_id,
+			EQ::invslot::slotHead,
+			EQ::invslot::slotArms,
+			EQ::invslot::slotWrist1,
+			EQ::invslot::slotHands,
+			EQ::invslot::slotChest,
+			EQ::invslot::slotLegs,
+			EQ::invslot::slotFeet
+		)
+	);
+
+	return results.Success();
 }
 
 bool BotDatabase::CreateCloneBot(const uint32 bot_id, const std::string& clone_name, uint32& clone_id)
@@ -1718,30 +1631,36 @@ bool BotDatabase::CreateCloneBot(const uint32 bot_id, const std::string& clone_n
 	return true;
 }
 
+// A cloned bot's items are new items issued from the owner's counter.
 bool BotDatabase::CreateCloneBotInventory(const uint32 bot_id, const uint32 clone_id)
 {
 	if (!bot_id || !clone_id) {
 		return false;
 	}
 
-	auto l = BotInventoriesRepository::GetWhere(
+	auto e = BotDataRepository::FindOne(database, clone_id);
+	if (!e.bot_id) {
+		return false;
+	}
+
+	auto owner = CharacterDataRepository::FindOne(database, e.owner_id);
+	if (!owner.id) {
+		return false;
+	}
+
+	database.TransactionBegin();
+	const int copied = ItemLayer::CopyRows(
 		database,
-		fmt::format(
-			"`bot_id` = {}",
-			bot_id
-		)
+		ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id),
+		ItemLayer::Owner{static_cast<uint32>(owner.id), owner.origin_world_id},
+		clone_id
 	);
-
-	if (l.empty()) {
-		return true;
+	if (copied < 0) {
+		database.TransactionRollback();
+		return false;
 	}
 
-	for (auto& e : l) {
-		e.inventories_index = 0;
-		e.bot_id            = clone_id;
-	}
-
-	return BotInventoriesRepository::InsertMany(database, l);
+	return database.TransactionCommit().Success();
 }
 
 bool BotDatabase::LoadOwnerOptions(Client* c)

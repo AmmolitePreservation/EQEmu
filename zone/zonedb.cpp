@@ -18,7 +18,7 @@
 #include "../common/repositories/npc_types_repository.h"
 #include "../common/repositories/character_bind_repository.h"
 #include "../common/repositories/character_pet_buffs_repository.h"
-#include "../common/repositories/character_pet_inventory_repository.h"
+#include "../common/repositories/item_instances_repository.h"
 #include "../common/repositories/character_pet_info_repository.h"
 #include "../common/repositories/character_buffs_repository.h"
 #include "../common/repositories/character_languages_repository.h"
@@ -3032,9 +3032,6 @@ void ZoneDatabase::SavePetInfo(Client *client)
 	std::vector<CharacterPetBuffsRepository::CharacterPetBuffs> pet_buffs;
 	auto pet_buff = CharacterPetBuffsRepository::NewEntity();
 
-	std::vector<CharacterPetInventoryRepository::CharacterPetInventory> inventory;
-	auto item = CharacterPetInventoryRepository::NewEntity();
-
 	for (int pet_info_type = PetInfoType::Current; pet_info_type <= PetInfoType::Suspended; pet_info_type++) {
 		p = client->GetPetInfo(pet_info_type);
 		if (!p) {
@@ -3088,41 +3085,9 @@ void ZoneDatabase::SavePetInfo(Client *client)
 			pet_buffs.push_back(pet_buff);
 		}
 
-		uint32 pet_inventory_count = 0;
-
-		for (
-			int slot_id = EQ::invslot::EQUIPMENT_BEGIN;
-			slot_id <= EQ::invslot::EQUIPMENT_END;
-			slot_id++
-		) {
-			if (!p->Items[slot_id]) {
-				continue;
-			}
-
-			pet_inventory_count++;
-		}
-
-		inventory.reserve(pet_inventory_count);
-
-		for (
-			int slot_id = EQ::invslot::EQUIPMENT_BEGIN;
-			slot_id <= EQ::invslot::EQUIPMENT_END;
-			slot_id++
-		) {
-			if (!p->Items[slot_id]) {
-				continue;
-			}
-
-			item.char_id = client->CharacterID();
-			item.pet     = pet_info_type;
-			item.slot    = slot_id;
-			item.item_id = p->Items[slot_id];
-
-			inventory.push_back(item);
-		}
 	}
 
-	CharacterPetInfoRepository::DeleteWhere(
+		CharacterPetInfoRepository::DeleteWhere(
 		database,
 		fmt::format(
 			"`char_id` = {}",
@@ -3146,17 +3111,6 @@ void ZoneDatabase::SavePetInfo(Client *client)
 		CharacterPetBuffsRepository::InsertMany(database, pet_buffs);
 	}
 
-	CharacterPetInventoryRepository::DeleteWhere(
-		database,
-		fmt::format(
-			"`char_id` = {}",
-			client->CharacterID()
-		)
-	);
-
-	if (!inventory.empty()) {
-		CharacterPetInventoryRepository::InsertMany(database, inventory);
-	}
 }
 
 void ZoneDatabase::RemoveTempFactions(Client *client) {
@@ -3269,30 +3223,22 @@ void ZoneDatabase::LoadPetInfo(Client *client)
 		}
 	}
 
-	const auto& inventory = CharacterPetInventoryRepository::GetWhere(
+	// The pet's items are rows held by the pet or suspended pet holder; the pet info carries their item numbers by slot.
+	const auto rows = ItemInstancesRepository::GetWhere(
 		database,
 		fmt::format(
-			"`char_id` = {}",
+			"holder_type IN ('pet', 'suspended_pet') AND holder_id = {} AND retirement_state IS NULL",
 			client->CharacterID()
 		)
 	);
 
-	if (!inventory.empty()) {
-		for (const auto& e : inventory) {
-			if (e.pet == PetInfoType::Current) {
-				p = pet_info;
-			} else if (e.pet == PetInfoType::Suspended) {
-				p = suspended_pet_info;
-			} else {
-				continue;
-			}
-
-			if (!EQ::ValueWithin(e.slot, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
-				continue;
-			}
-
-			p->Items[e.slot] = e.item_id;
+	for (const auto &row : rows) {
+		p = row.location.IsInHolder(ItemHolderType::Pet) ? pet_info : suspended_pet_info;
+		if (!row.location.slot || !EQ::ValueWithin(*row.location.slot, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+			continue;
 		}
+
+		p->Items[*row.location.slot] = row.item_id;
 	}
 }
 

@@ -17,6 +17,7 @@
 */
 
 #include "../common/bodytypes.h"
+#include "../common/repositories/item_instances_repository.h"
 #include "../common/classes.h"
 #include "../common/global_define.h"
 #include "../common/misc_functions.h"
@@ -4914,15 +4915,38 @@ NPC::Handin NPC::ReturnHandinItems(Client *c)
 	return returned;
 }
 
-int16 NPC::GetEquipSlotForItem(uint32 item_id) const
+int16 NPC::AdoptPetItem(const EQ::ItemInstance &inst)
 {
-	for (const auto *loot_item : m_loot_items) {
-		if (loot_item->item_id == item_id && loot_item->equip_slot != EQ::invslot::SLOT_INVALID) {
+	for (auto *loot_item : m_loot_items) {
+		if (loot_item->item_id == inst.GetID() && loot_item->equip_slot != EQ::invslot::SLOT_INVALID && loot_item->guid.IsZero()) {
+			loot_item->guid = inst.GetGUID();
 			return loot_item->equip_slot;
 		}
 	}
 
 	return EQ::invslot::SLOT_INVALID;
+}
+
+void NPC::AdoptPetItemRows()
+{
+	auto *owner = GetOwner();
+	if (!owner || !owner->IsClient()) {
+		return;
+	}
+
+	const auto rows = ItemInstancesRepository::GetWhere(
+		database,
+		fmt::format("{} AND retirement_state IS NULL", ItemLayer::HolderFilter(ItemHolderType::Pet, owner->CastToClient()->CharacterID()))
+	);
+
+	for (const auto &row : rows) {
+		for (auto *loot_item : m_loot_items) {
+			if (row.location.slot && loot_item->equip_slot == static_cast<int16>(*row.location.slot) && loot_item->item_id == row.item_id && loot_item->guid.IsZero()) {
+				loot_item->guid = row.guid;
+				break;
+			}
+		}
+	}
 }
 
 void NPC::MarkHandinItemReturned(const EQ::ItemInstance *inst)

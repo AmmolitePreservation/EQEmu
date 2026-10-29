@@ -244,6 +244,75 @@ int ItemLayer::RetireWhere(Database &db, const std::string &holder_filter, ItemR
 	return retired;
 }
 
+int ItemLayer::MoveHolder(Database &db, const std::string &holder_filter, ItemHolderType holder_type)
+{
+	const int moved = ItemInstancesRepository::UpdateHolderType(db, holder_filter, holder_type);
+	if (moved < 0) {
+		LogError("Failed to move rows for [{}] to [{}]", holder_filter, ItemHolderTypeName(holder_type));
+	}
+
+	return moved;
+}
+
+int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Owner &issuer, uint32 new_holder_id)
+{
+	const auto base = ItemInstancesRepository::NextCounter(db, issuer.character_id, issuer.origin_world_id);
+	if (!base) {
+		return -1;
+	}
+
+	const auto table = ItemInstancesRepository::TableName();
+
+	// The rows and everything inside them, numbered parents first so the foreign key is met in insertion order.
+	std::vector<std::string> statements = {
+		"DROP TEMPORARY TABLE IF EXISTS item_copy_map",
+		"CREATE TEMPORARY TABLE item_copy_map (f INT UNSIGNED, s INT UNSIGNED, t INT UNSIGNED, n INT UNSIGNED, PRIMARY KEY (f, s, t))",
+		fmt::format(
+			"INSERT INTO item_copy_map WITH RECURSIVE held AS ("
+			"SELECT guid_first, guid_second, guid_third, 0 AS depth FROM {table} WHERE retirement_state IS NULL AND ({filter}) "
+			"UNION ALL SELECT c.guid_first, c.guid_second, c.guid_third, held.depth + 1 FROM {table} c JOIN held "
+			"ON c.parent_guid_first = held.guid_first AND c.parent_guid_second = held.guid_second AND c.parent_guid_third = held.guid_third "
+			"WHERE c.retirement_state IS NULL) "
+			"SELECT guid_first, guid_second, guid_third, ROW_NUMBER() OVER (ORDER BY depth, guid_first, guid_second, guid_third) - 1 + {base} FROM held",
+			fmt::arg("table", table),
+			fmt::arg("filter", holder_filter),
+			fmt::arg("base", *base)
+		),
+		fmt::format(
+			"INSERT INTO {table} (guid_first, guid_second, guid_third, item_id, charges, color, attuned, custom_data, ornament_icon, "
+			"ornament_idfile, ornament_hero_model, holder_type, holder_id, slot, parent_guid_first, parent_guid_second, parent_guid_third, parent_index) "
+			"SELECT {first}, {second}, m.n, i.item_id, i.charges, i.color, i.attuned, i.custom_data, i.ornament_icon, i.ornament_idfile, "
+			"i.ornament_hero_model, i.holder_type, IF(i.holder_type IS NULL, NULL, {holder}), i.slot, "
+			"IF(i.parent_guid_first IS NULL, NULL, {first}), IF(i.parent_guid_first IS NULL, NULL, {second}), pm.n, i.parent_index "
+			"FROM {table} i JOIN item_copy_map m ON i.guid_first = m.f AND i.guid_second = m.s AND i.guid_third = m.t "
+			"LEFT JOIN item_copy_map pm ON i.parent_guid_first = pm.f AND i.parent_guid_second = pm.s AND i.parent_guid_third = pm.t "
+			"ORDER BY m.n",
+			fmt::arg("table", table),
+			fmt::arg("first", issuer.character_id),
+			fmt::arg("second", issuer.origin_world_id),
+			fmt::arg("holder", new_holder_id)
+		),
+	};
+
+	int copied = 0;
+	for (size_t i = 0; i < statements.size(); ++i) {
+		auto results = db.QueryDatabase(statements[i]);
+		if (!results.Success()) {
+			LogError("Copying rows for [{}] to [{}] failed: {}", holder_filter, new_holder_id, results.ErrorMessage());
+			db.QueryDatabase("DROP TEMPORARY TABLE IF EXISTS item_copy_map");
+			return -1;
+		}
+
+		if (i == statements.size() - 1) {
+			copied = static_cast<int>(results.RowsAffected());
+		}
+	}
+
+	db.QueryDatabase("DROP TEMPORARY TABLE IF EXISTS item_copy_map");
+
+	return copied;
+}
+
 std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter)
 {
 	std::vector<Held> held;

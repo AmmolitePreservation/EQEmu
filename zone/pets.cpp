@@ -594,6 +594,8 @@ void NPC::SetPetState(SpellBuff_Struct *pet_buffs, uint32 *items) {
 			}
 		}
 	}
+
+	AdoptPetItemRows();
 }
 
 // Load the equipmentset from the DB. Might be worthwhile to load these into

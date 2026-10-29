@@ -1833,7 +1833,8 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	) {
 		if(!database.VerifyInventory(account_id, src_slot_id, src_inst)) {
 			LogError("Player [{}] on account [{}] was found exploiting the shared bank.\n", GetName(), account_name);
-			DeleteItemInInventory(dst_slot_id, 0, true, ItemRetirement::RemovedByGM);
+			// This zone's copy of the shared bank is stale: another zone moved the item. Drop the copy, keep the row.
+			RemoveItemFromInventory(src_slot_id, true);
 			return(false);
 		}
 
@@ -1841,7 +1842,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 			for (uint8 idx = EQ::invbag::SLOT_BEGIN; idx <= EQ::invbag::SLOT_END; idx++) {
 				const EQ::ItemInstance* baginst = src_inst->GetItem(idx);
 				if (baginst && !database.VerifyInventory(account_id, EQ::InventoryProfile::CalcSlotId(src_slot_id, idx), baginst)){
-					DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(src_slot_id, idx), 0, false, ItemRetirement::RemovedByGM);
+					RemoveItemFromInventory(EQ::InventoryProfile::CalcSlotId(src_slot_id, idx));
 				}
 			}
 		}
@@ -1856,7 +1857,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	) {
 		if(!database.VerifyInventory(account_id, dst_slot_id, dst_inst)) {
 			LogError("Player [{}] on account [{}] was found exploting the shared bank.\n", GetName(), account_name);
-			DeleteItemInInventory(src_slot_id, 0, true, ItemRetirement::RemovedByGM);
+			RemoveItemFromInventory(dst_slot_id, true);
 			return(false);
 		}
 
@@ -1864,7 +1865,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 			for (uint8 idx = EQ::invbag::SLOT_BEGIN; idx <= EQ::invbag::SLOT_END; idx++) {
 				const EQ::ItemInstance* baginst = dst_inst->GetItem(idx);
 				if (baginst && !database.VerifyInventory(account_id, EQ::InventoryProfile::CalcSlotId(dst_slot_id, idx), baginst)){
-					DeleteItemInInventory(EQ::InventoryProfile::CalcSlotId(dst_slot_id, idx), 0, false, ItemRetirement::RemovedByGM);
+					RemoveItemFromInventory(EQ::InventoryProfile::CalcSlotId(dst_slot_id, idx));
 				}
 			}
 		}
@@ -1907,7 +1908,6 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 			GetName(), CharacterID(), AccountID(), src_slot_id, ndh_item_data.c_str());
 		ndh_inst = nullptr;
 
-		DeleteItemInInventory(src_slot_id, 0, false, ItemRetirement::RemovedByGM);
 		WorldKick();
 		return false;
 	}

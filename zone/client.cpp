@@ -1065,7 +1065,13 @@ bool Client::Save(uint8 iCommitNow) {
 		m_petinfo.taunting = pet->CastToNPC()->IsTaunting();
 	} else {
 		memset(&m_petinfo, 0, sizeof(struct PetInfo));
+		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Pet, CharacterID()), ItemRetirement::PetDonated);
 	}
+
+	if (m_suspendedminion.SpellID == 0) {
+		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::SuspendedPet, CharacterID()), ItemRetirement::PetDonated);
+	}
+
 	database.SavePetInfo(this);
 
 	if(tribute_timer.Enabled()) {
@@ -6383,9 +6389,13 @@ void Client::SuspendMinion(int value)
 
 			if(value >= 1)
 			{
+				ItemLayer::MoveHolder(database, ItemLayer::HolderFilter(ItemHolderType::SuspendedPet, CharacterID()), ItemHolderType::Pet);
 				CurrentPet->SetPetState(m_suspendedminion.Buffs, m_suspendedminion.Items);
-
 				CurrentPet->SendPetBuffsToClient();
+			}
+			else
+			{
+				ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::SuspendedPet, CharacterID()), ItemRetirement::PetDonated);
 			}
 			CurrentPet->CalcBonuses();
 
@@ -6451,9 +6461,15 @@ void Client::SuspendMinion(int value)
 				m_suspendedminion.size = CurrentPet->GetSize();
 
 				if(value >= 1)
+				{
 					CurrentPet->GetPetState(m_suspendedminion.Buffs, m_suspendedminion.Items, m_suspendedminion.Name);
+					ItemLayer::MoveHolder(database, ItemLayer::HolderFilter(ItemHolderType::Pet, CharacterID()), ItemHolderType::SuspendedPet);
+				}
 				else
+				{
 					strn0cpy(m_suspendedminion.Name, CurrentPet->GetName(), 64); // Name stays even at rank 1
+					ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Pet, CharacterID()), ItemRetirement::PetDonated);
+				}
 
 				MessageString(Chat::Magenta, SUSPEND_MINION_SUSPEND, CurrentPet->GetCleanName());
 

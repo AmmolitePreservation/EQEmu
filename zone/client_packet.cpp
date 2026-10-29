@@ -11278,8 +11278,8 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 		else {
 			SetPet(nullptr);
 		}
-
 		mypet->SayString(this, Chat::PetResponse, PET_GETLOST_STRING);
+		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Pet, CharacterID()), ItemRetirement::PetDonated);
 		mypet->CastToNPC()->Depop();
 
 		//Oddly, the client (Titanium) will still allow "/pet get lost" command despite me adding the code below. If someone can figure that out, you can uncomment this code and use it.

@@ -18,7 +18,8 @@
 
 #include "../common/global_define.h"
 #include "../common/rulesys.h"
-
+#include "../common/item_layer.h"
+#include "../common/repositories/character_corpses_repository.h"
 #include <ctype.h>
 #include <iomanip>
 #include <iostream>
@@ -408,10 +409,11 @@ bool Database::DeleteCharacter(const std::string& name)
 		return true;
 	}
 
+	RetireCharacterItems(e.id);
+
 	for (const auto &t : DatabaseSchema::GetCharacterTables()) {
 		const std::string& table_name               = t.first;
 		const std::string& character_id_column_name = t.second;
-
 		QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
@@ -421,10 +423,32 @@ bool Database::DeleteCharacter(const std::string& name)
 			)
 		);
 	}
-
 	LogInfo("character_name [{}] ({}) is being [{}]", e.name, e.id, delete_type);
 
 	return true;
+}
+
+// Everything a hard-deleted character held: its possessions and parcels, its pets' items, its corpses' items and its
+// bots' items. The account's shared bank stays with the account.
+void Database::RetireCharacterItems(uint32 character_id)
+{
+	ItemLayer::RetireWhere(
+		*this,
+		fmt::format("holder_type IN ('inventory', 'cursor', 'bank', 'trade', 'parcel', 'pet', 'suspended_pet') AND holder_id = {}", character_id),
+		ItemRetirement::CharacterDeleted
+	);
+
+	for (const auto &corpse : CharacterCorpsesRepository::GetWhere(*this, fmt::format("`charid` = {}", character_id))) {
+		ItemLayer::RetireWhere(*this, ItemLayer::HolderFilter(ItemHolderType::Corpse, corpse.id), ItemRetirement::CharacterDeleted);
+	}
+
+	if (RuleB(Bots, Enabled) && DoesTableExist("bot_data")) {
+		ItemLayer::RetireWhere(
+			*this,
+			fmt::format("holder_type = 'bot' AND holder_id IN (SELECT bot_id FROM bot_data WHERE owner_id = {})", character_id),
+			ItemRetirement::CharacterDeleted
+		);
+	}
 }
 
 bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, PlayerProfile_Struct *pp)
@@ -2077,6 +2101,19 @@ bool Database::CopyCharacter(
 		}
 	}
 
+	// The copy's items are new items issued from its own counter, in the same places.
+	const int copied = ItemLayer::CopyRows(
+		*this,
+		fmt::format("holder_type IN ('inventory', 'cursor', 'bank', 'trade', 'parcel', 'pet', 'suspended_pet') AND holder_id = {}", source_character_id),
+		ItemLayer::Owner{static_cast<uint32>(new_character_id), character.origin_world_id},
+		static_cast<uint32>(new_character_id)
+	);
+	if (copied < 0) {
+		TransactionRollback();
+		return false;
+	}
+	LogInfo("Copying item rows [{}]", Strings::Commify(copied));
+
 	auto r = TransactionCommit();
 	if (!r.Success()) {
 		LogError("Transaction failed [{}] rolling back", r.ErrorMessage());
@@ -2223,6 +2260,13 @@ void Database::PurgeCharacterParcels()
 {
 	auto filter  = fmt::format("sent_date < (NOW() - INTERVAL {} DAY)", RuleI(Parcel, ParcelPruneDelay));
 	auto results = CharacterParcelsRepository::GetWhere(*this, filter);
+	for (auto const &r : results) {
+		ItemLayer::RetireWhere(
+			*this,
+			fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, r.char_id), r.slot_id),
+			ItemRetirement::Expired
+		);
+	}
 	auto prune   = CharacterParcelsRepository::DeleteWhere(*this, filter);
 
 	PlayerEvent::ParcelDelete                  pd{};

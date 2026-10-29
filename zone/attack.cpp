@@ -2549,6 +2549,15 @@ bool NPC::Death(Mob* killer_mob, int64 damage, uint16 spell, EQ::skills::SkillTy
 	SetHP(0);
 	SetPet(0);
 
+	// An owned pet leaves no corpse; what the player gave it goes with it.
+	if (IsPet() && IsPetOwnerClient() && GetOwner() && GetOwner()->IsClient()) {
+		ItemLayer::RetireWhere(
+			database,
+			ItemLayer::HolderFilter(ItemHolderType::Pet, GetOwner()->CastToClient()->CharacterID()),
+			ItemRetirement::PetDonated
+		);
+	}
+
 	if (GetSwarmOwner()) {
 		Mob* owner = entity_list.GetMobID(GetSwarmOwner());
 		if (owner) {

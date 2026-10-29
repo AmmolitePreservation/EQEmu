@@ -43,6 +43,14 @@ public:
 	// Retires every row in play that a holder filter matches, and everything inside those rows. Returns the count.
 	static int RetireWhere(Database &db, const std::string &holder_filter, ItemRetirement reason);
 
+	// Moves every row in play that a holder filter matches to another holder type (a pet's items when it is suspended).
+	static int MoveHolder(Database &db, const std::string &holder_filter, ItemHolderType holder_type);
+
+	// Copies every row in play that a holder filter matches, with everything inside, as new items issued from the
+	// issuer's counter in a fixed order, held by new_holder_id (a copied character, a cloned bot). Runs inside the
+	// caller's transaction. Returns the count, or -1.
+	static int CopyRows(Database &db, const std::string &holder_filter, const Owner &issuer, uint32 new_holder_id);
+
 	// The items a holder filter matches, each with its augments and bag contents attached and its GUID set; the rows
 	// come from db, the item data from content_db (the same database in a zone, the content database in world).
 	static std::vector<Held> Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter);

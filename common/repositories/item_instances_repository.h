@@ -201,6 +201,21 @@ public:
 		return results.Success();
 	}
 
+	// Moves every row in play that a holder filter matches to another holder type, keeping holder id and slot.
+	static int UpdateHolderType(Database &db, const std::string &holder_filter, ItemHolderType holder_type)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET holder_type = '{}' WHERE retirement_state IS NULL AND ({})",
+				TableName(),
+				ItemHolderTypeName(holder_type),
+				holder_filter
+			)
+		);
+
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
+	}
+
 	// Retires one row in play; the rows changed, so a retired or unknown row answers 0.
 	static int Retire(Database &db, const ItemGUID &guid, ItemRetirement reason)
 	{

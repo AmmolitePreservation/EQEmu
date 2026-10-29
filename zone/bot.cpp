@@ -22,7 +22,6 @@
 #include "doors.h"
 #include "quest_parser_collection.h"
 #include "lua_parser.h"
-#include "../common/repositories/bot_inventories_repository.h"
 #include "../common/repositories/bot_spell_settings_repository.h"
 #include "../common/repositories/bot_starting_items_repository.h"
 #include "../common/data_verification.h"
@@ -1972,7 +1971,7 @@ bool Bot::BotRangedAttack(Mob* other, bool can_double_attack) {
 			LogCombatDetail("Consumed Archery Ammo from slot {}.", EQ::invslot::slotAmmo);
 
 			if (ammo_item->GetCharges() < 1) {
-				RemoveBotItemBySlot(EQ::invslot::slotAmmo);
+				RemoveBotItemBySlot(EQ::invslot::slotAmmo, ItemRetirement::Consumed);
 				BotRemoveEquipItem(EQ::invslot::slotAmmo);
 			}
 		}
@@ -1991,7 +1990,7 @@ bool Bot::BotRangedAttack(Mob* other, bool can_double_attack) {
 			LogCombatDetail("Consumed Throwing Ammo from slot {}.", EQ::invslot::slotAmmo);
 
 			if (ammo_item->GetCharges() < 1) {
-				RemoveBotItemBySlot(EQ::invslot::slotAmmo);
+				RemoveBotItemBySlot(EQ::invslot::slotAmmo, ItemRetirement::Consumed);
 				BotRemoveEquipItem(EQ::invslot::slotAmmo);
 			}
 		}
@@ -3717,13 +3716,16 @@ bool Bot::Spawn(Client* botCharacterOwner) {
 }
 
 // Deletes the inventory record for the specified item from the database for this bot.
-void Bot::RemoveBotItemBySlot(uint16 slot_id)
+void Bot::RemoveBotItemBySlot(uint16 slot_id, std::optional<ItemRetirement> reason)
 {
 	if (!GetBotID()) {
 		return;
 	}
 
-	database.botdb.DeleteItemBySlot(GetBotID(), slot_id);
+	auto *inst = m_inv.GetItem(slot_id);
+	if (inst && reason) {
+		ItemLayer::Retire(database, *inst, *reason);
+	}
 
 	m_inv.DeleteItem(slot_id);
 	UpdateEquipmentLight();
@@ -4066,7 +4068,7 @@ void Bot::BotRemoveEquipItem(uint16 slot_id)
 	}
 }
 
-void Bot::BotTradeAddItem(const EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database)
+void Bot::BotTradeAddItem(EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database)
 {
 	if (!inst) {
 		return;
@@ -4181,7 +4183,7 @@ void Bot::RemoveBotItem(uint32 item_id) {
 
 
 		if (inst->GetID() == item_id) {
-			RemoveBotItemBySlot(slot_id);
+			RemoveBotItemBySlot(slot_id, ItemRetirement::Consumed);
 			BotRemoveEquipItem(slot_id);
 			CalcBotStats(GetOwner()->CastToClient()->GetBotOption(Client::booStatsUpdate));
 			return;
@@ -4763,18 +4765,6 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 			client->RemoveItemFromInventory(return_iterator.from_bot_slot);
 		} else { // successful trade returns
 			auto return_instance = m_inv.PopItem(return_iterator.from_bot_slot);
-
-			//	// TODO: add logging
-
-			if (!database.botdb.DeleteItemBySlot(GetBotID(), return_iterator.from_bot_slot)) {
-				OwnerMessage(
-					fmt::format(
-						"Failed to delete item by slot from slot {}.",
-						return_iterator.from_bot_slot
-					).c_str()
-				);
-			}
-
 			BotRemoveEquipItem(return_iterator.from_bot_slot);
 
 			if (parse->BotHasQuestSub(EVENT_UNEQUIP_ITEM_BOT)) {
@@ -4800,10 +4790,6 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 						item_link
 					)
 				);
-				const auto guid = ItemLayer::FindGUID(database, ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), return_iterator.from_bot_slot));
-				if (guid) {
-					ItemLayer::AssignGUID(*return_instance, *guid);
-				}
 				client->PutItemInInventory(return_iterator.to_client_slot, *return_instance, true);
 			}
 
@@ -4857,11 +4843,6 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 		}
 
 		trade_iterator.trade_item_instance = nullptr; // actual deletion occurs in client delete below
-		ItemLayer::MoveRow(
-			database,
-			m_inv.GetItem(trade_iterator.to_bot_slot)->GetGUID(),
-			ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), trade_iterator.to_bot_slot)
-		);
 		client->RemoveItemFromInventory(trade_iterator.from_client_slot, (trade_iterator.from_client_slot == EQ::invslot::slotCursor));
 
 		// database currently has unattuned item saved in inventory..it will be attuned on next bot load
@@ -5685,7 +5666,7 @@ bool Bot::IsBotAttackAllowed(Mob* attacker, Mob* target, bool& hasRuleDefined) {
 
 void Bot::EquipBot() {
 	GetBotItems(m_inv);
-	const EQ::ItemInstance* inst = nullptr;
+	EQ::ItemInstance* inst = nullptr;
 	const EQ::ItemData* item = nullptr;
 	for (int slot_id = EQ::invslot::EQUIPMENT_BEGIN; slot_id <= EQ::invslot::EQUIPMENT_END; ++slot_id) {
 		inst = GetBotItem(slot_id);
@@ -8841,32 +8822,34 @@ void Bot::AddBotStartingItems(uint16 race_id, uint8 class_id)
 		return;
 	}
 
-	std::vector<BotInventoriesRepository::BotInventories> v;
+	// A bot's starting items are issued from its owner's counter, as the bot's own.
+	std::optional<ItemLayer::Owner> owner;
+	if (GetBotOwner() && GetBotOwner()->IsClient()) {
+		owner = GetBotOwner()->CastToClient()->ItemOwner();
+	}
 
 	for (const auto& e : l) {
 		if (
 			CanClassEquipItem(e.item_id) &&
 			(CanRaceEquipItem(e.item_id) || RuleB(Bots, AllowBotEquipAnyRaceGear))
 		) {
-			auto i = BotInventoriesRepository::NewEntity();
+			auto *inst = database.CreateItem(
+				e.item_id,
+				e.item_charges,
+				e.augment_one,
+				e.augment_two,
+				e.augment_three,
+				e.augment_four,
+				e.augment_five,
+				e.augment_six
+			);
+			if (!inst) {
+				continue;
+			}
 
-			i.bot_id       = GetBotID();
-			i.slot_id      = e.slot_id;
-			i.item_id      = e.item_id;
-			i.inst_charges = e.item_charges;
-			i.augment_1    = e.augment_one;
-			i.augment_2    = e.augment_two;
-			i.augment_3    = e.augment_three;
-			i.augment_4    = e.augment_four;
-			i.augment_5    = e.augment_five;
-			i.augment_6    = e.augment_six;
-
-			v.emplace_back(i);
+			ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), e.slot_id), owner);
+			safe_delete(inst);
 		}
-	}
-
-	if (!v.empty()) {
-		BotInventoriesRepository::InsertMany(content_db, v);
 	}
 }
 

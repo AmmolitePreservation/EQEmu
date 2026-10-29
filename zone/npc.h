@@ -601,7 +601,10 @@ public:
 	void RetireKeptHandinItems();
 	void ResetHandin();
 	void ResetMultiQuest();
-	int16 GetEquipSlotForItem(uint32 item_id) const;
+	// A player's item the pet took: the loot entry for it takes the item's GUID; the slot it went to, or SLOT_INVALID.
+	int16 AdoptPetItem(const EQ::ItemInstance &inst);
+	// A restored pet's loot entries take the GUIDs of the rows its owner's pet holder has.
+	void AdoptPetItemRows();
 	bool HasProcessedHandinReturn() { return m_has_processed_handin_return; }
 	bool HandinStarted() { return m_handin_started; }
 

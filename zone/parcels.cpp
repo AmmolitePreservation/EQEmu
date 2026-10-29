@@ -20,7 +20,6 @@
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/trader_repository.h"
 #include "../common/repositories/character_parcels_repository.h"
-#include "../common/repositories/character_parcels_containers_repository.h"
 #include "../common/item_layer.h"
 #include "worldserver.h"
 #include "string_ids.h"
@@ -430,28 +429,6 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				return;
 			}
 
-			std::vector<CharacterParcelsContainersRepository::CharacterParcelsContainers> all_entries{};
-			if (inst->IsNoneEmptyContainer()) {
-				for (auto const &kv: *inst->GetContents()) {
-					CharacterParcelsContainersRepository::CharacterParcelsContainers cpc{};
-					cpc.parcels_id = result.id;
-					cpc.slot_id    = kv.first;
-					cpc.item_id    = kv.second->GetID();
-					if (kv.second->IsAugmented()) {
-						auto augs      = kv.second->GetAugmentIDs();
-						cpc.aug_slot_1 = augs.at(0);
-						cpc.aug_slot_2 = augs.at(1);
-						cpc.aug_slot_3 = augs.at(2);
-						cpc.aug_slot_4 = augs.at(3);
-						cpc.aug_slot_5 = augs.at(4);
-						cpc.aug_slot_6 = augs.at(5);
-					}
-					cpc.quantity   = kv.second->GetCharges() >= 0 ? kv.second->GetCharges() : 1;
-					all_entries.push_back(cpc);
-				}
-				CharacterParcelsContainersRepository::InsertMany(database, all_entries);
-			}
-
 			const auto parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot));
 			if (inst->IsStackable() && (quantity - parcel_in->quantity > 0)) {
 				// A sent part of a stack is a new item split off by the sender; the stack keeps its row.
@@ -493,21 +470,22 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 
 				RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
 
-				if (!all_entries.empty()) {
-					for (auto const &i: all_entries) {
-						e.from_player_name = parcel_out.from_name;
-						e.to_player_name   = send_to_client.at(0).character_name;
-						e.item_id          = i.item_id;
-						e.augment_1_id     = i.aug_slot_1;
-						e.augment_2_id     = i.aug_slot_2;
-						e.augment_3_id     = i.aug_slot_3;
-						e.augment_4_id     = i.aug_slot_4;
-						e.augment_5_id     = i.aug_slot_5;
-						e.augment_6_id     = i.aug_slot_6;
-						e.quantity         = i.quantity;
-						e.sent_date        = parcel_out.sent_date;
-						RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
+				for (auto const &[index, content] : *inst->GetContents()) {
+					if (!content) {
+						continue;
 					}
+					e.from_player_name = parcel_out.from_name;
+					e.to_player_name   = send_to_client.at(0).character_name;
+					e.item_id          = content->GetID();
+					e.augment_1_id     = content->GetAugmentItemID(0);
+					e.augment_2_id     = content->GetAugmentItemID(1);
+					e.augment_3_id     = content->GetAugmentItemID(2);
+					e.augment_4_id     = content->GetAugmentItemID(3);
+					e.augment_5_id     = content->GetAugmentItemID(4);
+					e.augment_6_id     = content->GetAugmentItemID(5);
+					e.quantity         = content->GetCharges() >= 0 ? content->GetCharges() : 1;
+					e.sent_date        = parcel_out.sent_date;
+					RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
 				}
 			}
 
@@ -671,25 +649,30 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 			return;
 		}
 
-		std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(
-			item_id,
-			item_quantity,
-			p->second.aug_slot_1,
-			p->second.aug_slot_2,
-			p->second.aug_slot_3,
-			p->second.aug_slot_4,
-			p->second.aug_slot_5,
-			p->second.aug_slot_6
-		)
-		);
+		// The parcel's item is its row, with its augments and contents; money has no row.
+		std::unique_ptr<EQ::ItemInstance> inst;
+		if (parcel_in.parcel_item_id == PARCEL_MONEY_ITEM_ID) {
+			inst.reset(database.CreateItem(item_id, item_quantity));
+		} else {
+			auto held = ItemLayer::Load(
+				database,
+				database,
+				fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, CharacterID()), parcel_in.parcel_slot_id)
+			);
+			if (held.size() != 1) {
+				LogError("Parcel slot [{}] of character [{}] holds [{}] rows, not 1", parcel_in.parcel_slot_id, CharacterID(), held.size());
+				for (auto &h : held) {
+					safe_delete(h.inst);
+				}
+				SendParcelRetrieveAck();
+				return;
+			}
+			inst.reset(held.front().inst);
+		}
 
 		if (!inst) {
 			SendParcelRetrieveAck();
 			return;
-		}
-
-		if (inst->IsStackable()) {
-			inst->SetCharges(item_quantity > 0 ? item_quantity : 1);
 		}
 
 		switch (parcel_in.parcel_item_id) {
@@ -701,64 +684,25 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 				break;
 			}
 			default: {
-				std::vector<CharacterParcelsContainersRepository::CharacterParcelsContainers> results{};
-				if (inst->IsClassBag() && inst->GetItem()->BagSlots > 0) {
-					auto contents = inst->GetContents();
-					results       = CharacterParcelsContainersRepository::GetWhere(
-						database, fmt::format("`parcels_id` = {}", p->second.id)
-					);
-					for (auto i: results) {
-						auto item = database.CreateItem(
-							i.item_id,
-							i.quantity,
-							i.aug_slot_1,
-							i.aug_slot_2,
-							i.aug_slot_3,
-							i.aug_slot_4,
-							i.aug_slot_5,
-							i.aug_slot_6
-						);
-
-						if (!item) {
-							SendParcelRetrieveAck();
-							return;
+				// A duplicate lore item among the contents is destroyed or stops the delivery, by rule.
+				std::vector<uint8> duplicate_lore_contents;
+				for (auto const &[index, content] : *inst->GetContents()) {
+					if (content && CheckLoreConflict(content->GetItem())) {
+						if (RuleB(Parcel, DeleteOnDuplicate)) {
+							MessageString(Chat::Yellow, PARCEL_DUPLICATE_DELETE, content->GetItem()->Name);
+							duplicate_lore_contents.push_back(index);
+							continue;
 						}
-
-						if (CheckLoreConflict(item->GetItem())) {
-							if (RuleB(Parcel, DeleteOnDuplicate)) {
-								MessageString(Chat::Yellow, PARCEL_DUPLICATE_DELETE, inst->GetItem()->Name);
-								continue;
-							}
-
-							MessageString(Chat::Yellow, DUP_LORE);
-							SendParcelRetrieveAck();
-							return;
-						}
-
-						contents->emplace(i.slot_id, item);
+						MessageString(Chat::Yellow, DUP_LORE);
+						SendParcelRetrieveAck();
+						return;
 					}
 				}
+				for (const uint8 index : duplicate_lore_contents) {
+					ItemLayer::Retire(database, *inst->GetItem(index), ItemRetirement::Destroyed);
+					inst->DeleteItem(index);
+				}
 
-				auto held = ItemLayer::Load(
-					database,
-					database,
-					fmt::format("{} AND slot = {}", ItemLayer::HolderFilter(ItemHolderType::Parcel, CharacterID()), parcel_in.parcel_slot_id)
-				);
-				if (held.size() == 1) {
-					ItemLayer::AssignGUID(*inst, held.front().inst->GetGUID());
-					for (auto &[index, content] : *inst->GetContents()) {
-						const auto *held_content = held.front().inst->GetItem(index);
-						if (content && held_content) {
-							ItemLayer::AssignGUID(*content, held_content->GetGUID());
-						}
-					}
-				}
-				else {
-					LogError("Parcel slot [{}] of character [{}] holds [{}] rows, not 1", parcel_in.parcel_slot_id, CharacterID(), held.size());
-				}
-				for (auto &h : held) {
-					safe_delete(h.inst);
-				}
 				auto const free_id = GetInv().FindFirstFreeSlotThatFitsItemWithStacking(inst.get());
 				if (free_id == INVALID_INDEX) {
 					SendParcelRetrieveAck();
@@ -802,26 +746,10 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 					e.sent_date        = p->second.sent_date;
 					RecordPlayerEventLog(PlayerEvent::PARCEL_RETRIEVE, e);
 
-					for (auto const &i:results) {
-								e.from_player_name = p->second.from_name;
-								e.item_id          = i.item_id;
-								e.augment_1_id     = i.aug_slot_1;
-								e.augment_2_id     = i.aug_slot_2;
-								e.augment_3_id     = i.aug_slot_3;
-								e.augment_4_id     = i.aug_slot_4;
-								e.augment_5_id     = i.aug_slot_5;
-								e.augment_6_id     = i.aug_slot_6;
-								e.quantity         = i.quantity;
-								e.sent_date        = p->second.sent_date;
-								RecordPlayerEventLog(PlayerEvent::PARCEL_RETRIEVE, e);
-
-
-					}
 				}
 			}
 		}
-
-		DeleteParcel(p->second.id);
+				DeleteParcel(p->second.id);
 		SendParcelDelete(parcel_in);
 		m_parcels.erase(p);
 	}
