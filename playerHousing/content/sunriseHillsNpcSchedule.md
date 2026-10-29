@@ -11,7 +11,7 @@ What Live's Sunrise Hills NPCs do on their own, for NPC-14 (the stage show) and 
 | `..._16096_Telashak_20261023-194801.txt`, `..._16098_Sukarin_20261023-195411.txt` | 16096, 16098 | 131 h each, 109 cycles, walks and sitting only |
 | the other `peridotLiveBehavior_bristle_neighborhood_*` captures | 3895, 3914, 4112, 4181 | shorter runs, the same timing |
 
-The later recordings were made 370 units or more from the stage and hold no NPC lines and no animation changes other than sitting and standing, so only the 1634 recording has the show's lines and gestures; Pariator's chat log (the owner's PC, `eqlog_Pariator_bristle.txt`, 2026-09-29 to 10-16, 66 fully heard cycles) agrees with it line for line.
+The later recordings were made 370 units or more from the stage and hold no NPC lines and no animation changes other than sitting and standing, so only the 1634 recording has the show's lines and gestures; Pariator's chat log (onyx, `C:\Onyx\research\housing\liveClientState\Logs\eqlog_Pariator_bristle.txt`, 2026-09-29 to 10-16, 66 fully heard cycles) agrees with it line for line.
 
 **Conventions.** Positions are the client's x, y and z as the recorder writes them (MacroQuest's X and Y; a `/loc` prints y, x). Spawn points come from spawn records; walk points come from move records, whose z is the floor the NPC stands on, about 2.7 below the spawn record's z for the same spot. Headings are the client's 0-512. Animation ids are Live's (the spawn's Animation field); held items are model numbers (IT###) from the spawn's equipment, primary then secondary. Times are minutes:seconds from **t0**, the moment Arwik stands up as the client sees it; a line arrives about 0.2 s before the whole second it is listed at.
 
