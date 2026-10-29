@@ -1481,6 +1481,8 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	total_cost     -= (silver * 10);
 	uint32 copper   = total_cost;
 
+	// The coin, the sold item or piece and its landing with the buyer are one exchange.
+	database.TransactionBegin();
 	Trader->AddMoneyToPP(copper, silver, gold, platinum, true);
 
 	if (buy_item && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::TRADER_PURCHASE)) {
@@ -1571,6 +1573,8 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 		// Convert Serial Number back to ItemID for RoF+
 		outtbs->item_id = item_id;
 	}
+
+	database.TransactionCommit();
 
 	Trader->QueuePacket(outapp.get());
 }

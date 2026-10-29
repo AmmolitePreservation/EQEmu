@@ -31,6 +31,9 @@ public:
 	MySQLRequestResult QueryDatabase(const char *query, uint32 querylen, bool retryOnFailureOnce = true);
 	MySQLRequestResult QueryDatabase(const std::string& query, bool retryOnFailureOnce = true);
 	MySQLRequestResult QueryDatabaseMulti(const std::string &query);
+	// Transactions nest: only the outermost Begin starts one and only the outermost Commit ends it, since MySQL commits
+	// an open transaction when it sees a second START TRANSACTION; a Rollback at any depth makes the outermost Commit
+	// roll back instead.
 	void TransactionBegin();
 	MySQLRequestResult TransactionCommit();
 	void TransactionRollback();
@@ -72,6 +75,8 @@ private:
 	bool Open(uint32 *errnum = nullptr, char *errbuf = nullptr);
 
 	MYSQL*  mysql;
+	int     m_transaction_depth{0};
+	bool    m_transaction_failed{false};
 	bool    mysqlOwner;
 	Mutex   *m_mutex;
 	eStatus pStatus;
