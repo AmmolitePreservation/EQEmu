@@ -578,11 +578,14 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 	return copied;
 }
 
+// The filter's rows are the tops of what is loaded, with their contents and augments under them; a top may itself sit
+// in a parent the filter did not take, as a listed item sits in its trader's satchel.
 std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter)
 {
 	std::vector<Held> held;
 
 	std::map<std::array<uint32, 3>, EQ::ItemInstance *> by_guid;
+	std::set<std::array<uint32, 3>>                     skipped;
 
 	for (const auto &row : ItemInstancesRepository::GetHeld(db, holder_filter)) {
 		const auto *item = content_db.GetItem(row.item_id);
@@ -594,6 +597,7 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 				row.guid.third,
 				row.item_id
 			);
+			skipped.insert({row.guid.first, row.guid.second, row.guid.third});
 			continue;
 		}
 
@@ -625,11 +629,10 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 		by_guid[{row.guid.first, row.guid.second, row.guid.third}] = inst;
 
 		if (row.location.parent_guid) {
-			const auto &p    = *row.location.parent_guid;
-			auto        find = by_guid.find({p.first, p.second, p.third});
-			if (find == by_guid.end()) {
+			const auto &p = *row.location.parent_guid;
+			if (skipped.contains({p.first, p.second, p.third})) {
 				LogError(
-					"guid [{} {} {}] names parent [{} {} {}], which was not loaded; skipped",
+					"guid [{} {} {}] names parent [{} {} {}], which was skipped; skipped",
 					row.guid.first,
 					row.guid.second,
 					row.guid.third,
@@ -637,12 +640,16 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 					p.second,
 					p.third
 				);
+				skipped.insert({row.guid.first, row.guid.second, row.guid.third});
 				safe_delete(inst);
 				continue;
 			}
 
-			find->second->_PutItem(static_cast<uint8>(row.location.parent_index), inst);
-			continue;
+			auto find = by_guid.find({p.first, p.second, p.third});
+			if (find != by_guid.end()) {
+				find->second->_PutItem(static_cast<uint8>(row.location.parent_index), inst);
+				continue;
+			}
 		}
 
 		held.push_back(Held{row.location, inst});
