@@ -7287,6 +7287,11 @@ CREATE TABLE `inventory_snapshots` (
 )
 COLLATE='latin1_swedish_ci'
 ENGINE=InnoDB;
+ALTER TABLE `merchantlist_temp`
+	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `charges`,
+	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD CONSTRAINT `fk_merchantlist_temp_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
 )",
 		.content_schema_update = false
 	},

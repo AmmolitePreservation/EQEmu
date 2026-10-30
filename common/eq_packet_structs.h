@@ -28,6 +28,7 @@
 #include "../cereal/include/cereal/types/vector.hpp"
 #include "../common/version.h"
 #include "emu_constants.h"
+#include "item_guid.h"
 #include "textures.h"
 #include "types.h"
 
@@ -4387,6 +4388,7 @@ struct TempMerchantList {
 	uint32	item;
 	uint32	charges; //charges/quantity
 	uint32	origslot;
+	ItemGUID	guid; // the sold item that made a player-sold row; none for stock a script set
 };
 
 struct AltCurrencyDefinition_Struct {

@@ -574,7 +574,7 @@ public:
 	void	RefreshPetitionsFromDB();
 
 	/* Merchants  */
-	void	SaveMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id, uint32 item, uint32 charges);
+	void	SaveMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id, uint32 item, uint32 charges, const ItemGUID &sold);
 	void	DeleteMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id);
 
 	/* Tradeskills  */

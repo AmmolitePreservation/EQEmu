@@ -194,7 +194,7 @@ public:
 	inline void ShowNPCGlobalLoot(Client *c, NPC *t) { m_global_loot.ShowNPCGlobalLoot(c, t); }
 	inline void ShowZoneGlobalLoot(Client *c) { m_global_loot.ShowZoneGlobalLoot(c); }
 	int GetZoneTotalBlockedSpells() { return zone_total_blocked_spells; }
-	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false);
+	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false, const ItemGUID &sold_item = {});
 	int32 MobsAggroCount() { return aggroedmobs; }
 	DynamicZone *GetDynamicZone();
 
@@ -269,6 +269,7 @@ public:
 	uint32 CountSpawn2();
 	uint32 GetSpawnKillCount(uint32 in_spawnid);
 	uint32 GetTempMerchantQuantity(uint32 NPCID, uint32 Slot);
+	ItemGUID GetTempMerchantGUID(uint32 npc_id, uint32 slot);
 
 	uint32 GetCurrencyID(uint32 item_id);
 	uint32 GetCurrencyItemID(uint32 currency_id);

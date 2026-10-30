@@ -2285,7 +2285,8 @@ void ZoneDatabase::SaveMerchantTemp(
 	uint32 zone_id,
 	uint32 instance_id,
 	uint32 item_id,
-	uint32 charges
+	uint32 charges,
+	const ItemGUID &sold
 )
 {
 	auto e = MerchantlistTempRepository::NewEntity();
@@ -2297,7 +2298,7 @@ void ZoneDatabase::SaveMerchantTemp(
 	e.itemid      = item_id;
 	e.charges     = charges;
 
-	MerchantlistTempRepository::ReplaceOne(*this, e);
+	MerchantlistTempRepository::Save(*this, e, sold);
 }
 
 void ZoneDatabase::DeleteMerchantTemp(uint32 npc_id, uint32 slot_id, uint32 zone_id, uint32 instance_id)

@@ -119,7 +119,7 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 
 Tables that only record location are absorbed into the item table and dropped: `inventory`, `sharedbank`, `character_corpse_items`, `bot_inventories`, `character_pet_inventory`, `character_parcels_containers`, `object_contents`. A side table is a child, so `REPLACE` on it is safe.
 
-The Bazaar shows a listed item by loading it and its children (augments, bag contents) from the item table; search joins `trader` to the item table to `items`. Pooled player-sold merchant rows (`merchantlist_temp`) point at a sold item's GUID, as Live's list shows one; a buyer always gets a new item.
+The Bazaar shows a listed item by loading it and its children (augments, bag contents) from the item table; search joins `trader` to the item table to `items`. Pooled player-sold merchant rows (`merchantlist_temp`) point at a sold item's GUID, as Live's list shows one: the sale that made the row, kept while later sales and purchases change its count; a buyer always gets a new item. Part of a stack sold is split off, issued from the seller's counter and retired `sold`, so every sale has a row. Stock a script set names no item.
 
 ### Issuing
 

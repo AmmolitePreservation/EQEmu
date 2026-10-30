@@ -4,6 +4,7 @@
 #include "../database.h"
 #include "../strings.h"
 #include "base/base_merchantlist_temp_repository.h"
+#include "../item_guid.h"
 
 class MerchantlistTempRepository: public BaseMerchantlistTempRepository {
 public:
@@ -43,7 +44,30 @@ public:
      * method and encapsulate filters there
      */
 
-	// Custom extended repository methods here
+	// A row of player-sold stock names the sold item that made it; stock a script set names none (NULL).
+	static bool Save(Database &db, const MerchantlistTemp &e, const ItemGUID &sold)
+	{
+		const bool none = sold.IsZero();
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"REPLACE INTO {} (npcid, slot, zone_id, instance_id, itemid, charges, guid_first, guid_second, guid_third) "
+				"VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})",
+				TableName(),
+				e.npcid,
+				e.slot,
+				e.zone_id,
+				e.instance_id,
+				e.itemid,
+				e.charges,
+				none ? "NULL" : std::to_string(sold.first),
+				none ? "NULL" : std::to_string(sold.second),
+				none ? "NULL" : std::to_string(sold.third)
+			)
+		);
+
+		return results.Success();
+	}
+
 	static void ClearTemporaryMerchantLists(Database& db)
 	{
 		db.QueryDatabase(

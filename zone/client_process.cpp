@@ -991,6 +991,7 @@ void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 				inst->SetMerchantCount(ml.charges);
 				inst->SetMerchantSlot(ml.slot);
 				inst->SetPrice(item_price);
+				ItemLayer::AssignGUID(*inst, ml.guid);
 
 				SendItemPacket(ml.slot - 1, inst, ItemPacketMerchant);
 				safe_delete(inst);

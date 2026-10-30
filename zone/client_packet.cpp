@@ -14360,8 +14360,26 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 		}
 	}
 
-	AddMoneyToPP(price);
+	// The sold item is the whole item, or the part of a stack sold, split off and issued from the seller's counter
+	// before the seller is paid.
+	ItemGUID sold_item = inst->GetGUID();
+	if (inst->IsStackable() && mp->quantity < static_cast<uint32>(inst->GetCharges())) {
+		std::unique_ptr<EQ::ItemInstance> piece(inst->Clone());
+		ItemLayer::ClearGUID(*piece);
+		piece->SetCharges(mp->quantity);
 
+		database.TransactionBegin();
+		if (!ItemLayer::Save(database, *piece, ItemLocation::InTransit(CharacterID()), ItemOwner()) ||
+			!ItemLayer::Retire(database, *piece, ItemRetirement::Sold)) {
+			database.TransactionRollback();
+			return;
+		}
+		database.TransactionCommit();
+
+		sold_item = piece->GetGUID();
+	}
+
+	AddMoneyToPP(price);
 	if (inst->IsStackable() || inst->IsCharged())
 	{
 		unsigned int i_quan = inst->GetCharges();
@@ -14381,10 +14399,12 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 				vendor->GetNPCTypeID(),
 				itemid,
 				charges,
-				true
+				true,
+				sold_item
 			)
 			) > 0) {
 			EQ::ItemInstance *inst2 = inst->Clone();
+			ItemLayer::AssignGUID(*inst2, zone->GetTempMerchantGUID(vendor->GetNPCTypeID(), freeslot));
 
 			while (true) {
 				if (!inst2) {

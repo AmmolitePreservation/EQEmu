@@ -404,7 +404,8 @@ bool Zone::LoadGroundSpawns() {
 	return(true);
 }
 
-int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold) {
+// A pooled row keeps the GUID of the sold item that made it; sales into it and purchases from it change only its count.
+int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold, const ItemGUID &sold_item) {
 
 	LogInventory("[{}] [{}] charges of [{}]", ((sold) ? "Sold" : "Bought"),
 		charges, item);
@@ -465,7 +466,7 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 					ml.origslot = ml.slot;
 				}
 				if (ml.charges > 0) {
-					database.SaveMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID(), item, ml.charges);
+					database.SaveMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID(), item, ml.charges, ml.guid);
 					tmp_merlist.push_back(ml);
 				} else {
 					database.DeleteMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID());
@@ -525,9 +526,10 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 
 		first_empty_mslot = idx;
 
-		database.SaveMerchantTemp(npcid, first_empty_slot, GetZoneID(), GetInstanceID(), item, charges);
+		database.SaveMerchantTemp(npcid, first_empty_slot, GetZoneID(), GetInstanceID(), item, charges, sold_item);
 		tmp_merlist = tmpmerchanttable[npcid];
 		TempMerchantList ml2;
+		ml2.guid = sold_item;
 		ml2.charges = charges;
 		LogInventory("Adding slot [{}] with [{}] charges.", first_empty_mslot, charges);
 		ml2.item = item;
@@ -538,6 +540,17 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 		tmpmerchanttable[npcid] = tmp_merlist;
 		return ml2.slot;
 	}
+}
+
+ItemGUID Zone::GetTempMerchantGUID(uint32 npc_id, uint32 slot)
+{
+	for (const auto &e : tmpmerchanttable[npc_id]) {
+		if (e.slot == slot) {
+			return e.guid;
+		}
+	}
+
+	return {};
 }
 
 uint32 Zone::GetTempMerchantQuantity(uint32 NPCID, uint32 Slot) {
@@ -590,7 +603,10 @@ void Zone::LoadTempMerchantData()
 				npcid,
 				slot,
 				charges,
-				itemid
+				itemid,
+				COALESCE(guid_first, 0),
+				COALESCE(guid_second, 0),
+				COALESCE(guid_third, 0)
 				FROM merchantlist_temp
 				WHERE npcid IN ({})
 				AND zone_id = {}
@@ -622,6 +638,7 @@ void Zone::LoadTempMerchantData()
 		temp_merchant_list.slot     = Strings::ToUnsignedInt(row[1]);
 		temp_merchant_list.charges  = Strings::ToUnsignedInt(row[2]);
 		temp_merchant_list.item     = Strings::ToUnsignedInt(row[3]);
+		temp_merchant_list.guid     = ItemGUID{Strings::ToUnsignedInt(row[4]), Strings::ToUnsignedInt(row[5]), Strings::ToUnsignedInt(row[6])};
 		temp_merchant_list.origslot = temp_merchant_list.slot;
 
 		LogMerchants(
