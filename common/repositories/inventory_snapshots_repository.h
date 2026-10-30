@@ -4,6 +4,7 @@
 #include "../database.h"
 #include "../strings.h"
 #include "base/base_inventory_snapshots_repository.h"
+#include "item_instances_repository.h"
 
 class InventorySnapshotsRepository: public BaseInventorySnapshotsRepository {
 public:
@@ -43,7 +44,67 @@ public:
      * method and encapsulate filters there
      */
 
-	// Custom extended repository methods here
+	// The holders a snapshot covers: those EQEmu's inventory rows held for the character.
+	static std::string HolderFilter(uint32 character_id)
+	{
+		return fmt::format("holder_type IN ('inventory', 'cursor', 'bank', 'trade') AND holder_id = {}", character_id);
+	}
+
+	// A snapshot row copies an item row's values and location; it holds no retirement, since only items in play are taken.
+	static std::vector<std::string> ItemColumns()
+	{
+		std::vector<std::string> columns;
+		for (const auto &c : ItemInstancesRepository::Columns()) {
+			if (c != "retirement_state" && c != "retired_at") {
+				columns.push_back(c);
+			}
+		}
+
+		return columns;
+	}
+
+	static bool Capture(Database &db, uint32 character_id, uint32 time_index)
+	{
+		const auto columns = Strings::Implode(", ", ItemColumns());
+
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"INSERT INTO {table} (time_index, charid, {columns}) "
+				"WITH RECURSIVE held AS ("
+				"SELECT {columns} FROM {items} WHERE retirement_state IS NULL AND ({filter}) "
+				"UNION ALL "
+				"SELECT {child_columns} FROM {items} AS child JOIN held ON child.parent_guid_first = held.guid_first "
+				"AND child.parent_guid_second = held.guid_second AND child.parent_guid_third = held.guid_third "
+				"WHERE child.retirement_state IS NULL"
+				") SELECT {time_index}, {character_id}, {columns} FROM held",
+				fmt::arg("table", TableName()),
+				fmt::arg("columns", columns),
+				fmt::arg("items", ItemInstancesRepository::TableName()),
+				fmt::arg("filter", HolderFilter(character_id)),
+				fmt::arg("child_columns", "child." + Strings::Implode(", child.", ItemColumns())),
+				fmt::arg("time_index", time_index),
+				fmt::arg("character_id", character_id)
+			)
+		);
+
+		return results.Success();
+	}
+
+	static std::vector<ItemInstancesRepository::ItemInstances> GetItemRows(Database &db, uint32 character_id, uint32 time_index)
+	{
+		return ItemInstancesRepository::Collect(
+			db.QueryDatabase(
+				fmt::format(
+					"SELECT {}, NULL, NULL FROM {} WHERE charid = {} AND time_index = {}",
+					Strings::Implode(", ", ItemColumns()),
+					TableName(),
+					character_id,
+					time_index
+				)
+			)
+		);
+	}
+
 	static int64 CountInventorySnapshots(Database& db)
 	{
 		const std::string& query = "SELECT COUNT(*) FROM (SELECT * FROM `inventory_snapshots` a GROUP BY `charid`, `time_index`) b";

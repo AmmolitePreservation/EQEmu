@@ -7260,6 +7260,33 @@ CREATE TABLE `ground_items` (
 	PRIMARY KEY (`guid_first`, `guid_second`, `guid_third`),
 	CONSTRAINT `fk_ground_items_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+DROP TABLE `inventory_snapshots`;
+CREATE TABLE `inventory_snapshots` (
+	`time_index` INT(11) UNSIGNED NOT NULL,
+	`charid` INT(11) UNSIGNED NOT NULL,
+	`guid_first` INT(10) UNSIGNED NOT NULL,
+	`guid_second` INT(10) UNSIGNED NOT NULL,
+	`guid_third` INT(10) UNSIGNED NOT NULL,
+	`item_id` INT(10) UNSIGNED NOT NULL,
+	`charges` SMALLINT(5) NOT NULL DEFAULT '0',
+	`color` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`attuned` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`custom_data` TEXT NOT NULL DEFAULT '',
+	`ornament_icon` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`ornament_idfile` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`ornament_hero_model` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`holder_type` ENUM('inventory', 'cursor', 'bank', 'shared_bank', 'corpse', 'parcel', 'pet', 'suspended_pet', 'bot', 'guild_bank_deposit', 'guild_bank_main', 'ground', 'trade', 'world_container') NULL DEFAULT NULL,
+	`holder_id` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`slot` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_first` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_second` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_guid_third` INT(10) UNSIGNED NULL DEFAULT NULL,
+	`parent_index` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
+	PRIMARY KEY (`time_index`, `charid`, `guid_first`, `guid_second`, `guid_third`),
+	CONSTRAINT `fk_inventory_snapshots_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`)
+)
+COLLATE='latin1_swedish_ci'
+ENGINE=InnoDB;
 )",
 		.content_schema_update = false
 	},

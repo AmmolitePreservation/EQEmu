@@ -18,6 +18,7 @@
 #include "../common/repositories/npc_types_repository.h"
 #include "../common/repositories/character_bind_repository.h"
 #include "../common/repositories/character_pet_buffs_repository.h"
+#include "../common/repositories/inventory_snapshots_repository.h"
 #include "../common/repositories/item_instances_repository.h"
 #include "../common/repositories/character_pet_info_repository.h"
 #include "../common/repositories/character_buffs_repository.h"
@@ -1238,59 +1239,55 @@ bool ZoneDatabase::NoRentExpired(const std::string& name)
 }
 
 bool ZoneDatabase::SaveCharacterInvSnapshot(uint32 character_id) {
-	uint32 time_index = time(nullptr);
-	std::string query = StringFormat(
-		"INSERT "
-		"INTO"
-		" `inventory_snapshots` "
-		"(`time_index`,"
-		" `charid`,"
-		" `slotid`,"
-		" `itemid`,"
-		" `charges`,"
-		" `color`,"
-		" `augslot1`,"
-		" `augslot2`,"
-		" `augslot3`,"
-		" `augslot4`,"
-		" `augslot5`,"
-		" `augslot6`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornamenticon`,"
-		" `ornamentidfile`,"
-		" `ornament_hero_model`,"
-		" `guid`"
-		") "
-		"SELECT"
-		" %u,"
-		" `character_id`,"
-		" `slot_id`,"
-		" `item_id`,"
-		" `charges`,"
-		" `color`,"
-		" `augment_one`,"
-		" `augment_two`,"
-		" `augment_three`,"
-		" `augment_four`,"
-		" `augment_five`,"
-		" `augment_six`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornament_icon`,"
-		" `ornament_idfile`,"
-		" `ornament_hero_model`,"
-		" `guid` "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u",
-		time_index,
-		character_id
-	);
-	auto results = database.QueryDatabase(query);
-	LogInventory("[{}] ([{}])", character_id, (results.Success() ? "pass" : "fail"));
-	return results.Success();
+	const bool saved = InventorySnapshotsRepository::Capture(database, character_id, time(nullptr));
+	LogInventory("[{}] ([{}])", character_id, (saved ? "pass" : "fail"));
+	return saved;
+}
+
+// The snapshot views list items by EQEmu slot id, as they did when augments were columns of their item.
+static std::vector<std::pair<int16, uint32>> ItemsBySlot(const std::vector<ItemInstancesRepository::ItemInstances> &rows)
+{
+	std::map<std::array<uint32, 3>, const ItemInstancesRepository::ItemInstances *> by_guid;
+	for (const auto &r : rows) {
+		by_guid[{r.guid.first, r.guid.second, r.guid.third}] = &r;
+	}
+
+	std::vector<std::pair<int16, uint32>> items;
+	for (const auto &r : rows) {
+		if (!r.location.parent_guid) {
+			items.emplace_back(EQ::InventoryProfile::SlotForLocation(r.location), r.item_id);
+			continue;
+		}
+
+		const auto &p      = *r.location.parent_guid;
+		const auto  parent = by_guid.find({p.first, p.second, p.third});
+		if (parent == by_guid.end() || parent->second->location.parent_guid) {
+			continue;
+		}
+
+		const auto *bag = database.GetItem(parent->second->item_id);
+		if (!bag || !bag->IsClassBag()) {
+			continue;
+		}
+
+		items.emplace_back(
+			EQ::InventoryProfile::CalcSlotId(EQ::InventoryProfile::SlotForLocation(parent->second->location), r.location.parent_index),
+			r.item_id
+		);
+	}
+
+	std::ranges::sort(items);
+
+	return items;
+}
+
+static void ItemsMissingFrom(
+	const std::vector<std::pair<int16, uint32>> &items,
+	const std::vector<std::pair<int16, uint32>> &other,
+	std::list<std::pair<int16, uint32>> &missing
+)
+{
+	std::ranges::set_difference(items, other, std::back_inserter(missing));
 }
 
 int ZoneDatabase::CountCharacterInvSnapshots(uint32 character_id) {
@@ -1393,113 +1390,25 @@ bool ZoneDatabase::ValidateCharacterInvSnapshotTimestamp(uint32 character_id, ui
 }
 
 void ZoneDatabase::ParseCharacterInvSnapshot(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &parse_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" `slotid`,"
-		" `itemid` "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `charid` = %u "
-		"AND"
-		" `time_index` = %u "
-		"ORDER BY"
-		" `slotid`",
-		character_id,
-		timestamp
-	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		parse_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
+	for (const auto &item : ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp))) {
+		parse_list.push_back(item);
+	}
 }
 
 void ZoneDatabase::DivergeCharacterInvSnapshotFromInventory(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &compare_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" slotid,"
-		" itemid "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `time_index` = %u "
-		"AND"
-		" `charid` = %u "
-		"AND"
-		" `slotid` NOT IN "
-		"("
-		"SELECT"
-		" a.`slotid` "
-		"FROM"
-		" `inventory_snapshots` a "
-		"JOIN"
-		" `inventory` b "
-		"USING"
-		" (`slot_id`, `item_id`) "
-		"WHERE"
-		" a.`time_index` = %u "
-		"AND"
-		" a.`charid` = %u "
-		"AND"
-		" b.`character_id` = %u"
-		")",
-		timestamp,
-		character_id,
-		timestamp,
-		character_id,
-		character_id
+	ItemsMissingFrom(
+		ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp)),
+		ItemsBySlot(ItemInstancesRepository::GetHeld(*this, InventorySnapshotsRepository::HolderFilter(character_id))),
+		compare_list
 	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		compare_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
 }
 
 void ZoneDatabase::DivergeCharacterInventoryFromInvSnapshot(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &compare_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" `slotid`,"
-		" `itemid` "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u "
-		"AND"
-		" `slotid` NOT IN "
-		"("
-		"SELECT"
-		" a.`slotid` "
-		"FROM"
-		" `inventory` a "
-		"JOIN"
-		" `inventory_snapshots` b "
-		"USING"
-		" (`slotid`, `itemid`) "
-		"WHERE"
-		" b.`time_index` = %u "
-		"AND"
-		" b.`charid` = %u "
-		"AND"
-		" a.`character_id` = %u"
-		")",
-		character_id,
-		timestamp,
-		character_id,
-		character_id
+	ItemsMissingFrom(
+		ItemsBySlot(ItemInstancesRepository::GetHeld(*this, InventorySnapshotsRepository::HolderFilter(character_id))),
+		ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp)),
+		compare_list
 	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		compare_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
 }
 
 bool ZoneDatabase::RestoreCharacterInvSnapshot(uint32 character_id, uint32 timestamp) {
@@ -1510,73 +1419,10 @@ bool ZoneDatabase::RestoreCharacterInvSnapshot(uint32 character_id, uint32 times
 		return false;
 	}
 
-	std::string query = StringFormat(
-		"DELETE "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u",
-		character_id
-	);
-	auto results = database.QueryDatabase(query);
-	if (!results.Success())
-		return false;
-
-	query = StringFormat(
-		"INSERT "
-		"INTO"
-		" `inventory` "
-		"(`character_id`,"
-		" `slot_id`,"
-		" `item_id`,"
-		" `charges`,"
-		" `color`,"
-		" `augment_one`,"
-		" `augment_two`,"
-		" `augment_three`,"
-		" `augment_four`,"
-		" `augment_five`,"
-		" `augment_six`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornament_icon`,"
-		" `ornament_idfile`,"
-		" `ornament_hero_model`,"
-		" `guid` "
-		") "
-		"SELECT"
-		" `charid`,"
-		" `slotid`,"
-		" `itemid`,"
-		" `charges`,"
-		" `color`,"
-		" `augslot1`,"
-		" `augslot2`,"
-		" `augslot3`,"
-		" `augslot4`,"
-		" `augslot5`,"
-		" `augslot6`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornamenticon`,"
-		" `ornamentidfile`,"
-		" `ornament_hero_model`, "
-		" `guid` "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `charid` = %u "
-		"AND"
-		" `time_index` = %u",
-		character_id,
-		timestamp
-	);
-	results = database.QueryDatabase(query);
-
+	const bool restored = ItemLayer::RestoreSnapshot(*this, character_id, timestamp);
 	LogInventory("[{}] snapshot for [{}] @ [{}]",
-		(results.Success() ? "restored" : "failed to restore"), character_id, timestamp);
-
-	return results.Success();
+		(restored ? "restored" : "failed to restore"), character_id, timestamp);
+	return restored;
 }
 
 const NPCType *ZoneDatabase::LoadNPCTypesData(uint32 npc_type_id, bool bulk_load /*= false*/)

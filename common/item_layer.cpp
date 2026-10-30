@@ -2,11 +2,14 @@
 #include "eqemu_logsys.h"
 #include "misc_functions.h"
 #include "repositories/character_data_repository.h"
+#include "repositories/inventory_snapshots_repository.h"
 #include "repositories/item_instances_repository.h"
 #include "shareddb.h"
 #include "strings.h"
+#include <algorithm>
 #include <array>
 #include <map>
+#include <set>
 
 namespace {
 
@@ -67,6 +70,196 @@ std::string Describe(const ItemLocation &location)
 
 constexpr int issue_attempts = 3;
 
+using GUIDKey = std::array<uint32, 3>;
+
+GUIDKey KeyOf(const ItemGUID &guid)
+{
+	return {guid.first, guid.second, guid.third};
+}
+
+// One item fits one place: a slot of a holder, or an index under a parent.
+std::string PlaceOf(const ItemLocation &location)
+{
+	if (location.parent_guid) {
+		return fmt::format(
+			"parent {} {} {} {}",
+			location.parent_guid->first,
+			location.parent_guid->second,
+			location.parent_guid->third,
+			location.parent_index
+		);
+	}
+
+	return fmt::format(
+		"holder {} {} {}",
+		ItemHolderTypeName(*location.holder_type),
+		location.holder_id,
+		location.slot ? *location.slot : 0
+	);
+}
+
+struct SnapshotPlacement {
+	Row                         row;
+	std::optional<ItemLocation> current;
+	bool                        reissued;
+};
+
+bool PlaceSnapshot(Database &db, uint32 character_id, const ItemLayer::Owner &owner, const std::vector<Row> &snapshot)
+{
+	std::set<GUIDKey> in_snapshot;
+	for (const auto &s : snapshot) {
+		in_snapshot.insert(KeyOf(s.guid));
+	}
+
+	// Items gained since the snapshot leave, as EQEmu's restore deleted every inventory row first.
+	std::map<GUIDKey, ItemLocation> held_at;
+	std::vector<ItemGUID>           gained;
+	for (const auto &h : ItemInstancesRepository::GetHeld(db, InventorySnapshotsRepository::HolderFilter(character_id))) {
+		if (in_snapshot.contains(KeyOf(h.guid))) {
+			held_at[KeyOf(h.guid)] = h.location;
+		}
+		else {
+			gained.push_back(h.guid);
+		}
+	}
+
+	if (!gained.empty() && ItemInstancesRepository::RetireKeys(db, gained, ItemRetirement::RolledBack) != static_cast<int>(gained.size())) {
+		LogError("Restoring a snapshot of character [{}] could not retire the [{}] items gained since", character_id, gained.size());
+		return false;
+	}
+
+	// Each snapshot item keeps its row if the character holds it or it was retired; one someone else holds now is made
+	// again with a new GUID, as EQEmu's restore made it again.
+	std::map<GUIDKey, ItemGUID> restored_guid;
+	std::set<GUIDKey>           reissued;
+	std::optional<uint32>       next_counter;
+	for (const auto &s : snapshot) {
+		const auto key = KeyOf(s.guid);
+		if (held_at.contains(key)) {
+			restored_guid[key] = s.guid;
+			continue;
+		}
+
+		const auto current = ItemInstancesRepository::FindOne(db, s.guid);
+		if (!current) {
+			LogError("Snapshot of character [{}] names guid [{} {} {}], which has no row", character_id, s.guid.first, s.guid.second, s.guid.third);
+			return false;
+		}
+
+		if (current->retirement_state) {
+			restored_guid[key] = s.guid;
+			continue;
+		}
+
+		if (!next_counter) {
+			next_counter = ItemInstancesRepository::NextCounter(db, owner.character_id, owner.origin_world_id);
+		}
+
+		if (!next_counter || *next_counter == std::numeric_limits<uint32>::max()) {
+			LogError("No next counter for character [{}] world [{}]", owner.character_id, owner.origin_world_id);
+			return false;
+		}
+
+		const ItemGUID guid{owner.character_id, owner.origin_world_id, (*next_counter)++};
+		restored_guid[key] = guid;
+		reissued.insert(key);
+
+		LogInfo(
+			"Restoring a snapshot of character [{}] made item [{}] guid [{} {} {}] again as guid [{} {} {}]; the original is at {}",
+			character_id,
+			s.item_id,
+			s.guid.first,
+			s.guid.second,
+			s.guid.third,
+			guid.first,
+			guid.second,
+			guid.third,
+			Describe(current->location)
+		);
+	}
+
+	std::vector<SnapshotPlacement> pending;
+	std::set<GUIDKey>              missing_parents;
+	for (auto row : snapshot) {
+		const auto key = KeyOf(row.guid);
+
+		if (row.location.parent_guid) {
+			const auto parent = restored_guid.find(KeyOf(*row.location.parent_guid));
+			if (parent == restored_guid.end()) {
+				LogError("Snapshot of character [{}] holds guid [{} {} {}] under a parent it does not hold", character_id, row.guid.first, row.guid.second, row.guid.third);
+				return false;
+			}
+
+			row.location.parent_guid = parent->second;
+		}
+
+		std::optional<ItemLocation> current;
+		if (const auto h = held_at.find(key); h != held_at.end()) {
+			current = h->second;
+		}
+
+		row.guid = restored_guid.at(key);
+		if (reissued.contains(key)) {
+			missing_parents.insert(KeyOf(row.guid));
+		}
+
+		pending.push_back(SnapshotPlacement{row, current, reissued.contains(key)});
+	}
+
+	std::set<std::string> occupied;
+	for (const auto &[key, location] : held_at) {
+		occupied.insert(PlaceOf(location));
+	}
+
+	// Rows swapping places wait on each other; when nothing can move, one steps aside to the in-transit slot.
+	const auto transit = ItemLocation::InTransit(character_id);
+	while (!pending.empty()) {
+		bool placed = false;
+		for (auto p = pending.begin(); p != pending.end();) {
+			const auto target         = PlaceOf(p->row.location);
+			const bool at_target      = p->current && PlaceOf(*p->current) == target;
+			const bool parent_missing = p->row.location.parent_guid && missing_parents.contains(KeyOf(*p->row.location.parent_guid));
+			if (parent_missing || (!at_target && occupied.contains(target))) {
+				++p;
+				continue;
+			}
+
+			const bool written = p->reissued ?
+				ItemInstancesRepository::InsertOne(db, p->row).Success() :
+				ItemInstancesRepository::UpdateOne(db, p->row);
+			if (!written) {
+				LogError("Restoring a snapshot of character [{}] could not place guid [{} {} {}] at {}", character_id, p->row.guid.first, p->row.guid.second, p->row.guid.third, Describe(p->row.location));
+				return false;
+			}
+
+			if (p->current) {
+				occupied.erase(PlaceOf(*p->current));
+			}
+
+			occupied.insert(target);
+			missing_parents.erase(KeyOf(p->row.guid));
+			p      = pending.erase(p);
+			placed = true;
+		}
+
+		if (placed) {
+			continue;
+		}
+
+		auto aside = std::ranges::find_if(pending, [&](const SnapshotPlacement &p) { return p.current && PlaceOf(*p.current) != PlaceOf(transit); });
+		if (aside == pending.end() || occupied.contains(PlaceOf(transit)) || !ItemInstancesRepository::UpdateLocation(db, aside->row.guid, transit)) {
+			LogError("Restoring a snapshot of character [{}] could not place [{}] items", character_id, pending.size());
+			return false;
+		}
+
+		occupied.erase(PlaceOf(*aside->current));
+		occupied.insert(PlaceOf(transit));
+		aside->current = transit;
+	}
+
+	return true;
+}
+
 }
 
 std::string ItemLayer::HolderFilter(ItemHolderType holder_type, uint32 holder_id)
@@ -120,6 +313,29 @@ std::optional<ItemLayer::Owner> ItemLayer::OwnerOf(Database &db, uint32 characte
 	}
 
 	return Owner{c.id, static_cast<uint16>(c.origin_world_id)};
+}
+
+// After a restore the snapshot's holders hold exactly what the snapshot held, in one transaction.
+bool ItemLayer::RestoreSnapshot(Database &db, uint32 character_id, uint32 time_index)
+{
+	const auto owner = OwnerOf(db, character_id);
+	if (!owner) {
+		return false;
+	}
+
+	const auto snapshot = InventorySnapshotsRepository::GetItemRows(db, character_id, time_index);
+	if (snapshot.empty()) {
+		LogError("Character [{}] has no snapshot at [{}]", character_id, time_index);
+		return false;
+	}
+
+	db.TransactionBegin();
+	if (!PlaceSnapshot(db, character_id, *owner, snapshot)) {
+		db.TransactionRollback();
+		return false;
+	}
+
+	return db.TransactionCommit().Success();
 }
 
 bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const std::optional<Owner> &owner)

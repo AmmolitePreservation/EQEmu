@@ -268,6 +268,23 @@ public:
 		return results.Success();
 	}
 
+	static std::vector<ItemInstances> Collect(MySQLRequestResult results)
+	{
+		std::vector<ItemInstances> entries;
+
+		if (!results.Success()) {
+			throw std::runtime_error(fmt::format("item_instances query failed: {}", results.ErrorMessage()));
+		}
+
+		entries.reserve(results.RowCount());
+
+		for (auto row = results.begin(); row != results.end(); ++row) {
+			entries.push_back(FromRow(row));
+		}
+
+		return entries;
+	}
+
 private:
 	template<typename T>
 	static std::string NullableValue(const std::optional<T> &value)
@@ -312,23 +329,6 @@ private:
 		v.push_back(e.retired_at ? fmt::format("FROM_UNIXTIME({})", *e.retired_at) : std::string("NULL"));
 
 		return v;
-	}
-
-	static std::vector<ItemInstances> Collect(MySQLRequestResult results)
-	{
-		std::vector<ItemInstances> entries;
-
-		if (!results.Success()) {
-			throw std::runtime_error(fmt::format("item_instances query failed: {}", results.ErrorMessage()));
-		}
-
-		entries.reserve(results.RowCount());
-
-		for (auto row = results.begin(); row != results.end(); ++row) {
-			entries.push_back(FromRow(row));
-		}
-
-		return entries;
 	}
 
 	static ItemInstances FromRow(MySQLRequestRow &row)

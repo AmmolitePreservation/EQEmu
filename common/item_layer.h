@@ -60,6 +60,7 @@ public:
 	static EQ::ItemInstance *LoadOne(Database &db, SharedDatabase &content_db, const ItemGUID &guid);
 	static bool SetCharges(Database &db, const ItemGUID &guid, int16 charges);
 	static std::optional<Owner> OwnerOf(Database &db, uint32 character_id);
+	static bool RestoreSnapshot(Database &db, uint32 character_id, uint32 time_index);
 
 	// The same item in a new instance: an evolving item's next level, a bag replaced by its disenchanted kind.
 	static void CarryGUID(const EQ::ItemInstance &from, EQ::ItemInstance &to);
