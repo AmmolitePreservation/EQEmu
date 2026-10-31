@@ -52,6 +52,14 @@ SELECT 'server stamps' AS what, COUNT(*) AS n, COUNT(DISTINCT guid_second) AS di
   FROM_UNIXTIME(MIN(guid_third)) AS stamped_at
 FROM peq.item_instances WHERE guid_second > 65535;
 
+-- each unreachable item is an Item Destroy event naming its item
+SELECT 'discarded' AS what,
+  (SELECT COUNT(*) FROM tst6.unreachable) AS unreachable,
+  (SELECT COUNT(*) FROM peq.player_event_logs WHERE event_type_id = 8 AND JSON_VALUE(event_data, '$.reason') LIKE 'item migration:%') AS events,
+  (SELECT COUNT(*) FROM tst6.unreachable u WHERE NOT EXISTS (
+    SELECT 1 FROM peq.player_event_logs l WHERE l.event_type_id = 8 AND JSON_VALUE(l.event_data, '$.reason') LIKE 'item migration:%'
+      AND JSON_VALUE(l.event_data, '$.item_id') = u.item_id)) AS without_event;
+
 -- side tables
 SELECT 'guild_bank' AS what, COUNT(*) AS rows_after,
   (SELECT COUNT(*) FROM tst6.guild_bank_place) AS rows_before,

@@ -122,6 +122,49 @@ SELECT IF(n.socket = 0, CONCAT('world_container:', o.parentid, ':', o.bagidx), C
 FROM peq.object_contents o JOIN tst6.sockets n
 WHERE ELT(n.socket + 1, o.itemid, o.augslot1, o.augslot2, o.augslot3, o.augslot4, o.augslot5, o.augslot6) > 0;
 
+-- Items no player could reach leave the expected set: bag contents whose bag slot holds nothing or no bag, or past the
+-- bag's last slot, a corpse's items whose corpse is gone, and a parcel's contents whose parcel holds no bag. The
+-- migration records each as an Item Destroy event.
+CREATE TABLE tst6.unreachable (loc_key VARCHAR(96) NOT NULL PRIMARY KEY, item_id INT UNSIGNED NOT NULL);
+INSERT INTO tst6.unreachable
+SELECT b.loc_key, b.item_id
+FROM tst6.inventory_place b
+LEFT JOIN peq.inventory p ON p.character_id = b.character_id AND p.item_id > 0 AND CAST(p.slot_id AS SIGNED) = CASE
+  WHEN b.s BETWEEN 4010 AND 6009 THEN 23 + (b.s - 4010) DIV 200
+  WHEN b.s BETWEEN 6210 AND 11009 THEN 2000 + (b.s - 6210) DIV 200
+  WHEN b.s BETWEEN 11410 AND 13009 THEN 3000 + (b.s - 11410) DIV 200 END
+LEFT JOIN peq.items pi ON pi.id = p.item_id
+WHERE b.item_id > 0 AND (b.s BETWEEN 4010 AND 6009 OR b.s BETWEEN 6210 AND 11009 OR b.s BETWEEN 11410 AND 13009)
+  AND (p.item_id IS NULL OR pi.itemclass <> 1 OR CAST(SUBSTRING_INDEX(b.loc_key, '/', -1) AS UNSIGNED) >= pi.bagslots);
+INSERT INTO tst6.unreachable
+SELECT CONCAT('shared_bank:', s.account_id, ':', (CAST(s.slot_id AS SIGNED) - 11010) DIV 200, '/', (CAST(s.slot_id AS SIGNED) - 11010) MOD 200), s.item_id
+FROM peq.sharedbank s
+LEFT JOIN peq.sharedbank p ON p.account_id = s.account_id AND p.item_id > 0 AND CAST(p.slot_id AS SIGNED) = 2500 + (CAST(s.slot_id AS SIGNED) - 11010) DIV 200
+LEFT JOIN peq.items pi ON pi.id = p.item_id
+WHERE s.item_id > 0 AND CAST(s.slot_id AS SIGNED) BETWEEN 11010 AND 11409
+  AND (p.item_id IS NULL OR pi.itemclass <> 1 OR (CAST(s.slot_id AS SIGNED) - 11010) MOD 200 >= pi.bagslots);
+INSERT INTO tst6.unreachable
+SELECT CASE
+    WHEN c.id IS NULL THEN CONCAT('corpse:', ci.corpse_id, ':', CAST(ci.equip_slot AS SIGNED), ':gone')
+    WHEN CAST(ci.equip_slot AS SIGNED) BETWEEN 4010 AND 6009 THEN CONCAT('corpse:', ci.corpse_id, ':', 23 + (CAST(ci.equip_slot AS SIGNED) - 4010) DIV 200, '/', (CAST(ci.equip_slot AS SIGNED) - 4010) MOD 200)
+    ELSE CONCAT('corpse:', ci.corpse_id, ':33/', CAST(ci.equip_slot AS SIGNED) - 6010)
+  END, ci.item_id
+FROM peq.character_corpse_items ci
+LEFT JOIN peq.character_corpses c ON c.id = ci.corpse_id
+LEFT JOIN peq.character_corpse_items p ON p.corpse_id = ci.corpse_id AND p.item_id > 0 AND CAST(p.equip_slot AS SIGNED) = CASE
+  WHEN CAST(ci.equip_slot AS SIGNED) BETWEEN 4010 AND 6009 THEN 23 + (CAST(ci.equip_slot AS SIGNED) - 4010) DIV 200
+  WHEN CAST(ci.equip_slot AS SIGNED) BETWEEN 6010 AND 6209 THEN 33 END
+LEFT JOIN peq.items pi ON pi.id = p.item_id
+WHERE ci.item_id > 0 AND (c.id IS NULL OR (CAST(ci.equip_slot AS SIGNED) BETWEEN 4010 AND 6209 AND (p.item_id IS NULL OR pi.itemclass <> 1
+  OR CASE WHEN CAST(ci.equip_slot AS SIGNED) BETWEEN 4010 AND 6009 THEN (CAST(ci.equip_slot AS SIGNED) - 4010) MOD 200 ELSE CAST(ci.equip_slot AS SIGNED) - 6010 END >= pi.bagslots)));
+INSERT INTO tst6.unreachable
+SELECT CONCAT('parcel:', p.char_id, ':', p.slot_id, '/', pc.slot_id), pc.item_id
+FROM peq.character_parcels_containers pc
+JOIN peq.character_parcels p ON p.id = pc.parcels_id
+LEFT JOIN peq.items pi ON pi.id = p.item_id
+WHERE pc.item_id > 0 AND (p.item_id = 99990 OR pi.itemclass <> 1 OR pc.slot_id >= pi.bagslots);
+DELETE e FROM tst6.expected e JOIN tst6.unreachable u ON e.loc_key = u.loc_key OR e.loc_key LIKE CONCAT(u.loc_key, '/%');
+
 -- side tables
 CREATE TABLE tst6.parcels AS SELECT id, char_id, slot_id, item_id, quantity FROM peq.character_parcels;
 CREATE TABLE tst6.evolving AS
@@ -134,6 +177,7 @@ UNION ALL SELECT 'inventory_snapshots', COUNT(*) FROM peq.inventory_snapshots
 UNION ALL SELECT 'object', COUNT(*) FROM peq.object
 UNION ALL SELECT 'deleted evolving records', COUNT(*) FROM peq.character_evolving_items WHERE deleted_at IS NOT NULL;
 
+SELECT 'unreachable' AS what, COUNT(*) AS n FROM tst6.unreachable;
 SELECT source, COUNT(*) AS expected_rows, SUM(loc_key LIKE '%/%') AS children FROM tst6.expected GROUP BY source WITH ROLLUP;
 SELECT * FROM tst6.skipped;
 SELECT * FROM tst6.counts;

@@ -7216,7 +7216,7 @@ ALTER TABLE `character_data`
 -- Every item of the absorbed tables, and each augment out of its parent's columns, is staged in a fixed order (table, row
 -- key, then the item before its augments), numbered, and written to item_instances parents first. A character's items
 -- take that character's next counters; items no character holds take Live's server stamp. The staging table holds the
--- item table's own rules, so a row that cannot be placed stops the migration before any table changes.
+-- item table's own rules, so a row that still cannot be placed stops the migration before any table changes.
 DROP TABLE IF EXISTS `item_migration`;
 CREATE TABLE `item_migration` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -7254,6 +7254,148 @@ SET @world = COALESCE(
 	0
 );
 UPDATE `character_data` SET `origin_world_id` = @world;
+-- Items no player could reach are left out and recorded as destroyed in the player event log: bag contents whose bag slot
+-- holds nothing or no bag, or that sit past the bag's last slot (EQEmu never loaded them, and saving a bag into that
+-- slot deleted them), a corpse's items whose corpse is gone, and a parcel's contents whose parcel holds no bag.
+-- A bag's contents and an item's augments are both children of their item, so contents under a non-bag would come back
+-- as its augments.
+DROP TABLE IF EXISTS `item_migration_discarded`;
+CREATE TABLE `item_migration_discarded` (
+	`source` VARCHAR(16) NOT NULL,
+	`row_key` VARCHAR(48) NOT NULL,
+	`account_id` INT UNSIGNED NOT NULL,
+	`character_id` INT UNSIGNED NOT NULL,
+	`item_id` INT UNSIGNED NOT NULL,
+	`charges` INT NOT NULL,
+	`augment_1_id` INT UNSIGNED NOT NULL,
+	`augment_2_id` INT UNSIGNED NOT NULL,
+	`augment_3_id` INT UNSIGNED NOT NULL,
+	`augment_4_id` INT UNSIGNED NOT NULL,
+	`augment_5_id` INT UNSIGNED NOT NULL,
+	`augment_6_id` INT UNSIGNED NOT NULL,
+	`attuned` TINYINT(1) UNSIGNED NOT NULL,
+	`reason` VARCHAR(64) NOT NULL,
+	PRIMARY KEY (`source`, `row_key`)
+) ENGINE=InnoDB;
+INSERT INTO `item_migration_discarded`
+SELECT
+	'inventory',
+	CONCAT(b.`character_id`, ':', b.`slot`),
+	COALESCE(cd.`account_id`, 0),
+	b.`character_id`,
+	b.`item_id`,
+	b.`charges`,
+	b.`augment_one`, b.`augment_two`, b.`augment_three`, b.`augment_four`, b.`augment_five`, b.`augment_six`,
+	b.`instnodrop`,
+	CASE
+		WHEN p.`item_id` IS NULL THEN 'item migration: its bag slot holds nothing'
+		WHEN pi.`itemclass` <> 1 THEN 'item migration: its bag slot holds no bag'
+		ELSE 'item migration: past its bag''s last slot'
+	END
+FROM (
+	SELECT
+		i.*,
+		CAST(i.`slot_id` AS SIGNED) AS `slot`,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 4010 AND 6009 THEN 23 + (CAST(i.`slot_id` AS SIGNED) - 4010) DIV 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 6210 AND 11009 THEN 2000 + (CAST(i.`slot_id` AS SIGNED) - 6210) DIV 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 11410 AND 13009 THEN 3000 + (CAST(i.`slot_id` AS SIGNED) - 11410) DIV 200
+		END AS `bag_slot`,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 4010 AND 6009 THEN (CAST(i.`slot_id` AS SIGNED) - 4010) MOD 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 6210 AND 11009 THEN (CAST(i.`slot_id` AS SIGNED) - 6210) MOD 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 11410 AND 13009 THEN (CAST(i.`slot_id` AS SIGNED) - 11410) MOD 200
+		END AS `bag_index`
+	FROM `inventory` i
+	WHERE i.`item_id` > 0 AND (
+		CAST(i.`slot_id` AS SIGNED) BETWEEN 4010 AND 6009 OR
+		CAST(i.`slot_id` AS SIGNED) BETWEEN 6210 AND 11009 OR
+		CAST(i.`slot_id` AS SIGNED) BETWEEN 11410 AND 13009
+	)
+) b
+LEFT JOIN `inventory` p ON p.`character_id` = b.`character_id` AND CAST(p.`slot_id` AS SIGNED) = b.`bag_slot` AND p.`item_id` > 0
+LEFT JOIN `items` pi ON pi.`id` = p.`item_id`
+LEFT JOIN `character_data` cd ON cd.`id` = b.`character_id`
+WHERE p.`item_id` IS NULL OR pi.`itemclass` <> 1 OR b.`bag_index` >= pi.`bagslots`;
+INSERT INTO `item_migration_discarded`
+SELECT
+	'sharedbank',
+	CONCAT(b.`account_id`, ':', b.`slot`),
+	b.`account_id`,
+	0,
+	b.`item_id`,
+	b.`charges`,
+	b.`augment_one`, b.`augment_two`, b.`augment_three`, b.`augment_four`, b.`augment_five`, b.`augment_six`,
+	0,
+	CASE
+		WHEN p.`item_id` IS NULL THEN 'item migration: its bag slot holds nothing'
+		WHEN pi.`itemclass` <> 1 THEN 'item migration: its bag slot holds no bag'
+		ELSE 'item migration: past its bag''s last slot'
+	END
+FROM (
+	SELECT
+		s.*,
+		CAST(s.`slot_id` AS SIGNED) AS `slot`,
+		2500 + (CAST(s.`slot_id` AS SIGNED) - 11010) DIV 200 AS `bag_slot`,
+		(CAST(s.`slot_id` AS SIGNED) - 11010) MOD 200 AS `bag_index`
+	FROM `sharedbank` s
+	WHERE s.`item_id` > 0 AND CAST(s.`slot_id` AS SIGNED) BETWEEN 11010 AND 11409
+) b
+LEFT JOIN `sharedbank` p ON p.`account_id` = b.`account_id` AND CAST(p.`slot_id` AS SIGNED) = b.`bag_slot` AND p.`item_id` > 0
+LEFT JOIN `items` pi ON pi.`id` = p.`item_id`
+WHERE p.`item_id` IS NULL OR pi.`itemclass` <> 1 OR b.`bag_index` >= pi.`bagslots`;
+INSERT INTO `item_migration_discarded`
+SELECT
+	'corpse',
+	CONCAT(b.`corpse_id`, ':', b.`slot`),
+	COALESCE(cd.`account_id`, 0),
+	COALESCE(c.`charid`, 0),
+	b.`item_id`,
+	b.`charges`,
+	b.`aug_1`, b.`aug_2`, b.`aug_3`, b.`aug_4`, b.`aug_5`, b.`aug_6`,
+	b.`attuned`,
+	CASE
+		WHEN c.`id` IS NULL THEN 'item migration: its corpse is gone'
+		WHEN p.`item_id` IS NULL THEN 'item migration: its bag slot holds nothing'
+		WHEN pi.`itemclass` <> 1 THEN 'item migration: its bag slot holds no bag'
+		ELSE 'item migration: past its bag''s last slot'
+	END
+FROM (
+	SELECT
+		ci.*,
+		CAST(ci.`equip_slot` AS SIGNED) AS `slot`,
+		CASE
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 4010 AND 6009 THEN 23 + (CAST(ci.`equip_slot` AS SIGNED) - 4010) DIV 200
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 6010 AND 6209 THEN 33
+		END AS `bag_slot`,
+		CASE
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 4010 AND 6009 THEN (CAST(ci.`equip_slot` AS SIGNED) - 4010) MOD 200
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 6010 AND 6209 THEN CAST(ci.`equip_slot` AS SIGNED) - 6010
+		END AS `bag_index`
+	FROM `character_corpse_items` ci
+	WHERE ci.`item_id` > 0
+) b
+LEFT JOIN `character_corpses` c ON c.`id` = b.`corpse_id`
+LEFT JOIN `character_data` cd ON cd.`id` = c.`charid`
+LEFT JOIN `character_corpse_items` p ON p.`corpse_id` = b.`corpse_id` AND CAST(p.`equip_slot` AS SIGNED) = b.`bag_slot` AND p.`item_id` > 0
+LEFT JOIN `items` pi ON pi.`id` = p.`item_id`
+WHERE c.`id` IS NULL OR (b.`bag_slot` IS NOT NULL AND (p.`item_id` IS NULL OR pi.`itemclass` <> 1 OR b.`bag_index` >= pi.`bagslots`));
+INSERT INTO `item_migration_discarded`
+SELECT
+	'parcel_content',
+	pc.`id`,
+	COALESCE(cd.`account_id`, 0),
+	p.`char_id`,
+	pc.`item_id`,
+	pc.`quantity`,
+	pc.`aug_slot_1`, pc.`aug_slot_2`, pc.`aug_slot_3`, pc.`aug_slot_4`, pc.`aug_slot_5`, pc.`aug_slot_6`,
+	0,
+	IF(p.`item_id` = 99990 OR pi.`itemclass` <> 1, 'item migration: its parcel holds no bag', 'item migration: past its bag''s last slot')
+FROM `character_parcels_containers` pc
+JOIN `character_parcels` p ON p.`id` = pc.`parcels_id`
+LEFT JOIN `character_data` cd ON cd.`id` = p.`char_id`
+LEFT JOIN `items` pi ON pi.`id` = p.`item_id`
+WHERE pc.`item_id` > 0 AND (p.`item_id` = 99990 OR pi.`itemclass` <> 1 OR pc.`slot_id` >= pi.`bagslots`);
 -- A character's possessions: worn and general slots, the cursor and its queue, the bank, the trade window, and bag contents
 -- under their bag. Tribute, guild tribute and world-container slots hold display copies the server rebuilds, not items.
 INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
@@ -7311,6 +7453,7 @@ SELECT
 FROM `held` h
 JOIN `sockets` n
 WHERE ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`) > 0
+	AND NOT EXISTS (SELECT 1 FROM `item_migration_discarded` d WHERE d.`source` = 'inventory' AND d.`row_key` = CONCAT(h.`character_id`, ':', CAST(h.`slot_id` AS SIGNED)))
 ORDER BY h.`character_id`, h.`slot_id`, n.`socket`;
 -- A corpse's items, bag contents under their bag as on the character, from the corpse owner's counter.
 INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
@@ -7354,6 +7497,7 @@ SELECT
 FROM `held` h
 JOIN `sockets` n
 WHERE ELT(n.`socket` + 1, h.`item_id`, h.`aug_1`, h.`aug_2`, h.`aug_3`, h.`aug_4`, h.`aug_5`, h.`aug_6`) > 0
+	AND NOT EXISTS (SELECT 1 FROM `item_migration_discarded` d WHERE d.`source` = 'corpse' AND d.`row_key` = CONCAT(h.`corpse_id`, ':', CAST(h.`equip_slot` AS SIGNED)))
 ORDER BY h.`corpse_id`, h.`equip_slot`, n.`socket`;
 -- A parcel's item and its contents, from the recipient's counter; money parcels have no item.
 INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
@@ -7395,6 +7539,7 @@ FROM `character_parcels_containers` pc
 JOIN `character_parcels` p ON p.`id` = pc.`parcels_id`
 JOIN `sockets` n
 WHERE ELT(n.`socket` + 1, pc.`item_id`, pc.`aug_slot_1`, pc.`aug_slot_2`, pc.`aug_slot_3`, pc.`aug_slot_4`, pc.`aug_slot_5`, pc.`aug_slot_6`) > 0
+	AND NOT EXISTS (SELECT 1 FROM `item_migration_discarded` d WHERE d.`source` = 'parcel_content' AND d.`row_key` = CONCAT(pc.`id`))
 ORDER BY pc.`parcels_id`, pc.`slot_id`, n.`socket`;
 -- A saved pet's equipment, the current pet's and the suspended pet's, from the owner's counter.
 INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
@@ -7446,6 +7591,7 @@ SELECT
 FROM `held` h
 JOIN `sockets` n
 WHERE ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`) > 0
+	AND NOT EXISTS (SELECT 1 FROM `item_migration_discarded` d WHERE d.`source` = 'sharedbank' AND d.`row_key` = CONCAT(h.`account_id`, ':', CAST(h.`slot_id` AS SIGNED)))
 ORDER BY h.`account_id`, h.`slot_id`, n.`socket`;
 -- The guild bank takes the server stamp; each area's slots are numbered in the order the bank loaded them.
 INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
@@ -7584,6 +7730,29 @@ CREATE TABLE `inventory_snapshots` (
 COLLATE='latin1_swedish_ci'
 ENGINE=InnoDB;
 START TRANSACTION;
+-- Each item left out is an Item Destroy event (PlayerEvent::DestroyItemEvent's JSON) on its character, or its account for
+-- the shared bank.
+INSERT INTO `player_event_logs` (`account_id`, `character_id`, `zone_id`, `instance_id`, `x`, `y`, `z`, `heading`, `event_type_id`, `event_type_name`, `event_data`, `etl_table_id`, `created_at`)
+SELECT
+	d.`account_id`, d.`character_id`, 0, 0, 0, 0, 0, 0, 8, 'Item Destroy',
+	CONCAT(
+		'{"item_id":', d.`item_id`,
+		',"item_name":', JSON_QUOTE(COALESCE(it.`Name`, '')),
+		',"charges":', d.`charges`,
+		IF(d.`augment_1_id` > 0, CONCAT(',"augment_1_id":', d.`augment_1_id`), ''),
+		IF(d.`augment_2_id` > 0, CONCAT(',"augment_2_id":', d.`augment_2_id`), ''),
+		IF(d.`augment_3_id` > 0, CONCAT(',"augment_3_id":', d.`augment_3_id`), ''),
+		IF(d.`augment_4_id` > 0, CONCAT(',"augment_4_id":', d.`augment_4_id`), ''),
+		IF(d.`augment_5_id` > 0, CONCAT(',"augment_5_id":', d.`augment_5_id`), ''),
+		IF(d.`augment_6_id` > 0, CONCAT(',"augment_6_id":', d.`augment_6_id`), ''),
+		',"attuned":', IF(d.`attuned`, 'true', 'false'),
+		',"reason":', JSON_QUOTE(d.`reason`),
+		'}'
+	),
+	0, NOW()
+FROM `item_migration_discarded` d
+LEFT JOIN `items` it ON it.`id` = d.`item_id`
+ORDER BY d.`source`, d.`row_key`;
 -- Character counters: each character's next numbers, in staging order.
 UPDATE `item_migration` m
 JOIN (
@@ -7653,6 +7822,7 @@ SET e.`guid_first` = mr.`guid_first`, e.`guid_second` = mr.`guid_second`, e.`gui
 DELETE FROM `character_evolving_items` WHERE `guid_first` IS NULL;
 COMMIT;
 DROP TABLE `item_migration`;
+DROP TABLE `item_migration_discarded`;
 ALTER TABLE `guild_bank`
 	DROP INDEX `area`,
 	DROP INDEX `slot`,
