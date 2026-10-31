@@ -10863,7 +10863,7 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 	for (int slot : {mi->to_slot, mi->from_slot}) {
 		auto item = GetInv().GetItem(slot);
 		if (item && item->IsEvolving()) {
-			CharacterEvolvingItemsRepository::UpdateOne(database, item->GetEvolvingDetails());
+			CharacterEvolvingItemsRepository::SetEquipped(database, item->GetEvolveUniqueID(), item->GetEvolveEquipped());
 		}
 	}
 

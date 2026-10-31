@@ -497,23 +497,7 @@ bool SharedDatabase::GetInventory(Client *c)
 				inst->SetEvolveEquipped(true);
 			}
 
-			auto e = CharacterEvolvingItemsRepository::FindByGUID(*this, inst->GetGUID());
-			if (!e.id) {
-				e = CharacterEvolvingItemsRepository::NewEntity();
-				CharacterEvolvingItemsRepository::SetGUID(e, inst->GetGUID());
-				e.equipped      = inst->GetEvolveEquipped();
-				e.final_item_id = EvolvingItemsManager::Instance()->GetFinalItemID(*inst);
-
-				auto r = CharacterEvolvingItemsRepository::InsertOne(*this, e);
-				e.id = r.id;
-			}
-
-			inst->SetEvolveUniqueID(e.id);
-			inst->SetEvolveActivated(e.activated);
-			inst->SetEvolveEquipped(e.equipped);
-			inst->SetEvolveCurrentAmount(e.current_amount);
-			inst->CalculateEvolveProgression();
-			inst->SetEvolveFinalItemID(e.final_item_id);
+			EvolvingItemsManager::Instance()->LoadRecord(*this, *inst);
 		}
 
 		if (slot_id == EQ::invslot::slotCursor) {
