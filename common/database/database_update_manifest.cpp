@@ -7208,46 +7208,342 @@ ALTER TABLE `character_data`
 	},
 	ManifestEntry{
 		.version = 9328,
-		.description = "2026_10_29_item_side_tables_by_guid.sql",
-		.check = "SHOW TABLES LIKE 'ground_items'",
-		.condition = "empty",
+		.description = "2026_10_31_item_instances_migration.sql",
+		.check = "SHOW TABLES LIKE 'inventory'",
+		.condition = "not_empty",
 		.match = "",
 		.sql = R"(
-TRUNCATE TABLE `trader`;
-ALTER TABLE `trader`
-	DROP INDEX `idx_trader_item`,
-	DROP COLUMN `item_id`,
-	DROP COLUMN `aug_slot_1`,
-	DROP COLUMN `aug_slot_2`,
-	DROP COLUMN `aug_slot_3`,
-	DROP COLUMN `aug_slot_4`,
-	DROP COLUMN `aug_slot_5`,
-	DROP COLUMN `aug_slot_6`,
-	DROP COLUMN `item_charges`,
-	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL AFTER `char_id`,
-	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL AFTER `guid_first`,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL AFTER `guid_second`,
-	ADD UNIQUE INDEX `idx_trader_guid` (`guid_first`, `guid_second`, `guid_third`),
-	ADD CONSTRAINT `fk_trader_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+-- Every item of the absorbed tables, and each augment out of its parent's columns, is staged in a fixed order (table, row
+-- key, then the item before its augments), numbered, and written to item_instances parents first. A character's items
+-- take that character's next counters; items no character holds take Live's server stamp. The staging table holds the
+-- item table's own rules, so a row that cannot be placed stops the migration before any table changes.
+DROP TABLE IF EXISTS `item_migration`;
+CREATE TABLE `item_migration` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`item_key` VARCHAR(64) NOT NULL,
+	`parent_key` VARCHAR(64) NULL DEFAULT NULL,
+	`issuer` INT UNSIGNED NULL DEFAULT NULL,
+	`item_id` INT UNSIGNED NOT NULL,
+	`charges` SMALLINT NOT NULL,
+	`color` INT UNSIGNED NOT NULL,
+	`attuned` TINYINT(1) UNSIGNED NOT NULL,
+	`custom_data` TEXT NOT NULL,
+	`ornament_icon` INT UNSIGNED NOT NULL,
+	`ornament_idfile` INT UNSIGNED NOT NULL,
+	`ornament_hero_model` INT UNSIGNED NOT NULL,
+	`holder_type` ENUM('inventory', 'cursor', 'bank', 'shared_bank', 'corpse', 'parcel', 'pet', 'suspended_pet', 'bot', 'guild_bank_deposit', 'guild_bank_main', 'ground', 'trade', 'world_container') NULL DEFAULT NULL,
+	`holder_id` INT UNSIGNED NULL DEFAULT NULL,
+	`slot` SMALLINT UNSIGNED NULL DEFAULT NULL,
+	`parent_index` SMALLINT UNSIGNED NULL DEFAULT NULL,
+	`depth` TINYINT UNSIGNED NOT NULL,
+	`guid_first` INT UNSIGNED NULL DEFAULT NULL,
+	`guid_second` INT UNSIGNED NULL DEFAULT NULL,
+	`guid_third` INT UNSIGNED NULL DEFAULT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE INDEX `item_key` (`item_key`),
+	UNIQUE INDEX `held_in_holder` (`holder_type`, `holder_id`, `slot`),
+	UNIQUE INDEX `held_in_parent` (`parent_key`, `parent_index`),
+	CONSTRAINT `item_migration_parent` FOREIGN KEY (`parent_key`) REFERENCES `item_migration` (`item_key`),
+	CONSTRAINT `item_migration_location` CHECK (
+		(`holder_type` IS NOT NULL AND `holder_id` IS NOT NULL AND `slot` IS NOT NULL AND `parent_key` IS NULL AND `parent_index` IS NULL) OR
+		(`holder_type` IS NULL AND `holder_id` IS NULL AND `slot` IS NULL AND `parent_key` IS NOT NULL AND `parent_index` IS NOT NULL)
+	)
+) ENGINE=InnoDB;
+SET @world = COALESCE(
+	(SELECT CAST(v.`rule_value` AS UNSIGNED) FROM `rule_values` v JOIN `rule_sets` s ON s.`ruleset_id` = v.`ruleset_id` WHERE s.`name` = 'default' AND v.`rule_name` = 'World:WorldID'),
+	0
+);
+UPDATE `character_data` SET `origin_world_id` = @world;
+-- A character's possessions: worn and general slots, the cursor and its queue, the bank, the trade window, and bag contents
+-- under their bag. Tribute, guild tribute and world-container slots hold display copies the server rebuilds, not items.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+), `held` AS (
+	SELECT
+		i.*,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 0 AND 32 THEN 'inventory'
+			WHEN CAST(i.`slot_id` AS SIGNED) = 33 OR CAST(i.`slot_id` AS SIGNED) BETWEEN 6010 AND 6209 THEN 'cursor'
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 2000 AND 2023 THEN 'bank'
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 3000 AND 3007 THEN 'trade'
+		END AS `holder`,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 0 AND 32 THEN CAST(i.`slot_id` AS SIGNED)
+			WHEN CAST(i.`slot_id` AS SIGNED) = 33 THEN 0
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 6010 AND 6209 THEN ROW_NUMBER() OVER (PARTITION BY i.`character_id`, CAST(i.`slot_id` AS SIGNED) BETWEEN 6010 AND 6209 ORDER BY CAST(i.`slot_id` AS SIGNED))
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 2000 AND 2023 THEN CAST(i.`slot_id` AS SIGNED) - 2000
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 3000 AND 3007 THEN CAST(i.`slot_id` AS SIGNED) - 3000
+		END AS `holder_slot`,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 4010 AND 6009 THEN 23 + (CAST(i.`slot_id` AS SIGNED) - 4010) DIV 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 6210 AND 11009 THEN 2000 + (CAST(i.`slot_id` AS SIGNED) - 6210) DIV 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 11410 AND 13009 THEN 3000 + (CAST(i.`slot_id` AS SIGNED) - 11410) DIV 200
+		END AS `bag_slot`,
+		CASE
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 4010 AND 6009 THEN (CAST(i.`slot_id` AS SIGNED) - 4010) MOD 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 6210 AND 11009 THEN (CAST(i.`slot_id` AS SIGNED) - 6210) MOD 200
+			WHEN CAST(i.`slot_id` AS SIGNED) BETWEEN 11410 AND 13009 THEN (CAST(i.`slot_id` AS SIGNED) - 11410) MOD 200
+		END AS `bag_index`
+	FROM `inventory` i
+	WHERE NOT (CAST(i.`slot_id` AS SIGNED) BETWEEN 400 AND 404 OR CAST(i.`slot_id` AS SIGNED) BETWEEN 450 AND 451 OR CAST(i.`slot_id` AS SIGNED) BETWEEN 4000 AND 4009)
+)
+SELECT
+	CONCAT('inventory:', h.`character_id`, ':', h.`slot_id`, ':', n.`socket`),
+	CASE
+		WHEN n.`socket` > 0 THEN CONCAT('inventory:', h.`character_id`, ':', h.`slot_id`, ':0')
+		WHEN h.`bag_slot` IS NOT NULL THEN CONCAT('inventory:', h.`character_id`, ':', h.`bag_slot`, ':0')
+	END,
+	h.`character_id`,
+	ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`),
+	IF(n.`socket` = 0, h.`charges`, 0),
+	IF(n.`socket` = 0, h.`color`, 0),
+	IF(n.`socket` = 0, h.`instnodrop`, 0),
+	IF(n.`socket` = 0, COALESCE(h.`custom_data`, ''), ''),
+	IF(n.`socket` = 0, h.`ornament_icon`, 0),
+	IF(n.`socket` = 0, h.`ornament_idfile`, 0),
+	IF(n.`socket` = 0, h.`ornament_hero_model`, 0),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL, h.`holder`, NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL AND h.`holder` IS NOT NULL, h.`character_id`, NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL, h.`holder_slot`, NULL),
+	CASE WHEN n.`socket` > 0 THEN n.`socket` - 1 WHEN h.`bag_slot` IS NOT NULL THEN h.`bag_index` END,
+	IF(h.`bag_slot` IS NULL, 0, 1) + IF(n.`socket` > 0, 1, 0)
+FROM `held` h
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`) > 0
+ORDER BY h.`character_id`, h.`slot_id`, n.`socket`;
+-- A corpse's items, bag contents under their bag as on the character, from the corpse owner's counter.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+), `held` AS (
+	SELECT
+		ci.*,
+		c.`charid`,
+		CASE
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 4010 AND 6009 THEN 23 + (CAST(ci.`equip_slot` AS SIGNED) - 4010) DIV 200
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 6010 AND 6209 THEN 33
+		END AS `bag_slot`,
+		CASE
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 4010 AND 6009 THEN (CAST(ci.`equip_slot` AS SIGNED) - 4010) MOD 200
+			WHEN CAST(ci.`equip_slot` AS SIGNED) BETWEEN 6010 AND 6209 THEN CAST(ci.`equip_slot` AS SIGNED) - 6010
+		END AS `bag_index`
+	FROM `character_corpse_items` ci
+	JOIN `character_corpses` c ON c.`id` = ci.`corpse_id`
+)
+SELECT
+	CONCAT('corpse:', h.`corpse_id`, ':', h.`equip_slot`, ':', n.`socket`),
+	CASE
+		WHEN n.`socket` > 0 THEN CONCAT('corpse:', h.`corpse_id`, ':', h.`equip_slot`, ':0')
+		WHEN h.`bag_slot` IS NOT NULL THEN CONCAT('corpse:', h.`corpse_id`, ':', h.`bag_slot`, ':0')
+	END,
+	h.`charid`,
+	ELT(n.`socket` + 1, h.`item_id`, h.`aug_1`, h.`aug_2`, h.`aug_3`, h.`aug_4`, h.`aug_5`, h.`aug_6`),
+	IF(n.`socket` = 0, h.`charges`, 0),
+	0,
+	IF(n.`socket` = 0, h.`attuned`, 0),
+	IF(n.`socket` = 0, COALESCE(h.`custom_data`, ''), ''),
+	IF(n.`socket` = 0, h.`ornamenticon`, 0),
+	IF(n.`socket` = 0, h.`ornamentidfile`, 0),
+	IF(n.`socket` = 0, h.`ornament_hero_model`, 0),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL, 'corpse', NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL, h.`corpse_id`, NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL, h.`equip_slot`, NULL),
+	CASE WHEN n.`socket` > 0 THEN n.`socket` - 1 WHEN h.`bag_slot` IS NOT NULL THEN h.`bag_index` END,
+	IF(h.`bag_slot` IS NULL, 0, 1) + IF(n.`socket` > 0, 1, 0)
+FROM `held` h
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, h.`item_id`, h.`aug_1`, h.`aug_2`, h.`aug_3`, h.`aug_4`, h.`aug_5`, h.`aug_6`) > 0
+ORDER BY h.`corpse_id`, h.`equip_slot`, n.`socket`;
+-- A parcel's item and its contents, from the recipient's counter; money parcels have no item.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+)
+SELECT
+	CONCAT('parcel:', p.`id`, ':', n.`socket`),
+	IF(n.`socket` > 0, CONCAT('parcel:', p.`id`, ':0'), NULL),
+	p.`char_id`,
+	ELT(n.`socket` + 1, p.`item_id`, p.`aug_slot_1`, p.`aug_slot_2`, p.`aug_slot_3`, p.`aug_slot_4`, p.`aug_slot_5`, p.`aug_slot_6`),
+	IF(n.`socket` = 0, p.`quantity`, 0),
+	0, 0, '', 0, 0, 0,
+	IF(n.`socket` = 0, 'parcel', NULL),
+	IF(n.`socket` = 0, p.`char_id`, NULL),
+	IF(n.`socket` = 0, p.`slot_id`, NULL),
+	IF(n.`socket` > 0, n.`socket` - 1, NULL),
+	IF(n.`socket` > 0, 1, 0)
+FROM `character_parcels` p
+JOIN `sockets` n
+WHERE p.`item_id` <> 99990
+	AND ELT(n.`socket` + 1, p.`item_id`, p.`aug_slot_1`, p.`aug_slot_2`, p.`aug_slot_3`, p.`aug_slot_4`, p.`aug_slot_5`, p.`aug_slot_6`) > 0
+ORDER BY p.`id`, n.`socket`;
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+)
+SELECT
+	CONCAT('parcel_content:', pc.`id`, ':', n.`socket`),
+	IF(n.`socket` > 0, CONCAT('parcel_content:', pc.`id`, ':0'), CONCAT('parcel:', pc.`parcels_id`, ':0')),
+	p.`char_id`,
+	ELT(n.`socket` + 1, pc.`item_id`, pc.`aug_slot_1`, pc.`aug_slot_2`, pc.`aug_slot_3`, pc.`aug_slot_4`, pc.`aug_slot_5`, pc.`aug_slot_6`),
+	IF(n.`socket` = 0, pc.`quantity`, 0),
+	0, 0, '', 0, 0, 0,
+	NULL, NULL, NULL,
+	IF(n.`socket` > 0, n.`socket` - 1, pc.`slot_id`),
+	IF(n.`socket` > 0, 2, 1)
+FROM `character_parcels_containers` pc
+JOIN `character_parcels` p ON p.`id` = pc.`parcels_id`
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, pc.`item_id`, pc.`aug_slot_1`, pc.`aug_slot_2`, pc.`aug_slot_3`, pc.`aug_slot_4`, pc.`aug_slot_5`, pc.`aug_slot_6`) > 0
+ORDER BY pc.`parcels_id`, pc.`slot_id`, n.`socket`;
+-- A saved pet's equipment, the current pet's and the suspended pet's, from the owner's counter.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+SELECT
+	CONCAT('pet:', i.`char_id`, ':', i.`pet`, ':', i.`slot`, ':0'),
+	NULL,
+	i.`char_id`,
+	i.`item_id`,
+	0, 0, 0, '', 0, 0, 0,
+	IF(i.`pet` = 0, 'pet', 'suspended_pet'),
+	i.`char_id`,
+	i.`slot`,
+	NULL,
+	0
+FROM `character_pet_inventory` i
+WHERE i.`item_id` > 0
+ORDER BY i.`char_id`, i.`pet`, i.`slot`;
+-- The shared bank belongs to an account, not a character: its items take the server stamp.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+), `held` AS (
+	SELECT
+		b.*,
+		IF(CAST(b.`slot_id` AS SIGNED) BETWEEN 11010 AND 11409, 2500 + (CAST(b.`slot_id` AS SIGNED) - 11010) DIV 200, NULL) AS `bag_slot`,
+		IF(CAST(b.`slot_id` AS SIGNED) BETWEEN 11010 AND 11409, (CAST(b.`slot_id` AS SIGNED) - 11010) MOD 200, NULL) AS `bag_index`
+	FROM `sharedbank` b
+)
+SELECT
+	CONCAT('sharedbank:', h.`account_id`, ':', h.`slot_id`, ':', n.`socket`),
+	CASE
+		WHEN n.`socket` > 0 THEN CONCAT('sharedbank:', h.`account_id`, ':', h.`slot_id`, ':0')
+		WHEN h.`bag_slot` IS NOT NULL THEN CONCAT('sharedbank:', h.`account_id`, ':', h.`bag_slot`, ':0')
+	END,
+	NULL,
+	ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`),
+	IF(n.`socket` = 0, h.`charges`, 0),
+	IF(n.`socket` = 0, h.`color`, 0),
+	0,
+	IF(n.`socket` = 0, COALESCE(h.`custom_data`, ''), ''),
+	IF(n.`socket` = 0, h.`ornament_icon`, 0),
+	IF(n.`socket` = 0, h.`ornament_idfile`, 0),
+	IF(n.`socket` = 0, h.`ornament_hero_model`, 0),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL AND h.`slot_id` BETWEEN 2500 AND 2501, 'shared_bank', NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL AND h.`slot_id` BETWEEN 2500 AND 2501, h.`account_id`, NULL),
+	IF(n.`socket` = 0 AND h.`bag_slot` IS NULL AND h.`slot_id` BETWEEN 2500 AND 2501, h.`slot_id` - 2500, NULL),
+	CASE WHEN n.`socket` > 0 THEN n.`socket` - 1 WHEN h.`bag_slot` IS NOT NULL THEN h.`bag_index` END,
+	IF(h.`bag_slot` IS NULL, 0, 1) + IF(n.`socket` > 0, 1, 0)
+FROM `held` h
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, h.`item_id`, h.`augment_one`, h.`augment_two`, h.`augment_three`, h.`augment_four`, h.`augment_five`, h.`augment_six`) > 0
+ORDER BY h.`account_id`, h.`slot_id`, n.`socket`;
+-- The guild bank takes the server stamp; each area's slots are numbered in the order the bank loaded them.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+), `held` AS (
+	SELECT
+		g.*,
+		ROW_NUMBER() OVER (PARTITION BY g.`guild_id`, g.`area` ORDER BY g.`slot`, g.`id`) - 1 AS `bank_slot`
+	FROM `guild_bank` g
+	WHERE g.`item_id` > 0
+)
+SELECT
+	CONCAT('guildbank:', h.`id`, ':', n.`socket`),
+	IF(n.`socket` > 0, CONCAT('guildbank:', h.`id`, ':0'), NULL),
+	NULL,
+	ELT(n.`socket` + 1, h.`item_id`, h.`augment_one_id`, h.`augment_two_id`, h.`augment_three_id`, h.`augment_four_id`, h.`augment_five_id`, h.`augment_six_id`),
+	IF(n.`socket` = 0, h.`quantity`, 0),
+	0, 0, '', 0, 0, 0,
+	IF(n.`socket` = 0, IF(h.`area` = 1, 'guild_bank_main', 'guild_bank_deposit'), NULL),
+	IF(n.`socket` = 0, h.`guild_id`, NULL),
+	IF(n.`socket` = 0, h.`bank_slot`, NULL),
+	IF(n.`socket` > 0, n.`socket` - 1, NULL),
+	IF(n.`socket` > 0, 1, 0)
+FROM `held` h
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, h.`item_id`, h.`augment_one_id`, h.`augment_two_id`, h.`augment_three_id`, h.`augment_four_id`, h.`augment_five_id`, h.`augment_six_id`) > 0
+ORDER BY h.`guild_id`, h.`area`, h.`bank_slot`, n.`socket`;
+-- What players left in a world container (a forge, an oven) takes the server stamp.
+INSERT INTO `item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+)
+SELECT
+	CONCAT('container:', o.`parentid`, ':', o.`bagidx`, ':', n.`socket`),
+	IF(n.`socket` > 0, CONCAT('container:', o.`parentid`, ':', o.`bagidx`, ':0'), NULL),
+	NULL,
+	ELT(n.`socket` + 1, o.`itemid`, o.`augslot1`, o.`augslot2`, o.`augslot3`, o.`augslot4`, o.`augslot5`, o.`augslot6`),
+	IF(n.`socket` = 0, o.`charges`, 0),
+	0, 0, '', 0, 0, 0,
+	IF(n.`socket` = 0, 'world_container', NULL),
+	IF(n.`socket` = 0, o.`parentid`, NULL),
+	IF(n.`socket` = 0, o.`bagidx`, NULL),
+	IF(n.`socket` > 0, n.`socket` - 1, NULL),
+	IF(n.`socket` > 0, 1, 0)
+FROM `object_contents` o
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, o.`itemid`, o.`augslot1`, o.`augslot2`, o.`augslot3`, o.`augslot4`, o.`augslot5`, o.`augslot6`) > 0
+ORDER BY o.`parentid`, o.`bagidx`, n.`socket`;
+DROP TABLE `trader`;
+CREATE TABLE `trader` (
+	`id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`char_id` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`guid_first` INT(10) UNSIGNED NOT NULL,
+	`guid_second` INT(10) UNSIGNED NOT NULL,
+	`guid_third` INT(10) UNSIGNED NOT NULL,
+	`item_sn` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`item_cost` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`slot_id` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`char_entity_id` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`char_zone_id` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`char_zone_instance_id` INT(11) NULL DEFAULT '0',
+	`active_transaction` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`listing_date` DATETIME NULL DEFAULT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE INDEX `idx_trader_guid` (`guid_first`, `guid_second`, `guid_third`),
+	INDEX `Index 2` (`char_id`, `slot_id`),
+	INDEX `idx_trader_char` (`char_id`, `char_zone_id`, `char_zone_instance_id`),
+	INDEX `idx_trader_item_sn` (`item_sn`),
+	INDEX `idx_trader_item_cost` (`item_cost`),
+	INDEX `idx_trader_active_transaction` (`active_transaction`),
+	INDEX `idx_trader_listing_date` (`listing_date`),
+	CONSTRAINT `fk_trader_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 ALTER TABLE `guild_bank`
-	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
-	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
+	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
 	ADD UNIQUE INDEX `idx_guild_bank_guid` (`guid_first`, `guid_second`, `guid_third`),
 	ADD CONSTRAINT `fk_guild_bank_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
 ALTER TABLE `character_parcels`
-	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `char_id`,
-	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
-	MODIFY COLUMN `money` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_third`,
+	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `char_id`,
+	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD COLUMN `money` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_third`,
 	ADD UNIQUE INDEX `idx_character_parcels_guid` (`guid_first`, `guid_second`, `guid_third`),
 	ADD CONSTRAINT `fk_character_parcels_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
 ALTER TABLE `character_evolving_items`
-	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
-	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `id`,
+	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
 	ADD UNIQUE INDEX `idx_character_evolving_items_guid` (`guid_first`, `guid_second`, `guid_third`),
 	ADD CONSTRAINT `fk_character_evolving_items_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+ALTER TABLE `merchantlist_temp`
+	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `charges`,
+	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
+	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
+	ADD CONSTRAINT `fk_merchantlist_temp_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
 CREATE TABLE `ground_items` (
 	`guid_first` INT(10) UNSIGNED NOT NULL,
 	`guid_second` INT(10) UNSIGNED NOT NULL,
@@ -7287,11 +7583,117 @@ CREATE TABLE `inventory_snapshots` (
 )
 COLLATE='latin1_swedish_ci'
 ENGINE=InnoDB;
-ALTER TABLE `merchantlist_temp`
-	ADD COLUMN `guid_first` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `charges`,
-	ADD COLUMN `guid_second` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_first`,
-	ADD COLUMN `guid_third` INT(10) UNSIGNED NULL DEFAULT NULL AFTER `guid_second`,
-	ADD CONSTRAINT `fk_merchantlist_temp_item` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`);
+START TRANSACTION;
+-- Character counters: each character's next numbers, in staging order.
+UPDATE `item_migration` m
+JOIN (
+	SELECT `id`, ROW_NUMBER() OVER (PARTITION BY `issuer` ORDER BY `id`) - 1 AS `n`
+	FROM `item_migration`
+	WHERE `issuer` IS NOT NULL
+) r ON r.`id` = m.`id`
+LEFT JOIN (
+	SELECT `guid_first`, MAX(`guid_third`) + 1 AS `next`
+	FROM `item_instances`
+	WHERE `guid_second` = @world
+	GROUP BY `guid_first`
+) c ON c.`guid_first` = m.`issuer`
+SET m.`guid_first` = m.`issuer`, m.`guid_second` = @world, m.`guid_third` = COALESCE(c.`next`, 0) + r.`n`;
+-- Live's server stamp (eqgame 0x80c890): the counter starts at the time plus the process id (here the connection's), the
+-- sequence at the process id XOR the counter; each GUID takes the next sequence value, the counter and the time.
+SET @stamp_counter = UNIX_TIMESTAMP() + CONNECTION_ID();
+SET @stamp_sequence = CONNECTION_ID() ^ @stamp_counter;
+SET @stamp_time = UNIX_TIMESTAMP();
+SET @stamps = (SELECT COUNT(*) FROM `item_migration` WHERE `issuer` IS NULL);
+UPDATE `item_migration` m
+JOIN (
+	SELECT `id`, ROW_NUMBER() OVER (ORDER BY `id`) AS `n`
+	FROM `item_migration`
+	WHERE `issuer` IS NULL
+) r ON r.`id` = m.`id`
+JOIN (
+	WITH RECURSIVE `sequence` (`n`, `x`) AS (
+		SELECT 1, (16807 * @stamp_sequence) % 2147483647 + 123
+		UNION ALL
+		SELECT `n` + 1, (16807 * `x`) % 2147483647 + 123 FROM `sequence` WHERE `n` < @stamps
+	)
+	SELECT `n`, `x` FROM `sequence`
+) s ON s.`n` = r.`n`
+SET m.`guid_first` = s.`x`, m.`guid_second` = @stamp_counter + r.`n` - 1, m.`guid_third` = @stamp_time;
+INSERT INTO `item_instances` (`guid_first`, `guid_second`, `guid_third`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_guid_first`, `parent_guid_second`, `parent_guid_third`, `parent_index`)
+SELECT
+	m.`guid_first`, m.`guid_second`, m.`guid_third`, m.`item_id`, m.`charges`, m.`color`, m.`attuned`, m.`custom_data`,
+	m.`ornament_icon`, m.`ornament_idfile`, m.`ornament_hero_model`, m.`holder_type`, m.`holder_id`, m.`slot`,
+	p.`guid_first`, p.`guid_second`, p.`guid_third`, m.`parent_index`
+FROM `item_migration` m
+LEFT JOIN `item_migration` p ON p.`item_key` = m.`parent_key`
+ORDER BY m.`depth`, m.`id`;
+UPDATE `guild_bank` g
+JOIN `item_migration` m ON m.`item_key` = CONCAT('guildbank:', g.`id`, ':0')
+SET g.`guid_first` = m.`guid_first`, g.`guid_second` = m.`guid_second`, g.`guid_third` = m.`guid_third`;
+DELETE FROM `guild_bank` WHERE `guid_first` IS NULL;
+UPDATE `character_parcels` p
+JOIN `item_migration` m ON m.`item_key` = CONCAT('parcel:', p.`id`, ':0')
+SET p.`guid_first` = m.`guid_first`, p.`guid_second` = m.`guid_second`, p.`guid_third` = m.`guid_third`;
+UPDATE `character_parcels` SET `money` = `quantity` WHERE `item_id` = 99990;
+-- An evolving record names the item it describes: the character's k-th unretired record for an item number goes to the
+-- k-th such item the character holds anywhere (possessions first, then corpses, parcels and pets), as the loader matched
+-- them by number; a record that names no item is removed.
+UPDATE `character_evolving_items` e
+JOIN (
+	SELECT `id`, ROW_NUMBER() OVER (PARTITION BY `character_id`, `item_id` ORDER BY `id`) AS `k`
+	FROM `character_evolving_items`
+	WHERE `deleted_at` IS NULL
+) er ON er.`id` = e.`id`
+JOIN (
+	SELECT `issuer`, `item_id`, `guid_first`, `guid_second`, `guid_third`, ROW_NUMBER() OVER (PARTITION BY `issuer`, `item_id` ORDER BY `id`) AS `k`
+	FROM `item_migration`
+	WHERE `issuer` IS NOT NULL AND `item_key` LIKE '%:0' AND `item_key` NOT LIKE 'parcel_content:%'
+) mr ON mr.`issuer` = e.`character_id` AND mr.`item_id` = e.`item_id` AND mr.`k` = er.`k`
+SET e.`guid_first` = mr.`guid_first`, e.`guid_second` = mr.`guid_second`, e.`guid_third` = mr.`guid_third`;
+DELETE FROM `character_evolving_items` WHERE `guid_first` IS NULL;
+COMMIT;
+DROP TABLE `item_migration`;
+ALTER TABLE `guild_bank`
+	DROP INDEX `area`,
+	DROP INDEX `slot`,
+	DROP INDEX `guild_id`,
+	DROP COLUMN `guild_id`,
+	DROP COLUMN `area`,
+	DROP COLUMN `slot`,
+	DROP COLUMN `item_id`,
+	DROP COLUMN `augment_one_id`,
+	DROP COLUMN `augment_two_id`,
+	DROP COLUMN `augment_three_id`,
+	DROP COLUMN `augment_four_id`,
+	DROP COLUMN `augment_five_id`,
+	DROP COLUMN `augment_six_id`,
+	DROP COLUMN `quantity`,
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL;
+DROP TABLE `character_parcels_containers`;
+ALTER TABLE `character_parcels`
+	DROP COLUMN `item_id`,
+	DROP COLUMN `aug_slot_1`,
+	DROP COLUMN `aug_slot_2`,
+	DROP COLUMN `aug_slot_3`,
+	DROP COLUMN `aug_slot_4`,
+	DROP COLUMN `aug_slot_5`,
+	DROP COLUMN `aug_slot_6`,
+	DROP COLUMN `quantity`,
+	ADD CONSTRAINT `character_parcels_item_or_money` CHECK ((`guid_first` IS NULL) <> (`money` IS NULL));
+ALTER TABLE `character_evolving_items`
+	DROP COLUMN `character_id`,
+	DROP COLUMN `item_id`,
+	DROP COLUMN `deleted_at`,
+	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL;
+DROP TABLE `inventory`;
+DROP TABLE `sharedbank`;
+DROP TABLE `character_corpse_items`;
+DROP TABLE `character_pet_inventory`;
+DROP TABLE `object_contents`;
 )",
 		.content_schema_update = false
 	},

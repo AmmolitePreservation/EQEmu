@@ -47,7 +47,6 @@ private:
 	static bool CheckVersionsUpToDate(DatabaseVersion v, DatabaseVersion b);
 	void InjectBotsVersionColumn();
 	void InjectCustomVersionColumn();
-	void InjectItemGUIDColumns();
 
 };
 

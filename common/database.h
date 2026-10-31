@@ -37,6 +37,7 @@
 
 class MySQLRequestResult;
 class Client;
+class SharedDatabase;
 
 namespace EQ {
 	class InventoryProfile;
@@ -274,7 +275,7 @@ public:
 
 	void SourceDatabaseTableFromUrl(const std::string& table_name, const std::string& url);
 	void SourceSqlFromUrl(const std::string& url);
-	void PurgeCharacterParcels();
+	void PurgeCharacterParcels(SharedDatabase &content_db);
 	void Encode(std::string &in);
 	void Decode(std::string &in);
 

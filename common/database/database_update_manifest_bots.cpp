@@ -2122,7 +2122,91 @@ WHERE NOT EXISTS
 FROM spells_new
 WHERE bot_spells_entries.spell_id = spells_new.id);
 )",
-	}
+	},
+	ManifestEntry{
+		.version = 9055,
+		.description = "2026_10_31_bot_items_to_item_instances.sql",
+		.check = "SHOW TABLES LIKE 'bot_inventories'",
+		.condition = "not_empty",
+		.match = "",
+		.sql = R"(
+-- A bot's equipment, each augment out of its parent's columns, from the bot owner's counter, staged and written as 9328
+-- writes a character's items.
+DROP TABLE IF EXISTS `bot_item_migration`;
+CREATE TABLE `bot_item_migration` (
+	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	`item_key` VARCHAR(64) NOT NULL,
+	`parent_key` VARCHAR(64) NULL DEFAULT NULL,
+	`issuer` INT UNSIGNED NOT NULL,
+	`item_id` INT UNSIGNED NOT NULL,
+	`charges` SMALLINT NOT NULL,
+	`color` INT UNSIGNED NOT NULL,
+	`attuned` TINYINT(1) UNSIGNED NOT NULL,
+	`custom_data` TEXT NOT NULL,
+	`ornament_icon` INT UNSIGNED NOT NULL,
+	`ornament_idfile` INT UNSIGNED NOT NULL,
+	`ornament_hero_model` INT UNSIGNED NOT NULL,
+	`holder_id` INT UNSIGNED NULL DEFAULT NULL,
+	`slot` SMALLINT UNSIGNED NULL DEFAULT NULL,
+	`parent_index` SMALLINT UNSIGNED NULL DEFAULT NULL,
+	`depth` TINYINT UNSIGNED NOT NULL,
+	`guid_first` INT UNSIGNED NULL DEFAULT NULL,
+	`guid_second` INT UNSIGNED NULL DEFAULT NULL,
+	`guid_third` INT UNSIGNED NULL DEFAULT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE INDEX `item_key` (`item_key`)
+) ENGINE=InnoDB;
+START TRANSACTION;
+INSERT INTO `bot_item_migration` (`item_key`, `parent_key`, `issuer`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_id`, `slot`, `parent_index`, `depth`)
+WITH `sockets` AS (
+	SELECT 0 AS `socket` UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+)
+SELECT
+	CONCAT('bot:', b.`bot_id`, ':', b.`slot_id`, ':', n.`socket`),
+	IF(n.`socket` > 0, CONCAT('bot:', b.`bot_id`, ':', b.`slot_id`, ':0'), NULL),
+	d.`owner_id`,
+	ELT(n.`socket` + 1, b.`item_id`, b.`augment_1`, b.`augment_2`, b.`augment_3`, b.`augment_4`, b.`augment_5`, b.`augment_6`),
+	IF(n.`socket` = 0, b.`inst_charges`, 0),
+	IF(n.`socket` = 0, b.`inst_color`, 0),
+	IF(n.`socket` = 0, b.`inst_no_drop`, 0),
+	IF(n.`socket` = 0, COALESCE(b.`inst_custom_data`, ''), ''),
+	IF(n.`socket` = 0, b.`ornament_icon`, 0),
+	IF(n.`socket` = 0, b.`ornament_id_file`, 0),
+	IF(n.`socket` = 0, b.`ornament_hero_model`, 0),
+	IF(n.`socket` = 0, b.`bot_id`, NULL),
+	IF(n.`socket` = 0, b.`slot_id`, NULL),
+	IF(n.`socket` > 0, n.`socket` - 1, NULL),
+	IF(n.`socket` > 0, 1, 0)
+FROM `bot_inventories` b
+JOIN `bot_data` d ON d.`bot_id` = b.`bot_id`
+JOIN `sockets` n
+WHERE ELT(n.`socket` + 1, b.`item_id`, b.`augment_1`, b.`augment_2`, b.`augment_3`, b.`augment_4`, b.`augment_5`, b.`augment_6`) > 0
+ORDER BY b.`bot_id`, b.`slot_id`, n.`socket`;
+UPDATE `bot_item_migration` m
+JOIN (
+	SELECT `id`, ROW_NUMBER() OVER (PARTITION BY `issuer` ORDER BY `id`) - 1 AS `n`
+	FROM `bot_item_migration`
+) r ON r.`id` = m.`id`
+JOIN `character_data` c ON c.`id` = m.`issuer`
+LEFT JOIN (
+	SELECT `guid_first`, `guid_second`, MAX(`guid_third`) + 1 AS `next`
+	FROM `item_instances`
+	GROUP BY `guid_first`, `guid_second`
+) n ON n.`guid_first` = m.`issuer` AND n.`guid_second` = c.`origin_world_id`
+SET m.`guid_first` = m.`issuer`, m.`guid_second` = c.`origin_world_id`, m.`guid_third` = COALESCE(n.`next`, 0) + r.`n`;
+INSERT INTO `item_instances` (`guid_first`, `guid_second`, `guid_third`, `item_id`, `charges`, `color`, `attuned`, `custom_data`, `ornament_icon`, `ornament_idfile`, `ornament_hero_model`, `holder_type`, `holder_id`, `slot`, `parent_guid_first`, `parent_guid_second`, `parent_guid_third`, `parent_index`)
+SELECT
+	m.`guid_first`, m.`guid_second`, m.`guid_third`, m.`item_id`, m.`charges`, m.`color`, m.`attuned`, m.`custom_data`,
+	m.`ornament_icon`, m.`ornament_idfile`, m.`ornament_hero_model`, IF(m.`depth` = 0, 'bot', NULL), m.`holder_id`, m.`slot`,
+	p.`guid_first`, p.`guid_second`, p.`guid_third`, m.`parent_index`
+FROM `bot_item_migration` m
+LEFT JOIN `bot_item_migration` p ON p.`item_key` = m.`parent_key`
+ORDER BY m.`depth`, m.`id`;
+COMMIT;
+DROP TABLE `bot_item_migration`;
+DROP TABLE `bot_inventories`;
+)",
+	},
 // -- template; copy/paste this when you need to create a new entry
 //	ManifestEntry{
 //		.version = 9228,

@@ -23,17 +23,6 @@ public:
 		uint32_t    guid_first;
 		uint32_t    guid_second;
 		uint32_t    guid_third;
-		uint32_t    guild_id;
-		uint8_t     area;
-		uint32_t    slot;
-		uint32_t    item_id;
-		uint32_t    augment_one_id;
-		uint32_t    augment_two_id;
-		uint32_t    augment_three_id;
-		uint32_t    augment_four_id;
-		uint32_t    augment_five_id;
-		uint32_t    augment_six_id;
-		int32_t     quantity;
 		std::string donator;
 		uint8_t     permissions;
 		std::string who_for;
@@ -51,17 +40,6 @@ public:
 			"guid_first",
 			"guid_second",
 			"guid_third",
-			"guild_id",
-			"area",
-			"slot",
-			"item_id",
-			"augment_one_id",
-			"augment_two_id",
-			"augment_three_id",
-			"augment_four_id",
-			"augment_five_id",
-			"augment_six_id",
-			"quantity",
 			"donator",
 			"permissions",
 			"who_for",
@@ -75,17 +53,6 @@ public:
 			"guid_first",
 			"guid_second",
 			"guid_third",
-			"guild_id",
-			"area",
-			"slot",
-			"item_id",
-			"augment_one_id",
-			"augment_two_id",
-			"augment_three_id",
-			"augment_four_id",
-			"augment_five_id",
-			"augment_six_id",
-			"quantity",
 			"donator",
 			"permissions",
 			"who_for",
@@ -129,24 +96,13 @@ public:
 	{
 		GuildBank e{};
 
-		e.id               = 0;
-		e.guid_first       = 0;
-		e.guid_second      = 0;
-		e.guid_third       = 0;
-		e.guild_id         = 0;
-		e.area             = 0;
-		e.slot             = 0;
-		e.item_id          = 0;
-		e.augment_one_id   = 0;
-		e.augment_two_id   = 0;
-		e.augment_three_id = 0;
-		e.augment_four_id  = 0;
-		e.augment_five_id  = 0;
-		e.augment_six_id   = 0;
-		e.quantity         = 0;
-		e.donator          = "";
-		e.permissions      = 0;
-		e.who_for          = "";
+		e.id          = 0;
+		e.guid_first  = 0;
+		e.guid_second = 0;
+		e.guid_third  = 0;
+		e.donator     = "";
+		e.permissions = 0;
+		e.who_for     = "";
 
 		return e;
 	}
@@ -183,24 +139,13 @@ public:
 		if (results.RowCount() == 1) {
 			GuildBank e{};
 
-			e.id               = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.guid_first       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.guid_second      = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.guid_third       = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.guild_id         = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.area             = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.slot             = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.item_id          = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.augment_one_id   = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.augment_two_id   = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.augment_three_id = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.augment_four_id  = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.augment_five_id  = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.augment_six_id   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.quantity         = row[14] ? static_cast<int32_t>(atoi(row[14])) : 0;
-			e.donator          = row[15] ? row[15] : "";
-			e.permissions      = row[16] ? static_cast<uint8_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.who_for          = row[17] ? row[17] : "";
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.guid_first  = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_second = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_third  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.donator     = row[4] ? row[4] : "";
+			e.permissions = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.who_for     = row[6] ? row[6] : "";
 
 			return e;
 		}
@@ -237,20 +182,9 @@ public:
 		v.push_back(columns[1] + " = " + std::to_string(e.guid_first));
 		v.push_back(columns[2] + " = " + std::to_string(e.guid_second));
 		v.push_back(columns[3] + " = " + std::to_string(e.guid_third));
-		v.push_back(columns[4] + " = " + std::to_string(e.guild_id));
-		v.push_back(columns[5] + " = " + std::to_string(e.area));
-		v.push_back(columns[6] + " = " + std::to_string(e.slot));
-		v.push_back(columns[7] + " = " + std::to_string(e.item_id));
-		v.push_back(columns[8] + " = " + std::to_string(e.augment_one_id));
-		v.push_back(columns[9] + " = " + std::to_string(e.augment_two_id));
-		v.push_back(columns[10] + " = " + std::to_string(e.augment_three_id));
-		v.push_back(columns[11] + " = " + std::to_string(e.augment_four_id));
-		v.push_back(columns[12] + " = " + std::to_string(e.augment_five_id));
-		v.push_back(columns[13] + " = " + std::to_string(e.augment_six_id));
-		v.push_back(columns[14] + " = " + std::to_string(e.quantity));
-		v.push_back(columns[15] + " = '" + Strings::Escape(e.donator) + "'");
-		v.push_back(columns[16] + " = " + std::to_string(e.permissions));
-		v.push_back(columns[17] + " = '" + Strings::Escape(e.who_for) + "'");
+		v.push_back(columns[4] + " = '" + Strings::Escape(e.donator) + "'");
+		v.push_back(columns[5] + " = " + std::to_string(e.permissions));
+		v.push_back(columns[6] + " = '" + Strings::Escape(e.who_for) + "'");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -276,17 +210,6 @@ public:
 		v.push_back(std::to_string(e.guid_first));
 		v.push_back(std::to_string(e.guid_second));
 		v.push_back(std::to_string(e.guid_third));
-		v.push_back(std::to_string(e.guild_id));
-		v.push_back(std::to_string(e.area));
-		v.push_back(std::to_string(e.slot));
-		v.push_back(std::to_string(e.item_id));
-		v.push_back(std::to_string(e.augment_one_id));
-		v.push_back(std::to_string(e.augment_two_id));
-		v.push_back(std::to_string(e.augment_three_id));
-		v.push_back(std::to_string(e.augment_four_id));
-		v.push_back(std::to_string(e.augment_five_id));
-		v.push_back(std::to_string(e.augment_six_id));
-		v.push_back(std::to_string(e.quantity));
 		v.push_back("'" + Strings::Escape(e.donator) + "'");
 		v.push_back(std::to_string(e.permissions));
 		v.push_back("'" + Strings::Escape(e.who_for) + "'");
@@ -323,17 +246,6 @@ public:
 			v.push_back(std::to_string(e.guid_first));
 			v.push_back(std::to_string(e.guid_second));
 			v.push_back(std::to_string(e.guid_third));
-			v.push_back(std::to_string(e.guild_id));
-			v.push_back(std::to_string(e.area));
-			v.push_back(std::to_string(e.slot));
-			v.push_back(std::to_string(e.item_id));
-			v.push_back(std::to_string(e.augment_one_id));
-			v.push_back(std::to_string(e.augment_two_id));
-			v.push_back(std::to_string(e.augment_three_id));
-			v.push_back(std::to_string(e.augment_four_id));
-			v.push_back(std::to_string(e.augment_five_id));
-			v.push_back(std::to_string(e.augment_six_id));
-			v.push_back(std::to_string(e.quantity));
 			v.push_back("'" + Strings::Escape(e.donator) + "'");
 			v.push_back(std::to_string(e.permissions));
 			v.push_back("'" + Strings::Escape(e.who_for) + "'");
@@ -370,24 +282,13 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			GuildBank e{};
 
-			e.id               = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.guid_first       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.guid_second      = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.guid_third       = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.guild_id         = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.area             = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.slot             = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.item_id          = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.augment_one_id   = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.augment_two_id   = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.augment_three_id = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.augment_four_id  = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.augment_five_id  = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.augment_six_id   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.quantity         = row[14] ? static_cast<int32_t>(atoi(row[14])) : 0;
-			e.donator          = row[15] ? row[15] : "";
-			e.permissions      = row[16] ? static_cast<uint8_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.who_for          = row[17] ? row[17] : "";
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.guid_first  = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_second = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_third  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.donator     = row[4] ? row[4] : "";
+			e.permissions = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.who_for     = row[6] ? row[6] : "";
 
 			all_entries.push_back(e);
 		}
@@ -412,24 +313,13 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			GuildBank e{};
 
-			e.id               = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.guid_first       = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.guid_second      = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.guid_third       = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.guild_id         = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.area             = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.slot             = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.item_id          = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.augment_one_id   = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.augment_two_id   = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.augment_three_id = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.augment_four_id  = row[11] ? static_cast<uint32_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.augment_five_id  = row[12] ? static_cast<uint32_t>(strtoul(row[12], nullptr, 10)) : 0;
-			e.augment_six_id   = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
-			e.quantity         = row[14] ? static_cast<int32_t>(atoi(row[14])) : 0;
-			e.donator          = row[15] ? row[15] : "";
-			e.permissions      = row[16] ? static_cast<uint8_t>(strtoul(row[16], nullptr, 10)) : 0;
-			e.who_for          = row[17] ? row[17] : "";
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.guid_first  = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_second = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_third  = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.donator     = row[4] ? row[4] : "";
+			e.permissions = row[5] ? static_cast<uint8_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.who_for     = row[6] ? row[6] : "";
 
 			all_entries.push_back(e);
 		}
@@ -508,17 +398,6 @@ public:
 		v.push_back(std::to_string(e.guid_first));
 		v.push_back(std::to_string(e.guid_second));
 		v.push_back(std::to_string(e.guid_third));
-		v.push_back(std::to_string(e.guild_id));
-		v.push_back(std::to_string(e.area));
-		v.push_back(std::to_string(e.slot));
-		v.push_back(std::to_string(e.item_id));
-		v.push_back(std::to_string(e.augment_one_id));
-		v.push_back(std::to_string(e.augment_two_id));
-		v.push_back(std::to_string(e.augment_three_id));
-		v.push_back(std::to_string(e.augment_four_id));
-		v.push_back(std::to_string(e.augment_five_id));
-		v.push_back(std::to_string(e.augment_six_id));
-		v.push_back(std::to_string(e.quantity));
 		v.push_back("'" + Strings::Escape(e.donator) + "'");
 		v.push_back(std::to_string(e.permissions));
 		v.push_back("'" + Strings::Escape(e.who_for) + "'");
@@ -548,17 +427,6 @@ public:
 			v.push_back(std::to_string(e.guid_first));
 			v.push_back(std::to_string(e.guid_second));
 			v.push_back(std::to_string(e.guid_third));
-			v.push_back(std::to_string(e.guild_id));
-			v.push_back(std::to_string(e.area));
-			v.push_back(std::to_string(e.slot));
-			v.push_back(std::to_string(e.item_id));
-			v.push_back(std::to_string(e.augment_one_id));
-			v.push_back(std::to_string(e.augment_two_id));
-			v.push_back(std::to_string(e.augment_three_id));
-			v.push_back(std::to_string(e.augment_four_id));
-			v.push_back(std::to_string(e.augment_five_id));
-			v.push_back(std::to_string(e.augment_six_id));
-			v.push_back(std::to_string(e.quantity));
 			v.push_back("'" + Strings::Escape(e.donator) + "'");
 			v.push_back(std::to_string(e.permissions));
 			v.push_back("'" + Strings::Escape(e.who_for) + "'");

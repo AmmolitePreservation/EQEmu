@@ -19,6 +19,8 @@
 #include "../common/global_define.h"
 #include "../common/rulesys.h"
 #include "../common/item_layer.h"
+#include "../common/item_instance.h"
+#include "../common/shareddb.h"
 #include "../common/repositories/character_corpses_repository.h"
 #include <ctype.h>
 #include <iomanip>
@@ -2256,16 +2258,10 @@ void Database::Decode(std::string &in)
 	}
 };
 
-void Database::PurgeCharacterParcels()
+void Database::PurgeCharacterParcels(SharedDatabase &content_db)
 {
 	auto filter  = fmt::format("sent_date < (NOW() - INTERVAL {} DAY)", RuleI(Parcel, ParcelPruneDelay));
 	auto results = CharacterParcelsRepository::GetWhere(*this, filter);
-	for (auto const &r : results) {
-		if (!CharacterParcelsRepository::IsMoney(r)) {
-			ItemLayer::RetireRow(*this, CharacterParcelsRepository::GUIDOf(r), ItemRetirement::Expired);
-		}
-	}
-	auto prune   = CharacterParcelsRepository::DeleteWhere(*this, filter);
 
 	PlayerEvent::ParcelDelete                  pd{};
 	PlayerEventLogsRepository::PlayerEventLogs pel{};
@@ -2273,18 +2269,33 @@ void Database::PurgeCharacterParcels()
 	pel.event_type_name = PlayerEvent::EventName[pel.event_type_id];
 	std::stringstream ss;
 	for (auto const   &r: results) {
-		pd.from_name    = r.from_name;
-		pd.item_id      = r.item_id;
-		pd.augment_1_id = r.aug_slot_1;
-		pd.augment_2_id = r.aug_slot_2;
-		pd.augment_3_id = r.aug_slot_3;
-		pd.augment_4_id = r.aug_slot_4;
-		pd.augment_5_id = r.aug_slot_5;
-		pd.augment_6_id = r.aug_slot_6;
-		pd.note         = r.note;
-		pd.quantity     = r.quantity;
-		pd.sent_date    = r.sent_date;
-		pd.char_id      = r.char_id;
+		pd = {};
+		if (CharacterParcelsRepository::IsMoney(r)) {
+			pd.item_id  = PARCEL_MONEY_ITEM_ID;
+			pd.quantity = r.money;
+		}
+		else {
+			const auto guid = CharacterParcelsRepository::GUIDOf(r);
+
+			std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(*this, content_db, guid));
+			if (inst) {
+				pd.item_id      = inst->GetID();
+				pd.augment_1_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN);
+				pd.augment_2_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 1);
+				pd.augment_3_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 2);
+				pd.augment_4_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 3);
+				pd.augment_5_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 4);
+				pd.augment_6_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 5);
+				pd.quantity     = inst->GetCharges();
+			}
+
+			ItemLayer::RetireRow(*this, guid, ItemRetirement::Expired);
+		}
+
+		pd.from_name = r.from_name;
+		pd.note      = r.note;
+		pd.sent_date = r.sent_date;
+		pd.char_id   = r.char_id;
 		{
 			cereal::JSONOutputArchiveSingleLine ar(ss);
 			pd.serialize(ar);
@@ -2298,6 +2309,8 @@ void Database::PurgeCharacterParcels()
 		ss.str("");
 		ss.clear();
 	}
+
+	CharacterParcelsRepository::DeleteWhere(*this, filter);
 
 	LogInfo(
 		"Purged <yellow>[{}] parcels that were over <yellow>[{}] days old.",

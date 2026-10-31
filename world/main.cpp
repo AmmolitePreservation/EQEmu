@@ -427,7 +427,7 @@ int main(int argc, char **argv)
 				auto out = std::make_unique<ServerPacket>(ServerOP_ParcelPrune);
 				ZSList::Instance()->SendPacketToBootedZones(out.get());
 
-				database.PurgeCharacterParcels();
+				database.PurgeCharacterParcels(content_db);
 			}
 		}
 
