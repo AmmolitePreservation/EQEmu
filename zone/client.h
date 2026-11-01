@@ -851,8 +851,8 @@ public:
 	inline int GetAccountCreation() const { return account_creation; }
 	inline int16 Admin() const { return admin; }
 	inline uint32 CharacterID() const { return character_id; }
-	inline uint16 OriginWorldID() const { return m_epp.origin_world_id; }
-	inline ItemLayer::Owner ItemOwner() const { return ItemLayer::Owner{character_id, m_epp.origin_world_id}; }
+	inline uint16 OriginWorldID() const { return m_pp.origin_world_id; }
+	inline ItemLayer::Owner ItemOwner() const { return ItemLayer::Owner{character_id, m_pp.origin_world_id}; }
 	void UpdateAdmin(bool from_database = true);
 	void UpdateWho(uint8 remove = 0);
 	bool GMHideMe(Client* client = 0);

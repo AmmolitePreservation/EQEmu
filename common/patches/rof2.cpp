@@ -2911,8 +2911,10 @@ namespace RoF2
 		outapp->WriteUInt32(0);		// Unknown
 		outapp->WriteUInt32(0);		// Unknown
 		outapp->WriteUInt32(emu->endurance);
-		outapp->WriteUInt32(0);		// Unknown - Observed 0x7cde - This is also seen in guild packets sent to this character.
-		outapp->WriteUInt32(0);		// Unknown - Observed 0x64
+		// The character's own GUID, {character, world}: the client keeps it at PcClient +0x2950 (0x5797a3) and uses it as
+		// the character id of its EQ Players link (0x52eb04).
+		outapp->WriteUInt32(emu->char_id);
+		outapp->WriteUInt32(emu->origin_world_id);
 
 		outapp->WriteUInt32(64);	// Name Length
 
@@ -6445,8 +6447,9 @@ namespace RoF2
 
 		RoF2::structs::ItemSerializationHeader hdr;
 
-		//sprintf(hdr.unknown000, "06e0002Y1W00");
-		strn0cpy(hdr.unknown000, fmt::format("{:016}\0", inst->GetSerialNumber()).c_str(),sizeof(hdr.unknown000));
+		// Something not yet an item (merchant stock) has no GUID and is sent as zeros.
+		const std::string guid_text = inst->HasGUID() ? ItemGUIDText(inst->GetGUID()) : std::string(item_guid_zero_text);
+		strn0cpy(hdr.guid, guid_text.c_str(), sizeof(hdr.guid));
 
 		hdr.stacksize = 1;
 

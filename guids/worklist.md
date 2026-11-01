@@ -54,7 +54,7 @@ The work for Live-style item GUIDs ([README.md](README.md) has what Live does an
 
 ## Encoders (ENC)
 
-- **ENC-1** `fix` **RoF2.** GUID text in the item header, the Bazaar structs and the player record (the character's own `{id, world, 0}`); incoming text decoded with the round-trip check, invalid text refused.
+- **ENC-1** `fix` **RoF2.** GUID text in the item header, the Bazaar structs and the player record (the character's own `{id, world, 0}`); incoming text decoded with the round-trip check, invalid text refused. Built 2026-11-01: the codec with unit tests (7 of 7 against Live's captured text), the item header's GUID text, and the player profile's `{character, origin world}` (the origin world moved from the extended profile to `PlayerProfile_Struct`); checked in the client's memory: Claudeguids' record holds `{117, 0}`, and the Backpack, the augmented Rusty Short Sword, its three augments and the Backpack's three items hold the GUID text of their rows. Left: the Bazaar structs.
 - **ENC-2** `fix` **RoF.** The same as RoF2. **Untested:** no RoF client (December 10, 2012) survives anywhere we could find; it rests on the alphabet RoF2 and Live share.
 - **ENC-3** `done` **Older clients.** Titanium, SoF, SoD and UF have no GUID field; unchanged.
 
