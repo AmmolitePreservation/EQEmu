@@ -580,25 +580,123 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 
 // The filter's rows are the tops of what is loaded, with their contents and augments under them; a top may itself sit
 // in a parent the filter did not take, as a listed item sits in its trader's satchel.
+namespace {
+
+struct ContentItem {
+	bool   answered = false;
+	bool   exists   = false;
+	uint32 item_class = 0;
+	uint32 bag_slots  = 0;
+	uint32 item_type  = 0;
+};
+
+// The item store can be stale (a zone up during a #hotfix keeps the item data it booted with) or not loaded at all, so a
+// row is retired only when the items table itself agrees; a server whose content lives in another database cannot
+// answer here, and its rows are skipped as before.
+ContentItem ReadContentItem(Database &db, uint32 item_id)
+{
+	ContentItem c;
+	auto        results = db.QueryDatabase(fmt::format("SELECT itemclass, bagslots, itemtype FROM items WHERE id = {}", item_id));
+	if (!results.Success()) {
+		return c;
+	}
+
+	c.answered = true;
+	for (auto row : results) {
+		c.exists     = true;
+		c.item_class = Strings::ToUnsignedInt(row[0]);
+		c.bag_slots  = Strings::ToUnsignedInt(row[1]);
+		c.item_type  = Strings::ToUnsignedInt(row[2]);
+	}
+
+	return c;
+}
+
+bool Holds(uint32 parent_class, uint32 parent_bag_slots, uint32 child_type, uint32 index)
+{
+	if (parent_class == EQ::item::ItemClassBag) {
+		return index < parent_bag_slots;
+	}
+
+	return parent_class == EQ::item::ItemClassCommon && child_type == EQ::item::ItemTypeAugmentation &&
+		index >= EQ::invaug::SOCKET_BEGIN && index <= EQ::invaug::SOCKET_END;
+}
+
+}
+
+// A row whose item number content does not have retires missingItemRow, a row its parent cannot hold (past a bag's last
+// slot, or under a non-bag without being an augment in a socket) retires unplaceable, and so do the rows under either.
 std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter)
 {
 	std::vector<Held> held;
 
 	std::map<std::array<uint32, 3>, EQ::ItemInstance *> by_guid;
 	std::set<std::array<uint32, 3>>                     skipped;
+	std::set<std::array<uint32, 3>>                     retired;
+
+	auto set_aside = [&](const ItemInstancesRepository::ItemInstances &row, bool confirmed, ItemRetirement reason, const std::string &why) {
+		skipped.insert({row.guid.first, row.guid.second, row.guid.third});
+		if (!confirmed) {
+			LogError("guid [{} {} {}] item [{}] {}; content does not confirm it, skipped", row.guid.first, row.guid.second, row.guid.third, row.item_id, why);
+			return;
+		}
+
+		if (ItemInstancesRepository::Retire(db, row.guid, reason) != 1) {
+			LogError("guid [{} {} {}] item [{}] {}; retiring it failed, skipped", row.guid.first, row.guid.second, row.guid.third, row.item_id, why);
+			return;
+		}
+
+		retired.insert({row.guid.first, row.guid.second, row.guid.third});
+		LogError(
+			"guid [{} {} {}] item [{}] {}; retired [{}]",
+			row.guid.first,
+			row.guid.second,
+			row.guid.third,
+			row.item_id,
+			why,
+			ItemRetirementName(reason)
+		);
+	};
 
 	for (const auto &row : ItemInstancesRepository::GetHeld(db, holder_filter)) {
+		if (row.location.parent_guid) {
+			const auto &p = *row.location.parent_guid;
+			if (skipped.contains({p.first, p.second, p.third})) {
+				set_aside(
+					row,
+					retired.contains({p.first, p.second, p.third}),
+					ItemRetirement::Unplaceable,
+					fmt::format("sits under [{} {} {}], which was set aside", p.first, p.second, p.third)
+				);
+				continue;
+			}
+		}
+
 		const auto *item = content_db.GetItem(row.item_id);
 		if (!item) {
-			LogError(
-				"guid [{} {} {}] names item [{}], which does not exist; skipped",
-				row.guid.first,
-				row.guid.second,
-				row.guid.third,
-				row.item_id
-			);
-			skipped.insert({row.guid.first, row.guid.second, row.guid.third});
+			const auto c = ReadContentItem(content_db, row.item_id);
+			set_aside(row, c.answered && !c.exists, ItemRetirement::MissingItemRow, "names an item content does not have");
 			continue;
+		}
+
+		if (row.location.parent_guid) {
+			const auto &p      = *row.location.parent_guid;
+			auto        parent = by_guid.find({p.first, p.second, p.third});
+			const auto  index  = static_cast<uint32>(row.location.parent_index);
+			if (parent != by_guid.end()) {
+				const auto *parent_item = parent->second->GetItem();
+				if (!Holds(parent_item->ItemClass, parent_item->BagSlots, item->ItemType, index)) {
+					const auto pc = ReadContentItem(content_db, parent_item->ID);
+					const auto cc = ReadContentItem(content_db, row.item_id);
+					set_aside(
+						row,
+						pc.answered && cc.answered && pc.exists && cc.exists && !Holds(pc.item_class, pc.bag_slots, cc.item_type, index),
+						ItemRetirement::Unplaceable,
+						fmt::format("cannot be held at index [{}] of item [{}]", index, parent_item->ID)
+					);
+					continue;
+				}
+			}
 		}
 
 		auto *inst = content_db.CreateBaseItem(item, row.charges);
@@ -629,23 +727,8 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 		by_guid[{row.guid.first, row.guid.second, row.guid.third}] = inst;
 
 		if (row.location.parent_guid) {
-			const auto &p = *row.location.parent_guid;
-			if (skipped.contains({p.first, p.second, p.third})) {
-				LogError(
-					"guid [{} {} {}] names parent [{} {} {}], which was skipped; skipped",
-					row.guid.first,
-					row.guid.second,
-					row.guid.third,
-					p.first,
-					p.second,
-					p.third
-				);
-				skipped.insert({row.guid.first, row.guid.second, row.guid.third});
-				safe_delete(inst);
-				continue;
-			}
-
-			auto find = by_guid.find({p.first, p.second, p.third});
+			const auto &p    = *row.location.parent_guid;
+			auto        find = by_guid.find({p.first, p.second, p.third});
 			if (find != by_guid.end()) {
 				find->second->_PutItem(static_cast<uint8>(row.location.parent_index), inst);
 				continue;

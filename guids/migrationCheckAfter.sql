@@ -1,28 +1,37 @@
--- TST-6, after the migration: the item table's held rows keyed the same way, compared with tst6.expected.
+-- TST-6, after the migration: the item table's held rows keyed the same way, compared with tst6.expected; rows the item
+-- layer has since retired as missingItemRow or unplaceable stay in the comparison, matched to tst6.judged.
 DROP TABLE IF EXISTS tst6.actual;
 CREATE TABLE tst6.actual AS
 WITH RECURSIVE tree AS (
   SELECT i.guid_first, i.guid_second, i.guid_third, i.item_id, i.charges, i.color, i.attuned, i.custom_data,
-    i.ornament_icon, i.ornament_idfile, i.ornament_hero_model,
+    i.ornament_icon, i.ornament_idfile, i.ornament_hero_model, i.retirement_state,
     CAST(CONCAT(i.holder_type, ':', i.holder_id, ':', i.slot) AS CHAR(96)) AS loc_key
   FROM peq.item_instances i
-  WHERE i.parent_guid_first IS NULL AND i.retirement_state IS NULL
+  WHERE i.parent_guid_first IS NULL AND (i.retirement_state IS NULL OR i.retirement_state IN ('missingItemRow', 'unplaceable'))
   UNION ALL
   SELECT c.guid_first, c.guid_second, c.guid_third, c.item_id, c.charges, c.color, c.attuned, c.custom_data,
-    c.ornament_icon, c.ornament_idfile, c.ornament_hero_model,
+    c.ornament_icon, c.ornament_idfile, c.ornament_hero_model, c.retirement_state,
     CAST(CONCAT(t.loc_key, '/', c.parent_index) AS CHAR(96))
   FROM peq.item_instances c
   JOIN tree t ON c.parent_guid_first = t.guid_first AND c.parent_guid_second = t.guid_second AND c.parent_guid_third = t.guid_third
-  WHERE c.retirement_state IS NULL
+  WHERE c.retirement_state IS NULL OR c.retirement_state IN ('missingItemRow', 'unplaceable')
 )
 SELECT * FROM tree;
 ALTER TABLE tst6.actual ADD PRIMARY KEY (loc_key);
 
 SELECT 'rows' AS what,
   (SELECT COUNT(*) FROM tst6.expected) AS expected,
-  (SELECT COUNT(*) FROM tst6.actual) AS actual_held,
+  (SELECT COUNT(*) FROM tst6.actual WHERE retirement_state IS NULL) AS actual_held,
   (SELECT COUNT(*) FROM peq.item_instances) AS item_instances_total,
   (SELECT COUNT(*) FROM peq.item_instances WHERE retirement_state IS NOT NULL) AS retired;
+
+-- a judged row is held until a load reaches it, then retired with its reason; any other retirement here is wrong
+SELECT 'judged' AS what, j.reason AS expected_reason, COALESCE(a.retirement_state, 'held') AS state, COUNT(*) AS n
+FROM tst6.judged j LEFT JOIN tst6.actual a ON a.loc_key = j.loc_key
+GROUP BY j.reason, COALESCE(a.retirement_state, 'held');
+SELECT 'wrongly retired' AS what, a.loc_key, a.item_id, a.retirement_state
+FROM tst6.actual a LEFT JOIN tst6.judged j ON j.loc_key = a.loc_key AND j.reason = a.retirement_state
+WHERE a.retirement_state IS NOT NULL AND j.loc_key IS NULL;
 
 SELECT 'missing' AS what, e.source, e.loc_key, e.item_id FROM tst6.expected e LEFT JOIN tst6.actual a ON a.loc_key = e.loc_key WHERE a.loc_key IS NULL;
 SELECT 'extra' AS what, a.loc_key, a.item_id FROM tst6.actual a LEFT JOIN tst6.expected e ON e.loc_key = a.loc_key WHERE e.loc_key IS NULL;
