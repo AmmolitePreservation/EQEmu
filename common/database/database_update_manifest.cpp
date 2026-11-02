@@ -7154,9 +7154,7 @@ ADD COLUMN `entity_variables` TEXT DEFAULT NULL AFTER `rezzable`;
 		.condition = "not_empty",
 		.match = "",
 		.sql = R"(
-DELETE FROM `zone_points` WHERE (`client_version_mask` & 64) = 0 AND NOT (`client_version_mask` = 3 AND `target_zone_id` = 5 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor'));
-UPDATE `zone_points` SET `max_expansion` = 11 WHERE `client_version_mask` = 3 AND `target_zone_id` = 5 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
-UPDATE `zone_points` SET `min_expansion` = 12 WHERE `client_version_mask` = 4294967292 AND `target_zone_id` = 407 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
+DELETE FROM `zone_points` WHERE (`client_version_mask` & 64) = 0;
 DELETE FROM `doors` WHERE (`client_version_mask` & 64) = 0;
 ALTER TABLE `zone_points` DROP COLUMN `client_version_mask`;
 ALTER TABLE `doors` DROP COLUMN `client_version_mask`;
