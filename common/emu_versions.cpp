@@ -287,8 +287,3 @@ uint32 EQ::expansions::ConvertExpansionToExpansionsMask(Expansion expansion)
 		return maskEverQuest;
 	}
 }
-
-uint32 EQ::expansions::ConvertClientVersionToExpansionsMask(versions::ClientVersion client_version)
-{
-	return EQ::constants::StaticLookup(client_version)->ExpansionsMask;
-}

@@ -43,18 +43,12 @@ static const EQ::constants::LookupEntry constants_static_lookup_entries[EQ::vers
 {
 	/*[ClientVersion::Unknown] =*/
 	EQ::constants::LookupEntry(
-		ClientUnknown::constants::EXPANSION,
-		ClientUnknown::constants::EXPANSION_BIT,
-		ClientUnknown::constants::EXPANSIONS_MASK,
 		ClientUnknown::INULL,
 		ClientUnknown::INULL,
 		ClientUnknown::INULL
 	),
 	/*[ClientVersion::RoF2] =*/
 	EQ::constants::LookupEntry(
-		RoF2::constants::EXPANSION,
-		RoF2::constants::EXPANSION_BIT,
-		RoF2::constants::EXPANSIONS_MASK,
 		RoF2::constants::CHARACTER_CREATION_LIMIT,
 		RoF2::constants::SAY_LINK_BODY_SIZE,
 		RoF2::constants::MAX_BAZAAR_TRADERS
@@ -66,9 +60,6 @@ void EQ::constants::InitializeDynamicLookups() {
 	if (constants_dictionary_init == true)
 		return;
 	constants_dictionary_init = true;
-
-	if (RuleB(World, UseClientBasedExpansionSettings))
-		return;
 
 	// use static references for now
 }
@@ -420,9 +411,6 @@ void EQ::inventory::InitializeDynamicLookups() {
 		return;
 	inventory_dictionary_init = true;
 
-	if (RuleB(World, UseClientBasedExpansionSettings))
-		return;
-
 	const uint32 expansions = RuleI(World, ExpansionSettings);
 	const uint32 dynamic_check_mask = (EQ::expansions::bitPoR | EQ::expansions::bitTBS | EQ::expansions::bitHoT);
 	if ((dynamic_check_mask & expansions) == dynamic_check_mask)
@@ -536,9 +524,6 @@ void EQ::behavior::InitializeDynamicLookups() {
 		return;
 	behavior_dictionary_init = true;
 
-	if (RuleB(World, UseClientBasedExpansionSettings))
-		return;
-
 	// use static references for now
 }
 
@@ -610,9 +595,6 @@ void EQ::spells::InitializeDynamicLookups() {
 	if (spells_dictionary_init == true)
 		return;
 	spells_dictionary_init = true;
-
-	if (RuleB(World, UseClientBasedExpansionSettings))
-		return;
 
 	// use static references for now
 }

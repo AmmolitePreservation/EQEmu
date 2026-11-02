@@ -13,7 +13,8 @@ This branch removes every client but Rain of Fear 2 (the May 10 2013 build) from
 - **World** has one character creation check and one start zone lookup (the client sends the zone id, matched by zone, class, deity and race in `start_zones`), and the client version summary counts RoF2 clients.
 - **The chat server** sends every message as RoF2 reads it; the say-link converters for the older clients go.
 - **Mercenaries** no longer filter their types and templates by the client's version.
-- **Rules:** `World:SupportedClients`, `World:SoFStartZoneID`, `World:TitaniumStartZoneID`, `Spells:FRProjectileItem_Titanium` and `Spells:FRProjectileItem_SOF` go; `World:StartZoneID` and `Spells:FRProjectileItem` take the place of the last three. `Character:SoDClientUseSoDHPManaEnd` keeps its name and now chooses the formula set for everyone.
+- **Rules:** `World:SupportedClients`, `World:SoFStartZoneID`, `World:TitaniumStartZoneID`, `Spells:FRProjectileItem_Titanium` and `Spells:FRProjectileItem_SOF` go; `World:StartZoneID` and `Spells:FRProjectileItem` take the place of the last three. `World:UseClientBasedExpansionSettings` goes too: the expansion mask a client is told it owns, and the inventory shape that follows from it, come from `World:ExpansionSettings` alone. `Character:SoDClientUseSoDHPManaEnd` keeps its name and now chooses the formula set for everyone.
+- **Era tests that hid behind client tests** move to the era. The stat cap past level 70 (330 before Secrets of Faydwer, unbounded from it) follows `Expansion:CurrentExpansion`. A drink's intoxication, which upstream computed twice with the pre-SoD and SoD Alcohol Tolerance caps written in, is one formula on the cap the server serves at its maximum level.
 - **The Lua `ClientVersion` constants** are `Unknown` and `RoF2`. The Perl and Lua `GetClientVersion`, `GetClientVersionBit` and a door's `GetClientVersionMask` stay, since quest scripts call them.
 
 ## What stays, and why

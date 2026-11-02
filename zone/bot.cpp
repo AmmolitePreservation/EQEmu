@@ -6339,9 +6339,7 @@ int32 Bot::GetMaxStat() {
 	int32 base = 0;
 	if (level < 61)
 		base = 255;
-	else if (GetOwner() && GetOwner()->CastToClient())
-		base = (255 + 5 * (level - 60));
-	else if (level < 71)
+	else if (RuleI(Expansion, CurrentExpansion) < 0 || RuleI(Expansion, CurrentExpansion) >= static_cast<int>(EQ::expansions::Expansion::SoF) || level < 71)
 		base = (255 + 5 * (level - 60));
 	else
 		base = 330;

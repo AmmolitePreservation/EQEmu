@@ -145,7 +145,6 @@ namespace EQ
 		uint32 ConvertExpansionToExpansionBit(Expansion expansion);
 		Expansion ConvertExpansionBitToExpansion(uint32 expansion_bit);
 		uint32 ConvertExpansionToExpansionsMask(Expansion expansion);
-		uint32 ConvertClientVersionToExpansionsMask(versions::ClientVersion client_version);
 
 	} /*expansions*/
 

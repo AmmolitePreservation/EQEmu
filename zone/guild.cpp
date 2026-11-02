@@ -248,7 +248,8 @@ void Client::RefreshGuildInfo()
 	}
 
 	guildrank = info.rank;
-	guild_id = info.guild_id;true;
+	guild_id = info.guild_id;
+	GuildBanker = true;
 
 	if(zone->GetZoneID() == Zones::GUILDHALL)
 	{

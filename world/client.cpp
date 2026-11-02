@@ -221,9 +221,6 @@ void Client::SendExpansionInfo() {
 	if (RuleI(World, CharacterSelectExpansionSettings) != -1) {
 		eis->Expansions = RuleI(World, CharacterSelectExpansionSettings);
 	}
-	else if (RuleB(World, UseClientBasedExpansionSettings)) {
-		eis->Expansions = EQ::expansions::ConvertClientVersionToExpansionsMask(eqs->ClientVersion());
-	}
 	else {
 		eis->Expansions = RuleI(World, ExpansionSettings);
 	}

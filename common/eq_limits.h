@@ -32,25 +32,16 @@ namespace EQ
 
 	namespace constants {
 		struct LookupEntry {
-			EQ::expansions::Expansion Expansion;
-			uint32 ExpansionBit;
-			uint32 ExpansionsMask;
 			int16 CharacterCreationLimit;
 			size_t SayLinkBodySize;
 			uint32 BazaarTraderLimit;
-			
+
 			LookupEntry(const LookupEntry *lookup_entry) { }
 			LookupEntry(
-				EQ::expansions::Expansion Expansion,
-				uint32 ExpansionBit,
-				uint32 ExpansionsMask,
 				int16 CharacterCreationLimit,
 				size_t SayLinkBodySize,
 				uint32 BazaarTraderLimit
 			) :
-				Expansion(Expansion),
-				ExpansionBit(ExpansionBit),
-				ExpansionsMask(ExpansionsMask),
 				CharacterCreationLimit(CharacterCreationLimit),
 				SayLinkBodySize(SayLinkBodySize),
 				BazaarTraderLimit(BazaarTraderLimit)
@@ -240,13 +231,6 @@ namespace ClientUnknown
 {
 	const int16 IINVALID = -1;
 	const int16 INULL = 0;
-
-	namespace constants {
-		const EQ::expansions::Expansion EXPANSION = EQ::expansions::Expansion::EverQuest;
-		const uint32 EXPANSION_BIT = EQ::expansions::bitEverQuest;
-		const uint32 EXPANSIONS_MASK = EQ::expansions::maskEverQuest;
-
-	} // namespace constants
 
 } /*ClientUnknown*/
 

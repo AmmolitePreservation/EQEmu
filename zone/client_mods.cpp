@@ -40,8 +40,11 @@ int32 Client::GetMaxStat() const
 	if (level < 61) {
 		base = 255;
 	}
-	else {
+	else if (RuleI(Expansion, CurrentExpansion) < 0 || RuleI(Expansion, CurrentExpansion) >= static_cast<int>(EQ::expansions::Expansion::SoF) || level < 71) {
 		base = 255 + 5 * (level - 60);
+	}
+	else {
+		base = 330;
 	}
 	return base;
 }

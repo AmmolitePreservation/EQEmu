@@ -1489,7 +1489,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 			m_pp.guildrank = cgi.rank;
 		}
 		if (zone->GetZoneID() == Zones::GUILDHALL) {
-			GuildBanker = (true);
+			GuildBanker = true;
 		}
 	}
 	m_pp.guildbanker = GuildBanker;
@@ -5657,15 +5657,15 @@ void Client::Handle_OP_DeleteItem(const EQApplicationPacket *app)
 		entity_list.MessageCloseString(this, true, 50, 0, DRINKING_MESSAGE, GetName(), inst->GetItem()->Name);
 		CheckIncreaseSkill(EQ::skills::SkillAlcoholTolerance, nullptr, 25);
 
-		int16 AlcoholTolerance = GetSkill(EQ::skills::SkillAlcoholTolerance);
-		int16 IntoxicationIncrease;
+		// A drink adds 40 with no tolerance and 10 at the cap the server serves.
+		const int16 tolerance = GetSkill(EQ::skills::SkillAlcoholTolerance);
+		const int16 cap       = MaxSkill(EQ::skills::SkillAlcoholTolerance, GetClass(), RuleI(Character, MaxLevel));
+		int16       increase  = cap > 0 ? (cap - tolerance) * 30 / cap + 10 : 40;
 
-		IntoxicationIncrease = (270 - AlcoholTolerance) * 0.111111108 + 10;
+		if (increase < 0)
+			increase = 1;
 
-		if (IntoxicationIncrease < 0)
-			IntoxicationIncrease = 1;
-
-		SetIntoxication(GetIntoxication()+IntoxicationIncrease);
+		SetIntoxication(GetIntoxication() + increase);
 
 		if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::ITEM_DESTROY) && inst->GetItem()) {
 			auto e = PlayerEvent::DestroyItemEvent{
@@ -16618,12 +16618,7 @@ void Client::RecordStats()
 
 void Client::ReloadExpansionProfileSetting()
 {
-	if (RuleB(World, UseClientBasedExpansionSettings)) {
-		m_pp.expansions = EQ::expansions::ConvertClientVersionToExpansionsMask(ClientVersion());
-	}
-	else {
-		m_pp.expansions = RuleI(World, ExpansionSettings);
-	}
+	m_pp.expansions = RuleI(World, ExpansionSettings);
 }
 
 void Client::Handle_OP_GuildTributeSelect(const EQApplicationPacket *app)
