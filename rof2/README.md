@@ -36,4 +36,6 @@ Built on peridotguids from its `preGuids` snapshot (Peridot's data at database v
 - The Bazaar: a trader lists a stack and an item, a search finds the stack (the Find button is disabled until a trader exists while the window is open), a customer buys part of the stack, the trader's row and satchel count down, trading ends and the rows go.
 - Chat server: both clients connect as RoF2 combined chat and mail, join a channel and exchange messages (peridotguids' config pointed clients at Peridot's chat server until this test; it now names peridotguids).
 
-Not tested: character creation through the client, mercenaries (Peridot has no mercenary tables), tasks, the guild management window.
+- Character creation from the client's creation window: a human warrior with a generated name; world matched the start zone row by the zone the client sent (Freeport West) and the character entered the tutorial with 9 starting items and 18 skills.
+
+Not tested: mercenaries (Peridot has no mercenary tables), tasks, the guild management window.
