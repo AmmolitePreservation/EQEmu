@@ -11746,8 +11746,6 @@ void Client::RegisterBug(BugReport_Struct* r) {
 	auto b = BugReportsRepository::NewEntity();
 
 	b.zone                = zone->GetShortName();
-	b.client_version_id   = static_cast<uint32_t>(ClientVersion());
-	b.client_version_name = EQ::versions::ClientVersionName(ClientVersion());
 	b.account_id          = AccountID();
 	b.character_id        = CharacterID();
 	b.character_name      = GetName();

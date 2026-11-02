@@ -4372,7 +4372,6 @@ CREATE TABLE `merc_templates`
     `merc_npc_type_id` int(11) UNSIGNED NOT NULL,
     `dbstring`         varchar(12) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
     `name_type_id`     tinyint(4) NOT NULL DEFAULT 0,
-    `clientversion`    int(10) UNSIGNED NOT NULL,
     PRIMARY KEY (`merc_template_id`) USING BTREE,
     INDEX              `FK_merc_templates_1`(`merc_type_id`) USING BTREE,
     INDEX              `FK_merc_templates_2`(`merc_subtype_id`) USING BTREE
@@ -4385,7 +4384,6 @@ CREATE TABLE `merc_types`
     `race_id`        int(10) UNSIGNED NOT NULL,
     `proficiency_id` tinyint(3) UNSIGNED NOT NULL,
     `dbstring`       varchar(12) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
-    `clientversion`  int(10) UNSIGNED NOT NULL,
     PRIMARY KEY (`merc_type_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 49 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Compact;
 
@@ -7168,6 +7166,18 @@ DELETE FROM `doors` WHERE `zone` = 'PoKnowledge' AND `name` = 'POKRVPORT500' AND
 DELETE FROM `doors` WHERE `zone` = 'guildhall' AND `client_version_mask` = 0;
 ALTER TABLE `zone_points` DROP COLUMN `client_version_mask`;
 ALTER TABLE `doors` DROP COLUMN `client_version_mask`;
+		)",
+		.content_schema_update = true
+	},
+	ManifestEntry{
+		.version = 9327,
+		.description = "2026_11_02_one_client_leftovers.sql",
+		.check = "SHOW COLUMNS FROM `start_zones` LIKE 'player_choice'",
+		.condition = "not_empty",
+		.match = "",
+		.sql = R"(
+ALTER TABLE `start_zones` DROP PRIMARY KEY, DROP COLUMN `player_choice`, ADD PRIMARY KEY (`zone_id`, `player_race`, `player_class`, `player_deity`);
+ALTER TABLE `bug_reports` DROP COLUMN `client_version_id`, DROP COLUMN `client_version_name`;
 		)",
 		.content_schema_update = true
 	},

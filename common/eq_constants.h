@@ -974,24 +974,6 @@ namespace ZoneBlockedSpellTypes {
 	const uint8 Region   = 2;
 };
 
-enum StartZoneIndex {
-    Odus = 0,
-    Qeynos,
-    Halas,
-    Rivervale,
-    Freeport,
-    Neriak,
-    Grobb,
-    Oggok,
-    Kaladim,
-    GreaterFaydark,
-    Felwithe,
-    Akanon,
-    Cabilis,
-    SharVahl,
-    RatheMtn
-};
-
 enum FVNoDropFlagRule
 {
 	Disabled = 0,

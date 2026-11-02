@@ -296,10 +296,8 @@ void command_bugs(Client *c, const Seperator *sep)
 		c->Message(
 			Chat::White,
 			fmt::format(
-				"Bug ID {} | Client: {} ({}) UI Path: {}",
+				"Bug ID {} | UI Path: {}",
 				r.id,
-				r.client_version_name,
-				r.client_version_id,
 				r.ui_path
 			).c_str()
 		);
