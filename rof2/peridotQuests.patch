@@ -1,7 +1,5 @@
 diff --git a/kithicor/Crazy_Charlie.pl b/kithicor/Crazy_Charlie.pl
-old mode 100644
-new mode 100755
-index 03d471c6d..28c407cb2
+index 03d471c6d..28c407cb2 100644
 --- a/kithicor/Crazy_Charlie.pl
 +++ b/kithicor/Crazy_Charlie.pl
 @@ -1,6 +1,5 @@
@@ -22,9 +20,7 @@ index 03d471c6d..28c407cb2
        				if($text=~/their/i) {
        					quest::say("Who? Look around! The zombies, of course! They aren't too bright, but seem attracted to noises. I just know the [" . quest::saylink("epidemic") . "] is going to spread.");
 diff --git a/plugins/Quest_Credit.pl b/plugins/Quest_Credit.pl
-old mode 100644
-new mode 100755
-index 8e173e8ad..e72d1aeed
+index 8e173e8ad..e72d1aeed 100644
 --- a/plugins/Quest_Credit.pl
 +++ b/plugins/Quest_Credit.pl
 @@ -135,7 +135,6 @@ sub QCreditStatus{
@@ -44,9 +40,7 @@ index 8e173e8ad..e72d1aeed
  			<c \"#FFFF66\">Character: </c> $name <br>
  			<c \"#FFFF66\">Current Balance: </c><c \"#33FF99\"> $CreditAmnt2 </c><br>");
 diff --git a/plugins/Quest_Credit2.pl b/plugins/Quest_Credit2.pl
-old mode 100644
-new mode 100755
-index d31328f81..ed52db81c
+index d31328f81..ed52db81c 100644
 --- a/plugins/Quest_Credit2.pl
 +++ b/plugins/Quest_Credit2.pl
 @@ -156,7 +156,6 @@ sub CreditStatusAccount{
@@ -118,9 +112,7 @@ index 33eb5470c..000000000
 -return 1; 
 \ No newline at end of file
 diff --git a/rivervale/Laryen_Lycanthrope.pl b/rivervale/Laryen_Lycanthrope.pl
-old mode 100644
-new mode 100755
-index f16ca24cb..ccf5ca69d
+index f16ca24cb..ccf5ca69d 100644
 --- a/rivervale/Laryen_Lycanthrope.pl
 +++ b/rivervale/Laryen_Lycanthrope.pl
 @@ -4,8 +4,6 @@ sub EVENT_SPAWN {
@@ -144,9 +136,7 @@ index f16ca24cb..ccf5ca69d
  sub EVENT_TIMER {
  
 diff --git a/tox/Marta_Stalwart.pl b/tox/Marta_Stalwart.pl
-old mode 100644
-new mode 100755
-index d56991245..35d7df6da
+index d56991245..35d7df6da 100644
 --- a/tox/Marta_Stalwart.pl
 +++ b/tox/Marta_Stalwart.pl
 @@ -1,6 +1,5 @@
@@ -175,9 +165,7 @@ index d56991245..35d7df6da
  }
 \ No newline at end of file
 diff --git a/toxxulia/Marta_Stalwart.pl b/toxxulia/Marta_Stalwart.pl
-old mode 100644
-new mode 100755
-index 0e9acae9b..a07ae2292
+index 0e9acae9b..a07ae2292 100644
 --- a/toxxulia/Marta_Stalwart.pl
 +++ b/toxxulia/Marta_Stalwart.pl
 @@ -1,6 +1,5 @@
