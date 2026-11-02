@@ -31,9 +31,21 @@ Migration 9326 (`2026_11_01_one_client_content.sql`, a content update) moves wha
 
 Migration 9327 (`2026_11_02_one_client_leftovers.sql`, a content update) drops `start_zones.player_choice`, Titanium's starting-city index, and re-keys the table on zone, race, class and deity, which Peridot's 420 rows allow without collision; and drops `bug_reports.client_version_id` and `client_version_name`, constant with one client. Both tables live in one database on Peridot, as the content entry assumes. Migration 9216's mercenary CREATE statements lose their `clientversion` columns, since that entry only runs where the tables are absent and nothing reads them; Peridot has no mercenary tables.
 
-What the server sends now follows `Expansion:CurrentExpansion` alone: a Planes of Power server sends players from East Karana into classic Highpass and to the Lost Dungeons landing in Nektulos, a Serpent's Spine server into Highpass Hold. Whether the client can load what it is sent is the client package's business, not the database's: the RoF2 client has no zone 5 in its zone table (the client's log says "Unknown Zone" and fails to load a world file) and its Nektulos files are the Darkhollow layout. Peridot's rule rows for the removed and renamed rules needed nothing: world deletes rule rows it no longer knows and inserts missing defaults at boot. The remaining client-axis leftovers are worklist items (`rof2/worklist.md`).
+What the server sends now follows `Expansion:CurrentExpansion` alone: a Planes of Power server sends players from East Karana into classic Highpass and to the Lost Dungeons landing in Nektulos, a Serpent's Spine server into Highpass Hold. Whether the client can load what it is sent is the client package's business, not the database's: the RoF2 client has no zone 5 in its zone table (the client's log says "Unknown Zone" and fails to load a world file) and its Nektulos files are the Darkhollow layout. Peridot's rule rows for the removed and renamed rules needed nothing: world deletes rule rows it no longer knows and inserts missing defaults at boot. No client-axis column remains; the worklist (`rof2/worklist.md`) records each item with its evidence and tests.
 
-## Tests on peridotguids (2026-11-01)
+## Deploying to Peridot
+
+Peridot runs the same data peridotguids was tested on, so the steps are the ones peridotguids took:
+
+1. Pull the branch and build it (`make` in the server's build directory; world, zone, ucs and loginserver).
+2. Stop the server and run `./bin/world database:updates` from the server directory. It backs the database up, then applies 9326 and 9327 and sets `db_version` to 9327. Both are content entries; Peridot keeps content and player tables in one database, which they assume.
+3. Apply `rof2/peridotQuests.patch` to the quests checkout (`git apply` from the quests directory; the checkout is ProjectEQ/projecteqquests with local changes, and the patch was taken against it). Without it the three Halloween NPCs refuse every player, since the scripts' client test fails for RoF2's new enum value.
+4. Start the server. World deletes the rule rows the branch no longer knows (`World:SupportedClients`, `World:TitaniumStartZoneID`, `World:SoFStartZoneID`, `World:UseClientBasedExpansionSettings`, the two projectile item rules) and inserts the defaults of the renamed ones (`World:StartZoneID` -1, `Spells:FRProjectileItem` 80684). `World:ExpansionSettings` now governs the expansion mask on its own; Peridot already had the client-based rule off.
+5. The login server's `login.json` loses nothing it needs: the Titanium port and opcode keys are ignored if left, and `login_opcodes.conf` can go.
+
+Peridot's client package already carries what the era-bounded rows can send a Planes of Power player to, except classic Highpass, which the RoF2 client cannot load at all; East Karana's Highpass line sends players there at era 4 and the client stops at "Unable to load World". Either keep the era rule where it is and accept that line as dead, or move the client's Highpass files to the id the client knows; the database side is right either way.
+
+## Tests on peridotguids (2026-11-01 and 2026-11-02)
 
 Built on peridotguids from its `preGuids` snapshot (Peridot's data at database version 9325), with the RoF2 client through claudelink and two characters, Claudeguids and Claudeguidstwo:
 
