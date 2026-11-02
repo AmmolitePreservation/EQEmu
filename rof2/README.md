@@ -46,4 +46,6 @@ Built on peridotguids from its `preGuids` snapshot (Peridot's data at database v
 
 - The client axis (RC-2): migration 9326 ran through world's updater from 9325. The walk into East Karana's Highpass line zones the client by the row the era selects: at `Expansion:CurrentExpansion` 12 the server sends Highpass Hold and the client arrives; at 4 it sends classic Highpass and the client stops at "Unable to load World", since its zone table has no zone 5 (`${Zone[5]}` and `${Zone[highpass]}` are empty; the stock client also lacks `highpass_obj.s3d`, which Peridot's client package adds). Plane of Knowledge shows `POKRVPORT500` and the pre-Darkhollow `POKNRKPORT500` and not the Serpent's Spine `OBJ_PORT_CRESCENT`. Character select and login unchanged.
 
-Not tested: mercenaries (Peridot has no mercenary tables), tasks, the guild management window.
+- The era review (RC-8): a drink raised intoxication by the one formula's value for the server's tolerance cap; a Guild Hall deposit and its promotion to the main area, which the banker flag gates, both went through.
+
+Not tested: mercenaries (Peridot has no mercenary tables), tasks, the guild management window, the stat cap past level 70.
