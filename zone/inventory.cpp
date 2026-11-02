@@ -917,7 +917,6 @@ void Client::SendCursorBuffer()
 	// Temporary work-around for the RoF+ Client Buffer
 	// Instead of dealing with client moving items in cursor buffer,
 	// we can just send the next item in the cursor buffer to the cursor.
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF) { return; }
 	if (GetInv().CursorEmpty()) { return; }
 
 	auto test_inst = GetInv().GetCursorItem();
@@ -1100,8 +1099,6 @@ void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, Loo
 	// Subordinate items in cursor buffer must be sent via ItemPacketSummonItem or we just overwrite the visible cursor and desync the client
 	if (slot_id == EQ::invslot::slotCursor && !cursor_empty) {
 		// RoF+ currently has a specialized cursor handler
-		if (ClientVersion() < EQ::versions::ClientVersion::RoF)
-			SendItemPacket(slot_id, &inst, ItemPacketLimbo);
 	}
 	else {
 		SendLootItemInPacket(&inst, slot_id);
@@ -1303,117 +1300,6 @@ void Client::MoveItemCharges(EQ::ItemInstance &from, int16 to_slot, uint8 type)
 		}
 	}
 }
-
-#if 0
-// TODO: needs clean-up to save references
-bool MakeItemLink(char* &ret_link, const ItemData *item, uint32 aug0, uint32 aug1, uint32 aug2, uint32 aug3, uint32 aug4, uint32 aug5, uint8 evolving, uint8 evolvedlevel) {
-	//we're sending back the entire "link", minus the null characters & item name
-	//that way, we can use it for regular links & Task links
-	//note: initiator needs to pass us ret_link
-
-	/*
-	--- Usage ---
-	Chat: "%c" "%s" "%s" "%c", 0x12, ret_link, inst->GetItem()->name, 0x12
-	Task: "<a WndNotify=\"27," "%s" "\">" "%s" "</a>", ret_link, inst->GetItem()->name
-	<a WndNotify="27,00960F000000000000000000000000000000000000000">Master's Book of Wood Elven Culture</a>
-	http://eqitems.13th-floor.org/phpBB2/viewtopic.php?p=510#510
-	*/
-
-	if (!item) //have to have an item to make the link
-		return false;
-
-	//format:
-	//0	itemid	aug1	aug2	aug3	aug4	aug5	evolving?	loregroup	evolved level	hash
-	//0	00000	00000	00000	00000	00000	00000	0			0000		0				00000000
-	//length:
-	//1	5		5		5		5		5		5		1			4			1				8		= 45
-	//evolving item info: http://eqitems.13th-floor.org/phpBB2/viewtopic.php?t=145#558
-
-	//int hash = GetItemLinkHash(inst);	//eventually this will work (currently crashes zone), but for now we'll skip the extra overhead
-	int hash = NOT_USED;
-
-	// Tested with UF and RoF..there appears to be a problem with using non-augment arguments below...
-	// Currently, enabling them causes misalignments in what the client expects. I haven't looked
-	// into it further to determine the cause..but, the function is setup to accept the parameters.
-	// Note: some links appear with '00000' in front of the name..so, it's likely we need to send
-	// some additional information when certain parameters are true
-	//switch (GetClientVersion()) {
-	switch (0) {
-	case EQClientRoF2:
-		// This operator contains 14 parameter masks..but, only 13 parameter values.
-		// Even so, the client link appears ok... Need to figure out the discrepancy
-		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%1X" "%04X" "%1X" "%05X" "%08X",
-			0,
-			item->ID,
-			aug0,
-			aug1,
-			aug2,
-			aug3,
-			aug4,
-			aug5,
-			0,//evolving,
-			0,//item->LoreGroup,
-			0,//evolvedlevel,
-			0,
-			hash
-			);
-		return true;
-	case EQClientRoF:
-		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
-			0,
-			item->ID,
-			aug0,
-			aug1,
-			aug2,
-			aug3,
-			aug4,
-			aug5,
-			0,//evolving,
-			0,//item->LoreGroup,
-			0,//evolvedlevel,
-			0,
-			hash
-			);
-		return true;
-	case EQClientUnderfoot:
-	case EQClientSoD:
-	case EQClientSoF:
-		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%05X" "%08X",
-			0,
-			item->ID,
-			aug0,
-			aug1,
-			aug2,
-			aug3,
-			aug4,
-			0,//evolving,
-			0,//item->LoreGroup,
-			0,//evolvedlevel,
-			0,
-			hash
-			);
-		return true;
-	case EQClientTitanium:
-		MakeAnyLenString(&ret_link, "%1X" "%05X" "%05X" "%05X" "%05X" "%05X" "%05X" "%1X" "%04X" "%1X" "%08X",
-			0,
-			item->ID,
-			aug0,
-			aug1,
-			aug2,
-			aug3,
-			aug4,
-			0,//evolving,
-			0,//item->LoreGroup,
-			0,//evolvedlevel,
-			hash
-			);
-		return true;
-	case EQClient62:
-	default:
-		return false;
-	}
-}
-#endif
 
 int Client::GetItemLinkHash(const EQ::ItemInstance* inst) {
 #if 0
@@ -1622,58 +1508,6 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	}
 
 	if (move_in->from_slot == move_in->to_slot) { // Item summon, no further processing needed
-		if (ClientVersion() >= EQ::versions::ClientVersion::RoF) { return true; } // Can't do RoF+
-
-		if (move_in->to_slot == EQ::invslot::slotCursor) {
-			auto test_inst = m_inv.GetItem(EQ::invslot::slotCursor);
-			if (test_inst == nullptr) { return true; }
-			auto test_item = test_inst->GetItem();
-			if (test_item == nullptr) { return true; }
-			if (!test_item->LoreFlag) { return true; }
-
-			bool lore_pass = true;
-			if (test_item->LoreGroup == -1) {
-				lore_pass = (m_inv.HasItem(test_item->ID, 0, ~(invWhereSharedBank | invWhereCursor)) == INVALID_INDEX);
-			}
-			else if (test_item->LoreGroup != 0) {
-				lore_pass = (m_inv.HasItemByLoreGroup(test_item->LoreGroup, ~(invWhereSharedBank | invWhereCursor)) == INVALID_INDEX);
-			}
-
-			if (!lore_pass) {
-				LogInventory("([{}]) Duplicate lore items are not allowed - destroying item [{}](id:[{}]) on cursor",
-					GetName(), test_item->Name, test_item->ID);
-				MessageString(Chat::Loot, 290);
-
-				if (parse->ItemHasQuestSub(test_inst, EVENT_DESTROY_ITEM)) {
-					parse->EventItem(EVENT_DESTROY_ITEM, this, test_inst, nullptr, "", 0);
-				}
-
-				if (parse->PlayerHasQuestSub(EVENT_DESTROY_ITEM_CLIENT)) {
-					std::vector<std::any> args = { test_inst };
-					parse->EventPlayer(EVENT_DESTROY_ITEM_CLIENT, this, "", 0, &args);
-				}
-
-				DeleteItemInInventory(EQ::invslot::slotCursor, 0, true, ItemRetirement::Destroyed);
-				if (test_inst && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::ITEM_DESTROY)) {
-					auto e = PlayerEvent::DestroyItemEvent{
-						.item_id      = test_inst->GetItem()->ID,
-						.item_name    = test_inst->GetItem()->Name,
-						.charges      = test_inst->GetCharges(),
-						.augment_1_id = test_inst->GetAugmentItemID(0),
-						.augment_2_id = test_inst->GetAugmentItemID(1),
-						.augment_3_id = test_inst->GetAugmentItemID(2),
-						.augment_4_id = test_inst->GetAugmentItemID(3),
-						.augment_5_id = test_inst->GetAugmentItemID(4),
-						.augment_6_id = test_inst->GetAugmentItemID(5),
-						.attuned      = test_inst->IsAttuned(),
-						.reason       = "Duplicate lore item"
-					};
-
-					RecordPlayerEventLog(PlayerEvent::ITEM_DESTROY, e);
-				}
-
-			}
-		}
 		return true;
 	}
 
@@ -2119,12 +1953,6 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 					//This resets the UF client to recognize the new serial item of the placed item
 					//if it came from a stack without having to close the trader window and re-open.
 					//It is not required for the RoF2 client.
-					if (ClientVersion() < EQ::versions::ClientVersion::RoF2) {
-						auto outapp  = new EQApplicationPacket(OP_Trader, sizeof(TraderBuy_Struct));
-						auto data    = (TraderBuy_Struct *) outapp->pBuffer;
-						data->action = BazaarBuyItem;
-						FastQueuePacket(&outapp);
-					}
 				}
 			}
 		}

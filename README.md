@@ -125,9 +125,7 @@ Every system, packet, opcode, and game mechanic has been reconstructed through c
  🧑‍💻🖥️ Supported Clients
 </h1>
 
-|Titanium Edition|Secrets of Faydwer|Seeds of Destruction|Underfoot|Rain of Fear|
-|:---:|:---:|:---:|:---:|:---:|
-|<img src="http://i.imgur.com/hrwDxoM.jpg" height="150">|<img src="http://i.imgur.com/cRDW5tn.png" height="150">|<img src="http://i.imgur.com/V48kuVn.jpg" height="150">|<img src="http://i.imgur.com/IJQ0XMa.jpg" height="150">|<img src="http://i.imgur.com/OMpHkKa.png" height="100">|
+This fork supports one client: Rain of Fear 2 (the May 10 2013 build). See `rof2/README.md`.
 
 ## 📚 Resources
 

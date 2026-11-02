@@ -28,9 +28,6 @@
 extern UCSDatabase database;
 extern uint32 ChatMessagesSent;
 
-void ServerToClient45SayLink(std::string& clientSayLink, const std::string& serverSayLink);
-void ServerToClient50SayLink(std::string& clientSayLink, const std::string& serverSayLink);
-void ServerToClient55SayLink(std::string& clientSayLink, const std::string& serverSayLink);
 
 ChatChannel::ChatChannel(const std::string& inName, const std::string& inOwner, const std::string& inPassword, bool inPermanent, int inMinimumStatus) :
 	m_delete_timer(0) {
@@ -469,8 +466,6 @@ void ChatChannel::SendMessageToChannel(const std::string& Message, Client* Sende
 
 	if(!Sender) return;
 
-	std::string cv_messages[EQ::versions::ClientVersionCount];
-
 	ChatMessagesSent++;
 
 	LinkedListIterator<Client*> iterator(m_clients_in_channel);
@@ -486,27 +481,7 @@ void ChatChannel::SendMessageToChannel(const std::string& Message, Client* Sende
 			LogDebug("Sending message to [{}] from [{}]",
 				channel_client->GetName().c_str(), Sender->GetName().c_str());
 
-			if (cv_messages[static_cast<uint32>(channel_client->GetClientVersion())].length() == 0) {
-				switch (channel_client->GetClientVersion()) {
-				case EQ::versions::ClientVersion::Titanium:
-					ServerToClient45SayLink(cv_messages[static_cast<uint32>(channel_client->GetClientVersion())], Message);
-					break;
-				case EQ::versions::ClientVersion::SoF:
-				case EQ::versions::ClientVersion::SoD:
-				case EQ::versions::ClientVersion::UF:
-					ServerToClient50SayLink(cv_messages[static_cast<uint32>(channel_client->GetClientVersion())], Message);
-					break;
-				case EQ::versions::ClientVersion::RoF:
-					ServerToClient55SayLink(cv_messages[static_cast<uint32>(channel_client->GetClientVersion())], Message);
-					break;
-				case EQ::versions::ClientVersion::RoF2:
-				default:
-					cv_messages[static_cast<uint32>(channel_client->GetClientVersion())] = Message;
-					break;
-				}
-			}
-
-			channel_client->SendChannelMessage(m_name, cv_messages[static_cast<uint32>(channel_client->GetClientVersion())], Sender);
+			channel_client->SendChannelMessage(m_name, Message, Sender);
 		}
 
 		iterator.Advance();
@@ -847,118 +822,3 @@ void ChatChannelList::AddToFilteredNames(const std::string& name) {
 	}
 }
 
-void ServerToClient45SayLink(std::string& clientSayLink, const std::string& serverSayLink) {
-	if (serverSayLink.find('\x12') == std::string::npos) {
-		clientSayLink = serverSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(serverSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 56) {
-				clientSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26    31    36 37   41 43    48       (Source)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX XXXXX XXXXXXXX (56)
-			// 6.2:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX       X  XXXX  X       XXXXXXXX (45)
-			// Diff:                                       ^^^^^         ^  ^^^^^
-
-			clientSayLink.push_back('\x12');
-			clientSayLink.append(segments[segment_iter].substr(0, 31));
-			clientSayLink.append(segments[segment_iter].substr(36, 5));
-
-			if (segments[segment_iter][41] == '0')
-				clientSayLink.push_back(segments[segment_iter][42]);
-			else
-				clientSayLink.push_back('F');
-
-			clientSayLink.append(segments[segment_iter].substr(48));
-			clientSayLink.push_back('\x12');
-		}
-		else {
-			clientSayLink.append(segments[segment_iter]);
-		}
-	}
-}
-
-void ServerToClient50SayLink(std::string& clientSayLink, const std::string& serverSayLink) {
-	if (serverSayLink.find('\x12') == std::string::npos) {
-		clientSayLink = serverSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(serverSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 56) {
-				clientSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26    31    36 37   41 43    48       (Source)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX XXXXX XXXXXXXX (56)
-			// SoF:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX       X  XXXX  X XXXXX XXXXXXXX (50)
-			// Diff:                                       ^^^^^         ^
-
-			clientSayLink.push_back('\x12');
-			clientSayLink.append(segments[segment_iter].substr(0, 31));
-			clientSayLink.append(segments[segment_iter].substr(36, 5));
-
-			if (segments[segment_iter][41] == '0')
-				clientSayLink.push_back(segments[segment_iter][42]);
-			else
-				clientSayLink.push_back('F');
-
-			clientSayLink.append(segments[segment_iter].substr(43));
-			clientSayLink.push_back('\x12');
-		}
-		else {
-			clientSayLink.append(segments[segment_iter]);
-		}
-	}
-}
-
-void ServerToClient55SayLink(std::string& clientSayLink, const std::string& serverSayLink) {
-	if (serverSayLink.find('\x12') == std::string::npos) {
-		clientSayLink = serverSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(serverSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 56) {
-				clientSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26    31    36 37   41 43    48       (Source)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX XXXXX XXXXXXXX (56)
-			// RoF:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX  X XXXXX XXXXXXXX (55)
-			// Diff:                                                     ^
-
-			clientSayLink.push_back('\x12');
-			clientSayLink.append(segments[segment_iter].substr(0, 41));
-
-			if (segments[segment_iter][41] == '0')
-				clientSayLink.push_back(segments[segment_iter][42]);
-			else
-				clientSayLink.push_back('F');
-
-			clientSayLink.append(segments[segment_iter].substr(43));
-			clientSayLink.push_back('\x12');
-		}
-		else {
-			clientSayLink.append(segments[segment_iter]);
-		}
-	}
-}

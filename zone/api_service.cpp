@@ -266,7 +266,6 @@ Json::Value ApiGetDoorListDetail(EQ::Net::WebsocketServerConnection *connection,
 		Json::Value row;
 
 		row["door_name"]           = door->GetDoorName();
-		row["client_version_mask"] = door->GetClientVersionMask();
 		row["disable_timer"]       = door->GetDisableTimer();
 		row["door_db_id"]          = door->GetDoorDBID();
 		row["door_id"]             = door->GetDoorID();
@@ -672,7 +671,6 @@ Json::Value ApiGetClientListDetail(EQ::Net::WebsocketServerConnection *connectio
 		row["check_trade_non_droppable"]               = client->CheckTradeNonDroppable();
 		row["check_triple_attack"]                     = client->CheckTripleAttack();
 		row["client_max_level"]                        = client->GetClientMaxLevel();
-		row["client_version_bit"]                      = client->ClientVersionBit();
 		row["connected"]                               = client->Connected();
 		row["copper"]                                  = client->GetCopper();
 		row["corpse_count"]                            = client->GetCorpseCount();

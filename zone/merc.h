@@ -168,7 +168,6 @@ public:
 	uint8 GetStance() { return _currentStance; }
 	int GetHatedCount() { return _hatedCount; }
 
-	inline const uint8 GetClientVersion() const { return _OwnerClientVersion; }
 
 	virtual void SetTarget(Mob* mob);
 	bool HasSkill(EQ::skills::SkillType skill_id) const;
@@ -253,7 +252,6 @@ public:
 	void SetTierID( uint8 tier_id ) { _TierID = tier_id; }
 	void SetCostFormula( uint8 costformula ) { _CostFormula = costformula; }
 	void SetMercNameType( uint8 nametype ) { _NameType = nametype; }
-	void SetClientVersion(uint8 clientVersion) { _OwnerClientVersion = clientVersion; }
 	void SetSuspended(bool suspended) { _suspended = suspended; }
 	void SetStance(uint8 stance_id) { _currentStance = stance_id; }
 	void SetHatedCount( int count ) { _hatedCount = count; }
@@ -366,7 +364,6 @@ private:
 	uint8 _TierID;
 	uint8 _CostFormula;
 	uint8 _NameType;
-	uint8 _OwnerClientVersion;
 	uint8 _currentStance;
 
 	EQ::InventoryProfile m_inv;

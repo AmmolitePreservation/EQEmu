@@ -30,8 +30,8 @@ struct CharacterSelect_Struct;
 
 class WorldDatabase : public SharedDatabase {
 public:
-	bool GetStartZone(PlayerProfile_Struct* pp, CharCreate_Struct* p_char_create_struct, bool is_titanium);
-	void GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, uint32 client_version_bit);
+	bool GetStartZone(PlayerProfile_Struct* pp, CharCreate_Struct* p_char_create_struct);
+	void GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, EQ::versions::ClientVersion client_version);
 	int MoveCharacterToBind(int character_id, uint8 bind_number = 0);
 	int MoveCharacterToInstanceSafeReturn(int character_id, int instance_zone_id, int instance_id);
 
@@ -42,8 +42,7 @@ public:
 	bool LoadCharacterCreateCombos();
 
 private:
-	void SetTitaniumDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc);
-	void SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc);
+	void SetDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc);
 
 	bool GetCharSelInventory(
 		const std::vector<ItemLayer::Held> &inventories,

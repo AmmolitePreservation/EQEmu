@@ -30,55 +30,17 @@ namespace EQ
 	namespace versions {
 		enum class ClientVersion : uint32 {
 			Unknown = 0,
-			Client62,	// Build: 'Aug  4 2005 15:40:59'
-			Titanium,	// Build: 'Oct 31 2005 10:33:37'
-			SoF,		// Build: 'Sep  7 2007 09:11:49'
-			SoD,		// Build: 'Dec 19 2008 15:22:49'
-			UF,			// Build: 'Jun  8 2010 16:44:32'
-			RoF,		// Build: 'Dec 10 2012 17:35:44'
 			RoF2		// Build: 'May 10 2013 23:30:08'
-		};
-
-		enum ClientVersionBitmask : uint32 {
-			bitUnknown = 0x00000000,
-			bitClient62 = 0x00000001, // unsupported (placeholder for scripts)
-			bitTitanium = 0x00000002,
-			bitSoF = 0x00000004,
-			bitSoD = 0x00000008,
-			bitUF = 0x00000010,
-			bitRoF = 0x00000020,
-			bitRoF2 = 0x00000040,
-			maskUnknown = 0x00000000,
-			maskTitaniumAndEarlier = 0x00000003,
-			maskSoFAndEarlier = 0x00000007,
-			maskSoDAndEarlier = 0x0000000F,
-			maskUFAndEarlier = 0x0000001F,
-			maskRoFAndEarlier = 0x0000003F,
-			maskSoFAndLater = 0xFFFFFFFC,
-			maskSoDAndLater = 0xFFFFFFF8,
-			maskUFAndLater = 0xFFFFFFF0,
-			maskRoFAndLater = 0xFFFFFFE0,
-			maskRoF2AndLater = 0xFFFFFFC0,
-			maskAllClients = 0xFFFFFFFF
 		};
 
 		const ClientVersion LastClientVersion = ClientVersion::RoF2;
 		const size_t ClientVersionCount = (static_cast<size_t>(LastClientVersion) + 1);
 
-		bool IsValidClientVersion(ClientVersion client_version);
 		ClientVersion ValidateClientVersion(ClientVersion client_version);
 		const char* ClientVersionName(ClientVersion client_version);
-		uint32 ConvertClientVersionToClientVersionBit(ClientVersion client_version);
-		ClientVersion ConvertClientVersionBitToClientVersion(uint32 client_version_bit);
-		
+
 		enum class MobVersion : uint32 {
 			Unknown = 0,
-			Client62,
-			Titanium,
-			SoF,
-			SoD,
-			UF,
-			RoF,
 			RoF2,
 			NPC,
 			NPCMerchant,
@@ -88,11 +50,6 @@ namespace EQ
 			NPCPet,
 			MercPet,
 			BotPet,
-			OfflineTitanium,
-			OfflineSoF,
-			OfflineSoD,
-			OfflineUF,
-			OfflineRoF,
 			OfflineRoF2
 		};
 
@@ -102,35 +59,12 @@ namespace EQ
 		const MobVersion LastOfflinePCMobVersion = MobVersion::OfflineRoF2;
 		const size_t MobVersionCount = (static_cast<size_t>(LastMobVersion) + 1);
 
-		bool IsValidMobVersion(MobVersion mob_version);
-		bool IsValidPCMobVersion(MobVersion mob_version);
-		bool IsValidNonPCMobVersion(MobVersion mob_version);
-		bool IsValidOfflinePCMobVersion(MobVersion mob_version);
-
 		MobVersion ValidateMobVersion(MobVersion mob_version);
-		MobVersion ValidatePCMobVersion(MobVersion mob_version);
-		MobVersion ValidateNonPCMobVersion(MobVersion mob_version);
-		MobVersion ValidateOfflinePCMobVersion(MobVersion mob_version);
-
 		const char* MobVersionName(MobVersion mob_version);
-		ClientVersion ConvertMobVersionToClientVersion(MobVersion mob_version);
 		MobVersion ConvertClientVersionToMobVersion(ClientVersion client_version);
-		MobVersion ConvertPCMobVersionToOfflinePCMobVersion(MobVersion mob_version);
-		MobVersion ConvertOfflinePCMobVersionToPCMobVersion(MobVersion mob_version);
-		ClientVersion ConvertOfflinePCMobVersionToClientVersion(MobVersion mob_version);
-		MobVersion ConvertClientVersionToOfflinePCMobVersion(ClientVersion client_version);
-
 
 		enum UCSVersion : char {
 			ucsUnknown = '\0',
-			ucsClient62Chat = 'A',
-			ucsClient62Mail = 'a',
-			ucsTitaniumChat = 'B',
-			ucsTitaniumMail = 'b',
-			ucsSoFCombined = 'C',
-			ucsSoDCombined = 'D',
-			ucsUFCombined = 'E',
-			ucsRoFCombined = 'F',
 			ucsRoF2Combined = 'G'
 		};
 
@@ -211,9 +145,6 @@ namespace EQ
 		uint32 ConvertExpansionToExpansionBit(Expansion expansion);
 		Expansion ConvertExpansionBitToExpansion(uint32 expansion_bit);
 		uint32 ConvertExpansionToExpansionsMask(Expansion expansion);
-		Expansion ConvertClientVersionToExpansion(versions::ClientVersion client_version);
-		uint32 ConvertClientVersionToExpansionBit(versions::ClientVersion client_version);
-		uint32 ConvertClientVersionToExpansionsMask(versions::ClientVersion client_version);
 
 	} /*expansions*/
 

@@ -110,7 +110,7 @@ bool Client::Process() {
 				HandleRespawnFromHover(0);
 		}
 
-		if (IsTracking() && (ClientVersion() >= EQ::versions::ClientVersion::SoD) && TrackingTimer.Check())
+		if (IsTracking() && TrackingTimer.Check())
 			DoTracking();
 
 		// SendHPUpdate calls hpupdate_timer.Start so it can delay this timer, so lets not reset with the check
@@ -856,7 +856,7 @@ void Client::BulkSendMerchantInventory(int merchant_id, int npcid) {
 		}
 	}
 
-	const int16 merchant_slots = (m_ClientVersionBit & EQ::versions::maskRoFAndLater) ? EQ::invtype::MERCHANT_SIZE : 80;
+	const int16 merchant_slots = EQ::invtype::MERCHANT_SIZE;
 
 	auto temporary_merchant_list = zone->tmpmerchanttable[npcid];
 	uint32 slot_id = 1;
@@ -1241,13 +1241,6 @@ void Client::CancelSneakHide()
 	if (hidden || improved_hidden) {
 		auto app = new EQApplicationPacket(OP_CancelSneakHide, 0);
 		FastQueuePacket(&app);
-		// SoF and Tit send back a OP_SpawnAppearance turning off AppearanceType::Invisibility
-		// so we need to handle our sneaking flag only
-		// The later clients send back a OP_Hide (this has a size but data is 0)
-		// as well as OP_SpawnAppearance with AppearanceType::Invisibility and one with AppearanceType::Sneak
-		// So we don't have to handle any of those flags
-		if (ClientVersionBit() & EQ::versions::maskSoFAndEarlier)
-			sneaking = false;
 	}
 }
 
@@ -1657,10 +1650,6 @@ void Client::OPGMTraining(const EQApplicationPacket *app)
 		}
 	}
 
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF2 && GetClass() == Class::Berserker) {
-		gmtrain->skills[EQ::skills::Skill1HPiercing] = gmtrain->skills[EQ::skills::Skill2HPiercing];
-		gmtrain->skills[EQ::skills::Skill2HPiercing] = 0;
-	}
 //#pragma GCC pop_options
 
 	uchar ending[]={0x34,0x87,0x8a,0x3F,0x01
@@ -1852,28 +1841,26 @@ void Client::OPGMTrainSkill(const EQApplicationPacket *app)
 		}
 	}
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		// The following packet decreases the skill points left in the Training Window and
-		// produces the 'You have increased your skill / learned the basics of' message.
-		//
-		auto outapp = new EQApplicationPacket(OP_GMTrainSkillConfirm, sizeof(GMTrainSkillConfirm_Struct));
+	// The following packet decreases the skill points left in the Training Window and
+	// produces the 'You have increased your skill / learned the basics of' message.
+	//
+	auto outapp = new EQApplicationPacket(OP_GMTrainSkillConfirm, sizeof(GMTrainSkillConfirm_Struct));
 
-		GMTrainSkillConfirm_Struct *gmtsc = (GMTrainSkillConfirm_Struct *)outapp->pBuffer;
-		gmtsc->SkillID = gmskill->skill_id;
+	GMTrainSkillConfirm_Struct *gmtsc = (GMTrainSkillConfirm_Struct *)outapp->pBuffer;
+	gmtsc->SkillID = gmskill->skill_id;
 
-		if(gmskill->skillbank == 1) {
-			gmtsc->NewSkill = (GetLanguageSkill(gmtsc->SkillID) == 1);
-			gmtsc->SkillID += 100;
-		}
-		else
-			gmtsc->NewSkill = (GetRawSkill((EQ::skills::SkillType)gmtsc->SkillID) == 1);
-
-		gmtsc->Cost = Cost;
-
-		strcpy(gmtsc->TrainerName, pTrainer->GetCleanName());
-		QueuePacket(outapp);
-		safe_delete(outapp);
+	if(gmskill->skillbank == 1) {
+		gmtsc->NewSkill = (GetLanguageSkill(gmtsc->SkillID) == 1);
+		gmtsc->SkillID += 100;
 	}
+	else
+		gmtsc->NewSkill = (GetRawSkill((EQ::skills::SkillType)gmtsc->SkillID) == 1);
+
+	gmtsc->Cost = Cost;
+
+	strcpy(gmtsc->TrainerName, pTrainer->GetCleanName());
+	QueuePacket(outapp);
+	safe_delete(outapp);
 
 	if(Cost)
 		TakeMoneyFromPP(Cost);
@@ -2315,7 +2302,7 @@ void Client::ClearHover()
 	entity_list.QueueClients(this, outapp, false);
 	safe_delete(outapp);
 
-	if (IsClient() && CastToClient()->ClientVersionBit() & EQ::versions::maskUFAndLater)
+	if (IsClient())
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket(false);
 		CastToClient()->FastQueuePacket(&outapp);

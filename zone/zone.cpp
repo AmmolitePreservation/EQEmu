@@ -214,7 +214,6 @@ bool Zone::LoadZoneObjects()
 			d.name                = Strings::Replace(e.objectname, "_ACTORDEF", "");
 			d.dest_zone           = "NONE";
 			d.incline             = e.incline;
-			d.client_version_mask = 0xFFFFFFFF;
 
 			if (e.size_percentage == 0) {
 				d.size = 100;
@@ -794,7 +793,7 @@ void Zone::LoadMercenaryTemplates()
 		SELECT DISTINCT MTem.merc_template_id, MTyp.dbstring
 		AS merc_type_id, MTem.dbstring
 		AS merc_subtype_id, MTyp.race_id, MS.class_id, MTyp.proficiency_id, MS.tier_id, 0
-		AS CostFormula, MTem.clientversion, MTem.merc_npc_type_id
+		AS CostFormula, MTem.merc_npc_type_id
 		FROM merc_types MTyp, merc_templates MTem, merc_subtypes MS
 		WHERE MTem.merc_type_id = MTyp.merc_type_id AND MTem.merc_subtype_id = MS.merc_subtype_id
 		ORDER BY MTyp.race_id, MS.class_id, MTyp.proficiency_id
@@ -811,11 +810,10 @@ void Zone::LoadMercenaryTemplates()
 			.MercSubType = Strings::ToUnsignedInt(row[2]),
 			.RaceID = static_cast<uint16>(Strings::ToUnsignedInt(row[3])),
 			.ClassID = static_cast<uint8>(Strings::ToUnsignedInt(row[4])),
-			.MercNPCID = Strings::ToUnsignedInt(row[9]),
+			.MercNPCID = Strings::ToUnsignedInt(row[8]),
 			.ProficiencyID = static_cast<uint8>(Strings::ToUnsignedInt(row[5])),
 			.TierID = static_cast<uint8>(Strings::ToUnsignedInt(row[6])),
-			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7])),
-			.ClientVersion = Strings::ToUnsignedInt(row[8])
+			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7]))
 		};
 
 		for (int i = 0; i < MaxMercStanceID; i++) {
@@ -2057,11 +2055,6 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-		if (!(zp->client_version_mask & mask_test)) {
-			iterator.Advance();
-			continue;
-		}
 
 		if (zp->target_zone_id == to)
 		{
@@ -2094,18 +2087,18 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 		closest_zp = nullptr;
 
 	if(!closest_zp)
-		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z, client);
+		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z);
 
 	return closest_zp;
 }
 
 ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, const char* to_name, Client* client, float max_distance) {
 	if(to_name == nullptr)
-		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, client, max_distance);
+		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, max_distance);
 	return GetClosestZonePoint(location, ZoneID(to_name), client, max_distance);
 }
 
-ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Client* client, float max_distance) {
+ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, float max_distance) {
 	LinkedListIterator<ZonePoint*> iterator(zone_point_list);
 	ZonePoint* closest_zp = nullptr;
 	float closest_dist = FLT_MAX;
@@ -2114,13 +2107,6 @@ ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-
-		if(!(zp->client_version_mask & mask_test))
-		{
-			iterator.Advance();
-			continue;
-		}
 
 		float delta_x = zp->x - x;
 		float delta_y = zp->y - y;
@@ -2172,7 +2158,6 @@ bool ZoneDatabase::LoadStaticZonePoints(LinkedList<ZonePoint *> *zone_point_list
 		zp->target_heading       = zone_point.target_heading;
 		zp->number               = zone_point.number;
 		zp->target_zone_instance = zone_point.target_instance;
-		zp->client_version_mask  = zone_point.client_version_mask;
 		zp->is_virtual           = zone_point.is_virtual > 0;
 		zp->height               = zone_point.height;
 		zp->width                = zone_point.width;

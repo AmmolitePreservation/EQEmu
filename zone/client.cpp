@@ -303,7 +303,6 @@ Client::Client() : Mob(
 	AttemptedMessages = 0;
 	TotalKarma = 0;
 	m_ClientVersion = EQ::versions::ClientVersion::Unknown;
-	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	ooc_regen = false;
 	AreaHPRegen = 1.0f;
@@ -614,7 +613,6 @@ Client::Client(EQStreamInterface *ieqs) : Mob(
 	AttemptedMessages = 0;
 	TotalKarma = 0;
 	m_ClientVersion = EQ::versions::ClientVersion::Unknown;
-	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	ooc_regen = false;
 	AreaHPRegen = 1.0f;
@@ -710,7 +708,7 @@ Client::~Client() {
 	entity_list.RemoveMobFromCloseLists(this);
 	m_close_mobs.clear();
 
-	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB (Parcel, EnableParcelMerchants)) {
+	if (RuleB (Parcel, EnableParcelMerchants)) {
 		DoParcelCancel();
 	}
 
@@ -2437,10 +2435,8 @@ void Client::CheckManaEndUpdate() {
 
 	if (last_reported_mana != current_mana || last_reported_endurance != current_endurance) {
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-			SendManaUpdate();
-			SendEnduranceUpdate();
-		}
+		SendManaUpdate();
+		SendEnduranceUpdate();
 
 		auto outapp = new EQApplicationPacket(OP_ManaChange, sizeof(ManaChange_Struct));
 		ManaChange_Struct* mana_change = (ManaChange_Struct*)outapp->pBuffer;
@@ -2470,9 +2466,8 @@ void Client::CheckManaEndUpdate() {
 			mana_update->cur_mana = GetMana();
 			mana_update->max_mana = GetMaxMana();
 			mana_update->spawn_id = GetID();
-			if ((ClientVersionBit() & EQ::versions::ClientVersionBitmask::maskSoDAndLater) != 0)
-				QueuePacket(mana_packet); // do we need this with the OP_ManaChange packet above?
-			entity_list.QueueClientsByXTarget(this, mana_packet, false, EQ::versions::ClientVersionBitmask::maskSoDAndLater);
+			QueuePacket(mana_packet); // do we need this with the OP_ManaChange packet above?
+			entity_list.QueueClientsByXTarget(this, mana_packet, false);
 			safe_delete(mana_packet);
 
 			last_reported_mana_percent = GetManaPercent();
@@ -2495,9 +2490,8 @@ void Client::CheckManaEndUpdate() {
 			endurance_update->cur_end = GetEndurance();
 			endurance_update->max_end = GetMaxEndurance();
 			endurance_update->spawn_id = GetID();
-			if ((ClientVersionBit() & EQ::versions::ClientVersionBitmask::maskSoDAndLater) != 0)
-				QueuePacket(endurance_packet); // do we need this with the OP_ManaChange packet above?
-			entity_list.QueueClientsByXTarget(this, endurance_packet, false, EQ::versions::ClientVersionBitmask::maskSoDAndLater);
+			QueuePacket(endurance_packet); // do we need this with the OP_ManaChange packet above?
+			entity_list.QueueClientsByXTarget(this, endurance_packet, false);
 			safe_delete(endurance_packet);
 
 			last_reported_endurance_percent = GetEndurancePercent();
@@ -2712,7 +2706,7 @@ void Client::ReadBook(BookRequest_Struct* book)
 		t->can_cast   = 0; // todo: implement
 		t->can_scribe = false;
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoF && book->invslot <= EQ::invbag::GENERAL_BAGS_END) {
+		if (book->invslot <= EQ::invbag::GENERAL_BAGS_END) {
 			if (inst && inst->GetItem()) {
 				auto recipe = TradeskillRecipeRepository::GetWhere(
 					content_db,
@@ -3193,40 +3187,16 @@ bool Client::HasSkill(EQ::skills::SkillType skill_id) const
 
 bool Client::CanHaveSkill(EQ::skills::SkillType skill_id) const
 {
-	if (
-		ClientVersion() < EQ::versions::ClientVersion::RoF2 &&
-		class_ == Class::Berserker &&
-		skill_id == EQ::skills::Skill1HPiercing
-	) {
-		skill_id = EQ::skills::Skill2HPiercing;
-	}
-
 	return SkillCaps::Instance()->GetSkillCap(GetClass(), skill_id, RuleI(Character, MaxLevel)).cap > 0;
 }
 
 uint16 Client::MaxSkill(EQ::skills::SkillType skill_id, uint8 class_id, uint8 level) const
 {
-	if (
-		ClientVersion() < EQ::versions::ClientVersion::RoF2 &&
-		class_id == Class::Berserker &&
-		skill_id == EQ::skills::Skill1HPiercing
-	) {
-		skill_id = EQ::skills::Skill2HPiercing;
-	}
-
 	return SkillCaps::Instance()->GetSkillCap(class_id, skill_id, level).cap;
 }
 
 uint8 Client::GetSkillTrainLevel(EQ::skills::SkillType skill_id, uint8 class_id)
 {
-	if (
-		ClientVersion() < EQ::versions::ClientVersion::RoF2 &&
-		class_id == Class::Berserker &&
-		skill_id == EQ::skills::Skill1HPiercing
-	) {
-		skill_id = EQ::skills::Skill2HPiercing;
-	}
-
 	return SkillCaps::Instance()->GetSkillTrainLevel(class_id, skill_id, RuleI(Character, MaxLevel));
 }
 
@@ -3775,22 +3745,14 @@ void Client::ServerFilter(SetServerFilter_Struct* filter){
 	Filter0(FilterMissedMe);
 	Filter1(FilterDamageShields);
 
-	if (ClientVersionBit() & EQ::versions::maskSoDAndLater) {
-		if (filter->filters[FilterDOT] == 0) {
-			SetFilter(FilterDOT, FilterShow);
-		} else if (filter->filters[FilterDOT] == 1) {
-			SetFilter(FilterDOT, FilterShowSelfOnly);
-		} else if (filter->filters[FilterDOT] == 2) {
-			SetFilter(FilterDOT, FilterShowGroupOnly);
-		} else {
-			SetFilter(FilterDOT, FilterHide);
-		}
+	if (filter->filters[FilterDOT] == 0) {
+		SetFilter(FilterDOT, FilterShow);
+	} else if (filter->filters[FilterDOT] == 1) {
+		SetFilter(FilterDOT, FilterShowSelfOnly);
+	} else if (filter->filters[FilterDOT] == 2) {
+		SetFilter(FilterDOT, FilterShowGroupOnly);
 	} else {
-		if (filter->filters[FilterDOT] == 0) { // show functions as self only
-			SetFilter(FilterDOT, FilterShowSelfOnly);
-		} else {
-			SetFilter(FilterDOT, FilterHide);
-		}
+		SetFilter(FilterDOT, FilterHide);
 	}
 
 	Filter1(FilterPetHits);
@@ -3798,16 +3760,12 @@ void Client::ServerFilter(SetServerFilter_Struct* filter){
 	Filter1(FilterFocusEffects);
 	Filter1(FilterPetSpells);
 
-	if (ClientVersionBit() & EQ::versions::maskSoDAndLater) {
-		if (filter->filters[FilterHealOverTime] == 0) {
-			SetFilter(FilterHealOverTime, FilterShow);
-		} else if (filter->filters[FilterHealOverTime] == 1) {
-			SetFilter(FilterHealOverTime, FilterShowSelfOnly);
-		} else {
-			SetFilter(FilterHealOverTime, FilterHide);
-		}
-	} else { // these clients don't have a 'self only' filter
-		Filter1(FilterHealOverTime);
+	if (filter->filters[FilterHealOverTime] == 0) {
+		SetFilter(FilterHealOverTime, FilterShow);
+	} else if (filter->filters[FilterHealOverTime] == 1) {
+		SetFilter(FilterHealOverTime, FilterShowSelfOnly);
+	} else {
+		SetFilter(FilterHealOverTime, FilterHide);
 	}
 
 	Filter1(FilterItemSpeech);
@@ -5156,24 +5114,9 @@ bool Client::GroupFollow(Client* inviter) {
 			group->UpdateGroupAAs();
 
 			//Invite the inviter into the group first.....dont ask
-			if (inviter->ClientVersion() < EQ::versions::ClientVersion::SoD)
-			{
-				auto outapp = new EQApplicationPacket(OP_GroupUpdate, sizeof(GroupJoin_Struct));
-				GroupJoin_Struct* outgj = (GroupJoin_Struct*)outapp->pBuffer;
-				strcpy(outgj->membername, inviter->GetName());
-				strcpy(outgj->yourname, inviter->GetName());
-				outgj->action = groupActInviteInitial; // 'You have formed the group'.
-				group->GetGroupAAs(&outgj->leader_aas);
-				inviter->QueuePacket(outapp);
-				safe_delete(outapp);
-			}
-			else
-			{
-				// SoD and later
-				inviter->SendGroupCreatePacket();
-				inviter->SendGroupLeaderChangePacket(inviter->GetName());
-				inviter->SendGroupJoinAcknowledge();
-			}
+			inviter->SendGroupCreatePacket();
+			inviter->SendGroupLeaderChangePacket(inviter->GetName());
+			inviter->SendGroupJoinAcknowledge();
 			group->GetXTargetAutoMgr()->merge(*inviter->GetXTargetAutoMgr());
 			inviter->GetXTargetAutoMgr()->clear();
 			inviter->SetXTargetAutoMgr(group->GetXTargetAutoMgr());
@@ -5204,13 +5147,10 @@ bool Client::GroupFollow(Client* inviter) {
 			return false;
 		}
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
-		{
-			SendGroupJoinAcknowledge();
-		}
+		SendGroupJoinAcknowledge();
 
 		// Temporary hack for SoD, as things seem to work quite differently
-		if (inviter->IsClient() && inviter->ClientVersion() >= EQ::versions::ClientVersion::SoD)
+		if (inviter->IsClient())
 		{
 			database.RefreshGroupFromDB(inviter);
 		}
@@ -5265,10 +5205,7 @@ uint16 Client::GetPrimarySkillValue()
 			skill = EQ::skills::Skill2HBlunt;
 			break;
 		case EQ::item::ItemType2HPiercing: // 2H Piercing
-			if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2)
-				skill = EQ::skills::Skill1HPiercing;
-			else
-				skill = EQ::skills::Skill2HPiercing;
+			skill = EQ::skills::Skill2HPiercing;
 			break;
 		case EQ::item::ItemTypeMartial: // Hand to Hand
 			skill = EQ::skills::SkillHandtoHand;
@@ -5436,13 +5373,11 @@ void Client::IncrementAggroCount(bool raid_target)
 	if(AggroCount > 1)
 		return;
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		auto outapp = new EQApplicationPacket(OP_RestState, 1);
-		char *Buffer = (char *)outapp->pBuffer;
-		VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x01);
-		QueuePacket(outapp);
-		safe_delete(outapp);
-	}
+	auto outapp = new EQApplicationPacket(OP_RestState, 1);
+	char *Buffer = (char *)outapp->pBuffer;
+	VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x01);
+	QueuePacket(outapp);
+	safe_delete(outapp);
 
 }
 
@@ -5467,14 +5402,12 @@ void Client::DecrementAggroCount()
 
 	rest_timer.Start(m_pp.RestTimer * 1000);
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		auto outapp = new EQApplicationPacket(OP_RestState, 5);
-		char *Buffer = (char *)outapp->pBuffer;
-		VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x00);
-		VARSTRUCT_ENCODE_TYPE(uint32, Buffer, m_pp.RestTimer);
-		QueuePacket(outapp);
-		safe_delete(outapp);
-	}
+	auto outapp = new EQApplicationPacket(OP_RestState, 5);
+	char *Buffer = (char *)outapp->pBuffer;
+	VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x00);
+	VARSTRUCT_ENCODE_TYPE(uint32, Buffer, m_pp.RestTimer);
+	QueuePacket(outapp);
+	safe_delete(outapp);
 }
 
 // when we cast a beneficial spell we need to steal our targets current timer
@@ -5495,14 +5428,12 @@ void Client::UpdateRestTimer(uint32 new_timer)
 	} else { // if we're not aggro, we need to check if current timer needs updating
 		if (rest_timer.GetRemainingTime() / 1000 < new_timer) {
 			rest_timer.Start(new_timer * 1000);
-			if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-				auto outapp = new EQApplicationPacket(OP_RestState, 5);
-				char *Buffer = (char *)outapp->pBuffer;
-				VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x00);
-				VARSTRUCT_ENCODE_TYPE(uint32, Buffer, new_timer);
-				QueuePacket(outapp);
-				safe_delete(outapp);
-			}
+			auto outapp = new EQApplicationPacket(OP_RestState, 5);
+			char *Buffer = (char *)outapp->pBuffer;
+			VARSTRUCT_ENCODE_TYPE(uint8, Buffer, 0x00);
+			VARSTRUCT_ENCODE_TYPE(uint32, Buffer, new_timer);
+			QueuePacket(outapp);
+			safe_delete(outapp);
 		}
 	}
 }
@@ -6030,9 +5961,6 @@ void Client::ShowSkillsWindow()
 	std::string popup_text;
 	std::map<EQ::skills::SkillType, std::string> skills_map = EQ::skills::GetSkillTypeMap();
 
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF2) {
-		skills_map[EQ::skills::Skill1HPiercing] = "Piercing";
-	}
 
 	// Table Start
 	popup_text += "<table>";
@@ -6044,12 +5972,6 @@ void Client::ShowSkillsWindow()
 		auto current_skill = GetSkill(skill_id);
 		auto max_skill = MaxSkill(skill_id);
 		auto skill_maxed = current_skill >= max_skill;
-		if (
-			skill_id == EQ::skills::Skill2HPiercing &&
-			ClientVersion() < EQ::versions::ClientVersion::RoF2
-		) {
-			continue;
-		}
 
 		if (
 			!can_have_skill ||
@@ -6410,19 +6332,17 @@ void Client::SuspendMinion(int value)
 			memset(&m_suspendedminion, 0, sizeof(struct PetInfo));
 			// TODO: These pet command states need to be synced ...
 			// Will just fix them for now
-			if (m_ClientVersionBit & EQ::versions::maskUFAndLater) {
-				SetPetCommandState(PET_BUTTON_SIT, 0);
-				SetPetCommandState(PET_BUTTON_STOP, 0);
-				SetPetCommandState(PET_BUTTON_REGROUP, 0);
-				SetPetCommandState(PET_BUTTON_FOLLOW, 1);
-				SetPetCommandState(PET_BUTTON_GUARD, 0);
-				// Taunt saved on client side for logging on with pet
-				// In our db for when we zone.
-				SetPetCommandState(PET_BUTTON_HOLD, 0);
-				SetPetCommandState(PET_BUTTON_GHOLD, 0);
-				SetPetCommandState(PET_BUTTON_FOCUS, 0);
-				SetPetCommandState(PET_BUTTON_SPELLHOLD, 0);
-			}
+			SetPetCommandState(PET_BUTTON_SIT, 0);
+			SetPetCommandState(PET_BUTTON_STOP, 0);
+			SetPetCommandState(PET_BUTTON_REGROUP, 0);
+			SetPetCommandState(PET_BUTTON_FOLLOW, 1);
+			SetPetCommandState(PET_BUTTON_GUARD, 0);
+			// Taunt saved on client side for logging on with pet
+			// In our db for when we zone.
+			SetPetCommandState(PET_BUTTON_HOLD, 0);
+			SetPetCommandState(PET_BUTTON_GHOLD, 0);
+			SetPetCommandState(PET_BUTTON_FOCUS, 0);
+			SetPetCommandState(PET_BUTTON_SPELLHOLD, 0);
 		}
 		else
 			return;
@@ -6959,12 +6879,7 @@ void Client::SendZonePoints()
 	LinkedListIterator<ZonePoint *> iterator(zone->zone_point_list);
 	iterator.Reset();
 	while (iterator.MoreElements()) {
-		ZonePoint *data = iterator.GetData();
-
-		if (ClientVersionBit() & data->client_version_mask) {
-			count++;
-		}
-
+		count++;
 		iterator.Advance();
 	}
 
@@ -6980,36 +6895,32 @@ void Client::SendZonePoints()
 		ZonePoint* data = iterator.GetData();
 
 		LogZonePoints(
-			"Sending zone point to client [{}] mask [{}] x [{}] y [{}] z [{}] number [{}]",
+			"Sending zone point to client [{}] x [{}] y [{}] z [{}] number [{}]",
 			GetCleanName(),
-			ClientVersionBit() & data->client_version_mask ? "true" : "false",
 			data->x,
 			data->y,
 			data->z,
 			data->number
 		);
 
-		if(ClientVersionBit() & data->client_version_mask)
-		{
-			zp->zpe[i].iterator = data->number;
-			zp->zpe[i].x = data->target_x;
-			zp->zpe[i].y = data->target_y;
-			zp->zpe[i].z = data->target_z;
-			zp->zpe[i].heading = data->target_heading;
-			zp->zpe[i].zoneid = data->target_zone_id;
+		zp->zpe[i].iterator = data->number;
+		zp->zpe[i].x = data->target_x;
+		zp->zpe[i].y = data->target_y;
+		zp->zpe[i].z = data->target_z;
+		zp->zpe[i].heading = data->target_heading;
+		zp->zpe[i].zoneid = data->target_zone_id;
 
-			// if the target zone is the same as the current zone, use the instance of the current zone
-			// if we don't use the same instance_id that the client was sent, the client will forcefully
-			// issue a zone change request when they should be simply moving to a different point in the same zone
-			// because the client will think the zone point target is different from the current instance
-			auto target_instance = data->target_zone_instance;
-			if (data->target_zone_id == zone->GetZoneID() && data->target_zone_instance == 0) {
-				target_instance = zone->GetInstanceID();
-			}
-
-			zp->zpe[i].zoneinstance = target_instance;
-			i++;
+		// if the target zone is the same as the current zone, use the instance of the current zone
+		// if we don't use the same instance_id that the client was sent, the client will forcefully
+		// issue a zone change request when they should be simply moving to a different point in the same zone
+		// because the client will think the zone point target is different from the current instance
+		auto target_instance = data->target_zone_instance;
+		if (data->target_zone_id == zone->GetZoneID() && data->target_zone_instance == 0) {
+			target_instance = zone->GetInstanceID();
 		}
+
+		zp->zpe[i].zoneinstance = target_instance;
+		i++;
 		iterator.Advance();
 	}
 
@@ -7305,39 +7216,37 @@ void Client::RemoveFromInstance(uint16 instance_id)
 }
 
 void Client::SendAltCurrencies() {
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		const uint32 currency_count = zone->AlternateCurrencies.size();
-		if (!currency_count) {
-			return;
-		}
-
-		auto outapp = new EQApplicationPacket(
-			OP_AltCurrency,
-			sizeof(AltCurrencyPopulate_Struct) +
-			sizeof(AltCurrencyPopulateEntry_Struct) * currency_count
-		);
-
-		auto a = (AltCurrencyPopulate_Struct*) outapp->pBuffer;
-
-		a->opcode = AlternateCurrencyMode::Populate;
-		a->count  = currency_count;
-
-		uint32 currency_id = 0;
-		for (const auto& c : zone->AlternateCurrencies) {
-			const auto* item = database.GetItem(c.item_id);
-
-			a->entries[currency_id].currency_number  = c.id;
-			a->entries[currency_id].unknown00        = 1;
-			a->entries[currency_id].currency_number2 = c.id;
-			a->entries[currency_id].item_id          = c.item_id;
-			a->entries[currency_id].item_icon        = item ? item->Icon : 1000;
-			a->entries[currency_id].stack_size       = item ? item->StackSize : 1000;
-
-			currency_id++;
-		}
-
-		FastQueuePacket(&outapp);
+	const uint32 currency_count = zone->AlternateCurrencies.size();
+	if (!currency_count) {
+		return;
 	}
+
+	auto outapp = new EQApplicationPacket(
+		OP_AltCurrency,
+		sizeof(AltCurrencyPopulate_Struct) +
+		sizeof(AltCurrencyPopulateEntry_Struct) * currency_count
+	);
+
+	auto a = (AltCurrencyPopulate_Struct*) outapp->pBuffer;
+
+	a->opcode = AlternateCurrencyMode::Populate;
+	a->count  = currency_count;
+
+	uint32 currency_id = 0;
+	for (const auto& c : zone->AlternateCurrencies) {
+		const auto* item = database.GetItem(c.item_id);
+
+		a->entries[currency_id].currency_number  = c.id;
+		a->entries[currency_id].unknown00        = 1;
+		a->entries[currency_id].currency_number2 = c.id;
+		a->entries[currency_id].item_id          = c.item_id;
+		a->entries[currency_id].item_icon        = item ? item->Icon : 1000;
+		a->entries[currency_id].stack_size       = item ? item->StackSize : 1000;
+
+		currency_id++;
+	}
+
+	FastQueuePacket(&outapp);
 }
 
 void Client::SetAlternateCurrencyValue(uint32 currency_id, uint32 new_amount)
@@ -7971,96 +7880,53 @@ void Client::SendMercPersonalInfo()
 		return;
 	}
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		auto outapp = new EQApplicationPacket(OP_MercenaryDataUpdate, sizeof(MercenaryDataUpdate_Struct));
-		auto mdus   = (MercenaryDataUpdate_Struct *) outapp->pBuffer;
+	auto outapp = new EQApplicationPacket(OP_MercenaryDataUpdate, sizeof(MercenaryDataUpdate_Struct));
+	auto mdus   = (MercenaryDataUpdate_Struct *) outapp->pBuffer;
 
-		mdus->MercStatus                    = 0;
-		mdus->MercCount                     = mercCount;
-		mdus->MercData[i].MercID            = mercData->MercTemplateID;
-		mdus->MercData[i].MercType          = mercData->MercType;
-		mdus->MercData[i].MercSubType       = mercData->MercSubType;
-		mdus->MercData[i].PurchaseCost      = Merc::CalcPurchaseCost(mercData->MercTemplateID, GetLevel(), 0);
-		mdus->MercData[i].UpkeepCost        = Merc::CalcUpkeepCost(mercData->MercTemplateID, GetLevel(), 0);
-		mdus->MercData[i].Status            = 0;
-		mdus->MercData[i].AltCurrencyCost   = Merc::CalcPurchaseCost(
-			mercData->MercTemplateID,
-			GetLevel(),
-			altCurrentType
-		);
-		mdus->MercData[i].AltCurrencyUpkeep = Merc::CalcPurchaseCost(
-			mercData->MercTemplateID,
-			GetLevel(),
-			altCurrentType
-		);
-		mdus->MercData[i].AltCurrencyType   = altCurrentType;
-		mdus->MercData[i].MercUnk01         = 0;
-		mdus->MercData[i].TimeLeft          = GetMercInfo().MercTimerRemaining;    //GetMercTimer().GetRemainingTime();
-		mdus->MercData[i].MerchantSlot      = i + 1;
-		mdus->MercData[i].MercUnk02         = 1;
-		mdus->MercData[i].StanceCount       = zone->merc_stance_list[mercData->MercTemplateID].size();
-		mdus->MercData[i].MercUnk03         = 0;
-		mdus->MercData[i].MercUnk04         = 1;
+	mdus->MercStatus                    = 0;
+	mdus->MercCount                     = mercCount;
+	mdus->MercData[i].MercID            = mercData->MercTemplateID;
+	mdus->MercData[i].MercType          = mercData->MercType;
+	mdus->MercData[i].MercSubType       = mercData->MercSubType;
+	mdus->MercData[i].PurchaseCost      = Merc::CalcPurchaseCost(mercData->MercTemplateID, GetLevel(), 0);
+	mdus->MercData[i].UpkeepCost        = Merc::CalcUpkeepCost(mercData->MercTemplateID, GetLevel(), 0);
+	mdus->MercData[i].Status            = 0;
+	mdus->MercData[i].AltCurrencyCost   = Merc::CalcPurchaseCost(
+		mercData->MercTemplateID,
+		GetLevel(),
+		altCurrentType
+	);
+	mdus->MercData[i].AltCurrencyUpkeep = Merc::CalcPurchaseCost(
+		mercData->MercTemplateID,
+		GetLevel(),
+		altCurrentType
+	);
+	mdus->MercData[i].AltCurrencyType   = altCurrentType;
+	mdus->MercData[i].MercUnk01         = 0;
+	mdus->MercData[i].TimeLeft          = GetMercInfo().MercTimerRemaining;    //GetMercTimer().GetRemainingTime();
+	mdus->MercData[i].MerchantSlot      = i + 1;
+	mdus->MercData[i].MercUnk02         = 1;
+	mdus->MercData[i].StanceCount       = zone->merc_stance_list[mercData->MercTemplateID].size();
+	mdus->MercData[i].MercUnk03         = 0;
+	mdus->MercData[i].MercUnk04         = 1;
 
-		strn0cpy(mdus->MercData[i].MercName, GetMercInfo().merc_name, sizeof(mdus->MercData[i].MercName));
+	strn0cpy(mdus->MercData[i].MercName, GetMercInfo().merc_name, sizeof(mdus->MercData[i].MercName));
 
-		uint32 stanceindex = 0;
-		if (mdus->MercData[i].StanceCount != 0) {
-			auto iter = zone->merc_stance_list[mercData->MercTemplateID].begin();
-			while (iter != zone->merc_stance_list[mercData->MercTemplateID].end()) {
-				mdus->MercData[i].Stances[stanceindex].StanceIndex = stanceindex;
-				mdus->MercData[i].Stances[stanceindex].Stance      = (iter->StanceID);
-				stanceindex++;
-				++iter;
-			}
+	uint32 stanceindex = 0;
+	if (mdus->MercData[i].StanceCount != 0) {
+		auto iter = zone->merc_stance_list[mercData->MercTemplateID].begin();
+		while (iter != zone->merc_stance_list[mercData->MercTemplateID].end()) {
+			mdus->MercData[i].Stances[stanceindex].StanceIndex = stanceindex;
+			mdus->MercData[i].Stances[stanceindex].Stance      = (iter->StanceID);
+			stanceindex++;
+			++iter;
 		}
-
-		mdus->MercData[i].MercUnk05 = 1;
-		FastQueuePacket(&outapp);
-		safe_delete(outapp);
-		return;
-	} else {
-		auto outapp = new EQApplicationPacket(OP_MercenaryDataResponse, sizeof(MercenaryMerchantList_Struct));
-		auto mml    = (MercenaryMerchantList_Struct *) outapp->pBuffer;
-
-		mml->MercTypeCount = mercTypeCount; //We should only have one merc entry.
-		mml->MercGrades[i] = 1;
-
-		mml->MercCount                  = mercCount;
-		mml->Mercs[i].MercID            = mercData->MercTemplateID;
-		mml->Mercs[i].MercType          = mercData->MercType;
-		mml->Mercs[i].MercSubType       = mercData->MercSubType;
-		mml->Mercs[i].PurchaseCost      = RuleB(Mercs, ChargeMercPurchaseCost) ? Merc::CalcPurchaseCost(mercData->MercTemplateID, GetLevel(), 0) : 0;
-		mml->Mercs[i].UpkeepCost        = RuleB(Mercs, ChargeMercUpkeepCost) ? Merc::CalcUpkeepCost(mercData->MercTemplateID, GetLevel(), 0) : 0;
-		mml->Mercs[i].Status            = 0;
-		mml->Mercs[i].AltCurrencyCost   = RuleB(Mercs, ChargeMercPurchaseCost) ? Merc::CalcPurchaseCost(mercData->MercTemplateID, GetLevel(), altCurrentType) : 0;
-		mml->Mercs[i].AltCurrencyUpkeep = RuleB(Mercs, ChargeMercUpkeepCost) ? Merc::CalcUpkeepCost(mercData->MercTemplateID, GetLevel(), altCurrentType) : 0;
-		mml->Mercs[i].AltCurrencyType   = altCurrentType;
-		mml->Mercs[i].MercUnk01         = 0;
-		mml->Mercs[i].TimeLeft          = GetMercInfo().MercTimerRemaining;
-		mml->Mercs[i].MerchantSlot      = i + 1;
-		mml->Mercs[i].MercUnk02         = 1;
-		mml->Mercs[i].StanceCount       = zone->merc_stance_list[mercData->MercTemplateID].size();
-		mml->Mercs[i].MercUnk03         = 0;
-		mml->Mercs[i].MercUnk04         = 1;
-
-		strn0cpy(mml->Mercs[i].MercName, GetMercInfo().merc_name, sizeof(mml->Mercs[i].MercName));
-
-		int stanceindex = 0;
-		if (mml->Mercs[i].StanceCount != 0) {
-			auto iter = zone->merc_stance_list[mercData->MercTemplateID].begin();
-			while (iter != zone->merc_stance_list[mercData->MercTemplateID].end()) {
-				mml->Mercs[i].Stances[stanceindex].StanceIndex = stanceindex;
-				mml->Mercs[i].Stances[stanceindex].Stance      = (iter->StanceID);
-				stanceindex++;
-				++iter;
-			}
-		}
-
-		FastQueuePacket(&outapp);
-		safe_delete(outapp);
-		return;
 	}
+
+	mdus->MercData[i].MercUnk05 = 1;
+	FastQueuePacket(&outapp);
+	safe_delete(outapp);
+	return;
 }
 
 void Client::SendClearMercInfo()
@@ -8076,12 +7942,6 @@ void Client::SendClearMercInfo()
 
 void Client::DuplicateLoreMessage(uint32 ItemID)
 {
-	if (!(m_ClientVersionBit & EQ::versions::maskRoFAndLater))
-	{
-		MessageString(Chat::White, PICK_LORE);
-		return;
-	}
-
 	const EQ::ItemData *item = database.GetItem(ItemID);
 
 	if(!item)
@@ -11659,32 +11519,7 @@ void Client::ReconnectUCS()
 	EQApplicationPacket      *outapp         = nullptr;
 	std::string              buffer;
 	std::string              mail_key        = m_mail_key;
-	EQ::versions::UCSVersion connection_type = EQ::versions::ucsUnknown;
-
-	// chat server packet
-	switch (ClientVersion()) {
-		case EQ::versions::ClientVersion::Titanium:
-			connection_type = EQ::versions::ucsTitaniumChat;
-			break;
-		case EQ::versions::ClientVersion::SoF:
-			connection_type = EQ::versions::ucsSoFCombined;
-			break;
-		case EQ::versions::ClientVersion::SoD:
-			connection_type = EQ::versions::ucsSoDCombined;
-			break;
-		case EQ::versions::ClientVersion::UF:
-			connection_type = EQ::versions::ucsUFCombined;
-			break;
-		case EQ::versions::ClientVersion::RoF:
-			connection_type = EQ::versions::ucsRoFCombined;
-			break;
-		case EQ::versions::ClientVersion::RoF2:
-			connection_type = EQ::versions::ucsRoF2Combined;
-			break;
-		default:
-			connection_type = EQ::versions::ucsUnknown;
-			break;
-	}
+	const EQ::versions::UCSVersion connection_type = EQ::versions::ucsRoF2Combined;
 
 	buffer = StringFormat(
 		"%s,%i,%s.%s,%c%s",
@@ -11702,16 +11537,6 @@ void Client::ReconnectUCS()
 
 	QueuePacket(outapp);
 	safe_delete(outapp);
-
-	// mail server packet
-	switch (ClientVersion()) {
-		case EQ::versions::ClientVersion::Titanium:
-			connection_type = EQ::versions::ucsTitaniumMail;
-			break;
-		default:
-			// retain value from previous switch
-			break;
-	}
 
 	buffer = StringFormat(
 		"%s,%i,%s.%s,%c%s",
@@ -11890,8 +11715,6 @@ void Client::RegisterBug(BugReport_Struct* r) {
 	auto b = BugReportsRepository::NewEntity();
 
 	b.zone                = zone->GetShortName();
-	b.client_version_id   = static_cast<uint32_t>(ClientVersion());
-	b.client_version_name = EQ::versions::ClientVersionName(ClientVersion());
 	b.account_id          = AccountID();
 	b.character_id        = CharacterID();
 	b.character_name      = GetName();
@@ -13206,7 +13029,7 @@ void Client::SendMerchantEnd()
 {
 	SetMerchantSessionEntityID(0);
 
-	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB(Parcel, EnableParcelMerchants)) {
+	if (RuleB(Parcel, EnableParcelMerchants)) {
 		DoParcelCancel();
 		SetEngagedWithParcelMerchant(false);
 	}

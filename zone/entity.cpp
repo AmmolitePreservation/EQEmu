@@ -940,18 +940,16 @@ Object *EntityList::FindNearbyObject(float x, float y, float z, float radius)
 	return nullptr;
 }
 
-bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app, Client *client)
+bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app)
 {
 	if (door_list.empty())
 		return false;
 
-	uint32 mask_test = client->ClientVersionBit();
 	int count = 0;
 
 	auto it = door_list.begin();
 	while (it != door_list.end()) {
-		if ((it->second->GetClientVersionMask() & mask_test) &&
-			strlen(it->second->GetDoorName()) > 3)
+		if (strlen(it->second->GetDoorName()) > 3)
 			count++;
 		++it;
 	}
@@ -969,8 +967,7 @@ bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app, Client *client)
 	it = door_list.begin();
 	while (it != door_list.end()) {
 		door = it->second;
-		if (door && (door->GetClientVersionMask() & mask_test) &&
-			strlen(door->GetDoorName()) > 3) {
+		if (door && strlen(door->GetDoorName()) > 3) {
 			memset(&new_door, 0, sizeof(new_door));
 			memcpy(new_door.name, door->GetDoorName(), 32);
 
@@ -1630,7 +1627,7 @@ void EntityList::RefreshClientXTargets(Client *c)
 }
 
 void EntityList::QueueClientsByTarget(Mob *sender, const EQApplicationPacket *app,
-		bool iSendToSender, Mob *SkipThisMob, bool ackreq, bool HoTT, uint32 ClientVersionBits, bool inspect_buffs, bool clear_target_window)
+		bool iSendToSender, Mob *SkipThisMob, bool ackreq, bool HoTT, bool inspect_buffs, bool clear_target_window)
 {
 	auto it = client_list.begin();
 	while (it != client_list.end()) {
@@ -1693,13 +1690,13 @@ void EntityList::QueueClientsByTarget(Mob *sender, const EQApplicationPacket *ap
 			}
 		}
 
-		if (Send && (c->ClientVersionBit() & ClientVersionBits)) {
+		if (Send) {
 			c->QueuePacket(app, ackreq);
 		}
 	}
 }
 
-void EntityList::QueueClientsByXTarget(Mob *sender, const EQApplicationPacket *app, bool iSendToSender, EQ::versions::ClientVersionBitmask client_version_bits)
+void EntityList::QueueClientsByXTarget(Mob *sender, const EQApplicationPacket *app, bool iSendToSender)
 {
 	auto it = client_list.begin();
 	while (it != client_list.end()) {
@@ -1707,9 +1704,6 @@ void EntityList::QueueClientsByXTarget(Mob *sender, const EQApplicationPacket *a
 		++it;
 
 		if (!c || ((c == sender) && !iSendToSender))
-			continue;
-
-		if ((c->ClientVersionBit() & client_version_bits) == 0)
 			continue;
 
 		if (!c->IsXTarget(sender))
@@ -2291,10 +2285,8 @@ void EntityList::ChannelMessageFromWorld(const char *from, const char *to,
 		if (chan_num == ChatChannel_Guild) {
 			if (!client->IsInGuild(guild_id))
 				continue;
-			if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				if (!guild_mgr.CheckPermission(guild_id, client->GuildRank(), GUILD_ACTION_GUILD_CHAT_SEE))
-					continue;
-			}
+			if (!guild_mgr.CheckPermission(guild_id, client->GuildRank(), GUILD_ACTION_GUILD_CHAT_SEE))
+				continue;
 			if (client->GetFilter(FilterGuildChat) == FilterHide)
 				continue;
 		} else if (chan_num == ChatChannel_OOC) {
@@ -2728,7 +2720,7 @@ void EntityList::RespawnAllDoors()
 	while (it != client_list.end()) {
 		if (it->second) {
 			auto outapp = new EQApplicationPacket();
-			MakeDoorSpawnPacket(outapp, it->second);
+			MakeDoorSpawnPacket(outapp);
 			it->second->FastQueuePacket(&outapp, true, Client::CLIENT_CONNECTED);
 		}
 		++it;
@@ -5353,7 +5345,7 @@ void EntityList::UpdateFindableNPCState(NPC *n, bool Remove)
 	auto it = client_list.begin();
 	while (it != client_list.end()) {
 		Client *c = it->second;
-		if (c && (c->ClientVersion() >= EQ::versions::ClientVersion::SoD)) {
+		if (c) {
 			c->QueuePacket(&p);
 		}
 

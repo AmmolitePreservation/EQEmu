@@ -264,12 +264,6 @@ namespace EQ
 	} // namespace invaug
 
 	namespace constants {
-		const EQ::versions::ClientVersion CHARACTER_CREATION_CLIENT = EQ::versions::ClientVersion::Titanium;
-
-		using RoF2::constants::EXPANSION;
-		using RoF2::constants::EXPANSION_BIT;
-		using RoF2::constants::EXPANSIONS_MASK;
-
 		using RoF2::constants::CHARACTER_CREATION_LIMIT;
 
 		const size_t SAY_LINK_OPENER_SIZE = 1;
@@ -427,7 +421,7 @@ namespace EQ
 
 		using RoF2::spells::SPELL_ID_MAX;
 		using RoF2::spells::SPELLBOOK_SIZE;
-		using UF::spells::SPELL_GEM_COUNT; // RoF+ clients define more than UF client..but, they are not valid beyond UF
+		const int SPELL_GEM_COUNT = 12; // RoF2 lays out 16 gems; the client can use 12
 
 		using RoF2::spells::LONG_BUFFS;
 		using RoF2::spells::SHORT_BUFFS;
@@ -494,7 +488,6 @@ namespace ConsiderColor {
 	constexpr uint32 Red           = 13;
 	constexpr uint32 Yellow        = 15;
 	constexpr uint32 LightBlue     = 18;
-	constexpr uint32 WhiteTitanium = 20;
 };
 
 enum TargetDescriptionType : uint8 {

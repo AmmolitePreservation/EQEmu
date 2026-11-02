@@ -173,12 +173,8 @@ decay_timer(300000)
 	m_data.x       = client->GetX();
 	m_data.y       = client->GetY();
 
-	if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF2) {
-		// RoF2 places items at player's Z, which is 0.625 of their height.
-		m_data.z = client->GetZ() - (client->GetSize() * 0.625f);
-	} else {
-		m_data.z = client->GetZ();
-	}
+	// RoF2 places items at player's Z, which is 0.625 of their height.
+	m_data.z = client->GetZ() - (client->GetSize() * 0.625f);
 
 	m_data.zone_id = zone->GetZoneID();
 
@@ -736,10 +732,8 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 		} else {
 			coa->open = 0x00;
 
-			if (sender->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				coa->drop_id = UINT32_MAX;
-				sender->Message(Chat::White, "Someone else is using that. Try again later.");
-			}
+			coa->drop_id = UINT32_MAX;
+			sender->Message(Chat::White, "Someone else is using that. Try again later.");
 		}
 
 		sender->QueuePacket(outapp);

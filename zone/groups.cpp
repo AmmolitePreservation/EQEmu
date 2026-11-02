@@ -407,19 +407,17 @@ void Group::SendHPManaEndPacketsTo(Mob *member)
 				safe_delete_array(hpapp.pBuffer);
 				hpapp.size = 0;
 
-				if (member->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-					outapp.SetOpcode(OP_MobManaUpdate);
+				outapp.SetOpcode(OP_MobManaUpdate);
 
-					MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
-					mana_update->spawn_id = members[i]->GetID();
-					mana_update->mana = members[i]->GetManaPercent();
-					member->CastToClient()->QueuePacket(&outapp, false);
+				MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
+				mana_update->spawn_id = members[i]->GetID();
+				mana_update->mana = members[i]->GetManaPercent();
+				member->CastToClient()->QueuePacket(&outapp, false);
 
-					MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
-					outapp.SetOpcode(OP_MobEnduranceUpdate);
-					endurance_update->endurance = members[i]->GetEndurancePercent();
-					member->CastToClient()->QueuePacket(&outapp, false);
-				}
+				MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
+				outapp.SetOpcode(OP_MobEnduranceUpdate);
+				endurance_update->endurance = members[i]->GetEndurancePercent();
+				member->CastToClient()->QueuePacket(&outapp, false);
 			}
 		}
 	}
@@ -438,18 +436,16 @@ void Group::SendHPPacketsFrom(Mob *member)
 	for(i = 0; i < MAX_GROUP_MEMBERS; i++) {
 		if(members[i] && members[i] != member && members[i]->IsClient()) {
 			members[i]->CastToClient()->QueuePacket(&hp_app);
-			if (members[i]->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-				outapp.SetOpcode(OP_MobManaUpdate);
-				MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
-				mana_update->spawn_id = member->GetID();
-				mana_update->mana = member->GetManaPercent();
-				members[i]->CastToClient()->QueuePacket(&outapp, false);
+			outapp.SetOpcode(OP_MobManaUpdate);
+			MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
+			mana_update->spawn_id = member->GetID();
+			mana_update->mana = member->GetManaPercent();
+			members[i]->CastToClient()->QueuePacket(&outapp, false);
 
-				MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
-				outapp.SetOpcode(OP_MobEnduranceUpdate);
-				endurance_update->endurance = member->GetEndurancePercent();
-				members[i]->CastToClient()->QueuePacket(&outapp, false);
-			}
+			MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
+			outapp.SetOpcode(OP_MobEnduranceUpdate);
+			endurance_update->endurance = member->GetEndurancePercent();
+			members[i]->CastToClient()->QueuePacket(&outapp, false);
 		}
 	}
 }
@@ -463,13 +459,11 @@ void Group::SendManaPacketFrom(Mob *member)
 	uint32 i;
 	for (i = 0; i < MAX_GROUP_MEMBERS; i++) {
 		if (members[i] && members[i] != member && members[i]->IsClient()) {
-			if (members[i]->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-				outapp.SetOpcode(OP_MobManaUpdate);
-				MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
-				mana_update->spawn_id = member->GetID();
-				mana_update->mana = member->GetManaPercent();
-				members[i]->CastToClient()->QueuePacket(&outapp, false);
-			}
+			outapp.SetOpcode(OP_MobManaUpdate);
+			MobManaUpdate_Struct *mana_update = (MobManaUpdate_Struct *)outapp.pBuffer;
+			mana_update->spawn_id = member->GetID();
+			mana_update->mana = member->GetManaPercent();
+			members[i]->CastToClient()->QueuePacket(&outapp, false);
 		}
 	}
 }
@@ -484,12 +478,10 @@ void Group::SendEndurancePacketFrom(Mob* member)
 	uint32 i;
 	for (i = 0; i < MAX_GROUP_MEMBERS; i++) {
 		if (members[i] && members[i] != member && members[i]->IsClient()) {
-			if (members[i]->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-				MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
-				endurance_update->spawn_id = member->GetID();
-				endurance_update->endurance = member->GetEndurancePercent();
-				members[i]->CastToClient()->QueuePacket(&outapp, false);
-			}
+			MobEnduranceUpdate_Struct *endurance_update = (MobEnduranceUpdate_Struct *)outapp.pBuffer;
+			endurance_update->spawn_id = member->GetID();
+			endurance_update->endurance = member->GetEndurancePercent();
+			members[i]->CastToClient()->QueuePacket(&outapp, false);
 		}
 	}
 }
@@ -632,9 +624,6 @@ bool Group::DelMemberOOZ(const char *Name) {
 				if(GroupCount() < 3)
 				{
 					UnDelegateMarkNPC(NPCMarkerName.c_str());
-					if (GetLeader() && GetLeader()->IsClient() && GetLeader()->CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoD) {
-							UnDelegateMainAssist(MainAssistName.c_str());
-					}
 					ClearAllNPCMarks();
 				}
 				if (Name == mentoree_name)
@@ -797,9 +786,6 @@ bool Group::DelMember(Mob* oldmember, bool ignoresender)
 	if(GroupCount() < 3)
 	{
 		UnDelegateMarkNPC(NPCMarkerName.c_str());
-		if (GetLeader() && GetLeader()->IsClient() && GetLeader()->CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoD) {
-			UnDelegateMainAssist(MainAssistName.c_str());
-		}
 		ClearAllNPCMarks();
 	}
 
@@ -1698,31 +1684,21 @@ void Group::NotifyMainTank(Client *c, uint8 toggle)
 	if(!MainTankName.size())
 		return;
 
-	if (c->ClientVersion() < EQ::versions::ClientVersion::SoD)
-	{
-		if(toggle)
-			c->Message(Chat::White, "%s is now Main Tank.", MainTankName.c_str());
-		else
-			c->Message(Chat::White, "%s is no longer Main Tank.", MainTankName.c_str());
-	}
-	else
-	{
-		auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
+	auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
 
-		GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
+	GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
 
-		strn0cpy(grs->Name1, MainTankName.c_str(), sizeof(grs->Name1));
+	strn0cpy(grs->Name1, MainTankName.c_str(), sizeof(grs->Name1));
 
-		strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
+	strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
 
-		grs->RoleNumber = 1;
+	grs->RoleNumber = 1;
 
-		grs->Toggle = toggle;
+	grs->Toggle = toggle;
 
-		c->QueuePacket(outapp);
+	c->QueuePacket(outapp);
 
-		safe_delete(outapp);
-	}
+	safe_delete(outapp);
 
 }
 
@@ -1738,44 +1714,21 @@ void Group::NotifyMainAssist(Client *c, uint8 toggle)
 	if(!MainAssistName.size())
 		return;
 
-	if (c->ClientVersion() < EQ::versions::ClientVersion::SoD)
-	{
-		auto outapp = new EQApplicationPacket(OP_DelegateAbility, sizeof(DelegateAbility_Struct));
+	auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
 
-		DelegateAbility_Struct* das = (DelegateAbility_Struct*)outapp->pBuffer;
+	GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
 
-		das->DelegateAbility = 0;
+	strn0cpy(grs->Name1, MainAssistName.c_str(), sizeof(grs->Name1));
 
-		das->MemberNumber = 0;
+	strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
 
-		das->Action = 0;
+	grs->RoleNumber = 2;
 
-		das->EntityID = 0;
+	grs->Toggle = toggle;
 
-		strn0cpy(das->Name, MainAssistName.c_str(), sizeof(das->Name));
+	c->QueuePacket(outapp);
 
-		c->QueuePacket(outapp);
-
-		safe_delete(outapp);
-	}
-	else
-	{
-		auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
-
-		GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
-
-		strn0cpy(grs->Name1, MainAssistName.c_str(), sizeof(grs->Name1));
-
-		strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
-
-		grs->RoleNumber = 2;
-
-		grs->Toggle = toggle;
-
-		c->QueuePacket(outapp);
-
-		safe_delete(outapp);
-	}
+	safe_delete(outapp);
 
 	NotifyAssistTarget(c);
 
@@ -1793,31 +1746,21 @@ void Group::NotifyPuller(Client *c, uint8 toggle)
 	if(!PullerName.size())
 		return;
 
-	if (c->ClientVersion() < EQ::versions::ClientVersion::SoD)
-	{
-		if(toggle)
-			c->Message(Chat::White, "%s is now Puller.", PullerName.c_str());
-		else
-			c->Message(Chat::White, "%s is no longer Puller.", PullerName.c_str());
-	}
-	else
-	{
-		auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
+	auto outapp = new EQApplicationPacket(OP_GroupRoles, sizeof(GroupRole_Struct));
 
-		GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
+	GroupRole_Struct *grs = (GroupRole_Struct*)outapp->pBuffer;
 
-		strn0cpy(grs->Name1, PullerName.c_str(), sizeof(grs->Name1));
+	strn0cpy(grs->Name1, PullerName.c_str(), sizeof(grs->Name1));
 
-		strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
+	strn0cpy(grs->Name2, GetLeaderName().c_str(), sizeof(grs->Name2));
 
-		grs->RoleNumber = 3;
+	grs->RoleNumber = 3;
 
-		grs->Toggle = toggle;
+	grs->Toggle = toggle;
 
-		c->QueuePacket(outapp);
+	c->QueuePacket(outapp);
 
-		safe_delete(outapp);
-	}
+	safe_delete(outapp);
 
 }
 
@@ -2360,8 +2303,7 @@ void Group::ChangeLeader(Mob* newleader)
 	for (uint32 i = 0; i < MAX_GROUP_MEMBERS; i++) {
 		if (members[i] && members[i]->IsClient())
 		{
-			if (members[i]->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD)
-				members[i]->CastToClient()->SendGroupLeaderChangePacket(newleader->GetName());
+			members[i]->CastToClient()->SendGroupLeaderChangePacket(newleader->GetName());
 
 			members[i]->CastToClient()->QueuePacket(outapp);
 		}

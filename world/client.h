@@ -91,7 +91,6 @@ private:
 
 	bool StartInTutorial;
 	EQ::versions::ClientVersion m_ClientVersion;
-	uint32 m_ClientVersionBit;
 	bool OPCharCreate(char *name, CharCreate_Struct *cc);
 
 	void SetClassStartingSkills( PlayerProfile_Struct *pp );
@@ -126,7 +125,6 @@ private:
 	void ClearDataBucketsCache();
 };
 
-bool CheckCharCreateInfoSoF(CharCreate_Struct *cc);
-bool CheckCharCreateInfoTitanium(CharCreate_Struct *cc);
+bool CheckCharCreateInfo(CharCreate_Struct *cc);
 
 #endif

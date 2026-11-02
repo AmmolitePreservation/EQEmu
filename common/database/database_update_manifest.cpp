@@ -4372,7 +4372,6 @@ CREATE TABLE `merc_templates`
     `merc_npc_type_id` int(11) UNSIGNED NOT NULL,
     `dbstring`         varchar(12) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
     `name_type_id`     tinyint(4) NOT NULL DEFAULT 0,
-    `clientversion`    int(10) UNSIGNED NOT NULL,
     PRIMARY KEY (`merc_template_id`) USING BTREE,
     INDEX              `FK_merc_templates_1`(`merc_type_id`) USING BTREE,
     INDEX              `FK_merc_templates_2`(`merc_subtype_id`) USING BTREE
@@ -4385,7 +4384,6 @@ CREATE TABLE `merc_types`
     `race_id`        int(10) UNSIGNED NOT NULL,
     `proficiency_id` tinyint(3) UNSIGNED NOT NULL,
     `dbstring`       varchar(12) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
-    `clientversion`  int(10) UNSIGNED NOT NULL,
     PRIMARY KEY (`merc_type_id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 49 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Compact;
 
@@ -7136,8 +7134,55 @@ ADD COLUMN `entity_variables` TEXT DEFAULT NULL AFTER `rezzable`;
 )",
 		.content_schema_update = false
 	},
+// -- template; copy/paste this when you need to create a new entry
+//	ManifestEntry{
+//		.version = 9228,
+//		.description = "some_new_migration.sql",
+//		.check = "SHOW COLUMNS FROM `table_name` LIKE 'column_name'",
+//		.condition = "empty",
+//		.match = "",
+//		.sql = R"(
+//
+//)"
+
 	ManifestEntry{
 		.version = 9326,
+		.description = "2026_11_01_one_client_content.sql",
+		.check = "SHOW COLUMNS FROM `zone_points` LIKE 'client_version_mask'",
+		.condition = "not_empty",
+		.match = "",
+		.sql = R"(
+UPDATE `zone_points` SET `max_expansion` = 11 WHERE `target_zone_id` = 5 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
+UPDATE `zone_points` SET `min_expansion` = 12 WHERE `target_zone_id` = 407 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
+UPDATE `zone_points` SET `max_expansion` = 11 WHERE (`zone`, `number`, `target_zone_id`) IN (('kithicor', 3, 21), ('befallen', 1, 21), ('ecommons', 2, 21), ('feerrott', 1, 46), ('grobb', 1, 46), ('guktop', 6, 46), ('erudnext', 3, 38), ('paineel', 1, 38), ('rivervale', 99, 33), ('runnyeye', 2, 33));
+UPDATE `zone_points` SET `min_expansion` = 12 WHERE (`zone`, `number`, `target_zone_id`) IN (('kithicor', 3, 408), ('befallen', 1, 408), ('ecommons', 2, 20), ('feerrott', 1, 413), ('grobb', 1, 413), ('guktop', 6, 413), ('erudnext', 3, 414), ('paineel', 1, 414), ('rivervale', 99, 415), ('runnyeye', 2, 415));
+UPDATE `zone_points` SET `max_expansion` = 13 WHERE (`zone`, `number`, `target_zone_id`) IN (('akanon', 1000, 56), ('lfaydark', 1, 56));
+UPDATE `zone_points` SET `min_expansion` = 14 WHERE (`zone`, `number`, `target_zone_id`) IN (('akanon', 1000, 448), ('lfaydark', 1, 448));
+UPDATE `zone_points` SET `max_expansion` = 9 WHERE `zone` = 'poknowledge' AND `number` = 17 AND (`client_version_mask` & 64) = 0;
+UPDATE `zone_points` SET `min_expansion` = 10 WHERE `zone` = 'poknowledge' AND `number` = 17 AND (`client_version_mask` & 64) <> 0;
+UPDATE `doors` SET `max_expansion` = 9 WHERE `zone` = 'corathus' AND `name` = 'POKTELE500' AND (`client_version_mask` & 64) = 0;
+UPDATE `doors` SET `min_expansion` = 10 WHERE `zone` = 'corathus' AND `name` = 'POKTELE500' AND (`client_version_mask` & 64) <> 0;
+DELETE FROM `doors` WHERE `zone` = 'PoKnowledge' AND `name` = 'POKRVPORT500' AND (`client_version_mask` & 64) = 0;
+DELETE FROM `doors` WHERE `zone` = 'guildhall' AND `client_version_mask` = 0;
+ALTER TABLE `zone_points` DROP COLUMN `client_version_mask`;
+ALTER TABLE `doors` DROP COLUMN `client_version_mask`;
+		)",
+		.content_schema_update = true
+	},
+	ManifestEntry{
+		.version = 9327,
+		.description = "2026_11_02_one_client_leftovers.sql",
+		.check = "SHOW COLUMNS FROM `start_zones` LIKE 'player_choice'",
+		.condition = "not_empty",
+		.match = "",
+		.sql = R"(
+ALTER TABLE `start_zones` DROP PRIMARY KEY, DROP COLUMN `player_choice`, ADD PRIMARY KEY (`zone_id`, `player_race`, `player_class`, `player_deity`);
+ALTER TABLE `bug_reports` DROP COLUMN `client_version_id`, DROP COLUMN `client_version_name`;
+		)",
+		.content_schema_update = true
+	},
+	ManifestEntry{
+		.version = 9328,
 		.description = "2026_10_26_item_instances.sql",
 		.check = "SHOW TABLES LIKE 'item_instances'",
 		.condition = "empty",
@@ -7195,7 +7240,7 @@ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'item_instances rows are never delete
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9327,
+		.version = 9329,
 		.description = "2026_10_26_character_data_origin_world_id.sql",
 		.check = "SHOW COLUMNS FROM `character_data` LIKE 'origin_world_id'",
 		.condition = "empty",
@@ -7207,7 +7252,7 @@ ALTER TABLE `character_data`
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9328,
+		.version = 9330,
 		.description = "2026_10_31_item_instances_migration.sql",
 		.check = "SHOW TABLES LIKE 'inventory'",
 		.condition = "not_empty",
@@ -7838,17 +7883,6 @@ DROP TABLE `object_contents`;
 )",
 		.content_schema_update = false
 	},
-// -- template; copy/paste this when you need to create a new entry
-//	ManifestEntry{
-//		.version = 9228,
-//		.description = "some_new_migration.sql",
-//		.check = "SHOW COLUMNS FROM `table_name` LIKE 'column_name'",
-//		.condition = "empty",
-//		.match = "",
-//		.sql = R"(
-//
-//)"
-
 	// Used for testing
 //	ManifestEntry{
 //		.version = 9229,

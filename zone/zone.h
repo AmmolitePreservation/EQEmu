@@ -71,7 +71,6 @@ struct ZonePoint {
 	float  target_heading;
 	uint16 target_zone_id;
 	int32  target_zone_instance;
-	uint32 client_version_mask;
 	bool   is_virtual;
 	int    height;
 	int    width;
@@ -349,7 +348,7 @@ public:
 
 	WaterMap *watermap;
 	ZonePoint *GetClosestZonePoint(const glm::vec3 &location, uint32 to, Client *client, float max_distance = 40000.0f);
-	ZonePoint *GetClosestZonePointWithoutZone(float x, float y, float z, Client *client, float max_distance = 40000.0f);
+	ZonePoint *GetClosestZonePointWithoutZone(float x, float y, float z, float max_distance = 40000.0f);
 
 	Timer GetInitgridsTimer();
 	uint32 GetInstanceTimeRemaining() const;

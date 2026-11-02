@@ -101,7 +101,7 @@ void Client::Handle_OP_ZoneChange(const EQApplicationPacket *app) {
 				target_instance_id = m_pp.binds[0].instance_id;
 				break;
 			case ZoneUnsolicited: //client came up with this on its own.
-				zone_point = zone->GetClosestZonePointWithoutZone(GetX(), GetY(), GetZ(), this, ZONEPOINT_NOZONE_RANGE);
+				zone_point = zone->GetClosestZonePointWithoutZone(GetX(), GetY(), GetZ(), ZONEPOINT_NOZONE_RANGE);
 				if (zone_point) {
 					//we found a zone point, which is a reasonable distance away
 					//assume that is the one were going with.
@@ -930,10 +930,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 			if (entity == 0)
 			{
 				LogError("OP_EndLootRequest: Corpse with id of {} not found for {}.", entity_id_being_looted, GetCleanName());
-				if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
-					Corpse::SendEndLootErrorPacket(this);
-				else
-					Corpse::SendLootReqErrorPacket(this);
+				Corpse::SendEndLootErrorPacket(this);
 			}
 			else if (!entity->IsCorpse())
 			{
@@ -954,10 +951,9 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 							      sizeof(ZonePlayerToBind_Struct) + iZoneNameLength);
 			ZonePlayerToBind_Struct* gmg = (ZonePlayerToBind_Struct*) outapp->pBuffer;
 
-			// If we are SoF and later and are respawning from hover, we want the real zone ID, else zero to use the old hack.
-			//
+			// Respawning from hover wants the real zone id, anything else zero.
 			if(zone->GetZoneID() == zoneID) {
-				if ((ClientVersionBit() & EQ::versions::maskSoFAndLater) && (!RuleB(Character, RespawnFromHover) || !IsHoveringForRespawn()))
+				if ((!RuleB(Character, RespawnFromHover) || !IsHoveringForRespawn()))
 					gmg->bind_zone_id = 0;
 				else
 					gmg->bind_zone_id = zoneID;

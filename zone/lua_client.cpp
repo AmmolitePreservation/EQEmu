@@ -1109,16 +1109,6 @@ void Lua_Client::SetAATitle(std::string title, bool save_to_database) {
 	}
 }
 
-int Lua_Client::GetClientVersion() {
-	Lua_Safe_Call_Int();
-	return static_cast<unsigned int>(self->ClientVersion());
-}
-
-uint32 Lua_Client::GetClientVersionBit() {
-	Lua_Safe_Call_Int();
-	return self->ClientVersionBit();
-}
-
 void Lua_Client::SetTitleSuffix(const char *text) {
 	Lua_Safe_Call_Void();
 	self->SetTitleSuffix(text);
@@ -3789,8 +3779,6 @@ luabind::scope lua_register_client() {
 	.def("GetClassAbbreviation", (std::string(Lua_Client::*)(void))&Lua_Client::GetClassAbbreviation)
 	.def("GetClassBitmask", (uint16(Lua_Client::*)(void))&Lua_Client::GetClassBitmask)
 	.def("GetClientMaxLevel", (int(Lua_Client::*)(void))&Lua_Client::GetClientMaxLevel)
-	.def("GetClientVersion", (int(Lua_Client::*)(void))&Lua_Client::GetClientVersion)
-	.def("GetClientVersionBit", (uint32(Lua_Client::*)(void))&Lua_Client::GetClientVersionBit)
 	.def("GetCorpseCount", (int64(Lua_Client::*)(void))&Lua_Client::GetCorpseCount)
 	.def("GetCorpseID", (int(Lua_Client::*)(int))&Lua_Client::GetCorpseID)
 	.def("GetCorpseItemAt", (int(Lua_Client::*)(int,int))&Lua_Client::GetCorpseItemAt)

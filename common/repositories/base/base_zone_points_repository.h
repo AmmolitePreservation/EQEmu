@@ -35,7 +35,6 @@ public:
 		uint32_t    target_zone_id;
 		uint32_t    target_instance;
 		float       buffer;
-		uint32_t    client_version_mask;
 		int8_t      min_expansion;
 		int8_t      max_expansion;
 		std::string content_flags;
@@ -69,7 +68,6 @@ public:
 			"target_zone_id",
 			"target_instance",
 			"buffer",
-			"client_version_mask",
 			"min_expansion",
 			"max_expansion",
 			"content_flags",
@@ -99,7 +97,6 @@ public:
 			"target_zone_id",
 			"target_instance",
 			"buffer",
-			"client_version_mask",
 			"min_expansion",
 			"max_expansion",
 			"content_flags",
@@ -163,7 +160,6 @@ public:
 		e.target_zone_id         = 0;
 		e.target_instance        = 0;
 		e.buffer                 = 0;
-		e.client_version_mask    = 4294967295;
 		e.min_expansion          = -1;
 		e.max_expansion          = -1;
 		e.content_flags          = "";
@@ -223,14 +219,13 @@ public:
 			e.target_zone_id         = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.target_instance        = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.buffer                 = row[15] ? strtof(row[15], nullptr) : 0;
-			e.client_version_mask    = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 4294967295;
-			e.min_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
-			e.max_expansion          = row[18] ? static_cast<int8_t>(atoi(row[18])) : -1;
-			e.content_flags          = row[19] ? row[19] : "";
-			e.content_flags_disabled = row[20] ? row[20] : "";
-			e.is_virtual             = row[21] ? static_cast<int8_t>(atoi(row[21])) : 0;
-			e.height                 = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
-			e.width                  = row[23] ? static_cast<int32_t>(atoi(row[23])) : 0;
+			e.min_expansion          = row[16] ? static_cast<int8_t>(atoi(row[16])) : -1;
+			e.max_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
+			e.content_flags          = row[18] ? row[18] : "";
+			e.content_flags_disabled = row[19] ? row[19] : "";
+			e.is_virtual             = row[20] ? static_cast<int8_t>(atoi(row[20])) : 0;
+			e.height                 = row[21] ? static_cast<int32_t>(atoi(row[21])) : 0;
+			e.width                  = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
 
 			return e;
 		}
@@ -279,14 +274,13 @@ public:
 		v.push_back(columns[13] + " = " + std::to_string(e.target_zone_id));
 		v.push_back(columns[14] + " = " + std::to_string(e.target_instance));
 		v.push_back(columns[15] + " = " + std::to_string(e.buffer));
-		v.push_back(columns[16] + " = " + std::to_string(e.client_version_mask));
-		v.push_back(columns[17] + " = " + std::to_string(e.min_expansion));
-		v.push_back(columns[18] + " = " + std::to_string(e.max_expansion));
-		v.push_back(columns[19] + " = '" + Strings::Escape(e.content_flags) + "'");
-		v.push_back(columns[20] + " = '" + Strings::Escape(e.content_flags_disabled) + "'");
-		v.push_back(columns[21] + " = " + std::to_string(e.is_virtual));
-		v.push_back(columns[22] + " = " + std::to_string(e.height));
-		v.push_back(columns[23] + " = " + std::to_string(e.width));
+		v.push_back(columns[16] + " = " + std::to_string(e.min_expansion));
+		v.push_back(columns[17] + " = " + std::to_string(e.max_expansion));
+		v.push_back(columns[18] + " = '" + Strings::Escape(e.content_flags) + "'");
+		v.push_back(columns[19] + " = '" + Strings::Escape(e.content_flags_disabled) + "'");
+		v.push_back(columns[20] + " = " + std::to_string(e.is_virtual));
+		v.push_back(columns[21] + " = " + std::to_string(e.height));
+		v.push_back(columns[22] + " = " + std::to_string(e.width));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -324,7 +318,6 @@ public:
 		v.push_back(std::to_string(e.target_zone_id));
 		v.push_back(std::to_string(e.target_instance));
 		v.push_back(std::to_string(e.buffer));
-		v.push_back(std::to_string(e.client_version_mask));
 		v.push_back(std::to_string(e.min_expansion));
 		v.push_back(std::to_string(e.max_expansion));
 		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
@@ -377,7 +370,6 @@ public:
 			v.push_back(std::to_string(e.target_zone_id));
 			v.push_back(std::to_string(e.target_instance));
 			v.push_back(std::to_string(e.buffer));
-			v.push_back(std::to_string(e.client_version_mask));
 			v.push_back(std::to_string(e.min_expansion));
 			v.push_back(std::to_string(e.max_expansion));
 			v.push_back("'" + Strings::Escape(e.content_flags) + "'");
@@ -434,14 +426,13 @@ public:
 			e.target_zone_id         = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.target_instance        = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.buffer                 = row[15] ? strtof(row[15], nullptr) : 0;
-			e.client_version_mask    = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 4294967295;
-			e.min_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
-			e.max_expansion          = row[18] ? static_cast<int8_t>(atoi(row[18])) : -1;
-			e.content_flags          = row[19] ? row[19] : "";
-			e.content_flags_disabled = row[20] ? row[20] : "";
-			e.is_virtual             = row[21] ? static_cast<int8_t>(atoi(row[21])) : 0;
-			e.height                 = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
-			e.width                  = row[23] ? static_cast<int32_t>(atoi(row[23])) : 0;
+			e.min_expansion          = row[16] ? static_cast<int8_t>(atoi(row[16])) : -1;
+			e.max_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
+			e.content_flags          = row[18] ? row[18] : "";
+			e.content_flags_disabled = row[19] ? row[19] : "";
+			e.is_virtual             = row[20] ? static_cast<int8_t>(atoi(row[20])) : 0;
+			e.height                 = row[21] ? static_cast<int32_t>(atoi(row[21])) : 0;
+			e.width                  = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -482,14 +473,13 @@ public:
 			e.target_zone_id         = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
 			e.target_instance        = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
 			e.buffer                 = row[15] ? strtof(row[15], nullptr) : 0;
-			e.client_version_mask    = row[16] ? static_cast<uint32_t>(strtoul(row[16], nullptr, 10)) : 4294967295;
-			e.min_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
-			e.max_expansion          = row[18] ? static_cast<int8_t>(atoi(row[18])) : -1;
-			e.content_flags          = row[19] ? row[19] : "";
-			e.content_flags_disabled = row[20] ? row[20] : "";
-			e.is_virtual             = row[21] ? static_cast<int8_t>(atoi(row[21])) : 0;
-			e.height                 = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
-			e.width                  = row[23] ? static_cast<int32_t>(atoi(row[23])) : 0;
+			e.min_expansion          = row[16] ? static_cast<int8_t>(atoi(row[16])) : -1;
+			e.max_expansion          = row[17] ? static_cast<int8_t>(atoi(row[17])) : -1;
+			e.content_flags          = row[18] ? row[18] : "";
+			e.content_flags_disabled = row[19] ? row[19] : "";
+			e.is_virtual             = row[20] ? static_cast<int8_t>(atoi(row[20])) : 0;
+			e.height                 = row[21] ? static_cast<int32_t>(atoi(row[21])) : 0;
+			e.width                  = row[22] ? static_cast<int32_t>(atoi(row[22])) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -580,7 +570,6 @@ public:
 		v.push_back(std::to_string(e.target_zone_id));
 		v.push_back(std::to_string(e.target_instance));
 		v.push_back(std::to_string(e.buffer));
-		v.push_back(std::to_string(e.client_version_mask));
 		v.push_back(std::to_string(e.min_expansion));
 		v.push_back(std::to_string(e.max_expansion));
 		v.push_back("'" + Strings::Escape(e.content_flags) + "'");
@@ -626,7 +615,6 @@ public:
 			v.push_back(std::to_string(e.target_zone_id));
 			v.push_back(std::to_string(e.target_instance));
 			v.push_back(std::to_string(e.buffer));
-			v.push_back(std::to_string(e.client_version_mask));
 			v.push_back(std::to_string(e.min_expansion));
 			v.push_back(std::to_string(e.max_expansion));
 			v.push_back("'" + Strings::Escape(e.content_flags) + "'");

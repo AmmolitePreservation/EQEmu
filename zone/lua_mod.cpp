@@ -916,8 +916,6 @@ void LuaMod::RegisterBug(Client *self, BaseBugReportsRepository::BugReports bug,
 		luabind::adl::object e = luabind::newtable(L);
 		e["self"]                = l_self;
 		e["zone"]                = bug.zone;
-		e["client_version_id"]   = bug.client_version_id;
-		e["client_version_name"] = bug.client_version_name;
 		e["account_id"]          = bug.account_id;
 		e["character_id"]        = bug.character_id;
 		e["character_name"]      = bug.character_name;

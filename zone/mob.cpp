@@ -1581,7 +1581,7 @@ void Mob::SendHPUpdate(bool force_update_all)
 	CreateHPPacket(&hp_packet);
 
 	// update those who have us targeted
-	entity_list.QueueClientsByTarget(this, &hp_packet, false, 0, false, true, EQ::versions::maskAllClients);
+	entity_list.QueueClientsByTarget(this, &hp_packet, false, 0, false, true);
 
 	// Update those who have us on x-target
 	entity_list.QueueClientsByXTarget(this, &hp_packet, false);
@@ -2304,11 +2304,7 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 				skill = EQ::skills::Skill2HBlunt;
 				break;
 			case EQ::item::ItemType2HPiercing:
-				if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2) {
-					skill = EQ::skills::Skill1HPiercing;
-				} else {
-					skill = EQ::skills::Skill2HPiercing;
-				}
+				skill = EQ::skills::Skill2HPiercing;
 
 				break;
 			default:
@@ -2557,7 +2553,7 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 
 	if (use_window) {
 		if (final_string.size() < 4096) {
-			const uint32 popup_buttons = (c->ClientVersion() < EQ::versions::ClientVersion::SoD) ? 0 : 1;
+			const uint32 popup_buttons = 1;
 			c->SendWindow(
 				0,
 				POPUPID_UPDATE_SHOWSTATSWINDOW,
@@ -2646,7 +2642,7 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 		c->Message(
 			Chat::White,
 			fmt::format(
-				" AFK: {} LFG: {} Anon: {} PVP: {} GM: {} Fly Mode: {} ({}) GM Speed: {} Hide Me: {} Invulnerability: {} LD: {} Client Version: {} Tells Off: {}",
+				" AFK: {} LFG: {} Anon: {} PVP: {} GM: {} Fly Mode: {} ({}) GM Speed: {} Hide Me: {} Invulnerability: {} LD: {} Tells Off: {}",
 				CastToClient()->m_is_afk ? "Yes" : "No",
 				CastToClient()->LFG ? "Yes" : "No",
 				CastToClient()->GetAnon() ? "Yes" : "No",
@@ -2658,7 +2654,6 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 				CastToClient()->GetHideMe() ? "On" : "Off",
 				CastToClient()->GetGMInvul() ? "On" : "Off",
 				CastToClient()->IsLD() ? "Yes" : "No",
-				CastToClient()->ClientVersionBit(),
 				CastToClient()->tellsoff ? "Yes" : "No"
 			).c_str()
 		);
@@ -7181,10 +7176,7 @@ EQ::skills::SkillType Mob::GetSkillByItemType(int ItemType)
 		case EQ::item::ItemType2HBlunt:
 			return EQ::skills::Skill2HBlunt;
 		case EQ::item::ItemType2HPiercing:
-			if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2)
-				return EQ::skills::Skill1HPiercing;
-			else
-				return EQ::skills::Skill2HPiercing;
+			return EQ::skills::Skill2HPiercing;
 		case EQ::item::ItemTypeBow:
 			return EQ::skills::SkillArchery;
 		case EQ::item::ItemTypeLargeThrowing:

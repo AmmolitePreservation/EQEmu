@@ -8,7 +8,6 @@ luabind::scope lua_register_events();
 luabind::scope lua_register_faction();
 luabind::scope lua_register_slot();
 luabind::scope lua_register_material();
-luabind::scope lua_register_client_version();
 luabind::scope lua_register_appearance();
 luabind::scope lua_register_classes();
 luabind::scope lua_register_skills();

@@ -89,7 +89,6 @@ Doors::Doors(const DoorsRepository::Doors &door) :
 	m_destination_instance_id = door.dest_instance;
 	m_is_ldon_door            = door.is_ldon_door;
 	m_dz_switch_id            = door.dz_switch_id;
-	m_client_version_mask     = door.client_version_mask;
 
 	SetOpenState(false);
 
@@ -126,7 +125,6 @@ Doors::Doors(const char *model, const glm::vec4 &position, uint8 open_type, uint
 	m_door_param              = 0;
 	m_invert_state            = 0;
 	m_is_ldon_door            = 0;
-	m_client_version_mask     = 4294967295u;
 	m_disable_timer           = 0;
 	m_destination_instance_id = 0;
 

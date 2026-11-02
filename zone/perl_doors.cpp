@@ -194,11 +194,6 @@ bool Perl_Doors_IsLDoNDoor(Doors* self)
 	return self->IsLDoNDoor();
 }
 
-uint32 Perl_Doors_GetClientVersionMask(Doors* self)
-{
-	return self->GetClientVersionMask();
-}
-
 int Perl_Doors_GetDoorParam(Doors* self)
 {
 	return self->GetDoorParam();
@@ -279,7 +274,6 @@ void perl_register_doors()
 	package.add("ForceClose", (void(*)(Doors*, Mob*, bool))&Perl_Doors_ForceClose);
 	package.add("ForceOpen", (void(*)(Doors*, Mob*))&Perl_Doors_ForceOpen);
 	package.add("ForceOpen", (void(*)(Doors*, Mob*, bool))&Perl_Doors_ForceOpen);
-	package.add("GetClientVersionMask", &Perl_Doors_GetClientVersionMask);
 	package.add("GetDestinationHeading", &Perl_Doors_GetDestinationHeading);
 	package.add("GetDestinationInstanceID", &Perl_Doors_GetDestinationInstanceID);
 	package.add("GetDestinationX", &Perl_Doors_GetDestinationX);

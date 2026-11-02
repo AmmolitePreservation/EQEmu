@@ -525,9 +525,7 @@ Client::Client(std::shared_ptr<EQStreamInterface> eqs) {
 	GlobalChatLimiterTimer = new Timer(RuleI(Chat, IntervalDurationMS));
 
 	TypeOfConnection = ConnectionTypeUnknown;
-	ClientVersion_ = EQ::versions::ClientVersion::Unknown;
 
-	UnderfootOrLater = false;
 }
 
 Client::~Client() {
@@ -1529,8 +1527,7 @@ void Client::SendChannelMessage(const std::string& ChannelName, const std::strin
 
 	int PacketLength = ChannelName.length() + Message.length() + FQSenderName.length() + 3;
 
-	if (UnderfootOrLater)
-		PacketLength += 8;
+	PacketLength += 8;
 
 	auto outapp = new EQApplicationPacket(OP_ChannelMessage, PacketLength);
 
@@ -1540,8 +1537,7 @@ void Client::SendChannelMessage(const std::string& ChannelName, const std::strin
 	VARSTRUCT_ENCODE_STRING(PacketBuffer, FQSenderName.c_str());
 	VARSTRUCT_ENCODE_STRING(PacketBuffer, Message.c_str());
 
-	if (UnderfootOrLater)
-		VARSTRUCT_ENCODE_STRING(PacketBuffer, "SPAM:0:");
+	VARSTRUCT_ENCODE_STRING(PacketBuffer, "SPAM:0:");
 
 	QueuePacket(outapp);
 
@@ -2218,62 +2214,15 @@ void Client::SetConnectionType(char c) {
 
 	switch (c)
 	{
-	case EQ::versions::ucsTitaniumChat:
-	{
-		TypeOfConnection = ConnectionTypeChat;
-		ClientVersion_ = EQ::versions::ClientVersion::Titanium;
-		LogInfo("Connection type is Chat (Titanium)");
-		break;
-	}
-	case EQ::versions::ucsTitaniumMail:
-	{
-		TypeOfConnection = ConnectionTypeMail;
-		ClientVersion_ = EQ::versions::ClientVersion::Titanium;
-		LogInfo("Connection type is Mail (Titanium)");
-		break;
-	}
-	case EQ::versions::ucsSoFCombined:
-	{
-		TypeOfConnection = ConnectionTypeCombined;
-		ClientVersion_ = EQ::versions::ClientVersion::SoF;
-		LogInfo("Connection type is Combined (SoF)");
-		break;
-	}
-	case EQ::versions::ucsSoDCombined:
-	{
-		TypeOfConnection = ConnectionTypeCombined;
-		ClientVersion_ = EQ::versions::ClientVersion::SoD;
-		LogInfo("Connection type is Combined (SoD)");
-		break;
-	}
-	case EQ::versions::ucsUFCombined:
-	{
-		TypeOfConnection = ConnectionTypeCombined;
-		ClientVersion_ = EQ::versions::ClientVersion::UF;
-		UnderfootOrLater = true;
-		LogInfo("Connection type is Combined (Underfoot)");
-		break;
-	}
-	case EQ::versions::ucsRoFCombined:
-	{
-		TypeOfConnection = ConnectionTypeCombined;
-		ClientVersion_ = EQ::versions::ClientVersion::RoF;
-		UnderfootOrLater = true;
-		LogInfo("Connection type is Combined (RoF)");
-		break;
-	}
 	case EQ::versions::ucsRoF2Combined:
 	{
 		TypeOfConnection = ConnectionTypeCombined;
-		ClientVersion_ = EQ::versions::ClientVersion::RoF2;
-		UnderfootOrLater = true;
 		LogInfo("Connection type is Combined (RoF2)");
 		break;
 	}
 	default:
 	{
 		TypeOfConnection = ConnectionTypeUnknown;
-		ClientVersion_ = EQ::versions::ClientVersion::Unknown;
 		LogInfo("Connection type is unknown");
 	}
 	}

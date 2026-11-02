@@ -835,7 +835,7 @@ void TaskManager::SendTaskSelector(Client* client, Mob* mob, const std::vector<i
 		}
 
 		buf.WriteUInt32(task_list[i]); // task_id
-		m_task_data[task_list[i]].SerializeSelector(buf, client->ClientVersion());
+		m_task_data[task_list[i]].SerializeSelector(buf);
 		client->GetTaskState()->AddOffer(task_list[i], mob->GetID());
 	}
 
@@ -860,7 +860,7 @@ void TaskManager::SendSharedTaskSelector(Client* client, Mob* mob, const std::ve
 
 	for (int task_id: task_list) {
 		buf.WriteUInt32(task_id);
-		m_task_data[task_id].SerializeSelector(buf, client->ClientVersion());
+		m_task_data[task_id].SerializeSelector(buf);
 		client->GetTaskState()->AddOffer(task_id, mob->GetID());
 	}
 
@@ -988,7 +988,7 @@ void TaskManager::SendTaskActivityLong(
 	const auto& activity = task_data->activity_information[activity_id];
 	int done_count = client->GetTaskActivityDoneCount(task_data->type, client_task_index, activity_id);
 
-	activity.SerializeObjective(buf, client->ClientVersion(), done_count);
+	activity.SerializeObjective(buf, done_count);
 
 	auto outapp = std::make_unique<EQApplicationPacket>(OP_TaskActivity, buf);
 	client->QueuePacket(outapp.get());

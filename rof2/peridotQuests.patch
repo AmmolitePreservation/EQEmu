@@ -1,0 +1,195 @@
+diff --git a/kithicor/Crazy_Charlie.pl b/kithicor/Crazy_Charlie.pl
+index 03d471c6d..28c407cb2 100644
+--- a/kithicor/Crazy_Charlie.pl
++++ b/kithicor/Crazy_Charlie.pl
+@@ -1,6 +1,5 @@
+ # items: 87309, 97289, 85062
+ sub EVENT_SAY {
+-$clientver = $client->GetClientVersion();
+ 	if(quest::istaskactive(5655)){
+ 		if($text=~/Hail/i) {
+       			quest::say("Good on ya! Get on out there then and kill some zombies! Bring me some hearts while you're at it. I want to have a look at what's going on in there.");
+@@ -10,9 +9,6 @@ $clientver = $client->GetClientVersion();
+ 		if(!defined $qglobals{halloween_zombie}){
+ 				if($text=~/Hail/i) {
+    					quest::say("Dagnabbit! Don't creep up on folks like that, especially around here! What are ya trying to do, give somebody a heart attack! Noise attracts [" . quest::saylink("their") . "] attention, don't ya know.");
+-                                        if($clientver < 3){
+-				$client->Message(15,"This task does not fully work with the Titanium client or lower. Please upgrade to SoF or newer for the best possible experience.");
+-                                        }
+       				}
+       				if($text=~/their/i) {
+       					quest::say("Who? Look around! The zombies, of course! They aren't too bright, but seem attracted to noises. I just know the [" . quest::saylink("epidemic") . "] is going to spread.");
+diff --git a/plugins/Quest_Credit.pl b/plugins/Quest_Credit.pl
+index 8e173e8ad..e72d1aeed 100644
+--- a/plugins/Quest_Credit.pl
++++ b/plugins/Quest_Credit.pl
+@@ -135,7 +135,6 @@ sub QCreditStatus{
+ 	my $name = plugin::val('$name');
+ 	my $space = "_";
+ 	# Import the reference to qglobals - Must use $qglobals->{name} to access them (Thanks Trevius)
+-	my $ClientCheck = plugin::ClientCheck();
+ 	my $Center = plugin::PWAutoCenter(27, 2);
+ 	my $Break = plugin::PWBreak();
+ 	my $Indent = plugin::PWIndent();
+@@ -157,7 +156,6 @@ sub QCreditStatus{
+ 		my $CreditAmnt2 = plugin::commify($CreditAmnt);
+ 		if($UseWindow == 1 || $UseWindow == 3){
+ 			QCredit::popup("Account Balance", "
+-			<c \"#FFFF66\">Client: </c> $ClientCheck <br>
+ 			<c \"#FFFF66\">Credit Source: </c> $accountname <br>
+ 			<c \"#FFFF66\">Character: </c> $name <br>
+ 			<c \"#FFFF66\">Current Balance: </c><c \"#33FF99\"> $CreditAmnt2 </c><br>");
+diff --git a/plugins/Quest_Credit2.pl b/plugins/Quest_Credit2.pl
+index d31328f81..ed52db81c 100644
+--- a/plugins/Quest_Credit2.pl
++++ b/plugins/Quest_Credit2.pl
+@@ -156,7 +156,6 @@ sub CreditStatusAccount{
+ 	my $qglobals = plugin::var('qglobals');	
+ 	my $CreditAmnt = $qglobals->{"$CreditName$space$accountid"};
+ 	my $CreditAmnt2 = plugin::commify($CreditAmnt);
+-	my $ClientCheck = plugin::ClientCheck();
+ 	my $Center = plugin::PWAutoCenter(27, 2);
+ 	my $Break = plugin::PWBreak();
+ 	my $Indent = plugin::PWIndent();
+@@ -165,7 +164,6 @@ sub CreditStatusAccount{
+ 		if($UseWindow != 1){
+ 			quest::popup("[Account Balance]", "
+ 			$Logo<br>
+-			$Center <c \"#FFFF66\">Client: </c> $ClientCheck <br>
+ 			$Center <c \"#FFFF66\">Account: </c> $accountname <br>
+ 			$Center <c \"#FFFF66\">Character: </c>$name <br>
+ 			$Center <c \"#FFFF66\">Remaining Balance: </c><c \"#33FF99\"> $CreditAmnt2 </c><br>
+@@ -190,7 +188,6 @@ sub CreditStatusAccountGive{
+ 	# Import the reference to qglobals - Must use $qglobals->{name} to access them (Thanks Trevius)
+ 	my $qglobals = plugin::var('qglobals');	
+ 	my $CreditAmnt = $qglobals->{"$CreditName$space$accountid"};
+-	my $ClientCheck = plugin::ClientCheck();
+ 	my $Center = plugin::PWAutoCenter(27, 2);
+ 	my $Break = plugin::PWBreak();
+ 	my $Indent = plugin::PWIndent();
+@@ -203,7 +200,6 @@ sub CreditStatusAccountGive{
+ 		if($UseWindow != 1){
+ 			quest::popup("[Account Balance]","
+ 			$Logo<br>
+-			$Center <c \"#FFFF66\">Client: </c> $Blue $ClientCheck </c><br>
+ 			$Center <c \"#FFFF66\">Account: </c> $accountname <br>
+ 			$Center <c \"#FFFF66\">Character: </c>$name <br>
+ 			$Center <c \"#FFFF66\">Added to Account: </c> $Plus <c \"#33FF99\"> $AddToo </c> <br>
+@@ -232,7 +228,6 @@ sub CreditStatusAccountTake{
+ 	my $CreditAmnt = $qglobals->{"$CreditName$space$accountid"};
+ 	my $CreditAmnt2 = plugin::commify($CreditAmnt - $Taken);
+ 	my $Taken2 = plugin::commify($Taken);
+-	my $ClientCheck = plugin::ClientCheck();
+ 	my $Center = plugin::PWAutoCenter(27, 2);
+ 	my $Red = plugin::PWColor("Red");
+ 	my $Break = plugin::PWBreak();
+@@ -244,7 +239,6 @@ sub CreditStatusAccountTake{
+ 	if($UseWindow != 1){
+ 		quest::popup("[Account Balance]","
+ 		$Logo<br>
+-		$Center <c \"#FFFF66\">Client: </c> $Blue $ClientCheck </c> <br>
+ 		$Center <c \"#FFFF66\">Account: </c> $accountname <br>
+ 		$Center <c \"#FFFF66\">Character: </c>$name <br>
+ 		$Center <c \"#FFFF66\">Taken from Account: </c> $Minus <c \"#CC0000</c> $Taken2 </c> <br>
+diff --git a/plugins/client_functions.pl b/plugins/client_functions.pl
+deleted file mode 100644
+index 33eb5470c..000000000
+--- a/plugins/client_functions.pl
++++ /dev/null
+@@ -1,13 +0,0 @@
+-#::: Author: Akkadius
+-#::: Description: Returns the client version in text format
+-sub ClientCheck{
+-	my $client = plugin::val('$client');
+-	my $clientver = $client->GetClientVersion();
+-	if ($clientver == 2){ $ShowClient = "Titanium"; }
+-	if ($clientver == 4){ $ShowClient = "Seeds of Destruction"; }
+-	if ($clientver == 5){ $ShowClient = "Underfoot"; }
+-	if ($clientver == 6){ $ShowClient = "Other"; }
+-	return $ShowClient;
+-}
+-
+-return 1; 
+\ No newline at end of file
+diff --git a/rivervale/Laryen_Lycanthrope.pl b/rivervale/Laryen_Lycanthrope.pl
+index f16ca24cb..ccf5ca69d 100644
+--- a/rivervale/Laryen_Lycanthrope.pl
++++ b/rivervale/Laryen_Lycanthrope.pl
+@@ -4,8 +4,6 @@ sub EVENT_SPAWN {
+ }
+ 
+ sub EVENT_SAY {
+-$clientver = $client->GetClientVersion();
+-if($clientver > 2){
+ 	if(quest::istaskactive(5654)){
+ 		if($text=~/Hail/i) {
+ 			if(quest::istaskactivityactive(5654,1)){
+@@ -46,10 +44,6 @@ if($clientver > 2){
+ 		}		
+ 	}
+ }
+-else {
+-	$client->Message(15,"This task does not support the Titanium client or lower. Please upgrade to SoF or newer.");
+-}
+-}
+ 
+ sub EVENT_TIMER {
+ 
+diff --git a/tox/Marta_Stalwart.pl b/tox/Marta_Stalwart.pl
+index d56991245..35d7df6da 100644
+--- a/tox/Marta_Stalwart.pl
++++ b/tox/Marta_Stalwart.pl
+@@ -1,6 +1,5 @@
+ # items: 80044, 80038
+ sub EVENT_SAY {
+-$clientver = $client->GetClientVersion();
+ 	if(quest::istaskactive(3539)) {
+ 		if(quest::istaskactivityactive(3539,0)){
+ 			if($text=~/Costume/i) {
+@@ -28,7 +27,6 @@ $clientver = $client->GetClientVersion();
+ 		quest::say("Good luck, if you get hit with any pies, come back and I'll help you get get cleaned up and [try] again.");
+ 		}
+ 	}
+-	if($clientver > 2){
+ 		if(!quest::istaskactive(3539)){
+ 			if($text=~/Hail/i) {
+    				quest::emote("smiles graciously at you, 'Have you come to participate in our pie flinging [tradition]?'");
+@@ -60,8 +58,4 @@ $clientver = $client->GetClientVersion();
+ 				quest::summonitem(80038,999); # Item: Stack of Squash Pies
+ 			}
+ 		}	
+-	}
+-	else {
+-		$client->Message(15,"This task does not support the Titanium client or lower. Please upgrade to SoF or newer.");
+-	}
+ }
+\ No newline at end of file
+diff --git a/toxxulia/Marta_Stalwart.pl b/toxxulia/Marta_Stalwart.pl
+index 0e9acae9b..a07ae2292 100644
+--- a/toxxulia/Marta_Stalwart.pl
++++ b/toxxulia/Marta_Stalwart.pl
+@@ -1,6 +1,5 @@
+ # items: 80044, 80038
+ sub EVENT_SAY {
+-  $clientver = $client->GetClientVersion();
+   if(quest::istaskactive(3539)) {
+     if(quest::istaskactivityactive(3539, 0)) {
+       if($text=~/costume/i) {
+@@ -28,7 +27,6 @@ sub EVENT_SAY {
+       quest::say("Good luck, if you get hit with any pies, come back and I'll help you get get cleaned up and [try] again.");
+     }
+   }
+-  if($clientver > 2){
+     if(!quest::istaskactive(3539)) {
+       if($text=~/hail/i) {
+         quest::emote("smiles graciously at you, 'Have you come to participate in our pie flinging [tradition]?'");
+@@ -60,8 +58,4 @@ sub EVENT_SAY {
+         quest::summonitem(80038, 999); # Item: Stack of Squash Pies
+       }
+     }
+-  }
+-  else {
+-    $client->Message(15, "This task does not support the Titanium client or lower. Please upgrade to SoF or newer.");
+-  }
+ }
+\ No newline at end of file
