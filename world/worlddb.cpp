@@ -39,17 +39,13 @@ WorldDatabase content_db;
 extern std::vector<RaceClassAllocation> character_create_allocations;
 extern std::vector<RaceClassCombos> character_create_race_class_combos;
 
-void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, uint32 client_version_bit)
+void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, EQ::versions::ClientVersion client_version)
 {
-	EQ::versions::ClientVersion
-		   client_version  = EQ::versions::ConvertClientVersionBitToClientVersion(client_version_bit);
 	size_t character_limit = EQ::constants::StaticLookup(client_version)->CharacterCreationLimit;
 
 	if (character_limit > EQ::constants::CHARACTER_CREATION_LIMIT) {
 		character_limit = EQ::constants::CHARACTER_CREATION_LIMIT;
 	}
-
-	// Force Titanium clients to use '8'
 
 	auto characters = CharacterDataRepository::GetWhere(
 		database,

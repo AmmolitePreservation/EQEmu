@@ -1086,7 +1086,7 @@ void Client::Handle_Connect_OP_ReqClientSpawn(const EQApplicationPacket *app)
 	auto outapp = new EQApplicationPacket;
 
 	// Send Zone Doors
-	if (entity_list.MakeDoorSpawnPacket(outapp, this))
+	if (entity_list.MakeDoorSpawnPacket(outapp))
 	{
 		QueuePacket(outapp);
 	}
@@ -1256,7 +1256,6 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	conn_state = ReceivedZoneEntry;
 
 	SetClientVersion(Connection()->ClientVersion());
-	m_ClientVersionBit = EQ::versions::ConvertClientVersionToClientVersionBit(Connection()->ClientVersion());
 
 	m_pp.SetPlayerProfileVersion(m_ClientVersion);
 	m_inv.SetInventoryVersion(m_ClientVersion);

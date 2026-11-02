@@ -281,7 +281,7 @@ public:
 	Doors *FindDoor(uint8 door_id);
 	Object *FindObject(uint32 object_id);
 	Object*	FindNearbyObject(float x, float y, float z, float radius);
-	bool	MakeDoorSpawnPacket(EQApplicationPacket* app, Client *client);
+	bool	MakeDoorSpawnPacket(EQApplicationPacket* app);
 	bool	MakeTrackPacket(Client* client);
 	void	SendTraders(Client* client);
 	void	AddClient(Client*);
@@ -430,9 +430,9 @@ public:
 	void	QueueClientsStatus(Mob* sender, const EQApplicationPacket* app, bool ignore_sender = false, uint8 minstatus = AccountStatus::Player, uint8 maxstatus = AccountStatus::Player);
 	void	QueueClientsGuild(const EQApplicationPacket* app, uint32 guildeqid = 0);
 	void	QueueClientsGuildBankItemUpdate(GuildBankItemUpdate_Struct *gbius, uint32 GuildID);
-	void	QueueClientsByTarget(Mob* sender, const EQApplicationPacket* app, bool iSendToSender = true, Mob* SkipThisMob = 0, bool ackreq = true, bool HoTT = true, uint32 ClientVersionBits = 0xFFFFFFFF, bool inspect_buffs = false, bool clear_target_window  = false);
+	void	QueueClientsByTarget(Mob* sender, const EQApplicationPacket* app, bool iSendToSender = true, Mob* SkipThisMob = 0, bool ackreq = true, bool HoTT = true, bool inspect_buffs = false, bool clear_target_window  = false);
 
-	void	QueueClientsByXTarget(Mob* sender, const EQApplicationPacket* app, bool iSendToSender = true, EQ::versions::ClientVersionBitmask client_version_bits = EQ::versions::ClientVersionBitmask::maskAllClients);
+	void	QueueClientsByXTarget(Mob* sender, const EQApplicationPacket* app, bool iSendToSender = true);
 	void	QueueToGroupsForNPCHealthAA(Mob* sender, const EQApplicationPacket* app);
 
 	void AEAttack(

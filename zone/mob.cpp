@@ -1581,7 +1581,7 @@ void Mob::SendHPUpdate(bool force_update_all)
 	CreateHPPacket(&hp_packet);
 
 	// update those who have us targeted
-	entity_list.QueueClientsByTarget(this, &hp_packet, false, 0, false, true, EQ::versions::maskAllClients);
+	entity_list.QueueClientsByTarget(this, &hp_packet, false, 0, false, true);
 
 	// Update those who have us on x-target
 	entity_list.QueueClientsByXTarget(this, &hp_packet, false);
@@ -2642,7 +2642,7 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 		c->Message(
 			Chat::White,
 			fmt::format(
-				" AFK: {} LFG: {} Anon: {} PVP: {} GM: {} Fly Mode: {} ({}) GM Speed: {} Hide Me: {} Invulnerability: {} LD: {} Client Version: {} Tells Off: {}",
+				" AFK: {} LFG: {} Anon: {} PVP: {} GM: {} Fly Mode: {} ({}) GM Speed: {} Hide Me: {} Invulnerability: {} LD: {} Tells Off: {}",
 				CastToClient()->m_is_afk ? "Yes" : "No",
 				CastToClient()->LFG ? "Yes" : "No",
 				CastToClient()->GetAnon() ? "Yes" : "No",
@@ -2654,7 +2654,6 @@ void Mob::SendStatsWindow(Client* c, bool use_window)
 				CastToClient()->GetHideMe() ? "On" : "Off",
 				CastToClient()->GetGMInvul() ? "On" : "Off",
 				CastToClient()->IsLD() ? "Yes" : "No",
-				CastToClient()->ClientVersionBit(),
 				CastToClient()->tellsoff ? "Yes" : "No"
 			).c_str()
 		);

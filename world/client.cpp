@@ -126,7 +126,6 @@ Client::Client(EQStreamInterface* ieqs)
 	StartInTutorial = false;
 
 	m_ClientVersion = eqs->ClientVersion();
-	m_ClientVersionBit = EQ::versions::ConvertClientVersionToClientVersionBit(m_ClientVersion);
 
 	numclients++;
 }
@@ -246,7 +245,7 @@ void Client::SendCharInfo() {
 
 	// Send OP_SendCharInfo
 	EQApplicationPacket *outapp = nullptr;
-	database.GetCharSelectInfo(GetAccountID(), &outapp, m_ClientVersionBit);
+	database.GetCharSelectInfo(GetAccountID(), &outapp, m_ClientVersion);
 
 	if (outapp) {
 		QueuePacket(outapp);
@@ -1618,8 +1617,8 @@ bool Client::OPCharCreate(char *name, CharCreate_Struct *cc)
 	PlayerProfile_Struct pp;
 	EQ::InventoryProfile inv;
 
-	pp.SetPlayerProfileVersion(EQ::versions::ConvertClientVersionToMobVersion(EQ::versions::ConvertClientVersionBitToClientVersion(m_ClientVersionBit)));
-	inv.SetInventoryVersion(EQ::versions::ConvertClientVersionBitToClientVersion(m_ClientVersionBit));
+	pp.SetPlayerProfileVersion(EQ::versions::ConvertClientVersionToMobVersion(m_ClientVersion));
+	inv.SetInventoryVersion(m_ClientVersion);
 	inv.SetGMInventory(false); // character cannot have gm flag at this point
 
 	time_t  bday = time(nullptr);

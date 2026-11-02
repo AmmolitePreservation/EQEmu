@@ -304,7 +304,6 @@ Client::Client() : Mob(
 	AttemptedMessages = 0;
 	TotalKarma = 0;
 	m_ClientVersion = EQ::versions::ClientVersion::Unknown;
-	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	ooc_regen = false;
 	AreaHPRegen = 1.0f;
@@ -615,7 +614,6 @@ Client::Client(EQStreamInterface *ieqs) : Mob(
 	AttemptedMessages = 0;
 	TotalKarma = 0;
 	m_ClientVersion = EQ::versions::ClientVersion::Unknown;
-	m_ClientVersionBit = 0;
 	AggroCount = 0;
 	ooc_regen = false;
 	AreaHPRegen = 1.0f;
@@ -2464,7 +2462,7 @@ void Client::CheckManaEndUpdate() {
 			mana_update->max_mana = GetMaxMana();
 			mana_update->spawn_id = GetID();
 			QueuePacket(mana_packet); // do we need this with the OP_ManaChange packet above?
-			entity_list.QueueClientsByXTarget(this, mana_packet, false, EQ::versions::maskAllClients);
+			entity_list.QueueClientsByXTarget(this, mana_packet, false);
 			safe_delete(mana_packet);
 
 			last_reported_mana_percent = GetManaPercent();
@@ -2488,7 +2486,7 @@ void Client::CheckManaEndUpdate() {
 			endurance_update->max_end = GetMaxEndurance();
 			endurance_update->spawn_id = GetID();
 			QueuePacket(endurance_packet); // do we need this with the OP_ManaChange packet above?
-			entity_list.QueueClientsByXTarget(this, endurance_packet, false, EQ::versions::maskAllClients);
+			entity_list.QueueClientsByXTarget(this, endurance_packet, false);
 			safe_delete(endurance_packet);
 
 			last_reported_endurance_percent = GetEndurancePercent();
@@ -6871,12 +6869,7 @@ void Client::SendZonePoints()
 	LinkedListIterator<ZonePoint *> iterator(zone->zone_point_list);
 	iterator.Reset();
 	while (iterator.MoreElements()) {
-		ZonePoint *data = iterator.GetData();
-
-		if (ClientVersionBit() & data->client_version_mask) {
-			count++;
-		}
-
+		count++;
 		iterator.Advance();
 	}
 
@@ -6892,36 +6885,32 @@ void Client::SendZonePoints()
 		ZonePoint* data = iterator.GetData();
 
 		LogZonePoints(
-			"Sending zone point to client [{}] mask [{}] x [{}] y [{}] z [{}] number [{}]",
+			"Sending zone point to client [{}] x [{}] y [{}] z [{}] number [{}]",
 			GetCleanName(),
-			ClientVersionBit() & data->client_version_mask ? "true" : "false",
 			data->x,
 			data->y,
 			data->z,
 			data->number
 		);
 
-		if(ClientVersionBit() & data->client_version_mask)
-		{
-			zp->zpe[i].iterator = data->number;
-			zp->zpe[i].x = data->target_x;
-			zp->zpe[i].y = data->target_y;
-			zp->zpe[i].z = data->target_z;
-			zp->zpe[i].heading = data->target_heading;
-			zp->zpe[i].zoneid = data->target_zone_id;
+		zp->zpe[i].iterator = data->number;
+		zp->zpe[i].x = data->target_x;
+		zp->zpe[i].y = data->target_y;
+		zp->zpe[i].z = data->target_z;
+		zp->zpe[i].heading = data->target_heading;
+		zp->zpe[i].zoneid = data->target_zone_id;
 
-			// if the target zone is the same as the current zone, use the instance of the current zone
-			// if we don't use the same instance_id that the client was sent, the client will forcefully
-			// issue a zone change request when they should be simply moving to a different point in the same zone
-			// because the client will think the zone point target is different from the current instance
-			auto target_instance = data->target_zone_instance;
-			if (data->target_zone_id == zone->GetZoneID() && data->target_zone_instance == 0) {
-				target_instance = zone->GetInstanceID();
-			}
-
-			zp->zpe[i].zoneinstance = target_instance;
-			i++;
+		// if the target zone is the same as the current zone, use the instance of the current zone
+		// if we don't use the same instance_id that the client was sent, the client will forcefully
+		// issue a zone change request when they should be simply moving to a different point in the same zone
+		// because the client will think the zone point target is different from the current instance
+		auto target_instance = data->target_zone_instance;
+		if (data->target_zone_id == zone->GetZoneID() && data->target_zone_instance == 0) {
+			target_instance = zone->GetInstanceID();
 		}
+
+		zp->zpe[i].zoneinstance = target_instance;
+		i++;
 		iterator.Advance();
 	}
 

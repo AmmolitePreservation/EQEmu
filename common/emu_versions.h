@@ -33,21 +33,11 @@ namespace EQ
 			RoF2		// Build: 'May 10 2013 23:30:08'
 		};
 
-		// Content (doors, zone points) carries a mask of client bits; RoF2 keeps the bit the masks were written with.
-		enum ClientVersionBitmask : uint32 {
-			bitUnknown = 0x00000000,
-			bitRoF2 = 0x00000040,
-			maskUnknown = 0x00000000,
-			maskAllClients = 0xFFFFFFFF
-		};
-
 		const ClientVersion LastClientVersion = ClientVersion::RoF2;
 		const size_t ClientVersionCount = (static_cast<size_t>(LastClientVersion) + 1);
 
 		ClientVersion ValidateClientVersion(ClientVersion client_version);
 		const char* ClientVersionName(ClientVersion client_version);
-		uint32 ConvertClientVersionToClientVersionBit(ClientVersion client_version);
-		ClientVersion ConvertClientVersionBitToClientVersion(uint32 client_version_bit);
 
 		enum class MobVersion : uint32 {
 			Unknown = 0,

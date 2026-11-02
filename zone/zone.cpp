@@ -213,7 +213,6 @@ bool Zone::LoadZoneObjects()
 			d.name                = Strings::Replace(e.objectname, "_ACTORDEF", "");
 			d.dest_zone           = "NONE";
 			d.incline             = e.incline;
-			d.client_version_mask = 0xFFFFFFFF;
 
 			if (e.size_percentage == 0) {
 				d.size = 100;
@@ -2037,11 +2036,6 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-		if (!(zp->client_version_mask & mask_test)) {
-			iterator.Advance();
-			continue;
-		}
 
 		if (zp->target_zone_id == to)
 		{
@@ -2074,18 +2068,18 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 		closest_zp = nullptr;
 
 	if(!closest_zp)
-		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z, client);
+		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z);
 
 	return closest_zp;
 }
 
 ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, const char* to_name, Client* client, float max_distance) {
 	if(to_name == nullptr)
-		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, client, max_distance);
+		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, max_distance);
 	return GetClosestZonePoint(location, ZoneID(to_name), client, max_distance);
 }
 
-ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Client* client, float max_distance) {
+ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, float max_distance) {
 	LinkedListIterator<ZonePoint*> iterator(zone_point_list);
 	ZonePoint* closest_zp = nullptr;
 	float closest_dist = FLT_MAX;
@@ -2094,13 +2088,6 @@ ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-
-		if(!(zp->client_version_mask & mask_test))
-		{
-			iterator.Advance();
-			continue;
-		}
 
 		float delta_x = zp->x - x;
 		float delta_y = zp->y - y;
@@ -2152,7 +2139,6 @@ bool ZoneDatabase::LoadStaticZonePoints(LinkedList<ZonePoint *> *zone_point_list
 		zp->target_heading       = zone_point.target_heading;
 		zp->number               = zone_point.number;
 		zp->target_zone_instance = zone_point.target_instance;
-		zp->client_version_mask  = zone_point.client_version_mask;
 		zp->is_virtual           = zone_point.is_virtual > 0;
 		zp->height               = zone_point.height;
 		zp->width                = zone_point.width;

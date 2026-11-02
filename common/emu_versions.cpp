@@ -41,26 +41,6 @@ const char* EQ::versions::ClientVersionName(ClientVersion client_version)
 	};
 }
 
-uint32 EQ::versions::ConvertClientVersionToClientVersionBit(ClientVersion client_version)
-{
-	switch (client_version) {
-	case ClientVersion::RoF2:
-		return bitRoF2;
-	default:
-		return bitUnknown;
-	}
-}
-
-EQ::versions::ClientVersion EQ::versions::ConvertClientVersionBitToClientVersion(uint32 client_version_bit)
-{
-	switch (client_version_bit) {
-	case bitRoF2:
-		return ClientVersion::RoF2;
-	default:
-		return ClientVersion::Unknown;
-	}
-}
-
 EQ::versions::MobVersion EQ::versions::ValidateMobVersion(MobVersion mob_version)
 {
 	if (mob_version <= MobVersion::Unknown || mob_version > LastMobVersion)

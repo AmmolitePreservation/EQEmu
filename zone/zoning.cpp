@@ -101,7 +101,7 @@ void Client::Handle_OP_ZoneChange(const EQApplicationPacket *app) {
 				target_instance_id = m_pp.binds[0].instance_id;
 				break;
 			case ZoneUnsolicited: //client came up with this on its own.
-				zone_point = zone->GetClosestZonePointWithoutZone(GetX(), GetY(), GetZ(), this, ZONEPOINT_NOZONE_RANGE);
+				zone_point = zone->GetClosestZonePointWithoutZone(GetX(), GetY(), GetZ(), ZONEPOINT_NOZONE_RANGE);
 				if (zone_point) {
 					//we found a zone point, which is a reasonable distance away
 					//assume that is the one were going with.

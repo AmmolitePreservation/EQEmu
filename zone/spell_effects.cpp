@@ -820,7 +820,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				// This was done in AddBuff, but we were not a pet yet, so
 				// the target windows didn't get updated.
 				EQApplicationPacket *outapp = MakeBuffsPacket();
-				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskAllClients);
+				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false);
 				safe_delete(outapp);
 
 				if(caster->IsClient()){
@@ -4434,7 +4434,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 				EQApplicationPacket *outapp = MakeBuffsPacket(true, true);
 
-				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskAllClients, true, true);
+				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, true, true);
 
 				if (IsAIControlled())
 				{
@@ -4668,7 +4668,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket();
 
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskAllClients);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false);
 		if(IsClient() && GetTarget() == this) {
 			CastToClient()->QueuePacket(outapp);
 		}
@@ -4678,7 +4678,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	if (IsNPC()) {
 		EQApplicationPacket *outapp = MakeBuffsPacket();
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskAllClients, true);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, true);
 		safe_delete(outapp);
 	}
 

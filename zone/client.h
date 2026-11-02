@@ -1561,7 +1561,6 @@ public:
 	std::vector<Client*> GetPartyMembers();
 
 	inline const EQ::versions::ClientVersion ClientVersion() const { return m_ClientVersion; }
-	inline const uint32 ClientVersionBit() const { return m_ClientVersionBit; }
 	inline void SetClientVersion(EQ::versions::ClientVersion client_version) { m_ClientVersion = client_version; }
 
 	/** Adventure Stuff **/
@@ -2289,7 +2288,6 @@ private:
 	uint32 AttemptedMessages;
 
 	EQ::versions::ClientVersion m_ClientVersion;
-	uint32 m_ClientVersionBit;
 
 	int XPRate;
 
