@@ -63,7 +63,6 @@ void Client::SendGuildMOTD(bool GetGuildMOTDReply) {
 
 void Client::SendGuildURL()
 {
-
 	if(IsInAGuild())
 	{
 		auto outapp =
@@ -83,7 +82,6 @@ void Client::SendGuildURL()
 
 void Client::SendGuildChannel()
 {
-
 	if(IsInAGuild())
 	{
 		auto outapp =
@@ -104,7 +102,6 @@ void Client::SendGuildChannel()
 
 void Client::SendGuildRanks()
 {
-
 	int permissions = GUILD_MAX_FUNCTIONS + 1; //Static number of permissions in all EQ clients as of May 2014
 	int ranks = GUILD_RECRUIT + 1; // Static number of RoF+ ranks as of May 2014
 	int j = 1;
@@ -268,8 +265,6 @@ void Client::RefreshGuildInfo()
 
 		if((guild_id != OldGuildID) && GuildBanks)
 		{
-			// Unsure about this for RoF+ ... But they don't have that action anymore so fuck it
-
 			if (guild_id != GUILD_NONE)
 				GuildBanks->SendGuildBank(this);
 		}

@@ -3182,19 +3182,16 @@ bool Client::HasSkill(EQ::skills::SkillType skill_id) const
 
 bool Client::CanHaveSkill(EQ::skills::SkillType skill_id) const
 {
-
 	return SkillCaps::Instance()->GetSkillCap(GetClass(), skill_id, RuleI(Character, MaxLevel)).cap > 0;
 }
 
 uint16 Client::MaxSkill(EQ::skills::SkillType skill_id, uint8 class_id, uint8 level) const
 {
-
 	return SkillCaps::Instance()->GetSkillCap(class_id, skill_id, level).cap;
 }
 
 uint8 Client::GetSkillTrainLevel(EQ::skills::SkillType skill_id, uint8 class_id)
 {
-
 	return SkillCaps::Instance()->GetSkillTrainLevel(class_id, skill_id, RuleI(Character, MaxLevel));
 }
 
@@ -5113,7 +5110,6 @@ bool Client::GroupFollow(Client* inviter) {
 			group->UpdateGroupAAs();
 
 			//Invite the inviter into the group first.....dont ask
-			// SoD and later
 			inviter->SendGroupCreatePacket();
 			inviter->SendGroupLeaderChangePacket(inviter->GetName());
 			inviter->SendGroupJoinAcknowledge();
@@ -7932,7 +7928,6 @@ void Client::SendClearMercInfo()
 
 void Client::DuplicateLoreMessage(uint32 ItemID)
 {
-
 	const EQ::ItemData *item = database.GetItem(ItemID);
 
 	if(!item)

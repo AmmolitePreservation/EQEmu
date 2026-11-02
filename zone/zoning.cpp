@@ -951,8 +951,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 							      sizeof(ZonePlayerToBind_Struct) + iZoneNameLength);
 			ZonePlayerToBind_Struct* gmg = (ZonePlayerToBind_Struct*) outapp->pBuffer;
 
-			// If we are SoF and later and are respawning from hover, we want the real zone ID, else zero to use the old hack.
-			//
+			// Respawning from hover wants the real zone id, anything else zero.
 			if(zone->GetZoneID() == zoneID) {
 				if ((!RuleB(Character, RespawnFromHover) || !IsHoveringForRespawn()))
 					gmg->bind_zone_id = 0;

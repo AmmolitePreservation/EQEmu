@@ -311,8 +311,7 @@ Corpse::Corpse(Client *c, int32 rez_exp, KilledByTypes in_killed_by) : Mob(
 		GetLevel() >= RuleI(Character, DeathItemLossLevel)
 		) {
 		// cash
-		// Let's not move the cash when 'RespawnFromHover = true' && 'client->GetClientVersion() < EQClientSoF' since the client doesn't.
-		// (change to first client that supports 'death hover' mode, if not SoF.)
+		// The client keeps the cash itself when it respawns from hover.
 		if (!RuleB(Character, RespawnFromHover)) {
 			auto corpse_copper   = pp->copper;
 			auto corpse_silver   = pp->silver;

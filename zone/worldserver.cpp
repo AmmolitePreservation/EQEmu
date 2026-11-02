@@ -1118,7 +1118,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 				database.SetGroupLeaderName(group->GetID(), Inviter->GetName());
 				group->UpdateGroupAAs();
 
-				// SoD and later
 				Inviter->CastToClient()->SendGroupCreatePacket();
 				Inviter->CastToClient()->SendGroupLeaderChangePacket(Inviter->GetName());
 				Inviter->CastToClient()->SendGroupJoinAcknowledge();
@@ -3779,7 +3778,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 			auto data    = (TraderBuy_Struct *) outapp->pBuffer;
 
 			memcpy(data, &in->trader_buy_struct, sizeof(TraderBuy_Struct));
-
 
 			TraderRepository::UpdateActiveTransaction(database, in->id, false);
 

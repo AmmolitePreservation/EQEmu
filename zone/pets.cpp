@@ -369,11 +369,6 @@ Pet::Pet(NPCType *type_data, Mob *owner, PetType type, uint16 spell_id, int16 po
 	// turns it on and tracks the state.
 	SetTaunting(false);
 
-	// Older clients didn't track state, and default taunting is on (per @mackal)
-	// Familiar and animation pets don't get taunt until an AA.
-	if (owner && owner->IsClient()) {
-	}
-
 	// Class should use npc constructor to set light properties
 }
 

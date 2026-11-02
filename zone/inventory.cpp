@@ -1508,59 +1508,6 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	}
 
 	if (move_in->from_slot == move_in->to_slot) { // Item summon, no further processing needed
-		 return true;  // Can't do RoF+
-
-		if (move_in->to_slot == EQ::invslot::slotCursor) {
-			auto test_inst = m_inv.GetItem(EQ::invslot::slotCursor);
-			if (test_inst == nullptr) { return true; }
-			auto test_item = test_inst->GetItem();
-			if (test_item == nullptr) { return true; }
-			if (!test_item->LoreFlag) { return true; }
-
-			bool lore_pass = true;
-			if (test_item->LoreGroup == -1) {
-				lore_pass = (m_inv.HasItem(test_item->ID, 0, ~(invWhereSharedBank | invWhereCursor)) == INVALID_INDEX);
-			}
-			else if (test_item->LoreGroup != 0) {
-				lore_pass = (m_inv.HasItemByLoreGroup(test_item->LoreGroup, ~(invWhereSharedBank | invWhereCursor)) == INVALID_INDEX);
-			}
-
-			if (!lore_pass) {
-				LogInventory("([{}]) Duplicate lore items are not allowed - destroying item [{}](id:[{}]) on cursor",
-					GetName(), test_item->Name, test_item->ID);
-				MessageString(Chat::Loot, 290);
-
-				if (parse->ItemHasQuestSub(test_inst, EVENT_DESTROY_ITEM)) {
-					parse->EventItem(EVENT_DESTROY_ITEM, this, test_inst, nullptr, "", 0);
-				}
-
-				if (parse->PlayerHasQuestSub(EVENT_DESTROY_ITEM_CLIENT)) {
-					std::vector<std::any> args = { test_inst };
-					parse->EventPlayer(EVENT_DESTROY_ITEM_CLIENT, this, "", 0, &args);
-				}
-
-				DeleteItemInInventory(EQ::invslot::slotCursor, 0, true);
-
-				if (test_inst && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::ITEM_DESTROY)) {
-					auto e = PlayerEvent::DestroyItemEvent{
-						.item_id      = test_inst->GetItem()->ID,
-						.item_name    = test_inst->GetItem()->Name,
-						.charges      = test_inst->GetCharges(),
-						.augment_1_id = test_inst->GetAugmentItemID(0),
-						.augment_2_id = test_inst->GetAugmentItemID(1),
-						.augment_3_id = test_inst->GetAugmentItemID(2),
-						.augment_4_id = test_inst->GetAugmentItemID(3),
-						.augment_5_id = test_inst->GetAugmentItemID(4),
-						.augment_6_id = test_inst->GetAugmentItemID(5),
-						.attuned      = test_inst->IsAttuned(),
-						.reason       = "Duplicate lore item"
-					};
-
-					RecordPlayerEventLog(PlayerEvent::ITEM_DESTROY, e);
-				}
-
-			}
-		}
 		return true;
 	}
 

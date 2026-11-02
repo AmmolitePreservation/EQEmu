@@ -14447,9 +14447,6 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 	if (sa->type == AppearanceType::Invisibility) {
 		if (sa->parameter != 0)
 		{
-			if (!HasSkill(EQ::skills::SkillHide) && GetSkill(EQ::skills::SkillHide) == 0)
-			{
-			}
 			return;
 		}
 		ZeroInvisibleVars(InvisType::T_INVISIBLE);

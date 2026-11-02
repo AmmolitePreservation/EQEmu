@@ -1678,8 +1678,6 @@ static void UpdateTraderCustomerPriceChanged(
 
 		for (int i = 0; i < item_limit; i++) {
 			if (trader_items.at(i).item_id == item_id) {
-				// RoF+ use Item IDs for now
-				tdis->item_id = trader_items.at(i).item_id;
 				tdis->item_id = trader_items.at(i).item_sn;
 				LogTrading("Telling customer to remove item [{}] with [{}] charges and S/N [{}]",
 						   item_id, charges, trader_items.at(i).item_sn);

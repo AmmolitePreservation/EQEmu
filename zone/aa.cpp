@@ -1585,10 +1585,6 @@ bool Mob::CanUseAlternateAdvancementRank(AA::Rank *rank)
 		return false;
 	}
 
-	//the one titanium hack i will allow
-	//just to make sure we dont crash the client with newer aas
-	//we'll exclude any expendable ones
-
 	const int  expansion        = RuleI(Expansion, CurrentExpansion);
 	const bool use_expansion_aa = RuleB(Expansion, UseCurrentExpansionAAOnly);
 	if (use_expansion_aa && expansion >= 0) {

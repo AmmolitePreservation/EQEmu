@@ -1241,11 +1241,6 @@ void Client::CancelSneakHide()
 	if (hidden || improved_hidden) {
 		auto app = new EQApplicationPacket(OP_CancelSneakHide, 0);
 		FastQueuePacket(&app);
-		// SoF and Tit send back a OP_SpawnAppearance turning off AppearanceType::Invisibility
-		// so we need to handle our sneaking flag only
-		// The later clients send back a OP_Hide (this has a size but data is 0)
-		// as well as OP_SpawnAppearance with AppearanceType::Invisibility and one with AppearanceType::Sneak
-		// So we don't have to handle any of those flags
 	}
 }
 
