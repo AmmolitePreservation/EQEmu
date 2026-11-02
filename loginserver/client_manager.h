@@ -18,8 +18,6 @@ private:
 	void ProcessDisconnect();
 
 	std::list<Client *>      m_clients;
-	OpcodeManager            *m_titanium_ops;
-	EQ::Net::EQStreamManager *m_titanium_stream;
 	OpcodeManager            *m_sod_ops;
 	EQ::Net::EQStreamManager *m_sod_stream;
 	OpcodeManager            *m_larion_ops;

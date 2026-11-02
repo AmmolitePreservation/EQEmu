@@ -63,8 +63,6 @@ void Client::SendGuildMOTD(bool GetGuildMOTDReply) {
 
 void Client::SendGuildURL()
 {
-	if (ClientVersion() < EQ::versions::ClientVersion::SoF)
-		return;
 
 	if(IsInAGuild())
 	{
@@ -85,8 +83,6 @@ void Client::SendGuildURL()
 
 void Client::SendGuildChannel()
 {
-	if (ClientVersion() < EQ::versions::ClientVersion::SoF)
-		return;
 
 	if(IsInAGuild())
 	{
@@ -108,8 +104,6 @@ void Client::SendGuildChannel()
 
 void Client::SendGuildRanks()
 {
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF)
-		return;
 
 	int permissions = GUILD_MAX_FUNCTIONS + 1; //Static number of permissions in all EQ clients as of May 2014
 	int ranks = GUILD_RECRUIT + 1; // Static number of RoF+ ranks as of May 2014
@@ -144,7 +138,7 @@ void Client::SendGuildRanks()
 
 void Client::SendGuildRankNames()
 {
-	if (IsInAGuild() && (ClientVersion() >= EQ::versions::ClientVersion::RoF)) {
+	if (IsInAGuild()) {
 		auto guild = guild_mgr.GetGuildByGuildID(GuildID());
 		if (!guild) {
 			return;
@@ -254,11 +248,7 @@ void Client::RefreshGuildInfo()
 	}
 
 	guildrank = info.rank;
-	guild_id = info.guild_id;
-	GuildBanker = info.banker ||
-		guild_mgr.IsGuildLeader(GuildID(), CharacterID()) ||
-		guild_mgr.GetBankerFlag(CharacterID()) ||
-		ClientVersion() >= EQ::versions::ClientVersion::RoF ? true : false;
+	guild_id = info.guild_id;true;
 
 	if(zone->GetZoneID() == Zones::GUILDHALL)
 	{
@@ -278,8 +268,6 @@ void Client::RefreshGuildInfo()
 		if((guild_id != OldGuildID) && GuildBanks)
 		{
 			// Unsure about this for RoF+ ... But they don't have that action anymore so fuck it
-			if (ClientVersion() < EQ::versions::ClientVersion::RoF)
-				ClearGuildBank();
 
 			if (guild_id != GUILD_NONE)
 				GuildBanks->SendGuildBank(this);
@@ -702,10 +690,8 @@ void EntityList::SendGuildMemberAdd(
 			c.second->SendGuildList();
 			c.second->SetGuildTributeOptIn(false);
 			c.second->SendGuildMembersList();
-			if (c.second->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				c.second->SendGuildRanks();
-				c.second->SendGuildRankNames();
-			}
+			c.second->SendGuildRanks();
+			c.second->SendGuildRankNames();
 
 			if (zone->GetZoneID() == Zones::GUILDHALL && GuildBanks) {
 				GuildBanks->SendGuildBank(c.second);

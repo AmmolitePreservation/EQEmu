@@ -2612,10 +2612,8 @@ void ZoneDatabase::RefreshGroupFromDB(Client *client){
 	client->QueuePacket(outapp);
 	safe_delete(outapp);
 
-	if (client->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-		group->NotifyMainTank(client, 1);
-		group->NotifyPuller(client, 1);
-	}
+	group->NotifyMainTank(client, 1);
+	group->NotifyPuller(client, 1);
 
 	group->NotifyMainAssist(client, 1);
 	group->NotifyMarkNPC(client);

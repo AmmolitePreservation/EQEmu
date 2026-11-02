@@ -82,7 +82,6 @@ struct PlayEverquestResponse {
 #pragma pack()
 
 enum LSClientVersion {
-	cv_titanium,
 	cv_sod,
 	cv_larion
 };

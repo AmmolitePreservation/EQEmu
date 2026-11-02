@@ -126,7 +126,6 @@ private:
 	void ClearDataBucketsCache();
 };
 
-bool CheckCharCreateInfoSoF(CharCreate_Struct *cc);
-bool CheckCharCreateInfoTitanium(CharCreate_Struct *cc);
+bool CheckCharCreateInfo(CharCreate_Struct *cc);
 
 #endif

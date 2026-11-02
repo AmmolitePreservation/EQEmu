@@ -372,14 +372,6 @@ Pet::Pet(NPCType *type_data, Mob *owner, PetType type, uint16 spell_id, int16 po
 	// Older clients didn't track state, and default taunting is on (per @mackal)
 	// Familiar and animation pets don't get taunt until an AA.
 	if (owner && owner->IsClient()) {
-		if (!(owner->CastToClient()->ClientVersionBit() & EQ::versions::maskUFAndLater)) {
-			if (
-				(GetPetType() != petFamiliar && GetPetType() != petAnimation) ||
-				aabonuses.PetCommands[PET_TAUNT]
-			) {
-				SetTaunting(true);
-			}
-		}
 	}
 
 	// Class should use npc constructor to set light properties

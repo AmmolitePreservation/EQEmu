@@ -1396,27 +1396,14 @@ void ClientList::GetClients(const char *zone_name, std::vector<ClientListEntry *
 void ClientList::SendClientVersionSummary(const char *Name)
 {
 	std::vector<uint32> unique_ips;
-	std::map<EQ::versions::ClientVersion,int> client_count = {
-		{ EQ::versions::ClientVersion::Titanium, 0 },
-		{ EQ::versions::ClientVersion::SoF, 0 },
-		{ EQ::versions::ClientVersion::SoD, 0 },
-		{ EQ::versions::ClientVersion::UF, 0 },
-		{ EQ::versions::ClientVersion::RoF, 0 },
-		{ EQ::versions::ClientVersion::RoF2, 0 }
-	};
+	uint32              client_count = 0;
 
 	LinkedListIterator<ClientListEntry*> Iterator(clientlist);
 	Iterator.Reset();
 	while (Iterator.MoreElements()) {
 		auto CLE = Iterator.GetData();
 		if (CLE && CLE->zone()) {
-			auto client_version = CLE->GetClientVersion();
-			if (
-				client_version >= (uint8) EQ::versions::ClientVersion::Titanium &&
-				client_version <= (uint8) EQ::versions::ClientVersion::RoF2
-			) {
-				client_count[(EQ::versions::ClientVersion)client_version]++;
-			}
+			client_count++;
 
 			if (std::find(unique_ips.begin(), unique_ips.end(), CLE->GetIP()) == unique_ips.end()) {
 				unique_ips.push_back(CLE->GetIP());
@@ -1426,106 +1413,17 @@ void ClientList::SendClientVersionSummary(const char *Name)
 		Iterator.Advance();
 	}
 
-	uint32 total_clients = (
-		client_count[EQ::versions::ClientVersion::Titanium] +
-		client_count[EQ::versions::ClientVersion::SoF] +
-		client_count[EQ::versions::ClientVersion::SoD] +
-		client_count[EQ::versions::ClientVersion::UF] +
-		client_count[EQ::versions::ClientVersion::RoF] +
-		client_count[EQ::versions::ClientVersion::RoF2]
-	);
-
-	if (client_count[EQ::versions::ClientVersion::Titanium]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | Titanium: {}",
-				client_count[EQ::versions::ClientVersion::Titanium]
-			).c_str()
-		);
-	}
-
-	if (client_count[EQ::versions::ClientVersion::SoF]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | SOF: {}",
-				client_count[EQ::versions::ClientVersion::SoF]
-			).c_str()
-		);
-	}
-
-	if (client_count[EQ::versions::ClientVersion::SoD]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | SOD: {}",
-				client_count[EQ::versions::ClientVersion::SoD]
-			).c_str()
-		);
-	}
-
-	if (client_count[EQ::versions::ClientVersion::UF]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | UF: {}",
-				client_count[EQ::versions::ClientVersion::UF]
-			).c_str()
-		);
-	}
-
-	if (client_count[EQ::versions::ClientVersion::RoF]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | ROF: {}",
-				client_count[EQ::versions::ClientVersion::RoF]
-			).c_str()
-		);
-	}
-
-	if (client_count[EQ::versions::ClientVersion::RoF2]) {
-		ZSList::Instance()->SendEmoteMessage(
-			Name,
-			0,
-			AccountStatus::Player,
-			Chat::White,
-			fmt::format(
-				"Client Counts | ROF2: {}",
-				client_count[EQ::versions::ClientVersion::RoF2]
-			).c_str()
-		);
-	}
-
-
 	ZSList::Instance()->SendEmoteMessage(
 		Name,
 		0,
 		AccountStatus::Player,
 		Chat::White,
 		fmt::format(
-			"Client Counts | Total: {} Unique IPs: {}",
-			total_clients,
+			"Client Counts | RoF2: {} Unique IPs: {}",
+			client_count,
 			unique_ips.size()
 		).c_str()
 	);
-
 }
 
 void ClientList::OnTick(EQ::Timer *t)

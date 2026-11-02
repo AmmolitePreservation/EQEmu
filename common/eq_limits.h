@@ -23,11 +23,6 @@
 #include "types.h"
 #include "eq_constants.h"
 #include "emu_versions.h"
-#include "../common/patches/titanium_limits.h"
-#include "../common/patches/sof_limits.h"
-#include "../common/patches/sod_limits.h"
-#include "../common/patches/uf_limits.h"
-#include "../common/patches/rof_limits.h"
 #include "../common/patches/rof2_limits.h"
 
 
@@ -254,19 +249,5 @@ namespace ClientUnknown
 	} // namespace constants
 
 } /*ClientUnknown*/
-
-namespace Client62
-{
-	const int16 IINVALID = -1;
-	const int16 INULL = 0;
-
-	namespace constants {
-		const EQ::expansions::Expansion EXPANSION = EQ::expansions::Expansion::EverQuest;
-		const uint32 EXPANSION_BIT = EQ::expansions::bitEverQuest;
-		const uint32 EXPANSIONS_MASK = EQ::expansions::maskEverQuest;
-
-	} // namespace constants
-
-} /*Client62*/
 
 #endif /*COMMON_EQ_LIMITS_H*/

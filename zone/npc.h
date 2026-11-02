@@ -393,13 +393,9 @@ public:
 	void	LoadMercenaryTypes();
 	void	LoadMercenaries();
 	std::list<MercType> GetMercenaryTypesList() {return mercTypeList; };
-	std::list<MercType> GetMercenaryTypesList( uint32 expansion );
 	std::list<MercData> GetMercenariesList() {return mercDataList; };
-	std::list<MercData> GetMercenariesList( uint32 expansion );
 	int		GetNumMercenaryTypes() { return static_cast<int>(mercTypeList.size()); };
-	int		GetNumMercenaryTypes( uint32 expansion );
 	int		GetNumberOfMercenaries() { return static_cast<int>(mercDataList.size()); };
-	int		GetNumberOfMercenaries( uint32 expansion );
 
 	inline bool GetNPCAggro() const { return npc_aggro; }
 	inline void SetNPCAggro(bool in_npc_aggro) { npc_aggro = in_npc_aggro; }

@@ -2291,10 +2291,8 @@ void EntityList::ChannelMessageFromWorld(const char *from, const char *to,
 		if (chan_num == ChatChannel_Guild) {
 			if (!client->IsInGuild(guild_id))
 				continue;
-			if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				if (!guild_mgr.CheckPermission(guild_id, client->GuildRank(), GUILD_ACTION_GUILD_CHAT_SEE))
-					continue;
-			}
+			if (!guild_mgr.CheckPermission(guild_id, client->GuildRank(), GUILD_ACTION_GUILD_CHAT_SEE))
+				continue;
 			if (client->GetFilter(FilterGuildChat) == FilterHide)
 				continue;
 		} else if (chan_num == ChatChannel_OOC) {
@@ -5353,7 +5351,7 @@ void EntityList::UpdateFindableNPCState(NPC *n, bool Remove)
 	auto it = client_list.begin();
 	while (it != client_list.end()) {
 		Client *c = it->second;
-		if (c && (c->ClientVersion() >= EQ::versions::ClientVersion::SoD)) {
+		if (c) {
 			c->QueuePacket(&p);
 		}
 

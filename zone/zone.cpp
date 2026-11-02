@@ -776,7 +776,7 @@ void Zone::LoadMercenaryTemplates()
 		SELECT DISTINCT MTem.merc_template_id, MTyp.dbstring
 		AS merc_type_id, MTem.dbstring
 		AS merc_subtype_id, MTyp.race_id, MS.class_id, MTyp.proficiency_id, MS.tier_id, 0
-		AS CostFormula, MTem.clientversion, MTem.merc_npc_type_id
+		AS CostFormula, MTem.merc_npc_type_id
 		FROM merc_types MTyp, merc_templates MTem, merc_subtypes MS
 		WHERE MTem.merc_type_id = MTyp.merc_type_id AND MTem.merc_subtype_id = MS.merc_subtype_id
 		ORDER BY MTyp.race_id, MS.class_id, MTyp.proficiency_id
@@ -793,11 +793,10 @@ void Zone::LoadMercenaryTemplates()
 			.MercSubType = Strings::ToUnsignedInt(row[2]),
 			.RaceID = static_cast<uint16>(Strings::ToUnsignedInt(row[3])),
 			.ClassID = static_cast<uint8>(Strings::ToUnsignedInt(row[4])),
-			.MercNPCID = Strings::ToUnsignedInt(row[9]),
+			.MercNPCID = Strings::ToUnsignedInt(row[8]),
 			.ProficiencyID = static_cast<uint8>(Strings::ToUnsignedInt(row[5])),
 			.TierID = static_cast<uint8>(Strings::ToUnsignedInt(row[6])),
-			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7])),
-			.ClientVersion = Strings::ToUnsignedInt(row[8])
+			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7]))
 		};
 
 		for (int i = 0; i < MaxMercStanceID; i++) {

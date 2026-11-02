@@ -766,8 +766,7 @@ void Client::TraderShowItems()
 
 	for (int i = 0; i < item_limit; i++) {
 		data->item_cost[i] = trader_items.at(i).item_cost;
-		data->items[i]     = ClientVersion() == EQ::versions::ClientVersion::RoF2 ? trader_items.at(i).item_sn
-			: trader_items.at(i).item_id;
+		data->items[i]     = trader_items.at(i).item_sn;
 	}
 
 	data->action = ListTraderItems;
@@ -906,13 +905,11 @@ void Client::TraderStartTrader(const EQApplicationPacket *app)
 	safe_delete(inv);
 
 	// This refreshes the Trader window to display the End Trader button
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		auto outapp = new EQApplicationPacket(OP_Trader, sizeof(TraderStatus_Struct));
-		auto data   = (TraderStatus_Struct *) outapp->pBuffer;
-		data->Code = TraderAck2;
-		QueuePacket(outapp);
-		safe_delete(outapp);
-	}
+	auto outapp = new EQApplicationPacket(OP_Trader, sizeof(TraderStatus_Struct));
+	auto data   = (TraderStatus_Struct *) outapp->pBuffer;
+	data->Code = TraderAck2;
+	QueuePacket(outapp);
+	safe_delete(outapp);
 
 	MessageString(Chat::Yellow, TRADER_MODE_ON);
 	SetTrader(true);
@@ -1292,14 +1289,8 @@ void Client::ReturnTraderReq(const EQApplicationPacket *app, int16 trader_item_c
 	auto outtbs = (TraderBuy_Struct *) outapp->pBuffer;
 
 	memcpy(outtbs, tbs, app->size);
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		// Convert Serial Number back to Item ID for RoF+
-		outtbs->item_id = item_id;
-	}
-	else {
-		// RoF+ requires individual price, but older clients require total price
-		outtbs->price = (tbs->price * static_cast<uint32>(trader_item_charges));
-	}
+	// Convert Serial Number back to Item ID for RoF+
+	outtbs->item_id = item_id;
 
 	outtbs->quantity     = trader_item_charges;
 	// This should probably be trader ID, not customer ID as it is below.
@@ -1358,9 +1349,7 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	const EQ::ItemInstance *buy_item = nullptr;
 	uint32                  item_id  = 0;
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		tbs->item_id = Strings::ToUnsignedBigInt(tbs->serial_number);
-	}
+	tbs->item_id = Strings::ToUnsignedBigInt(tbs->serial_number);
 
 	buy_item = Trader->FindTraderItemBySerialNumber(tbs->item_id);
 
@@ -1434,13 +1423,8 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	// This cannot overflow assuming MAX_TRANSACTION_VALUE, checked above, is the default of 2000000000
 	uint32 total_cost = tbs->price * outtbs->quantity;
 
-	if (Trader->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		// RoF+ uses individual item price where older clients use total price
-		outtbs->price = tbs->price;
-	}
-	else {
-		outtbs->price = total_cost;
-	}
+	// RoF+ uses individual item price where older clients use total price
+	outtbs->price = tbs->price;
 
 	if (!TakeMoneyFromPP(total_cost)) {
         RecordPlayerEventLog(
@@ -1547,7 +1531,7 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 
 	Trader->FindAndNukeTraderItem(tbs->item_id, outtbs->quantity, this, 0);
 
-	if (item_id > 0 && Trader->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
+	if (item_id > 0) {
 		// Convert Serial Number back to ItemID for RoF+
 		outtbs->item_id = item_id;
 	}
@@ -1694,13 +1678,8 @@ static void UpdateTraderCustomerPriceChanged(
 
 		for (int i = 0; i < item_limit; i++) {
 			if (trader_items.at(i).item_id == item_id) {
-				if (customer->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-					// RoF+ use Item IDs for now
-					tdis->item_id = trader_items.at(i).item_id;
-				}
-				else {
-					tdis->item_id = trader_items.at(i).item_sn;
-				}
+				// RoF+ use Item IDs for now
+				tdis->item_id = trader_items.at(i).item_id;
 				tdis->item_id = trader_items.at(i).item_sn;
 				LogTrading("Telling customer to remove item [{}] with [{}] charges and S/N [{}]",
 						   item_id, charges, trader_items.at(i).item_sn);
@@ -1763,56 +1742,53 @@ static void UpdateTraderCustomerPriceChanged(
 
 void Client::SendBuyerResults(BarterSearchRequest_Struct& bsr)
 {
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		std::string search_string(bsr.search_string);
-		BuyerLineSearch_Struct results{};
+	std::string search_string(bsr.search_string);
+	BuyerLineSearch_Struct results{};
 
-		SetBarterTime();
+	SetBarterTime();
 
-		if (bsr.search_scope == 1) {
-			// Local Buyers
-			results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string, 0, GetZoneID(), GetInstanceID());
-		}
-		else if (bsr.buyer_id) {
-			// Specific Buyer
-			results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string, bsr.buyer_id);
-		} else {
-			// All Buyers
-			results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string);
-		}
-
-		if (results.buy_line.empty()) {
-			Message(Chat::White, "No buylines could be found.");
-			return;
-		}
-
-		std::string buyer_name = "ID {} not in zone.";
-		if (search_string.empty()) {
-			search_string = "*";
-		}
-
-		results.search_string  = std::move(search_string);
-		results.transaction_id = bsr.transaction_id;
-		std::stringstream ss{};
-		cereal::BinaryOutputArchive ar(ss);
-
-		{ ar(results); }
-
-		auto packet = std::make_unique<EQApplicationPacket>(
-			OP_BuyerItems,
-			static_cast<uint32>(ss.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
-		);
-		auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
-
-		emu->action = Barter_BuyerSearch;
-		memcpy(emu->payload, ss.str().data(), ss.str().length());
-
-		QueuePacket(packet.get());
-
-		ss.str("");
-		ss.clear();
-
+	if (bsr.search_scope == 1) {
+		// Local Buyers
+		results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string, 0, GetZoneID(), GetInstanceID());
 	}
+	else if (bsr.buyer_id) {
+		// Specific Buyer
+		results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string, bsr.buyer_id);
+	} else {
+		// All Buyers
+		results = BuyerBuyLinesRepository::SearchBuyLines(database, search_string);
+	}
+
+	if (results.buy_line.empty()) {
+		Message(Chat::White, "No buylines could be found.");
+		return;
+	}
+
+	std::string buyer_name = "ID {} not in zone.";
+	if (search_string.empty()) {
+		search_string = "*";
+	}
+
+	results.search_string  = std::move(search_string);
+	results.transaction_id = bsr.transaction_id;
+	std::stringstream ss{};
+	cereal::BinaryOutputArchive ar(ss);
+
+	{ ar(results); }
+
+	auto packet = std::make_unique<EQApplicationPacket>(
+		OP_BuyerItems,
+		static_cast<uint32>(ss.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
+	);
+	auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
+
+	emu->action = Barter_BuyerSearch;
+	memcpy(emu->payload, ss.str().data(), ss.str().length());
+
+	QueuePacket(packet.get());
+
+	ss.str("");
+	ss.clear();
 }
 
 void Client::ShowBuyLines(const EQApplicationPacket *app)
@@ -1827,147 +1803,122 @@ void Client::ShowBuyLines(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		SetBarterTime();
-		bir->approval = buyer->WithCustomer(GetID());
-		QueuePacket(app);
+	SetBarterTime();
+	bir->approval = buyer->WithCustomer(GetID());
+	QueuePacket(app);
 
-		auto results  = BuyerBuyLinesRepository::GetBuyLines(database, buyer->CharacterID());
-		auto greeting = BuyerRepository::GetWelcomeMessage(database, buyer->GetBuyerID());
+	auto results  = BuyerBuyLinesRepository::GetBuyLines(database, buyer->CharacterID());
+	auto greeting = BuyerRepository::GetWelcomeMessage(database, buyer->GetBuyerID());
 
-		if (greeting.length() == 0) {
-			greeting = "Welcome!";
-		}
-
-		MessageString(Chat::NPCQuestSay, BUYER_GREETING, buyer->GetName(), greeting.c_str());
-		const std::string name(GetName());
-		buyer->SendSellerBrowsing(name);
-
-		std::stringstream           ss{};
-		cereal::BinaryOutputArchive ar(ss);
-
-		for (auto l : results) {
-			const EQ::ItemData *item = database.GetItem(l.item_id);
-			l.enabled     = 1;
-			l.item_icon   = item->Icon;
-			l.item_toggle = 1;
-
-			{ ar(l); }
-
-			auto packet = std::make_unique<EQApplicationPacket>(
-				OP_BuyerItems,
-				static_cast<uint32>(ss.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
-			);
-			auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
-
-			emu->action = Barter_BuyerInspectBegin;
-			memcpy(emu->payload, ss.str().data(), ss.str().length());
-
-			QueuePacket(packet.get());
-
-			ss.str("");
-			ss.clear();
-		}
-
-		return;
+	if (greeting.length() == 0) {
+		greeting = "Welcome!";
 	}
+
+	MessageString(Chat::NPCQuestSay, BUYER_GREETING, buyer->GetName(), greeting.c_str());
+	const std::string name(GetName());
+	buyer->SendSellerBrowsing(name);
+
+	std::stringstream           ss{};
+	cereal::BinaryOutputArchive ar(ss);
+
+	for (auto l : results) {
+		const EQ::ItemData *item = database.GetItem(l.item_id);
+		l.enabled     = 1;
+		l.item_icon   = item->Icon;
+		l.item_toggle = 1;
+
+		{ ar(l); }
+
+		auto packet = std::make_unique<EQApplicationPacket>(
+			OP_BuyerItems,
+			static_cast<uint32>(ss.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
+		);
+		auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
+
+		emu->action = Barter_BuyerInspectBegin;
+		memcpy(emu->payload, ss.str().data(), ss.str().length());
+
+		QueuePacket(packet.get());
+
+		ss.str("");
+		ss.clear();
+	}
+
+	return;
 }
 
 void Client::SellToBuyer(const EQApplicationPacket *app)
 {
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		BuyerLineSellItem_Struct     sell_line{};
-		auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
-		EQ::Util::MemoryStreamReader ss_in(
-			reinterpret_cast<char *>(in->payload),
-			app->size - sizeof(BuyerGeneric_Struct));
-		cereal::BinaryInputArchive   ar(ss_in);
-		ar(sell_line);
+	BuyerLineSellItem_Struct     sell_line{};
+	auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
+	EQ::Util::MemoryStreamReader ss_in(
+		reinterpret_cast<char *>(in->payload),
+		app->size - sizeof(BuyerGeneric_Struct));
+	cereal::BinaryInputArchive   ar(ss_in);
+	ar(sell_line);
 
-		sell_line.seller_name = GetCleanName();
+	sell_line.seller_name = GetCleanName();
 
-		switch (sell_line.purchase_method) {
-			case BarterInBazaar:
-			case BarterByVendor: {
-				auto buyer = entity_list.GetClientByID(sell_line.buyer_entity_id);
-				if (!buyer) {
-					SendBarterBuyerClientMessage(
-						sell_line,
-						Barter_SellerTransactionComplete,
-						Barter_Failure,
-						Barter_Failure
-					);
-					break;
+	switch (sell_line.purchase_method) {
+		case BarterInBazaar:
+		case BarterByVendor: {
+			auto buyer = entity_list.GetClientByID(sell_line.buyer_entity_id);
+			if (!buyer) {
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_Failure
+				);
+				break;
+			}
+
+			if (sell_line.purchase_method == BarterInBazaar && buyer->IsThereACustomer()) {
+				auto customer = entity_list.GetClientByID(buyer->GetCustomerID());
+				if (customer) {
+					customer->CancelBuyerTradeWindow();
 				}
+			}
 
-				if (sell_line.purchase_method == BarterInBazaar && buyer->IsThereACustomer()) {
-					auto customer = entity_list.GetClientByID(buyer->GetCustomerID());
-					if (customer) {
-						customer->CancelBuyerTradeWindow();
-					}
-				}
+			if (!DoBarterBuyerChecks(sell_line)) {
+				return;
+			};
 
-				if (!DoBarterBuyerChecks(sell_line)) {
-					return;
-				};
+			if (!DoBarterSellerChecks(sell_line)) {
+				return;
+			};
 
-				if (!DoBarterSellerChecks(sell_line)) {
-					return;
-				};
+			BuyerRepository::UpdateTransactionDate(database, sell_line.buyer_id, time(nullptr));
 
-				BuyerRepository::UpdateTransactionDate(database, sell_line.buyer_id, time(nullptr));
+			if (!FindNumberOfFreeInventorySlotsWithSizeCheck(sell_line.trade_items)) {
+				LogTradingDetail("Seller {} has insufficient inventory space for {} compensation items.",
+								 GetCleanName(),
+								 sell_line.trade_items.size()
+				);
+				Message(Chat::Red, "Insufficient inventory space for the compensation items.");
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_Failure
+				);
+				return;
+			}
 
-				if (!FindNumberOfFreeInventorySlotsWithSizeCheck(sell_line.trade_items)) {
-					LogTradingDetail("Seller {} has insufficient inventory space for {} compensation items.",
-									 GetCleanName(),
-									 sell_line.trade_items.size()
-					);
-					Message(Chat::Red, "Insufficient inventory space for the compensation items.");
-					SendBarterBuyerClientMessage(
-						sell_line,
-						Barter_SellerTransactionComplete,
-						Barter_Failure,
-						Barter_Failure
-					);
-					return;
-				}
-
-				for (auto const &ti: sell_line.trade_items) {
-					std::unique_ptr<EQ::ItemInstance> inst(
-						database.CreateItem(
-							ti.item_id,
-							ti.item_quantity *
-							sell_line.seller_quantity
-						)
-					);
-
-					if (inst.get()->GetItem()) {
-						buyer->RemoveItem(ti.item_id, ti.item_quantity * sell_line.seller_quantity);
-						if (!PutItemInInventoryWithStacking(inst.get())) {
-							Message(Chat::Red, "Error putting item in your inventory.");
-							buyer->PutItemInInventoryWithStacking(inst.get());
-							SendBarterBuyerClientMessage(
-								sell_line,
-								Barter_SellerTransactionComplete,
-								Barter_Failure,
-								Barter_Failure
-							);
-							return;
-						}
-					}
-				}
-
-				std::unique_ptr<EQ::ItemInstance> buy_inst(
+			for (auto const &ti: sell_line.trade_items) {
+				std::unique_ptr<EQ::ItemInstance> inst(
 					database.CreateItem(
-						sell_line.item_id,
+						ti.item_id,
+						ti.item_quantity *
 						sell_line.seller_quantity
 					)
 				);
-				RemoveItem(sell_line.item_id, sell_line.seller_quantity);
-				if (buy_inst->IsStackable()) {
-					if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
-						buyer->Message(Chat::Red, "Error putting item in your inventory.");
-						PutItemInInventoryWithStacking(buy_inst.get());
+
+				if (inst.get()->GetItem()) {
+					buyer->RemoveItem(ti.item_id, ti.item_quantity * sell_line.seller_quantity);
+					if (!PutItemInInventoryWithStacking(inst.get())) {
+						Message(Chat::Red, "Error putting item in your inventory.");
+						buyer->PutItemInInventoryWithStacking(inst.get());
 						SendBarterBuyerClientMessage(
 							sell_line,
 							Barter_SellerTransactionComplete,
@@ -1977,97 +1928,19 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 						return;
 					}
 				}
-				else {
-					for (int i = 1; i <= sell_line.seller_quantity; i++) {
-						buy_inst->SetCharges(1);
-						if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
-							buyer->Message(Chat::Red, "Error putting item in your inventory.");
-							PutItemInInventoryWithStacking(buy_inst.get());
-							SendBarterBuyerClientMessage(
-							sell_line,
-								Barter_SellerTransactionComplete,
-								Barter_Failure,
-								Barter_Failure
-							);
-							return;
-						}
-					}
-				}
-
-				uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-				AddMoneyToPP(total_cost, false);
-				buyer->TakeMoneyFromPP(total_cost, false);
-
-				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::BARTER_TRANSACTION)) {
-					PlayerEvent::BarterTransaction e{};
-					e.status        = "Successful Barter Transaction";
-					e.item_id       = sell_line.item_id;
-					e.item_quantity = sell_line.seller_quantity;
-					e.item_name     = sell_line.item_name;
-					e.trade_items   = sell_line.trade_items;
-					for (auto &t: e.trade_items) {
-						t *= sell_line.seller_quantity;
-					}
-					e.total_cost  = total_cost;
-					e.buyer_name  = buyer->GetCleanName();
-					e.seller_name = GetCleanName();
-					RecordPlayerEventLog(PlayerEvent::BARTER_TRANSACTION, e);
-				}
-
-				SendWindowUpdatesToSellerAndBuyer(sell_line);
-				SendBarterBuyerClientMessage(
-					sell_line,
-					Barter_SellerTransactionComplete,
-					Barter_Success,
-					Barter_Success
-				);
-				buyer->SendBarterBuyerClientMessage(
-					sell_line,
-					Barter_BuyerTransactionComplete,
-					Barter_Success,
-					Barter_Success
-				);
-				break;
 			}
-			case BarterOutsideBazaar: {
-				bool seller_error = false;
-				auto buyer_time   = BuyerRepository::GetTransactionDate(database, sell_line.buyer_id);
 
-				if (buyer_time > GetBarterTime()) {
-					SendBarterBuyerClientMessage(
-						sell_line,
-						Barter_SellerTransactionComplete,
-						Barter_Failure,
-						Barter_DataOutOfDate
-					);
-					return;
-				}
-
-				if (sell_line.trade_items.size() > 0) {
-					Message(Chat::Red, "You must visit the buyer directly when receiving compensation items.");
-					seller_error = true;
-				}
-
-				auto buy_item_slot_id = GetInv().HasItem(
+			std::unique_ptr<EQ::ItemInstance> buy_inst(
+				database.CreateItem(
 					sell_line.item_id,
-					sell_line.seller_quantity,
-					invWherePersonal
-				);
-				auto buy_item = buy_item_slot_id == INVALID_INDEX ? nullptr : GetInv().GetItem(buy_item_slot_id);
-				if (!buy_item) {
-					SendBarterBuyerClientMessage(
-						sell_line,
-						Barter_SellerTransactionComplete,
-						Barter_Failure,
-						Barter_SellerDoesNotHaveItem
-					);
-					break;
-				}
-
-				if (seller_error) {
-					LogTradingDetail("Seller Error <red>[{}]  Sell/Buy Transaction Failed.",
-									 seller_error
-					);
+					sell_line.seller_quantity
+				)
+			);
+			RemoveItem(sell_line.item_id, sell_line.seller_quantity);
+			if (buy_inst->IsStackable()) {
+				if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
+					buyer->Message(Chat::Red, "Error putting item in your inventory.");
+					PutItemInInventoryWithStacking(buy_inst.get());
 					SendBarterBuyerClientMessage(
 						sell_line,
 						Barter_SellerTransactionComplete,
@@ -2076,36 +1949,135 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 					);
 					return;
 				}
+			}
+			else {
+				for (int i = 1; i <= sell_line.seller_quantity; i++) {
+					buy_inst->SetCharges(1);
+					if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
+						buyer->Message(Chat::Red, "Error putting item in your inventory.");
+						PutItemInInventoryWithStacking(buy_inst.get());
+						SendBarterBuyerClientMessage(
+						sell_line,
+							Barter_SellerTransactionComplete,
+							Barter_Failure,
+							Barter_Failure
+						);
+						return;
+					}
+				}
+			}
 
-				BuyerRepository::UpdateTransactionDate(database, sell_line.buyer_id, time(nullptr));
+			uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
+			AddMoneyToPP(total_cost, false);
+			buyer->TakeMoneyFromPP(total_cost, false);
 
-				auto server_packet = std::make_unique<ServerPacket>(
-					ServerOP_BuyerMessaging,
-					static_cast<uint32>(sizeof(BuyerMessaging_Struct))
+			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::BARTER_TRANSACTION)) {
+				PlayerEvent::BarterTransaction e{};
+				e.status        = "Successful Barter Transaction";
+				e.item_id       = sell_line.item_id;
+				e.item_quantity = sell_line.seller_quantity;
+				e.item_name     = sell_line.item_name;
+				e.trade_items   = sell_line.trade_items;
+				for (auto &t: e.trade_items) {
+					t *= sell_line.seller_quantity;
+				}
+				e.total_cost  = total_cost;
+				e.buyer_name  = buyer->GetCleanName();
+				e.seller_name = GetCleanName();
+				RecordPlayerEventLog(PlayerEvent::BARTER_TRANSACTION, e);
+			}
+
+			SendWindowUpdatesToSellerAndBuyer(sell_line);
+			SendBarterBuyerClientMessage(
+				sell_line,
+				Barter_SellerTransactionComplete,
+				Barter_Success,
+				Barter_Success
+			);
+			buyer->SendBarterBuyerClientMessage(
+				sell_line,
+				Barter_BuyerTransactionComplete,
+				Barter_Success,
+				Barter_Success
+			);
+			break;
+		}
+		case BarterOutsideBazaar: {
+			bool seller_error = false;
+			auto buyer_time   = BuyerRepository::GetTransactionDate(database, sell_line.buyer_id);
+
+			if (buyer_time > GetBarterTime()) {
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_DataOutOfDate
 				);
+				return;
+			}
 
-				auto data = (BuyerMessaging_Struct *) server_packet->pBuffer;
+			if (sell_line.trade_items.size() > 0) {
+				Message(Chat::Red, "You must visit the buyer directly when receiving compensation items.");
+				seller_error = true;
+			}
 
-				data->action           = Barter_SellItem;
-				data->buyer_entity_id  = sell_line.buyer_entity_id;
-				data->buyer_id         = sell_line.buyer_id;
-				data->seller_entity_id = GetID();
-				data->buy_item_id      = sell_line.item_id;
-				data->buy_item_qty     = sell_line.item_quantity;
-				data->buy_item_cost    = sell_line.item_cost;
-				data->buy_item_icon    = sell_line.item_icon;
-				data->zone_id          = GetZoneID();
-				data->slot             = sell_line.slot;
-				data->seller_quantity  = sell_line.seller_quantity;
-				data->purchase_method  = sell_line.purchase_method;
-				strn0cpy(data->item_name, sell_line.item_name, sizeof(data->item_name));
-				strn0cpy(data->buyer_name, sell_line.buyer_name.c_str(), sizeof(data->buyer_name));
-				strn0cpy(data->seller_name, GetCleanName(), sizeof(data->seller_name));
-
-				worldserver.SendPacket(server_packet.get());
-
+			auto buy_item_slot_id = GetInv().HasItem(
+				sell_line.item_id,
+				sell_line.seller_quantity,
+				invWherePersonal
+			);
+			auto buy_item = buy_item_slot_id == INVALID_INDEX ? nullptr : GetInv().GetItem(buy_item_slot_id);
+			if (!buy_item) {
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_SellerDoesNotHaveItem
+				);
 				break;
 			}
+
+			if (seller_error) {
+				LogTradingDetail("Seller Error <red>[{}]  Sell/Buy Transaction Failed.",
+								 seller_error
+				);
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_Failure
+				);
+				return;
+			}
+
+			BuyerRepository::UpdateTransactionDate(database, sell_line.buyer_id, time(nullptr));
+
+			auto server_packet = std::make_unique<ServerPacket>(
+				ServerOP_BuyerMessaging,
+				static_cast<uint32>(sizeof(BuyerMessaging_Struct))
+			);
+
+			auto data = (BuyerMessaging_Struct *) server_packet->pBuffer;
+
+			data->action           = Barter_SellItem;
+			data->buyer_entity_id  = sell_line.buyer_entity_id;
+			data->buyer_id         = sell_line.buyer_id;
+			data->seller_entity_id = GetID();
+			data->buy_item_id      = sell_line.item_id;
+			data->buy_item_qty     = sell_line.item_quantity;
+			data->buy_item_cost    = sell_line.item_cost;
+			data->buy_item_icon    = sell_line.item_icon;
+			data->zone_id          = GetZoneID();
+			data->slot             = sell_line.slot;
+			data->seller_quantity  = sell_line.seller_quantity;
+			data->purchase_method  = sell_line.purchase_method;
+			strn0cpy(data->item_name, sell_line.item_name, sizeof(data->item_name));
+			strn0cpy(data->buyer_name, sell_line.buyer_name.c_str(), sizeof(data->buyer_name));
+			strn0cpy(data->seller_name, GetCleanName(), sizeof(data->seller_name));
+
+			worldserver.SendPacket(server_packet.get());
+
+			break;
 		}
 	}
 }
@@ -2176,170 +2148,168 @@ void Client::ToggleBuyerMode(bool status)
 
 void Client::ModifyBuyLine(const EQApplicationPacket *app)
 {
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		BuyerBuyLines_Struct         bl{};
-		auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
-		EQ::Util::MemoryStreamReader ss_in(
-			reinterpret_cast<char *>(in->payload),
-			app->size - sizeof(BuyerGeneric_Struct)
-		);
-		cereal::BinaryInputArchive   ar(ss_in);
-		ar(bl);
+	BuyerBuyLines_Struct         bl{};
+	auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
+	EQ::Util::MemoryStreamReader ss_in(
+		reinterpret_cast<char *>(in->payload),
+		app->size - sizeof(BuyerGeneric_Struct)
+	);
+	cereal::BinaryInputArchive   ar(ss_in);
+	ar(bl);
 
-		if (bl.buy_lines.empty()) {
+	if (bl.buy_lines.empty()) {
+		return;
+	}
+
+	BuyerRepository::UpdateTransactionDate(database, GetBuyerID(), time(nullptr));
+	int64 current_total_cost = 0;
+	bool  pass               = false;
+
+	auto current_buy_lines = BuyerBuyLinesRepository::GetBuyLines(database, CharacterID());
+
+	std::map<uint32, BuylineItemDetails_Struct> item_map;
+	BuildBuyLineMapFromVector(item_map, current_buy_lines);
+
+	current_total_cost = ValidateBuyLineCost(item_map);
+
+	auto buy_line = bl.buy_lines.front();
+	auto it       = std::find_if(
+		current_buy_lines.cbegin(),
+		current_buy_lines.cend(),
+		[&](BuyerLineItems_Struct bl) {
+			return bl.slot == buy_line.slot;
+		}
+	);
+
+	if (buy_line.item_toggle) {
+		current_total_cost += buy_line.item_cost * buy_line.item_quantity;
+		if (it != std::end(current_buy_lines)) {
+			current_total_cost -= it->item_cost * it->item_quantity;
+			if (current_total_cost > GetCarriedMoney()) {
+				buy_line.item_cost     = it->item_cost;
+				buy_line.item_quantity = it->item_quantity;
+				Message(
+					Chat::Red,
+					fmt::format(
+						"You currently do not have sufficient funds to support your buy lines. You have {} and need {}",
+						DetermineMoneyString(GetCarriedMoney()),
+						DetermineMoneyString(current_total_cost)).c_str()
+				);
+				SendBuyLineUpdate(buy_line);
+				return;
+			}
+			else {
+				RemoveItemFromBuyLineMap(item_map, *it);
+				BuildBuyLineMapFromVector(item_map, bl.buy_lines);
+			}
+		}
+		else {
+			BuildBuyLineMapFromVector(item_map, bl.buy_lines);
+		}
+	}
+	else {
+		current_total_cost -= static_cast<int64>(buy_line.item_cost) * static_cast<int64>(buy_line.item_quantity);
+		std::map<uint32, BuylineItemDetails_Struct> item_map_tmp;
+		BuildBuyLineMapFromVector(item_map_tmp, bl.buy_lines);
+		if (ValidateBuyLineItems(item_map_tmp)) {
+			pass = true;
+		}
+	}
+
+	if (current_total_cost > static_cast<int64>(GetCarriedMoney())) {
+		Message(
+			Chat::Red,
+			fmt::format(
+				"You currently do not have sufficient funds to support your buy lines. You have {} and need {}",
+				DetermineMoneyString(GetCarriedMoney()),
+				DetermineMoneyString(current_total_cost)).c_str()
+		);
+		buy_line.item_toggle = 0;
+		SendBuyLineUpdate(buy_line);
+		return;
+	}
+
+	bool buyer_error = false;
+
+	if (!ValidateBuyLineItems(item_map)) {
+		buy_line.item_toggle = 0;
+	}
+
+	buy_line.item_icon = database.GetItem(buy_line.item_id)->Icon;
+	if ((buy_line.item_toggle && it != std::end(current_buy_lines)) || pass) {
+		BuyerBuyLinesRepository::ModifyBuyLine(database, buy_line, GetBuyerID());
+		Message(Chat::Yellow, fmt::format("Buy line for {} modified.", buy_line.item_name).c_str());
+	}
+	else if (buy_line.item_toggle && it == std::end(current_buy_lines)) {
+		BuyerBuyLinesRepository::CreateBuyLine(database, buy_line, GetBuyerID());
+		Message(Chat::Yellow, fmt::format("Buy line for {} enabled.", buy_line.item_name).c_str());
+	}
+	else if (!buy_line.item_toggle) {
+		BuyerBuyLinesRepository::DeleteBuyLine(database, GetBuyerID(), buy_line.slot);
+		Message(Chat::Yellow, fmt::format("Buy line for {} disabled.", buy_line.item_name).c_str());
+	}
+	else {
+		BuyerBuyLinesRepository::DeleteBuyLine(database, GetBuyerID(), buy_line.slot);
+		Message(
+			Chat::Yellow,
+			fmt::format("Unhandled modification.  Buy line for {} disabled.", buy_line.item_name).c_str());
+	}
+
+	SendBuyLineUpdate(buy_line);
+
+	if (IsThereACustomer()) {
+		auto customer = entity_list.GetClientByID(GetCustomerID());
+		if (!customer) {
 			return;
 		}
 
-		BuyerRepository::UpdateTransactionDate(database, GetBuyerID(), time(nullptr));
-		int64 current_total_cost = 0;
-		bool  pass               = false;
-
-		auto current_buy_lines = BuyerBuyLinesRepository::GetBuyLines(database, CharacterID());
-
-		std::map<uint32, BuylineItemDetails_Struct> item_map;
-		BuildBuyLineMapFromVector(item_map, current_buy_lines);
-
-		current_total_cost = ValidateBuyLineCost(item_map);
-
-		auto buy_line = bl.buy_lines.front();
-		auto it       = std::find_if(
+		auto it = std::find_if(
 			current_buy_lines.cbegin(),
 			current_buy_lines.cend(),
 			[&](BuyerLineItems_Struct bl) {
 				return bl.slot == buy_line.slot;
 			}
 		);
-
-		if (buy_line.item_toggle) {
-			current_total_cost += buy_line.item_cost * buy_line.item_quantity;
-			if (it != std::end(current_buy_lines)) {
-				current_total_cost -= it->item_cost * it->item_quantity;
-				if (current_total_cost > GetCarriedMoney()) {
-					buy_line.item_cost     = it->item_cost;
-					buy_line.item_quantity = it->item_quantity;
-					Message(
-						Chat::Red,
-						fmt::format(
-							"You currently do not have sufficient funds to support your buy lines. You have {} and need {}",
-							DetermineMoneyString(GetCarriedMoney()),
-							DetermineMoneyString(current_total_cost)).c_str()
-					);
-					SendBuyLineUpdate(buy_line);
-					return;
-				}
-				else {
-					RemoveItemFromBuyLineMap(item_map, *it);
-					BuildBuyLineMapFromVector(item_map, bl.buy_lines);
-				}
-			}
-			else {
-				BuildBuyLineMapFromVector(item_map, bl.buy_lines);
-			}
-		}
-		else {
-			current_total_cost -= static_cast<int64>(buy_line.item_cost) * static_cast<int64>(buy_line.item_quantity);
-			std::map<uint32, BuylineItemDetails_Struct> item_map_tmp;
-			BuildBuyLineMapFromVector(item_map_tmp, bl.buy_lines);
-			if (ValidateBuyLineItems(item_map_tmp)) {
-				pass = true;
-			}
-		}
-
-		if (current_total_cost > static_cast<int64>(GetCarriedMoney())) {
-			Message(
-				Chat::Red,
-				fmt::format(
-					"You currently do not have sufficient funds to support your buy lines. You have {} and need {}",
-					DetermineMoneyString(GetCarriedMoney()),
-					DetermineMoneyString(current_total_cost)).c_str()
-			);
-			buy_line.item_toggle = 0;
-			SendBuyLineUpdate(buy_line);
+		if (it == std::end(current_buy_lines) && !buy_line.item_toggle) {
 			return;
 		}
 
-		bool buyer_error = false;
+		std::stringstream           ss_customer{};
+		cereal::BinaryOutputArchive ar_customer(ss_customer);
 
-		if (!ValidateBuyLineItems(item_map)) {
-			buy_line.item_toggle = 0;
+		BuyerLineItems_Struct blis{};
+		blis.enabled       = buy_line.enabled;
+		blis.item_cost     = buy_line.item_cost;
+		blis.item_icon     = buy_line.item_icon;
+		blis.item_id       = buy_line.item_id;
+		blis.item_quantity = buy_line.item_quantity;
+		blis.item_toggle   = buy_line.item_toggle;
+		blis.slot          = buy_line.slot;
+		blis.item_name     = buy_line.item_name;
+		for (auto const &i: buy_line.trade_items) {
+			BuyerLineTradeItems_Struct bltis{};
+			bltis.item_icon     = i.item_icon;
+			bltis.item_id       = i.item_id;
+			bltis.item_quantity = i.item_quantity;
+			bltis.item_name     = i.item_name;
+			blis.trade_items.push_back(bltis);
 		}
 
-		buy_line.item_icon = database.GetItem(buy_line.item_id)->Icon;
-		if ((buy_line.item_toggle && it != std::end(current_buy_lines)) || pass) {
-			BuyerBuyLinesRepository::ModifyBuyLine(database, buy_line, GetBuyerID());
-			Message(Chat::Yellow, fmt::format("Buy line for {} modified.", buy_line.item_name).c_str());
-		}
-		else if (buy_line.item_toggle && it == std::end(current_buy_lines)) {
-			BuyerBuyLinesRepository::CreateBuyLine(database, buy_line, GetBuyerID());
-			Message(Chat::Yellow, fmt::format("Buy line for {} enabled.", buy_line.item_name).c_str());
-		}
-		else if (!buy_line.item_toggle) {
-			BuyerBuyLinesRepository::DeleteBuyLine(database, GetBuyerID(), buy_line.slot);
-			Message(Chat::Yellow, fmt::format("Buy line for {} disabled.", buy_line.item_name).c_str());
-		}
-		else {
-			BuyerBuyLinesRepository::DeleteBuyLine(database, GetBuyerID(), buy_line.slot);
-			Message(
-				Chat::Yellow,
-				fmt::format("Unhandled modification.  Buy line for {} disabled.", buy_line.item_name).c_str());
-		}
+		{ ar_customer(blis); }
 
-		SendBuyLineUpdate(buy_line);
+		auto packet = std::make_unique<EQApplicationPacket>(
+			OP_BuyerItems,
+			static_cast<uint32>(ss_customer.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
+		);
+		auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
 
-		if (IsThereACustomer()) {
-			auto customer = entity_list.GetClientByID(GetCustomerID());
-			if (!customer) {
-				return;
-			}
+		emu->action = Barter_BuyerInspectBegin;
+		memcpy(emu->payload, ss_customer.str().data(), ss_customer.str().length());
 
-			auto it = std::find_if(
-				current_buy_lines.cbegin(),
-				current_buy_lines.cend(),
-				[&](BuyerLineItems_Struct bl) {
-					return bl.slot == buy_line.slot;
-				}
-			);
-			if (it == std::end(current_buy_lines) && !buy_line.item_toggle) {
-				return;
-			}
+		customer->QueuePacket(packet.get());
 
-			std::stringstream           ss_customer{};
-			cereal::BinaryOutputArchive ar_customer(ss_customer);
-
-			BuyerLineItems_Struct blis{};
-			blis.enabled       = buy_line.enabled;
-			blis.item_cost     = buy_line.item_cost;
-			blis.item_icon     = buy_line.item_icon;
-			blis.item_id       = buy_line.item_id;
-			blis.item_quantity = buy_line.item_quantity;
-			blis.item_toggle   = buy_line.item_toggle;
-			blis.slot          = buy_line.slot;
-			blis.item_name     = buy_line.item_name;
-			for (auto const &i: buy_line.trade_items) {
-				BuyerLineTradeItems_Struct bltis{};
-				bltis.item_icon     = i.item_icon;
-				bltis.item_id       = i.item_id;
-				bltis.item_quantity = i.item_quantity;
-				bltis.item_name     = i.item_name;
-				blis.trade_items.push_back(bltis);
-			}
-
-			{ ar_customer(blis); }
-
-			auto packet = std::make_unique<EQApplicationPacket>(
-				OP_BuyerItems,
-				static_cast<uint32>(ss_customer.str().length()) + static_cast<uint32>(sizeof(BuyerGeneric_Struct))
-			);
-			auto emu    = (BuyerGeneric_Struct *) packet->pBuffer;
-
-			emu->action = Barter_BuyerInspectBegin;
-			memcpy(emu->payload, ss_customer.str().data(), ss_customer.str().length());
-
-			customer->QueuePacket(packet.get());
-
-			ss_customer.str("");
-			ss_customer.clear();
-		}
+		ss_customer.str("");
+		ss_customer.clear();
 	}
 	return;
 }
@@ -2706,9 +2676,6 @@ void Client::SendBazaarDone(uint32 trader_id)
 
 void Client::SendBulkBazaarTraders()
 {
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF2) {
-		return;
-	}
 
 	TraderRepository::BulkTraders_Struct results{};
 
@@ -3206,59 +3173,57 @@ bool Client::IsInBuyerSpace()
 
 void Client::CreateStartingBuyLines(const EQApplicationPacket *app)
 {
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		BuyerBuyLines_Struct         bl{};
-		auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
-		EQ::Util::MemoryStreamReader ss_in(
-			reinterpret_cast<char *>(in->payload),
-			app->size - sizeof(BuyerGeneric_Struct));
-		cereal::BinaryInputArchive   ar(ss_in);
-		ar(bl);
+	BuyerBuyLines_Struct         bl{};
+	auto                         in = (BuyerGeneric_Struct *) app->pBuffer;
+	EQ::Util::MemoryStreamReader ss_in(
+		reinterpret_cast<char *>(in->payload),
+		app->size - sizeof(BuyerGeneric_Struct));
+	cereal::BinaryInputArchive   ar(ss_in);
+	ar(bl);
 
-		if (bl.buy_lines.empty()) {
-			return;
-		}
-
-		std::map<uint32, BuylineItemDetails_Struct> item_map{};
-
-		if (!BuildBuyLineMap(item_map, bl)) {
-			ToggleBuyerMode(false);
-			return;
-		}
-
-		auto proposed_total_cost = ValidateBuyLineCost(item_map);
-		if (proposed_total_cost == 0) {
-			ToggleBuyerMode(false);
-			return;
-		}
-
-		if (!ValidateBuyLineItems(item_map)) {
-			ToggleBuyerMode(false);
-			return;
-		}
-
-		std::stringstream           ss_out{};
-		cereal::BinaryOutputArchive ar_out(ss_out);
-
-		for (auto &b: bl.buy_lines) {
-			BuyerBuyLinesRepository::CreateBuyLine(database, b, CharacterID());
-
-			{ ar_out(b); }
-
-			uint32 packet_size = ss_out.str().length() + sizeof(BuyerGeneric_Struct);
-			auto   out         = std::make_unique<EQApplicationPacket>(OP_BuyerItems, packet_size);
-			auto   data        = (BazaarSearchMessaging_Struct *) out->pBuffer;
-
-			data->action = Barter_BuyerItemUpdate;
-			memcpy(data->payload, ss_out.str().data(), ss_out.str().length());
-			QueuePacket(out.get());
-
-			ss_out.str("");
-			ss_out.clear();
-		}
-
-		Message(Chat::Yellow, fmt::format("{} buy lines enabled.", bl.buy_lines.size()).c_str());
+	if (bl.buy_lines.empty()) {
+		return;
 	}
+
+	std::map<uint32, BuylineItemDetails_Struct> item_map{};
+
+	if (!BuildBuyLineMap(item_map, bl)) {
+		ToggleBuyerMode(false);
+		return;
+	}
+
+	auto proposed_total_cost = ValidateBuyLineCost(item_map);
+	if (proposed_total_cost == 0) {
+		ToggleBuyerMode(false);
+		return;
+	}
+
+	if (!ValidateBuyLineItems(item_map)) {
+		ToggleBuyerMode(false);
+		return;
+	}
+
+	std::stringstream           ss_out{};
+	cereal::BinaryOutputArchive ar_out(ss_out);
+
+	for (auto &b: bl.buy_lines) {
+		BuyerBuyLinesRepository::CreateBuyLine(database, b, CharacterID());
+
+		{ ar_out(b); }
+
+		uint32 packet_size = ss_out.str().length() + sizeof(BuyerGeneric_Struct);
+		auto   out         = std::make_unique<EQApplicationPacket>(OP_BuyerItems, packet_size);
+		auto   data        = (BazaarSearchMessaging_Struct *) out->pBuffer;
+
+		data->action = Barter_BuyerItemUpdate;
+		memcpy(data->payload, ss_out.str().data(), ss_out.str().length());
+		QueuePacket(out.get());
+
+		ss_out.str("");
+		ss_out.clear();
+	}
+
+	Message(Chat::Yellow, fmt::format("{} buy lines enabled.", bl.buy_lines.size()).c_str());
 }
 
 void Client::SendBuyLineUpdate(const BuyerLineItems_Struct &buy_line)

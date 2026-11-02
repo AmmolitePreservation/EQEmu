@@ -572,12 +572,10 @@ void NPC::SetTarget(Mob* mob) {
 
 	if (owner) {
 		auto client = owner->CastToClient();
-		if (client->ClientVersionBit() & EQ::versions::maskUFAndLater) {
-			auto app = new EQApplicationPacket(OP_PetHoTT, sizeof(ClientTarget_Struct));
-			auto ct = (ClientTarget_Struct *)app->pBuffer;
-			ct->new_target = mob ? mob->GetID() : 0;
-			client->FastQueuePacket(&app);
-		}
+		auto app = new EQApplicationPacket(OP_PetHoTT, sizeof(ClientTarget_Struct));
+		auto ct = (ClientTarget_Struct *)app->pBuffer;
+		ct->new_target = mob ? mob->GetID() : 0;
+		client->FastQueuePacket(&app);
 	}
 	Mob::SetTarget(mob);
 }

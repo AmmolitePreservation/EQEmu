@@ -116,18 +116,8 @@ SET(common_sources
     net/websocket_server.cpp
     net/websocket_server_connection.cpp
     patches/patches.cpp
-    patches/sod.cpp
-    patches/sod_limits.cpp
-    patches/sof.cpp
-    patches/sof_limits.cpp
-    patches/rof.cpp
-    patches/rof_limits.cpp
     patches/rof2.cpp
     patches/rof2_limits.cpp
-    patches/titanium.cpp
-    patches/titanium_limits.cpp
-    patches/uf.cpp
-    patches/uf_limits.cpp
     StackWalker/StackWalker.cpp
     util/directory.cpp
     util/uuid.cpp)
@@ -689,33 +679,13 @@ SET(common_headers
     net/websocket_server.h
     net/websocket_server_connection.h
     patches/patches.h
-    patches/sod.h
-    patches/sod_limits.h
-    patches/sod_ops.h
-    patches/sod_structs.h
-    patches/sof.h
-    patches/sof_limits.h
-    patches/sof_ops.h
-    patches/sof_structs.h
     patches/ss_declare.h
     patches/ss_define.h
     patches/ss_register.h
-    patches/rof.h
-    patches/rof_limits.h
-    patches/rof_ops.h
-    patches/rof_structs.h
     patches/rof2.h
     patches/rof2_limits.h
     patches/rof2_ops.h
     patches/rof2_structs.h
-    patches/titanium.h
-    patches/titanium_limits.h
-    patches/titanium_ops.h
-    patches/titanium_structs.h
-    patches/uf.h
-    patches/uf_limits.h
-    patches/uf_ops.h
-    patches/uf_structs.h
     termcolor/rang.hpp
     stacktrace/backward.hpp
     StackWalker/StackWalker.h
@@ -777,46 +747,16 @@ SOURCE_GROUP(Net FILES
 
 SOURCE_GROUP(Patches FILES
     patches/patches.h
-    patches/sod.h
-    patches/sod_limits.h
-    patches/sod_ops.h
-    patches/sod_structs.h
-    patches/sof.h
-    patches/sof_limits.h
-    patches/sof_ops.h
-    patches/sof_structs.h
     patches/ss_declare.h
     patches/ss_define.h
     patches/ss_register.h
-    patches/rof.h
-    patches/rof_limits.h
-    patches/rof_ops.h
-    patches/rof_structs.h
     patches/rof2.h
     patches/rof2_limits.h
     patches/rof2_ops.h
     patches/rof2_structs.h
-    patches/titanium.h
-    patches/titanium_limits.h
-    patches/titanium_ops.h
-    patches/titanium_structs.h
-    patches/uf.h
-    patches/uf_limits.h
-    patches/uf_ops.h
-    patches/uf_structs.h
     patches/patches.cpp
-    patches/sod.cpp
-    patches/sod_limits.cpp
-    patches/sof.cpp
-    patches/sof_limits.cpp
-    patches/rof.cpp
-    patches/rof_limits.cpp
     patches/rof2.cpp
     patches/rof2_limits.cpp
-    patches/titanium.cpp
-    patches/titanium_limits.cpp
-    patches/uf.cpp
-    patches/uf_limits.cpp
 )
 
 SOURCE_GROUP(StackWalker FILES
@@ -838,7 +778,6 @@ ADD_LIBRARY(common ${common_sources} ${common_headers} ${repositories})
 
 IF (UNIX)
     SET_SOURCE_FILES_PROPERTIES("SocketLib/Mime.cpp" PROPERTY COMPILE_FLAGS -Wno-unused-result)
-    SET_SOURCE_FILES_PROPERTIES("patches/sod.cpp" "patches/sof.cpp" "patches/rof.cpp" "patches/rof2.cpp" "patches/uf.cpp" PROPERTIES COMPILE_FLAGS -O0)
 ENDIF (UNIX)
 
 IF (EQEMU_BUILD_PCH)

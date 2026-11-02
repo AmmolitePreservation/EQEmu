@@ -852,7 +852,7 @@ void Client::CompleteConnect()
 		}
 	}
 
-	if(ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB(Parcel, EnableParcelMerchants)) {
+	if(RuleB(Parcel, EnableParcelMerchants)) {
 		SendParcelStatus();
 	}
 
@@ -886,8 +886,7 @@ void Client::CompleteConnect()
 	if (zone->GetZoneID() == Zones::GUILDHALL && GuildBanks)
 		GuildBanks->SendGuildBank(this);
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
-		entity_list.SendFindableNPCList(this);
+	entity_list.SendFindableNPCList(this);
 
 	if (IsInAGuild()) {
 		if (ingame) {
@@ -902,10 +901,8 @@ void Client::CompleteConnect()
 			SendGuildMembersList();
 		}
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-			SendGuildRanks();
-			SendGuildRankNames();
-		}
+		SendGuildRanks();
+		SendGuildRankNames();
 
 		SendGuildActiveTributes(GuildID());
 		SendGuildFavorAndTimer(GuildID());
@@ -942,14 +939,14 @@ void Client::CompleteConnect()
 		delete pack;
 	}
 
-	if (IsClient() && CastToClient()->ClientVersionBit() & EQ::versions::maskUFAndLater) {
+	if (IsClient()) {
 		EQApplicationPacket *outapp = MakeBuffsPacket(false);
 		CastToClient()->FastQueuePacket(&outapp);
 	}
 
 	// TODO: load these states
 	// We at least will set them to the correct state for now
-	if (m_ClientVersionBit & EQ::versions::maskUFAndLater && GetPet()) {
+	if (GetPet()) {
 		SetPetCommandState(PET_BUTTON_SIT, 0);
 		SetPetCommandState(PET_BUTTON_STOP, 0);
 		SetPetCommandState(PET_BUTTON_REGROUP, 0);
@@ -1108,11 +1105,8 @@ void Client::Handle_Connect_OP_ReqClientSpawn(const EQApplicationPacket *app)
 	outapp = new EQApplicationPacket(OP_SendExpZonein, 0);
 	FastQueuePacket(&outapp);
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF)
-	{
-		outapp = new EQApplicationPacket(OP_ClientReady, 0);
-		FastQueuePacket(&outapp);
-	}
+	outapp = new EQApplicationPacket(OP_ClientReady, 0);
+	FastQueuePacket(&outapp);
 
 	// New for Secrets of Faydwer - Used in Place of OP_SendExpZonein
 	outapp = new EQApplicationPacket(OP_WorldObjectsSent, 0);
@@ -1169,10 +1163,6 @@ void Client::Handle_Connect_OP_SendExpZonein(const EQApplicationPacket *app)
 	safe_delete(outapp);
 
 	// SoF+ Gets Zone-In packets after sending OP_WorldObjectsSent
-	if (ClientVersion() < EQ::versions::ClientVersion::SoF)
-	{
-		SendZoneInPackets();
-	}
 
 	return;
 }
@@ -1500,10 +1490,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 			m_pp.guildrank = cgi.rank;
 		}
 		if (zone->GetZoneID() == Zones::GUILDHALL) {
-			GuildBanker = (guild_mgr.IsGuildLeader(GuildID(), CharacterID()) ||
-				guild_mgr.GetBankerFlag(CharacterID()) ||
-				ClientVersion() >= EQ::versions::ClientVersion::RoF ? true : false
-				);
+			GuildBanker = (true);
 		}
 	}
 	m_pp.guildbanker = GuildBanker;
@@ -1743,10 +1730,8 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 				pet->SetMana(m_petinfo.Mana);
 
 				// Taunt persists when zoning on newer clients, overwrite default.
-				if (m_ClientVersionBit & EQ::versions::maskUFAndLater) {
-					if (!ingame) {
-						pet->SetTaunting(m_petinfo.taunting);
-					}
+				if (!ingame) {
+					pet->SetTaunting(m_petinfo.taunting);
 				}
 			}
 			m_petinfo.SpellID = 0;
@@ -1853,12 +1838,10 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		}
 	}
 
-	if (m_ClientVersionBit & EQ::versions::maskUFAndLater) {
-		outapp = new EQApplicationPacket(OP_XTargetResponse, 8);
-		outapp->WriteUInt32(GetMaxXTargets());
-		outapp->WriteUInt32(0);
-		FastQueuePacket(&outapp);
-	}
+	outapp = new EQApplicationPacket(OP_XTargetResponse, 8);
+	outapp->WriteUInt32(GetMaxXTargets());
+	outapp->WriteUInt32(0);
+	FastQueuePacket(&outapp);
 
 	/*
 	Weather Packet
@@ -1880,9 +1863,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	QueuePacket(outapp);
 	safe_delete(outapp);
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		Handle_Connect_OP_ReqNewZone(nullptr);
-	}
+	Handle_Connect_OP_ReqNewZone(nullptr);
 
 	SetAttackTimer();
 	conn_state = ZoneInfoSent;
@@ -3169,355 +3150,351 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 	}
 
 	AugmentItem_Struct* in_augment = (AugmentItem_Struct*)app->pBuffer;
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-		if (
-			(in_augment->container_slot < EQ::invslot::EQUIPMENT_BEGIN || in_augment->container_slot > EQ::invslot::GENERAL_END) &&
-			(in_augment->container_slot < EQ::invbag::GENERAL_BAGS_BEGIN || in_augment->container_slot > EQ::invbag::GENERAL_BAGS_END)
-		) {
-			Message(Chat::Red, "The server does not allow augmentation actions from this slot.");
-			auto cursor_item = m_inv[EQ::invslot::slotCursor];
-			auto augmented_item = m_inv[in_augment->container_slot];
-			SendItemPacket(EQ::invslot::slotCursor, cursor_item, ItemPacketCharInventory);
-			// this may crash clients on certain slots
-			SendItemPacket(in_augment->container_slot, augmented_item, ItemPacketCharInventory);
-			return;
-		}
+	if (
+		(in_augment->container_slot < EQ::invslot::EQUIPMENT_BEGIN || in_augment->container_slot > EQ::invslot::GENERAL_END) &&
+		(in_augment->container_slot < EQ::invbag::GENERAL_BAGS_BEGIN || in_augment->container_slot > EQ::invbag::GENERAL_BAGS_END)
+	) {
+		Message(Chat::Red, "The server does not allow augmentation actions from this slot.");
+		auto cursor_item = m_inv[EQ::invslot::slotCursor];
+		auto augmented_item = m_inv[in_augment->container_slot];
+		SendItemPacket(EQ::invslot::slotCursor, cursor_item, ItemPacketCharInventory);
+		// this may crash clients on certain slots
+		SendItemPacket(in_augment->container_slot, augmented_item, ItemPacketCharInventory);
+		return;
+	}
 
-		EQ::ItemInstance *item_one_to_push = nullptr, *item_two_to_push = nullptr;
+	EQ::ItemInstance *item_one_to_push = nullptr, *item_two_to_push = nullptr;
 
-		EQ::ItemInstance *tobe_auged = nullptr, *old_aug = nullptr, *new_aug = nullptr, *aug = nullptr, *solvent = nullptr;
-		EQ::InventoryProfile& user_inv = GetInv();
+	EQ::ItemInstance *tobe_auged = nullptr, *old_aug = nullptr, *new_aug = nullptr, *aug = nullptr, *solvent = nullptr;
+	EQ::InventoryProfile& user_inv = GetInv();
 
-		uint16 item_slot = in_augment->container_slot;
-		uint16 solvent_slot = in_augment->augment_slot;
-		uint8 material = EQ::InventoryProfile::CalcMaterialFromSlot(item_slot); // for when player is augging a piece of equipment while they're wearing it
+	uint16 item_slot = in_augment->container_slot;
+	uint16 solvent_slot = in_augment->augment_slot;
+	uint8 material = EQ::InventoryProfile::CalcMaterialFromSlot(item_slot); // for when player is augging a piece of equipment while they're wearing it
 
-		if (item_slot == INVALID_INDEX || solvent_slot == INVALID_INDEX) {
-			Message(Chat::Red, "Error: Invalid Aug Index.");
-			return;
-		}
+	if (item_slot == INVALID_INDEX || solvent_slot == INVALID_INDEX) {
+		Message(Chat::Red, "Error: Invalid Aug Index.");
+		return;
+	}
 
-		tobe_auged = user_inv.GetItem(item_slot);
-		solvent = user_inv.GetItem(solvent_slot);
+	tobe_auged = user_inv.GetItem(item_slot);
+	solvent = user_inv.GetItem(solvent_slot);
 
-		if (!tobe_auged) {
-			Message(Chat::Red, "Error: Invalid item passed for augmenting.");
-			return;
-		}
+	if (!tobe_auged) {
+		Message(Chat::Red, "Error: Invalid item passed for augmenting.");
+		return;
+	}
 
-		if (in_augment->augment_action == AugmentActions::Remove || in_augment->augment_action == AugmentActions::Swap) {
-			if (!solvent) { // Check for valid distiller if safely removing / swapping an augmentation
-				old_aug = tobe_auged->GetAugment(in_augment->augment_index);
-				if (!old_aug || old_aug->GetItem()->AugDistiller != 0) {
-					LogError("Player tried to safely remove an augment without a distiller");
-					Message(Chat::Red, "Error: Missing an augmentation distiller for safely removing this augment.");
-					return;
-				}
-			} else if (solvent->GetItem()->ItemType == EQ::item::ItemTypeAugmentationDistiller) {
-				old_aug = tobe_auged->GetAugment(in_augment->augment_index);
-
-				if (!old_aug) {
-					LogError("Player tried to safely remove a nonexistent augment");
-					Message(Chat::Red, "Error: No augment found in slot %i for safely removing.", in_augment->augment_index);
-					return;
-				} else if (solvent->GetItem()->ID != old_aug->GetItem()->AugDistiller) {
-					LogError("Player tried to safely remove an augment with the wrong distiller (item [{}] vs expected [{}])", solvent->GetItem()->ID, old_aug->GetItem()->AugDistiller);
-					Message(Chat::Red, "Error: Wrong augmentation distiller for safely removing this augment.");
-					return;
-				}
-			} else if (solvent->GetItem()->ItemType != EQ::item::ItemTypePerfectedAugmentationDistiller) {
-				LogError("Player tried to safely remove an augment with a non-distiller item");
-				Message(Chat::Red, "Error: Invalid augmentation distiller for safely removing this augment.");
+	if (in_augment->augment_action == AugmentActions::Remove || in_augment->augment_action == AugmentActions::Swap) {
+		if (!solvent) { // Check for valid distiller if safely removing / swapping an augmentation
+			old_aug = tobe_auged->GetAugment(in_augment->augment_index);
+			if (!old_aug || old_aug->GetItem()->AugDistiller != 0) {
+				LogError("Player tried to safely remove an augment without a distiller");
+				Message(Chat::Red, "Error: Missing an augmentation distiller for safely removing this augment.");
 				return;
 			}
+		} else if (solvent->GetItem()->ItemType == EQ::item::ItemTypeAugmentationDistiller) {
+			old_aug = tobe_auged->GetAugment(in_augment->augment_index);
+
+			if (!old_aug) {
+				LogError("Player tried to safely remove a nonexistent augment");
+				Message(Chat::Red, "Error: No augment found in slot %i for safely removing.", in_augment->augment_index);
+				return;
+			} else if (solvent->GetItem()->ID != old_aug->GetItem()->AugDistiller) {
+				LogError("Player tried to safely remove an augment with the wrong distiller (item [{}] vs expected [{}])", solvent->GetItem()->ID, old_aug->GetItem()->AugDistiller);
+				Message(Chat::Red, "Error: Wrong augmentation distiller for safely removing this augment.");
+				return;
+			}
+		} else if (solvent->GetItem()->ItemType != EQ::item::ItemTypePerfectedAugmentationDistiller) {
+			LogError("Player tried to safely remove an augment with a non-distiller item");
+			Message(Chat::Red, "Error: Invalid augmentation distiller for safely removing this augment.");
+			return;
 		}
+	}
 
-		switch (in_augment->augment_action) {
-			case AugmentActions::Insert:
-			case AugmentActions::Swap:
-				new_aug = user_inv.GetItem(EQ::invslot::slotCursor);
+	switch (in_augment->augment_action) {
+		case AugmentActions::Insert:
+		case AugmentActions::Swap:
+			new_aug = user_inv.GetItem(EQ::invslot::slotCursor);
 
-				if (!new_aug) { // Shouldn't get the OP code without the augment on the user's cursor, but maybe it's h4x.
-					LogError("AugmentItem OpCode with 'Insert' or 'Swap' action received, but no augment on client's cursor");
-					Message(Chat::Red, "Error: No augment found on cursor for inserting.");
+			if (!new_aug) { // Shouldn't get the OP code without the augment on the user's cursor, but maybe it's h4x.
+				LogError("AugmentItem OpCode with 'Insert' or 'Swap' action received, but no augment on client's cursor");
+				Message(Chat::Red, "Error: No augment found on cursor for inserting.");
+				break;
+			} else {
+				if (!RuleB(Inventory, AllowMultipleOfSameAugment) && tobe_auged->ContainsAugmentByID(new_aug->GetID())) {
+					Message(Chat::Red, "Error: Cannot put multiple of the same augment in an item.");
 					break;
-				} else {
-					if (!RuleB(Inventory, AllowMultipleOfSameAugment) && tobe_auged->ContainsAugmentByID(new_aug->GetID())) {
-						Message(Chat::Red, "Error: Cannot put multiple of the same augment in an item.");
-						break;
-					}
+				}
 
-					if (
-						((tobe_auged->IsAugmentSlotAvailable(new_aug->GetAugmentType(), in_augment->augment_index)) != -1) &&
-						tobe_auged->AvailableWearSlot(new_aug->GetItem()->Slots)
-					) {
-						old_aug = tobe_auged->RemoveAugment(in_augment->augment_index);
-						if (old_aug) { // An old augment was removed in order to be replaced with the new one (augment_action 2)
-							CalcBonuses();
+				if (
+					((tobe_auged->IsAugmentSlotAvailable(new_aug->GetAugmentType(), in_augment->augment_index)) != -1) &&
+					tobe_auged->AvailableWearSlot(new_aug->GetItem()->Slots)
+				) {
+					old_aug = tobe_auged->RemoveAugment(in_augment->augment_index);
+					if (old_aug) { // An old augment was removed in order to be replaced with the new one (augment_action 2)
+						CalcBonuses();
 
-							std::vector<std::any> args;
+						std::vector<std::any> args;
+						args.push_back(old_aug);
+
+						if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
+							parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
+						}
+
+						args.assign(1, tobe_auged);
+						args.push_back(false);
+
+						if (parse->ItemHasQuestSub(old_aug, EVENT_AUGMENT_REMOVE)) {
+							parse->EventItem(EVENT_AUGMENT_REMOVE, this, old_aug, nullptr, "", in_augment->augment_index, &args);
+						}
+
+						if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
+							const auto& export_string = fmt::format(
+								"{} {} {} {} {}",
+								tobe_auged->GetID(),
+								item_slot,
+								old_aug->GetID(),
+								in_augment->augment_index,
+								false
+							);
+
 							args.push_back(old_aug);
 
-							if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
-								parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
-							}
+							parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
+						}
+					}
 
-							args.assign(1, tobe_auged);
-							args.push_back(false);
+					if (new_aug->GetItem()->Attuneable) {
+						new_aug->SetAttuned(true);
+					}
 
-							if (parse->ItemHasQuestSub(old_aug, EVENT_AUGMENT_REMOVE)) {
-								parse->EventItem(EVENT_AUGMENT_REMOVE, this, old_aug, nullptr, "", in_augment->augment_index, &args);
-							}
+					tobe_auged->PutAugment(in_augment->augment_index, *new_aug);
+					tobe_auged->UpdateOrnamentationInfo();
 
-							if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
-								const auto& export_string = fmt::format(
-									"{} {} {} {} {}",
-									tobe_auged->GetID(),
-									item_slot,
-									old_aug->GetID(),
-									in_augment->augment_index,
-									false
-								);
+					aug = tobe_auged->GetAugment(in_augment->augment_index);
+					if (aug) {
+						std::vector<std::any> args;
+						args.push_back(aug);
 
-								args.push_back(old_aug);
-
-								parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
-							}
+						if (parse->ItemHasQuestSub(tobe_auged, EVENT_AUGMENT_ITEM)) {
+							parse->EventItem(EVENT_AUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
 						}
 
-						if (new_aug->GetItem()->Attuneable) {
-							new_aug->SetAttuned(true);
+						args.assign(1, tobe_auged);
+
+						if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_INSERT)) {
+							parse->EventItem(EVENT_AUGMENT_INSERT, this, aug, nullptr, "", in_augment->augment_index, &args);
 						}
 
-						tobe_auged->PutAugment(in_augment->augment_index, *new_aug);
-						tobe_auged->UpdateOrnamentationInfo();
+						args.push_back(aug);
 
-						aug = tobe_auged->GetAugment(in_augment->augment_index);
-						if (aug) {
-							std::vector<std::any> args;
-							args.push_back(aug);
-
-							if (parse->ItemHasQuestSub(tobe_auged, EVENT_AUGMENT_ITEM)) {
-								parse->EventItem(EVENT_AUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
-							}
-
-							args.assign(1, tobe_auged);
-
-							if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_INSERT)) {
-								parse->EventItem(EVENT_AUGMENT_INSERT, this, aug, nullptr, "", in_augment->augment_index, &args);
-							}
-
-							args.push_back(aug);
-
-							if (parse->PlayerHasQuestSub(EVENT_AUGMENT_INSERT_CLIENT)) {
-								const auto& export_string = fmt::format(
-									"{} {} {} {}",
-									tobe_auged->GetID(),
-									item_slot,
-									aug->GetID(),
-									in_augment->augment_index
-								);
-
-								parse->EventPlayer(EVENT_AUGMENT_INSERT_CLIENT, this, export_string, 0, &args);
-							}
-						} else {
-							Message(
-								Chat::Red,
-								fmt::format(
-									"Error: Could not properly insert augmentation into augment slot {}. Aborting.",
-									in_augment->augment_index
-								).c_str()
+						if (parse->PlayerHasQuestSub(EVENT_AUGMENT_INSERT_CLIENT)) {
+							const auto& export_string = fmt::format(
+								"{} {} {} {}",
+								tobe_auged->GetID(),
+								item_slot,
+								aug->GetID(),
+								in_augment->augment_index
 							);
-							break;
-						}
 
-						item_one_to_push = tobe_auged->Clone();
-						if (old_aug) {
-							item_two_to_push = old_aug->Clone();
-						}
-
-						if (item_one_to_push) { // Must push items after the items in inventory are deleted - necessary due to lore items...
-							DeleteItemInInventory(item_slot, 0, true);
-							DeleteItemInInventory(EQ::invslot::slotCursor, new_aug->IsStackable() ? 1 : 0, true);
-
-							if (solvent) { // Consume the augment distiller
-								DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true);
-							}
-
-							if (item_two_to_push) { // This is a swap. Return the old aug to the player's cursor.
-								if (!PutItemInInventory(EQ::invslot::slotCursor, *item_two_to_push, true)) {
-									LogError("Problem returning old augment to player's cursor after augmentation swap");
-									Message(Chat::Yellow, "Error: Failed to retrieve old augment after augmentation swap!");
-								}
-							}
-
-							if (PutItemInInventory(item_slot, *item_one_to_push, true)) { // Successfully added an augment to the item
-								CalcBonuses();
-								if (material != EQ::textures::materialInvalid) { // Visible item augged while equipped. Send WC in case ornamentation changed.
-									SendWearChange(material);
-								}
-							} else {
-								Message(Chat::Red, "Error: No available slot for end result. Please free up the augment slot.");
-							}
-						} else {
-							Message(Chat::Red, "Error in cloning item for augment. Aborted.");
+							parse->EventPlayer(EVENT_AUGMENT_INSERT_CLIENT, this, export_string, 0, &args);
 						}
 					} else {
-						Message(Chat::Red, "Error: No available slot for augment in that item.");
-					}
-				}
-				break;
-			case AugmentActions::Remove:
-				aug = tobe_auged->GetAugment(in_augment->augment_index);
-				if (aug) {
-					std::vector<std::any> args;
-					args.push_back(aug);
-
-					if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
-						parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
-					}
-
-					args.assign(1, tobe_auged);
-					args.push_back(false);
-
-					if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_REMOVE)) {
-						parse->EventItem(EVENT_AUGMENT_REMOVE, this, aug, nullptr, "", in_augment->augment_index, &args);
-					}
-
-					args.push_back(aug);
-
-					if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
-						const auto& export_string = fmt::format(
-							"{} {} {} {} {}",
-							tobe_auged->GetID(),
-							item_slot,
-							aug->GetID(),
-							in_augment->augment_index,
-							false
+						Message(
+							Chat::Red,
+							fmt::format(
+								"Error: Could not properly insert augmentation into augment slot {}. Aborting.",
+								in_augment->augment_index
+							).c_str()
 						);
-
-						parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
-					}
-				} else {
-					Message(Chat::Red, "Error: Could not find augmentation to remove at index %i. Aborting.", in_augment->augment_index);
-					break;
-				}
-
-				old_aug = tobe_auged->RemoveAugment(in_augment->augment_index);
-				tobe_auged->UpdateOrnamentationInfo();
-
-				item_one_to_push = tobe_auged->Clone();
-				if (old_aug) {
-					item_two_to_push = old_aug->Clone();
-				}
-
-				if (item_one_to_push && item_two_to_push) {
-					if (solvent) {
-						DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true); // Consume the augment distiller
-					}
-
-					DeleteItemInInventory(item_slot, 0, true); // Remove the augmented item
-
-					if (!PutItemInInventory(item_slot, *item_one_to_push, true)) { // Replace it with the unaugmented item
-						LogError("Problem returning equipment item to player's inventory after safe augment removal");
-						Message(Chat::Yellow, "Error: Failed to return item after de-augmentation!");
-					}
-
-					CalcBonuses();
-
-					if (material != EQ::textures::materialInvalid) {
-						SendWearChange(material); // Visible item augged while equipped. Send WC in case ornamentation changed.
-					}
-
-					// Drop the removed augment on the player's cursor
-					if (!PutItemInInventory(EQ::invslot::slotCursor, *item_two_to_push, true)) {
-						LogError("Problem returning augment to player's cursor after safe removal");
-						Message(Chat::Yellow, "Error: Failed to return augment after removal from item!");
 						break;
 					}
-				}
-				break;
-			case AugmentActions::Destroy:
-				// RoF client does not require an augmentation solvent for destroying an augmentation in an item.
-				// Augments can be destroyed with a right click -> Destroy at any time.
-				aug = tobe_auged->GetAugment(in_augment->augment_index);
-				if (aug) {
-					std::vector<std::any> args;
-					args.push_back(aug);
 
-					if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
-						parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
+					item_one_to_push = tobe_auged->Clone();
+					if (old_aug) {
+						item_two_to_push = old_aug->Clone();
 					}
 
-					args.assign(1, tobe_auged);
-					args.push_back(true);
+					if (item_one_to_push) { // Must push items after the items in inventory are deleted - necessary due to lore items...
+						DeleteItemInInventory(item_slot, 0, true);
+						DeleteItemInInventory(EQ::invslot::slotCursor, new_aug->IsStackable() ? 1 : 0, true);
 
-					if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_REMOVE)) {
-						parse->EventItem(EVENT_AUGMENT_REMOVE, this, aug, nullptr, "", in_augment->augment_index, &args);
-					}
+						if (solvent) { // Consume the augment distiller
+							DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true);
+						}
 
-					args.push_back(aug);
+						if (item_two_to_push) { // This is a swap. Return the old aug to the player's cursor.
+							if (!PutItemInInventory(EQ::invslot::slotCursor, *item_two_to_push, true)) {
+								LogError("Problem returning old augment to player's cursor after augmentation swap");
+								Message(Chat::Yellow, "Error: Failed to retrieve old augment after augmentation swap!");
+							}
+						}
 
-					if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
-						const auto& export_string = fmt::format(
-							"{} {} {} {} {}",
-							tobe_auged->GetID(),
-							item_slot,
-							aug->GetID(),
-							in_augment->augment_index,
-							true
-						);
-
-						parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
+						if (PutItemInInventory(item_slot, *item_one_to_push, true)) { // Successfully added an augment to the item
+							CalcBonuses();
+							if (material != EQ::textures::materialInvalid) { // Visible item augged while equipped. Send WC in case ornamentation changed.
+								SendWearChange(material);
+							}
+						} else {
+							Message(Chat::Red, "Error: No available slot for end result. Please free up the augment slot.");
+						}
+					} else {
+						Message(Chat::Red, "Error in cloning item for augment. Aborted.");
 					}
 				} else {
-					Message(
-						Chat::Red,
-						fmt::format(
-							"Error: Could not find augmentation to remove at index {}. Aborting.",
-							in_augment->augment_index
-						).c_str()
-					);
-					break;
+					Message(Chat::Red, "Error: No available slot for augment in that item.");
+				}
+			}
+			break;
+		case AugmentActions::Remove:
+			aug = tobe_auged->GetAugment(in_augment->augment_index);
+			if (aug) {
+				std::vector<std::any> args;
+				args.push_back(aug);
+
+				if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
+					parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
 				}
 
-				tobe_auged->DeleteAugment(in_augment->augment_index);
-				tobe_auged->UpdateOrnamentationInfo();
+				args.assign(1, tobe_auged);
+				args.push_back(false);
 
-				item_one_to_push = tobe_auged->Clone();
-				if (item_one_to_push) {
-					DeleteItemInInventory(item_slot, 0, true);
+				if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_REMOVE)) {
+					parse->EventItem(EVENT_AUGMENT_REMOVE, this, aug, nullptr, "", in_augment->augment_index, &args);
+				}
 
-					if (!PutItemInInventory(item_slot, *item_one_to_push, true)) {
-						LogError("Problem returning equipment item to player's inventory after augment deletion");
-						Message(Chat::Yellow, "Error: Failed to return item after destroying augment!");
-					}
+				args.push_back(aug);
+
+				if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
+					const auto& export_string = fmt::format(
+						"{} {} {} {} {}",
+						tobe_auged->GetID(),
+						item_slot,
+						aug->GetID(),
+						in_augment->augment_index,
+						false
+					);
+
+					parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
+				}
+			} else {
+				Message(Chat::Red, "Error: Could not find augmentation to remove at index %i. Aborting.", in_augment->augment_index);
+				break;
+			}
+
+			old_aug = tobe_auged->RemoveAugment(in_augment->augment_index);
+			tobe_auged->UpdateOrnamentationInfo();
+
+			item_one_to_push = tobe_auged->Clone();
+			if (old_aug) {
+				item_two_to_push = old_aug->Clone();
+			}
+
+			if (item_one_to_push && item_two_to_push) {
+				if (solvent) {
+					DeleteItemInInventory(solvent_slot, solvent->IsStackable() ? 1 : 0, true); // Consume the augment distiller
+				}
+
+				DeleteItemInInventory(item_slot, 0, true); // Remove the augmented item
+
+				if (!PutItemInInventory(item_slot, *item_one_to_push, true)) { // Replace it with the unaugmented item
+					LogError("Problem returning equipment item to player's inventory after safe augment removal");
+					Message(Chat::Yellow, "Error: Failed to return item after de-augmentation!");
 				}
 
 				CalcBonuses();
 
 				if (material != EQ::textures::materialInvalid) {
-					SendWearChange(material);
+					SendWearChange(material); // Visible item augged while equipped. Send WC in case ornamentation changed.
 				}
 
-				break;
-			default: // Unknown
-				LogInventory(
-					"Unrecognized augmentation action - cslot: [{}] aslot: [{}] cidx: [{}] aidx: [{}] act: [{}] dest: [{}]",
-					in_augment->container_slot,
-					in_augment->augment_slot,
-					in_augment->container_index,
-					in_augment->augment_index,
-					in_augment->augment_action,
-					in_augment->dest_inst_id
+				// Drop the removed augment on the player's cursor
+				if (!PutItemInInventory(EQ::invslot::slotCursor, *item_two_to_push, true)) {
+					LogError("Problem returning augment to player's cursor after safe removal");
+					Message(Chat::Yellow, "Error: Failed to return augment after removal from item!");
+					break;
+				}
+			}
+			break;
+		case AugmentActions::Destroy:
+			// RoF client does not require an augmentation solvent for destroying an augmentation in an item.
+			// Augments can be destroyed with a right click -> Destroy at any time.
+			aug = tobe_auged->GetAugment(in_augment->augment_index);
+			if (aug) {
+				std::vector<std::any> args;
+				args.push_back(aug);
+
+				if (parse->ItemHasQuestSub(tobe_auged, EVENT_UNAUGMENT_ITEM)) {
+					parse->EventItem(EVENT_UNAUGMENT_ITEM, this, tobe_auged, nullptr, "", in_augment->augment_index, &args);
+				}
+
+				args.assign(1, tobe_auged);
+				args.push_back(true);
+
+				if (parse->ItemHasQuestSub(aug, EVENT_AUGMENT_REMOVE)) {
+					parse->EventItem(EVENT_AUGMENT_REMOVE, this, aug, nullptr, "", in_augment->augment_index, &args);
+				}
+
+				args.push_back(aug);
+
+				if (parse->PlayerHasQuestSub(EVENT_AUGMENT_REMOVE_CLIENT)) {
+					const auto& export_string = fmt::format(
+						"{} {} {} {} {}",
+						tobe_auged->GetID(),
+						item_slot,
+						aug->GetID(),
+						in_augment->augment_index,
+						true
+					);
+
+					parse->EventPlayer(EVENT_AUGMENT_REMOVE_CLIENT, this, export_string, 0, &args);
+				}
+			} else {
+				Message(
+					Chat::Red,
+					fmt::format(
+						"Error: Could not find augmentation to remove at index {}. Aborting.",
+						in_augment->augment_index
+					).c_str()
 				);
 				break;
-		}
-		safe_delete(item_one_to_push);
-		safe_delete(item_two_to_push);
-	} else {
-		Object::HandleAugmentation(this, in_augment, m_tradeskill_object); // Delegate to tradeskill object to perform combine
+			}
+
+			tobe_auged->DeleteAugment(in_augment->augment_index);
+			tobe_auged->UpdateOrnamentationInfo();
+
+			item_one_to_push = tobe_auged->Clone();
+			if (item_one_to_push) {
+				DeleteItemInInventory(item_slot, 0, true);
+
+				if (!PutItemInInventory(item_slot, *item_one_to_push, true)) {
+					LogError("Problem returning equipment item to player's inventory after augment deletion");
+					Message(Chat::Yellow, "Error: Failed to return item after destroying augment!");
+				}
+			}
+
+			CalcBonuses();
+
+			if (material != EQ::textures::materialInvalid) {
+				SendWearChange(material);
+			}
+
+			break;
+		default: // Unknown
+			LogInventory(
+				"Unrecognized augmentation action - cslot: [{}] aslot: [{}] cidx: [{}] aidx: [{}] act: [{}] dest: [{}]",
+				in_augment->container_slot,
+				in_augment->augment_slot,
+				in_augment->container_index,
+				in_augment->augment_index,
+				in_augment->augment_action,
+				in_augment->dest_inst_id
+			);
+			break;
 	}
+	safe_delete(item_one_to_push);
+	safe_delete(item_two_to_push);
 
 	return;
 }
@@ -4277,7 +4254,7 @@ void Client::Handle_OP_Bug(const EQApplicationPacket *app)
 
 void Client::Handle_OP_Camp(const EQApplicationPacket *app)
 {
-	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB(Parcel, EnableParcelMerchants) && GetEngagedWithParcelMerchant()) {
+	if (RuleB(Parcel, EnableParcelMerchants) && GetEngagedWithParcelMerchant()) {
 		Stand();
 		MessageString(Chat::Yellow, TRADER_BUSY_TWO);
 		return;
@@ -4350,7 +4327,7 @@ void Client::Handle_OP_CancelTrade(const EQApplicationPacket *app)
 		trade->Reset();
 	}
 
-	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && RuleB(Parcel, EnableParcelMerchants)) {
+	if (RuleB(Parcel, EnableParcelMerchants)) {
 		DoParcelCancel();
 		SetEngagedWithParcelMerchant(false);
 	}
@@ -4774,7 +4751,7 @@ void Client::Handle_OP_ClickObjectAction(const EQApplicationPacket *app)
 		QueuePacket(&end_trade2);
 
 		// RoF sends a 0 sized packet for closing objects
-		if (GetTradeskillObject() && ClientVersion() >= EQ::versions::ClientVersion::RoF)
+		if (GetTradeskillObject())
 			GetTradeskillObject()->CastToObject()->Close();
 
 		return;
@@ -5156,13 +5133,6 @@ void Client::Handle_OP_Consider(const EQApplicationPacket *app)
 
 	con->level = GetLevelCon(t->GetLevel());
 
-	if (ClientVersion() <= EQ::versions::ClientVersion::Titanium) {
-		if (con->level == ConsiderColor::Gray) {
-			con->level = ConsiderColor::Green;
-		} else if (con->level == ConsiderColor::White) {
-			con->level = ConsiderColor::WhiteTitanium;
-		}
-	}
 
 	if (zone->IsPVPZone()) {
 		if (!t->IsNPC()) {
@@ -5210,7 +5180,6 @@ void Client::Handle_OP_Consider(const EQApplicationPacket *app)
 			case ConsiderColor::DarkBlue:
 				color = 4;
 				break;
-			case ConsiderColor::WhiteTitanium:
 			case ConsiderColor::White:
 				color = 10;
 				break;
@@ -5225,11 +5194,6 @@ void Client::Handle_OP_Consider(const EQApplicationPacket *app)
 				break;
 		}
 
-		if (ClientVersion() <= EQ::versions::ClientVersion::Titanium) {
-			if (color == 6)	{
-				color = 2;
-			}
-		}
 
 		SendColoredText(color, std::string("This creature would take an army to defeat!"));
 	}
@@ -5697,10 +5661,7 @@ void Client::Handle_OP_DeleteItem(const EQApplicationPacket *app)
 		int16 AlcoholTolerance = GetSkill(EQ::skills::SkillAlcoholTolerance);
 		int16 IntoxicationIncrease;
 
-		if (ClientVersion() < EQ::versions::ClientVersion::SoD)
-			IntoxicationIncrease = (200 - AlcoholTolerance) * 30 / 200 + 10;
-		else
-			IntoxicationIncrease = (270 - AlcoholTolerance) * 0.111111108 + 10;
+		IntoxicationIncrease = (270 - AlcoholTolerance) * 0.111111108 + 10;
 
 		if (IntoxicationIncrease < 0)
 			IntoxicationIncrease = 1;
@@ -6279,10 +6240,7 @@ void Client::Handle_OP_EndLootRequest(const EQApplicationPacket *app)
 	Entity* entity = entity_list.GetID(*((uint16*)app->pBuffer));
 	if (entity == 0) {
 		Message(Chat::Red, "Error: OP_EndLootRequest: Corpse not found (ent = 0)");
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
-			Corpse::SendEndLootErrorPacket(this);
-		else
-			Corpse::SendLootReqErrorPacket(this);
+		Corpse::SendEndLootErrorPacket(this);
 		return;
 	}
 	else if (!entity->IsCorpse()) {
@@ -7781,10 +7739,8 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			if (GuildBanks->IsAreaFull(GuildID(), GuildBankDepositArea)) {
 				MessageString(Chat::Red, GUILD_BANK_FULL);
 				GuildBankDepositAck(true, sentAction);
-				if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-					GetInv().PopItem(EQ::invslot::slotCursor);
-					PushItemOnCursor(*cursor_item_inst, true);
-				}
+				GetInv().PopItem(EQ::invslot::slotCursor);
+				PushItemOnCursor(*cursor_item_inst, true);
 
 				return;
 			}
@@ -7802,10 +7758,8 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 				MessageString(Chat::Red, GUILD_BANK_CANNOT_DEPOSIT);
 				GuildBankDepositAck(true, sentAction);
 
-				if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-					GetInv().PopItem(EQ::invslot::slotCursor);
-					PushItemOnCursor(*cursor_item_inst, true);
-				}
+				GetInv().PopItem(EQ::invslot::slotCursor);
+				PushItemOnCursor(*cursor_item_inst, true);
 				return;
 			}
 
@@ -8105,8 +8059,7 @@ void Client::Handle_OP_GuildDemote(const EQApplicationPacket *app)
 
 	if (((strcasecmp(GetCleanName(), target) == 0 &&
 		guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_DEMOTE_SELF)) ||
-		((guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_DEMOTE)) ||
-		(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() <= GUILD_OFFICER)) &&
+		((guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_DEMOTE))) &&
 		gci.rank > GuildRank()))
 	{
 		if (!guild_mgr.SetGuildRank(gci.char_id, rank))
@@ -8165,34 +8118,13 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 
 	GuildCommand_Struct* gc = (GuildCommand_Struct*)app->pBuffer;
 	auto rank = gc->officer;
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF) {
-		switch (gc->officer) {
-			case GUILD_MEMBER_TI: {
-				rank = GUILD_MEMBER;
-				break;
-			}
-			case GUILD_OFFICER_TI: {
-				rank = GUILD_OFFICER;
-				break;
-			}
-			case GUILD_LEADER_TI: {
-				rank = GUILD_LEADER;
-				break;
-			}
-			default: {
-				rank = GUILD_RANK_NONE;
-				break;
-			}
-		}
-	}
 
 	if (!IsInAGuild()) {
 		Message(Chat::Red, "Error: You are not in a guild!");
 		return;
 	}
 
-	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_INVITE) ||
-			 (ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER)) {
+	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_INVITE)) {
 		Message(Chat::Red, "Invalid rank.");
 		return;
 	}
@@ -8216,8 +8148,7 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 			//they are already in this guild, must be a promotion or demotion
 			if (rank > client->GuildRank()) {
 				//demotion
-				if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_DEMOTE) ||
-					(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER)) {
+				if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_DEMOTE)) {
 					Message(Chat::Red, "You don't have permission to demote.");
 					return;
 				}
@@ -8239,8 +8170,7 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 			}
 			else if (rank < client->GuildRank()) {
 				//promotion
-				if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_PROMOTE) ||
-					(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER)
+				if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_PROMOTE)
 					) {
 					Message(Chat::Red, "You don't have permission to demote.");
 					return;
@@ -8262,23 +8192,7 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 				LogGuilds("Sending OP_GuildInvite for promotion to [{}], length [{}]", client->GetName(), app->size);
 
 				// Convert Membership Level between RoF and previous clients.
-				if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-					gc->officer = rank;
-					if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF &&
-						ClientVersion() < EQ::versions::ClientVersion::RoF) {
-						auto               outapp = new EQApplicationPacket(
-							OP_GuildPromote,
-							sizeof(GuildPromoteStruct));
-						GuildPromoteStruct *gps   = (GuildPromoteStruct *) outapp->pBuffer;
-						strn0cpy(gps->name, gc->myname, sizeof(gps->name));
-						strn0cpy(gps->target, gc->othername, sizeof(gps->target));
-						gps->myrank               = GuildRank();
-						gps->rank                 = rank;
-						Handle_OP_GuildPromote(outapp);
-						safe_delete(outapp);
-						return;
-					}
-				}
+				gc->officer = rank;
 				client->QueuePacket(app);
 			}
 			else {
@@ -8294,8 +8208,7 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 				return;
 			}
 
-			if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_INVITE) ||
-				(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER)) {
+			if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_INVITE)) {
 				Message(Chat::Red, "You don't have permission to invite.");
 				return;
 			}
@@ -8312,14 +8225,6 @@ void Client::Handle_OP_GuildInvite(const EQApplicationPacket *app)
 			}
 
 			// Convert Membership Level between RoF and previous clients.
-			if (client->ClientVersion() < EQ::versions::ClientVersion::RoF &&
-				ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				gc->officer = GUILD_MEMBER_TI;
-			}
-			if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF &&
-				ClientVersion() < EQ::versions::ClientVersion::RoF) {
-				gc->officer = GUILD_RECRUIT;
-			}
 
 			LogGuilds("Sending OP_GuildInvite for invite to [{}], length [{}]", client->GetName(), app->size);
 			client->SetPendingGuildInvitation(true);
@@ -8351,25 +8256,6 @@ void Client::Handle_OP_GuildInviteAccept(const EQApplicationPacket *app)
 	auto guild_id = gj->guild_id;
 	auto response = gj->response;
 
-	if (ClientVersion() < EQ::versions::ClientVersion::RoF) {
-		switch (response) {
-		case GUILD_MEMBER_TI:
-		{
-			response = GUILD_RECRUIT;
-			break;
-		}
-		case GUILD_OFFICER_TI:
-		{
-			response = GUILD_OFFICER;
-			break;
-		}
-		default:
-		{
-			response = GUILD_RANK_NONE;
-			break;
-		}
-		}
-	}
 
 	Client* c_invitor = entity_list.GetClientByName(invitor);
 	Client* c_invitee = entity_list.GetClientByName(invitee);
@@ -8559,8 +8445,7 @@ void Client::Handle_OP_GuildPromote(const EQApplicationPacket *app)
 	if (!IsInAGuild()) {
 		Message(Chat::Red, "Error: You aren't in a guild!");
 	}
-	else if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_PROMOTE) ||
-			 (ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER)) {
+	else if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_PROMOTE)) {
 		Message(Chat::Red, "You don't have permission to promote.");
 	}
 	else if (!worldserver.Connected()) {
@@ -8570,26 +8455,6 @@ void Client::Handle_OP_GuildPromote(const EQApplicationPacket *app)
 		auto promote = (GuildPromoteStruct *) app->pBuffer;
 
 		auto rank = promote->myrank;
-		if (ClientVersion() < EQ::versions::ClientVersion::RoF) {
-			switch (rank) {
-				case GUILD_MEMBER_TI: {
-					rank = GUILD_MEMBER;
-					break;
-				}
-				case GUILD_OFFICER_TI: {
-					rank = GUILD_OFFICER;
-					break;
-				}
-				case GUILD_LEADER_TI: {
-					rank = GUILD_LEADER;
-					break;
-				}
-				default: {
-					rank = GUILD_RANK_NONE;
-					break;
-				}
-			}
-		}
 
 		CharGuildInfo gci;
 		if (!guild_mgr.GetCharInfo(promote->target, gci)) {
@@ -8653,8 +8518,7 @@ void Client::Handle_OP_GuildPublicNote(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_EDIT_PUBLIC_NOTES) ||
-		(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER))
+	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_EDIT_PUBLIC_NOTES))
 	{
 		Message(Chat::Red, "You do not have access to update public guild notes.");
 		return;
@@ -8690,8 +8554,7 @@ void Client::Handle_OP_GuildRemove(const EQApplicationPacket *app)
 		Message(Chat::Red, "Error: You aren't in a guild!");
 	}
 	else if ((strcasecmp(gc->othername, GetName()) != 0 &&
-		!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_REMOVE)) ||
-		(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER) &&
+		!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_MEMBERS_REMOVE)) &&
 		strcasecmp(gc->othername, GetName()) != 0) {
 		Message(Chat::Red, "You don't have permission to remove guild members.");
 	}
@@ -9087,7 +8950,7 @@ void Client::Handle_OP_InspectRequest(const EQApplicationPacket *app)
 	Mob* tmp = entity_list.GetMob(ins->TargetID);
 
 	if (tmp != 0 && tmp->IsClient()) {
-		if (tmp->CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoF) { tmp->CastToClient()->QueuePacket(app); } // Send request to target
+		 // Send request to target
 																																   // Inspecting an SoF or later client will make the server handle the request
 		else { ProcessInspectRequest(tmp->CastToClient(), this); }
 	}
@@ -9739,7 +9602,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 			}
 			else
 			{
-				if (ClientVersion() >= EQ::versions::ClientVersion::SoD && !inst->IsEquipable(GetBaseRace(), GetClass()))
+				if (!inst->IsEquipable(GetBaseRace(), GetClass()))
 				{
 					if (item->ItemType != EQ::item::ItemTypeFood && item->ItemType != EQ::item::ItemTypeDrink && item->ItemType != EQ::item::ItemTypeAlcohol)
 					{
@@ -10529,14 +10392,14 @@ void Client::Handle_OP_MercenaryDataRequest(const EQApplicationPacket *app)
 			return;
 		}
 
-		mercTypeCount = tar->GetNumMercenaryTypes(static_cast<unsigned int>(ClientVersion()));
-		mercCount = tar->GetNumberOfMercenaries(static_cast<unsigned int>(ClientVersion()));
+		mercTypeCount = tar->GetNumMercenaryTypes();
+		mercCount = tar->GetNumberOfMercenaries();
 
 		if (mercCount > MAX_MERC)
 			return;
 
-		std::list<MercType> mercTypeList = tar->GetMercenaryTypesList(static_cast<unsigned int>(ClientVersion()));
-		std::list<MercData> mercDataList = tar->GetMercenariesList(static_cast<unsigned int>(ClientVersion()));
+		std::list<MercType> mercTypeList = tar->GetMercenaryTypesList();
+		std::list<MercData> mercDataList = tar->GetMercenariesList();
 
 		int i = 0;
 		int StanceCount = 0;
@@ -10860,120 +10723,114 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 {
 	// This packet is only sent from the client if we ctrl click items in inventory
-	if (m_ClientVersionBit & EQ::versions::maskRoF2AndLater) {
-		if (!CharacterID()) {
-			LinkDead();
-			return;
+	if (!CharacterID()) {
+		LinkDead();
+		return;
+	}
+
+	if (app->size < sizeof(MultiMoveItem_Struct)) {
+		LinkDead();
+		return; // Not enough data to be a valid packet
+	}
+
+	const MultiMoveItem_Struct* multi_move = reinterpret_cast<const MultiMoveItem_Struct*>(app->pBuffer);
+	if (app->size != sizeof(MultiMoveItem_Struct) + sizeof(MultiMoveItemSub_Struct) * multi_move->count) {
+		LinkDead();
+		return; // Packet size does not match expected size
+	}
+
+	const int16 from_parent = multi_move->moves[0].from_slot.Slot;
+	const int16 to_parent   = multi_move->moves[0].to_slot.Slot;
+
+	// CTRL + left click drops an item into a bag without opening it.
+	// This can be a bag, in which case it tries to fill the target bag with the contents of the bag on the cursor
+	// CTRL + right click swaps the contents of two bags if a bag is on your cursor and you ctrl-right click on another bag.
+
+	// We need to check if this is a swap or just an addition (left click or right click)
+	// Check if any component of this transaction is coming from anywhere other than the cursor
+	bool left_click = true;
+	for (int i = 0; i < multi_move->count; i++) {
+		if (multi_move->moves[i].from_slot.Slot != EQ::invslot::slotCursor) {
+			left_click = false;
 		}
+	}
 
-		if (app->size < sizeof(MultiMoveItem_Struct)) {
-			LinkDead();
-			return; // Not enough data to be a valid packet
-		}
-
-		const MultiMoveItem_Struct* multi_move = reinterpret_cast<const MultiMoveItem_Struct*>(app->pBuffer);
-		if (app->size != sizeof(MultiMoveItem_Struct) + sizeof(MultiMoveItemSub_Struct) * multi_move->count) {
-			LinkDead();
-			return; // Packet size does not match expected size
-		}
-
-		const int16 from_parent = multi_move->moves[0].from_slot.Slot;
-		const int16 to_parent   = multi_move->moves[0].to_slot.Slot;
-
-		// CTRL + left click drops an item into a bag without opening it.
-		// This can be a bag, in which case it tries to fill the target bag with the contents of the bag on the cursor
-		// CTRL + right click swaps the contents of two bags if a bag is on your cursor and you ctrl-right click on another bag.
-
-		// We need to check if this is a swap or just an addition (left click or right click)
-		// Check if any component of this transaction is coming from anywhere other than the cursor
-		bool left_click = true;
+	// This is a left click which is purely additive. This should always be cursor object or cursor bag contents into general\bank\whatever bag
+	if (left_click) {
 		for (int i = 0; i < multi_move->count; i++) {
-			if (multi_move->moves[i].from_slot.Slot != EQ::invslot::slotCursor) {
-				left_click = false;
+			MoveItem_Struct* mi = new MoveItem_Struct();
+			mi->from_slot 	= multi_move->moves[i].from_slot.SubIndex == -1 ? multi_move->moves[i].from_slot.Slot : m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot, multi_move->moves[i].from_slot.SubIndex);
+			mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot, multi_move->moves[i].to_slot.SubIndex);
+
+			if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
+				mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
+			} else if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
+				mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
 			}
+
+			// This sends '1' as the stack count for unstackable items, which our titanium-era SwapItem blows up
+			if (m_inv.GetItem(mi->from_slot)->IsStackable()) {
+				mi->number_in_stack = multi_move->moves[i].number_in_stack;
+			} else {
+				mi->number_in_stack = 0;
+			}
+
+			if (!SwapItem(mi) && IsValidSlot(mi->from_slot) && IsValidSlot(mi->to_slot)) {
+				bool error = false;
+				SwapItemResync(mi);
+				InterrogateInventory(this, false, true, false, error, false);
+				if (error) {
+					InterrogateInventory(this, true, false, true, error);
+				}
+			}
+			safe_delete(mi);
 		}
+	// This is the swap.
+	// Client behavior is just to move stacks without combining them
+	// Items get rearranged to fill the 'top' of the bag first
+	} else {
+		struct MoveInfo {
+			EQ::ItemInstance* item;
+			uint16 to_slot;
+		};
 
-		// This is a left click which is purely additive. This should always be cursor object or cursor bag contents into general\bank\whatever bag
-		if (left_click) {
-			for (int i = 0; i < multi_move->count; i++) {
-				MoveItem_Struct* mi = new MoveItem_Struct();
-				mi->from_slot 	= multi_move->moves[i].from_slot.SubIndex == -1 ? multi_move->moves[i].from_slot.Slot : m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot, multi_move->moves[i].from_slot.SubIndex);
-				mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot, multi_move->moves[i].to_slot.SubIndex);
+		std::vector<MoveInfo> items;
+		items.reserve(multi_move->count);
 
-				if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
-					mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
-				} else if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
-					mi->to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
-				}
-
-				// This sends '1' as the stack count for unstackable items, which our titanium-era SwapItem blows up
-				if (m_inv.GetItem(mi->from_slot)->IsStackable()) {
-					mi->number_in_stack = multi_move->moves[i].number_in_stack;
-				} else {
-					mi->number_in_stack = 0;
-				}
-
-				if (!SwapItem(mi) && IsValidSlot(mi->from_slot) && IsValidSlot(mi->to_slot)) {
-					bool error = false;
-					SwapItemResync(mi);
-					InterrogateInventory(this, false, true, false, error, false);
-					if (error) {
-						InterrogateInventory(this, true, false, true, error);
-					}
-				}
-				safe_delete(mi);
+		for (int i = 0; i < multi_move->count; i++) {
+			// These are always bags, so we don't need to worry about raw items in slotCursor
+			uint16 from_slot   = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot, multi_move->moves[i].from_slot.SubIndex);
+			if (multi_move->moves[i].from_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
+				from_slot = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].from_slot.SubIndex);
+			} else if (multi_move->moves[i].from_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
+				from_slot = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].from_slot.SubIndex);
 			}
-		// This is the swap.
-		// Client behavior is just to move stacks without combining them
-		// Items get rearranged to fill the 'top' of the bag first
-		} else {
-			struct MoveInfo {
-				EQ::ItemInstance* item;
-				uint16 to_slot;
+
+			uint16 to_slot   = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot, multi_move->moves[i].to_slot.SubIndex);
+			if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
+				to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
+			} else if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
+				to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
+			}
+
+			// I wasn't able to produce any error states on purpose.
+			MoveInfo move{
+				.item = m_inv.PopItem(from_slot), // Don't delete the instance here
+				.to_slot = to_slot
 			};
 
-			std::vector<MoveInfo> items;
-    		items.reserve(multi_move->count);
-
-			for (int i = 0; i < multi_move->count; i++) {
-				// These are always bags, so we don't need to worry about raw items in slotCursor
-				uint16 from_slot   = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot, multi_move->moves[i].from_slot.SubIndex);
-				if (multi_move->moves[i].from_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
-					from_slot = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].from_slot.SubIndex);
-				} else if (multi_move->moves[i].from_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
-					from_slot = m_inv.CalcSlotId(multi_move->moves[i].from_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].from_slot.SubIndex);
-				}
-
-				uint16 to_slot   = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot, multi_move->moves[i].to_slot.SubIndex);
-				if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeBank) { // Target is bank inventory
-					to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
-				} else if (multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank) { // Target is shared bank inventory
-					to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
-				}
-
-				// I wasn't able to produce any error states on purpose.
-				MoveInfo move{
-					.item = m_inv.PopItem(from_slot), // Don't delete the instance here
-					.to_slot = to_slot
-				};
-
-				if (move.item) {
-					items.push_back(move);
-					database.SaveInventory(CharacterID(), NULL, from_slot); // We have to manually save inventory here.
-				} else {
-					LinkDead();
-					return; // Prevent inventory desync here. Forcing a resync would be better, but we don't have a MoveItem struct to work with.
-				}
-			}
-
-			for (const MoveInfo& move : items) {
-				PutItemInInventory(move.to_slot, *move.item); // This saves inventory too
+			if (move.item) {
+				items.push_back(move);
+				database.SaveInventory(CharacterID(), NULL, from_slot); // We have to manually save inventory here.
+			} else {
+				LinkDead();
+				return; // Prevent inventory desync here. Forcing a resync would be better, but we don't have a MoveItem struct to work with.
 			}
 		}
 
-	} else {
-		LinkDead(); // This packet should not be sent by an older client
-		return;
+		for (const MoveInfo& move : items) {
+			PutItemInInventory(move.to_slot, *move.item); // This saves inventory too
+		}
 	}
 }
 
@@ -11420,19 +11277,14 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC()) {
 			if (mypet->IsHeld())
 			{
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_HOLD_SET_OFF);
+				MessageString(Chat::PetResponse, PET_HOLD_SET_OFF);
 				mypet->SetHeld(false);
 			}
 			else
 			{
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_HOLD_SET_ON);
+				MessageString(Chat::PetResponse, PET_HOLD_SET_ON);
 
-				if (m_ClientVersionBit & EQ::versions::maskUFAndLater)
-					mypet->SayString(this, Chat::PetResponse, PET_NOW_HOLDING);
-				else
-					mypet->SayString(this, Chat::PetResponse, PET_ON_HOLD);
+				mypet->SayString(this, Chat::PetResponse, PET_NOW_HOLDING);
 
 				mypet->SetHeld(true);
 			}
@@ -11443,13 +11295,9 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 	}
 	case PET_HOLD_ON: {
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC() && !mypet->IsHeld()) {
-			if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-				MessageString(Chat::PetResponse, PET_HOLD_SET_ON);
+			MessageString(Chat::PetResponse, PET_HOLD_SET_ON);
 
-			if (m_ClientVersionBit & EQ::versions::maskUFAndLater)
-				mypet->SayString(this, Chat::PetResponse, PET_NOW_HOLDING);
-			else
-				mypet->SayString(this, Chat::PetResponse, PET_ON_HOLD);
+			mypet->SayString(this, Chat::PetResponse, PET_NOW_HOLDING);
 			mypet->SetHeld(true);
 			mypet->SetGHeld(false);
 			SetPetCommandState(PET_BUTTON_GHOLD, 0);
@@ -11458,8 +11306,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 	}
 	case PET_HOLD_OFF: {
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC() && mypet->IsHeld()) {
-			if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-				MessageString(Chat::PetResponse, PET_HOLD_SET_OFF);
+			MessageString(Chat::PetResponse, PET_HOLD_SET_OFF);
 			mypet->SetHeld(false);
 		}
 		break;
@@ -11468,18 +11315,13 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC()) {
 			if (mypet->IsGHeld())
 			{
-				if (m_ClientVersionBit & EQ::versions::maskUFAndLater)
-					MessageString(Chat::PetResponse, PET_OFF_GHOLD);
+				MessageString(Chat::PetResponse, PET_OFF_GHOLD);
 				mypet->SetGHeld(false);
 			}
 			else
 			{
-				if (m_ClientVersionBit & EQ::versions::maskUFAndLater) {
-					MessageString(Chat::PetResponse, PET_ON_GHOLD);
-					mypet->SayString(this, Chat::PetResponse, PET_GHOLD_ON_MSG);
-				} else {
-					mypet->SayString(this, Chat::PetResponse, PET_ON_HOLD);
-				}
+				MessageString(Chat::PetResponse, PET_ON_GHOLD);
+				mypet->SayString(this, Chat::PetResponse, PET_GHOLD_ON_MSG);
 				mypet->SetGHeld(true);
 			}
 			mypet->SetHeld(false);
@@ -11489,12 +11331,8 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 	}
 	case PET_GHOLD_ON: {
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC()) {
-			if (m_ClientVersionBit & EQ::versions::maskUFAndLater) {
-				MessageString(Chat::PetResponse, PET_ON_GHOLD);
-				mypet->SayString(this, Chat::PetResponse, PET_GHOLD_ON_MSG);
-			} else {
-				mypet->SayString(this, Chat::PetResponse, PET_ON_HOLD);
-			}
+			MessageString(Chat::PetResponse, PET_ON_GHOLD);
+			mypet->SayString(this, Chat::PetResponse, PET_GHOLD_ON_MSG);
 			mypet->SetGHeld(true);
 			mypet->SetHeld(false);
 			SetPetCommandState(PET_BUTTON_HOLD, 0);
@@ -11503,8 +11341,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 	}
 	case PET_GHOLD_OFF: {
 		if (aabonuses.PetCommands[PetCommand] && mypet->IsNPC() && mypet->IsGHeld()) {
-			if (m_ClientVersionBit & EQ::versions::maskUFAndLater)
-				MessageString(Chat::PetResponse, PET_OFF_GHOLD);
+			MessageString(Chat::PetResponse, PET_OFF_GHOLD);
 			mypet->SetGHeld(false);
 		}
 		break;
@@ -11515,14 +11352,12 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (mypet->IsNoCast()) {
 				MessageString(Chat::PetResponse, PET_CASTING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_OFF);
+				MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_OFF);
 				mypet->SetNoCast(false);
 			}
 			else {
 				MessageString(Chat::PetResponse, PET_NOT_CASTING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_ON);
+				MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_ON);
 				mypet->SetNoCast(true);
 			}
 		}
@@ -11534,8 +11369,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (!mypet->IsNoCast()) {
 				MessageString(Chat::PetResponse, PET_NOT_CASTING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_ON);
+				MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_ON);
 				mypet->SetNoCast(true);
 			}
 		}
@@ -11547,8 +11381,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (mypet->IsNoCast()) {
 				MessageString(Chat::PetResponse, PET_CASTING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_OFF);
+				MessageString(Chat::PetResponse, PET_SPELLHOLD_SET_OFF);
 				mypet->SetNoCast(false);
 			}
 		}
@@ -11560,14 +11393,12 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (mypet->IsFocused()) {
 				MessageString(Chat::PetResponse, PET_NOT_FOCUSING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_FOCUS_SET_OFF);
+				MessageString(Chat::PetResponse, PET_FOCUS_SET_OFF);
 				mypet->SetFocused(false);
 			}
 			else {
 				MessageString(Chat::PetResponse, PET_NOW_FOCUSING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_FOCUS_SET_ON);
+				MessageString(Chat::PetResponse, PET_FOCUS_SET_ON);
 				mypet->SetFocused(true);
 			}
 		}
@@ -11579,8 +11410,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (!mypet->IsFocused()) {
 				MessageString(Chat::PetResponse, PET_NOW_FOCUSING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_FOCUS_SET_ON);
+				MessageString(Chat::PetResponse, PET_FOCUS_SET_ON);
 				mypet->SetFocused(true);
 			}
 		}
@@ -11592,8 +11422,7 @@ void Client::Handle_OP_PetCommands(const EQApplicationPacket *app)
 				break;
 			if (mypet->IsFocused()) {
 				MessageString(Chat::PetResponse, PET_NOT_FOCUSING);
-				if (m_ClientVersionBit & EQ::versions::maskSoDAndLater)
-					MessageString(Chat::PetResponse, PET_FOCUS_SET_OFF);
+				MessageString(Chat::PetResponse, PET_FOCUS_SET_OFF);
 				mypet->SetFocused(false);
 			}
 		}
@@ -12224,32 +12053,7 @@ void Client::Handle_OP_QueryUCSServerStatus(const EQApplicationPacket *app)
 		std::string buffer;
 
 		std::string MailKey = GetMailKey();
-		EQ::versions::UCSVersion ConnectionType = EQ::versions::ucsUnknown;
-
-		// chat server packet
-		switch (ClientVersion()) {
-		case EQ::versions::ClientVersion::Titanium:
-			ConnectionType = EQ::versions::ucsTitaniumChat;
-			break;
-		case EQ::versions::ClientVersion::SoF:
-			ConnectionType = EQ::versions::ucsSoFCombined;
-			break;
-		case EQ::versions::ClientVersion::SoD:
-			ConnectionType = EQ::versions::ucsSoDCombined;
-			break;
-		case EQ::versions::ClientVersion::UF:
-			ConnectionType = EQ::versions::ucsUFCombined;
-			break;
-		case EQ::versions::ClientVersion::RoF:
-			ConnectionType = EQ::versions::ucsRoFCombined;
-			break;
-		case EQ::versions::ClientVersion::RoF2:
-			ConnectionType = EQ::versions::ucsRoF2Combined;
-			break;
-		default:
-			ConnectionType = EQ::versions::ucsUnknown;
-			break;
-		}
+		const EQ::versions::UCSVersion ConnectionType = EQ::versions::ucsRoF2Combined;
 
 		buffer = StringFormat("%s,%i,%s.%s,%c%s",
 			Config->GetUCSHost().c_str(),
@@ -12266,16 +12070,6 @@ void Client::Handle_OP_QueryUCSServerStatus(const EQApplicationPacket *app)
 
 		QueuePacket(outapp);
 		safe_delete(outapp);
-
-		// mail server packet
-		switch (ClientVersion()) {
-		case EQ::versions::ClientVersion::Titanium:
-			ConnectionType = EQ::versions::ucsTitaniumMail;
-			break;
-		default:
-			// retain value from previous switch
-			break;
-		}
 
 		buffer = StringFormat("%s,%i,%s.%s,%c%s",
 			Config->GetUCSHost().c_str(),
@@ -13102,10 +12896,8 @@ void Client::Handle_OP_ReadBook(const EQApplicationPacket *app)
 	auto b = (BookRequest_Struct*) app->pBuffer;
 	ReadBook(b);
 
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		EQApplicationPacket end_of_book(OP_FinishWindow, 0);
-		QueuePacket(&end_of_book);
-	}
+	EQApplicationPacket end_of_book(OP_FinishWindow, 0);
+	QueuePacket(&end_of_book);
 }
 
 void Client::Handle_OP_RecipeAutoCombine(const EQApplicationPacket *app)
@@ -13349,9 +13141,7 @@ void Client::Handle_OP_ReloadUI(const EQApplicationPacket *app)
 	{
 		SendGuildRanks();
 		SendGuildMembers();
-		if (ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-			SendGuildRankNames();
-		}
+		SendGuildRankNames();
 	}
 	return;
 }
@@ -13782,8 +13572,7 @@ void Client::Handle_OP_SetGuildMOTD(const EQApplicationPacket *app)
 		Message(Chat::Red, "You are not in a guild!");
 		return;
 	}
-	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_CHANGE_THE_MOTD) ||
-		(ClientVersion() < EQ::versions::ClientVersion::RoF && GuildRank() > GUILD_OFFICER))
+	if (!guild_mgr.CheckPermission(GuildID(), GuildRank(), GUILD_ACTION_CHANGE_THE_MOTD))
 	{
 		Message(Chat::Red, "You do not have permissions to edit your guild's MOTD.");
 		return;
@@ -14495,7 +14284,7 @@ void Client::Handle_OP_ShopRequest(const EQApplicationPacket *app)
 
 	merchant_id = tmp->CastToNPC()->MerchantType;
 
-	if (ClientVersion() == EQ::versions::ClientVersion::RoF2 && tmp->CastToNPC()->GetParcelMerchant()) {
+	if (tmp->CastToNPC()->GetParcelMerchant()) {
 		tabs_to_display = SellBuyParcel;
 	}
 	else {
@@ -14663,11 +14452,6 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 		{
 			if (!HasSkill(EQ::skills::SkillHide) && GetSkill(EQ::skills::SkillHide) == 0)
 			{
-				if (ClientVersion() < EQ::versions::ClientVersion::SoF)
-				{
-					auto message = fmt::format("Player sent OP_SpawnAppearance with AppearanceType::Invisibility [{}]", sa->parameter);
-					RecordPlayerEventLog(PlayerEvent::POSSIBLE_HACK, PlayerEvent::PossibleHackEvent{.message = message});
-				}
 			}
 			return;
 		}

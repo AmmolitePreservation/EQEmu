@@ -83,10 +83,7 @@ EQ::skills::SkillType Mob::AttackAnimation(int Hand, const EQ::ItemInstance* wea
 			type = RuleB(Combat, Classic2HBAnimation) ? anim2HWeapon : anim2HSlashing;
 			break;
 		case EQ::item::ItemType2HPiercing: // 2H Piercing
-			if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2)
-				skillinuse = EQ::skills::Skill1HPiercing;
-			else
-				skillinuse = EQ::skills::Skill2HPiercing;
+			skillinuse = EQ::skills::Skill2HPiercing;
 			type = anim2HWeapon;
 			break;
 		case EQ::item::ItemTypeMartial:
@@ -2060,7 +2057,7 @@ bool Client::Death(Mob* killer_mob, int64 damage, uint16 spell, EQ::skills::Skil
 		}
 
 		if (RuleB(Character, UnmemSpellsOnDeath)) {
-			if ((ClientVersionBit() & EQ::versions::maskSoFAndLater) && RuleB(Character, RespawnFromHover)) {
+			if (RuleB(Character, RespawnFromHover)) {
 				UnmemSpellAll(true);
 			} else {
 				UnmemSpellAll(false);
@@ -2137,7 +2134,7 @@ bool Client::Death(Mob* killer_mob, int64 damage, uint16 spell, EQ::skills::Skil
 	from these and overwrite what we set in pp anyway
 	*/
 
-	if (leave_corpse && (ClientVersionBit() & EQ::versions::maskSoFAndLater) && RuleB(Character, RespawnFromHover)) {
+	if (leave_corpse && RuleB(Character, RespawnFromHover)) {
 		ClearDraggedCorpses();
 		RespawnFromHoverTimer.Start(RuleI(Character, RespawnFromHoverTimer) * 1000);
 		SendRespawnBinds();
@@ -4792,33 +4789,20 @@ void Mob::HealDamage(uint64 amount, Mob* caster, uint16 spell_id)
 			if (IsBuffSpell(spell_id)) { // hots
 				// message to caster
 				if ((caster->IsClient() && caster == this)) {
-					if (caster->CastToClient()->ClientVersionBit() & EQ::versions::maskSoFAndLater) {
-						FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
-							HOT_HEAL_SELF, itoa(acthealed), spells[spell_id].name);
-					}
-					else
-						FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
-							YOU_HEALED, GetCleanName(), itoa(acthealed));
+					FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
+						HOT_HEAL_SELF, itoa(acthealed), spells[spell_id].name);
 				}
 				else if ((caster->IsClient() && caster != this)) {
-					if (caster->CastToClient()->ClientVersionBit() & EQ::versions::maskSoFAndLater)
-						caster->FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
+					caster->FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
 							HOT_HEAL_OTHER, GetCleanName(), itoa(acthealed),
 							spells[spell_id].name);
-					else
-						caster->FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
-							YOU_HEAL, GetCleanName(), itoa(acthealed));
 				}
 
 				// message to target
 				if (IsClient() && caster != this) {
-					if (CastToClient()->ClientVersionBit() & EQ::versions::maskSoFAndLater)
-						FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
+					FilteredMessageString(caster, Chat::NonMelee, FilterHealOverTime,
 							HOT_HEALED_OTHER, caster->GetCleanName(),
 							itoa(acthealed), spells[spell_id].name);
-					else
-						FilteredMessageString(this, Chat::NonMelee, FilterHealOverTime,
-							YOU_HEALED, caster->GetCleanName(), itoa(acthealed));
 				}
 			}
 			else { // normal heals

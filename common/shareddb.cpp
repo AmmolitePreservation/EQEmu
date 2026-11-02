@@ -713,26 +713,22 @@ bool SharedDatabase::GetInventory(Client *c)
 		};
 
 		if (EQ::ValueWithin(slot_id, EQ::invslot::POSSESSIONS_BEGIN, EQ::invslot::POSSESSIONS_END)) {
-			// Titanium thru UF check
 			if (((static_cast<uint64>(1) << slot_id) & pmask) == 0) {
 				cv_conflict = true;
 				continue;
 			}
 		} else if (EQ::ValueWithin(slot_id, EQ::invbag::GENERAL_BAGS_BEGIN, EQ::invbag::GENERAL_BAGS_END)) {
-			// Titanium thru UF check
 			const auto parent_slot = EQ::invslot::GENERAL_BEGIN + ((slot_id - EQ::invbag::GENERAL_BAGS_BEGIN) / EQ::invbag::SLOT_COUNT);
 			if (((static_cast<uint64>(1) << parent_slot) & pmask) == 0) {
 				cv_conflict = true;
 				continue;
 			}
 		} else if (EQ::ValueWithin(slot_id, EQ::invslot::BANK_BEGIN, EQ::invslot::BANK_END)) {
-			// Titanium check
 			if ((slot_id - EQ::invslot::BANK_BEGIN) >= bank_size) {
 				cv_conflict = true;
 				continue;
 			}
 		} else if (EQ::ValueWithin(slot_id, EQ::invbag::BANK_BAGS_BEGIN, EQ::invbag::BANK_BAGS_END)) {
-			// Titanium check
 			const auto parent_index = ((slot_id - EQ::invbag::BANK_BAGS_BEGIN) / EQ::invbag::SLOT_COUNT);
 			if (parent_index >= bank_size) {
 				cv_conflict = true;

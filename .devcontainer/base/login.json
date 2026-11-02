@@ -29,8 +29,6 @@
 		"dump_packets_out": false
 	},
 	"client_configuration": {
-		"titanium_port": 5998,
-		"titanium_opcodes": "assets/patches/login_opcodes.conf",
 		"sod_port": 5999,
 		"sod_opcodes": "assets/patches/login_opcodes_sod.conf"
 	}

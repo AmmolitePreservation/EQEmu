@@ -50,9 +50,6 @@ void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **o
 	}
 
 	// Force Titanium clients to use '8'
-	if (client_version == EQ::versions::ClientVersion::Titanium) {
-		character_limit = 8;
-	}
 
 	auto characters = CharacterDataRepository::GetWhere(
 		database,
@@ -499,17 +496,11 @@ int WorldDatabase::MoveCharacterToInstanceSafeReturn(
 
 bool WorldDatabase::GetStartZone(
 	PlayerProfile_Struct *pp,
-	CharCreate_Struct *p_char_create_struct,
-	bool is_titanium
+	CharCreate_Struct *p_char_create_struct
 )
 {
-	// SoF doesn't send the player_choice field in character creation, it now sends the real zoneID instead.
-	//
-	// For SoF, search for an entry in start_zones with a matching zone_id, class, race and deity.
-	//
-	// For now, if no row matching row is found, send them to Crescent Reach, as that is probably the most likely
-	// reason for no match being found.
-	//
+	// The client sends the start zone's id; the row is matched by zone, class, deity and race, and a character with
+	// no row goes to Crescent Reach.
 	if (!pp || !p_char_create_struct) {
 		return false;
 	}
@@ -525,45 +516,26 @@ bool WorldDatabase::GetStartZone(
 	pp->binds[0].zone_id     = 0;
 	pp->binds[0].instance_id = 0;
 
-	// see if we have an entry for start_zone. We can support both titanium & SOF+ by having two entries per class/race/deity combo with different zone_ids
-	std::string query;
+	const std::string query = StringFormat(
+		"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE zone_id = %i "
+		"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
+		p_char_create_struct->start_zone,
+		p_char_create_struct->class_,
+		p_char_create_struct->deity,
+		p_char_create_struct->race,
+		ContentFilterCriteria::apply().c_str()
+	);
 
-	if (is_titanium) {
-		// Titanium sends player choice (starting city) instead of a zone id
-		query = StringFormat(
-			"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE player_choice = %i "
-			"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
-			p_char_create_struct->start_zone,
-			p_char_create_struct->class_,
-			p_char_create_struct->deity,
-			p_char_create_struct->race,
-			ContentFilterCriteria::apply().c_str()
-		);
-		LogInfo("Titanium Start zone query: [{}]\n", query.c_str());
-	}
-	else {
-		query = StringFormat(
-			"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE zone_id = %i "
-			"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
-			p_char_create_struct->start_zone,
-			p_char_create_struct->class_,
-			p_char_create_struct->deity,
-			p_char_create_struct->race,
-			ContentFilterCriteria::apply().c_str()
-		);
-		LogInfo("SoF Start zone query: [{}]\n", query.c_str());
-	}
-
-    auto results = QueryDatabase(query);
+	auto results = QueryDatabase(query);
 	if(!results.Success()) {
 		return false;
 	}
 
-	LogInfo("SoF Start zone query: [{}]\n", query.c_str());
+	LogInfo("Start zone query: [{}]", query.c_str());
 
 	if (results.RowCount() == 0) {
 		printf("No start_zones entry in database, using defaults\n");
-		is_titanium ? SetTitaniumDefaultStartZone(pp, p_char_create_struct) : SetSoFDefaultStartZone(pp, p_char_create_struct);
+		SetDefaultStartZone(pp, p_char_create_struct);
     }
     else {
 		LogInfo("Found starting location in start_zones");
@@ -613,10 +585,10 @@ bool WorldDatabase::GetStartZone(
 	return true;
 }
 
-void WorldDatabase::SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc){
-	int sof_start_zone_id = RuleI(World, SoFStartZoneID);
-	if (sof_start_zone_id > 0) {
-			in_pp->zone_id = sof_start_zone_id;
+void WorldDatabase::SetDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc){
+	int start_zone_id = RuleI(World, StartZoneID);
+	if (start_zone_id > 0) {
+			in_pp->zone_id = start_zone_id;
 			in_cc->start_zone = in_pp->zone_id;
 	}
 	else if (in_cc->start_zone == RuleI(World, TutorialZoneID)) {
@@ -628,117 +600,6 @@ void WorldDatabase::SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCrea
 		in_pp->z = in_pp->binds[0].z = 0.79f;
 		in_pp->heading = in_pp->binds[0].heading = 0.0f;
 		in_pp->zone_id = in_pp->binds[0].zone_id = Zones::CRESCENT; // Crescent Reach.
-	}
-}
-
-void WorldDatabase::SetTitaniumDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc)
-{
-	int titanium_start_zone_id = RuleI(World, TitaniumStartZoneID);
-	if (titanium_start_zone_id > 0) {
-		in_pp->zone_id = titanium_start_zone_id;
-		in_pp->binds[0].zone_id = titanium_start_zone_id;
-	} else {
-		switch (in_cc->start_zone)
-		{
-			case StartZoneIndex::Odus:
-			{
-				if (in_cc->deity == Deity::CazicThule) // Cazic-Thule Erudites go to Paineel
-				{
-					in_pp->zone_id = Zones::PAINEEL; // paineel
-					in_pp->binds[0].zone_id = Zones::PAINEEL;
-				}
-				else
-				{
-					in_pp->zone_id = Zones::ERUDNEXT;	// erudnext
-					in_pp->binds[0].zone_id = Zones::TOX;	// tox
-				}
-				break;
-			}
-			case StartZoneIndex::Qeynos:
-			{
-				in_pp->zone_id = Zones::QEYNOS2;	// qeynos2
-				in_pp->binds[0].zone_id = Zones::QEYNOS2;	// qeynos2
-				break;
-			}
-			case StartZoneIndex::Halas:
-			{
-				in_pp->zone_id = Zones::HALAS;	// halas
-				in_pp->binds[0].zone_id = Zones::EVERFROST;	// everfrost
-				break;
-			}
-			case StartZoneIndex::Rivervale:
-			{
-				in_pp->zone_id = Zones::RIVERVALE;	// rivervale
-				in_pp->binds[0].zone_id = Zones::KITHICOR;	// kithicor
-				break;
-			}
-			case StartZoneIndex::Freeport:
-			{
-				in_pp->zone_id = Zones::FREPORTW;	// freportw
-				in_pp->binds[0].zone_id = Zones::FREPORTW;	// freportw
-				break;
-			}
-			case StartZoneIndex::Neriak:
-			{
-				in_pp->zone_id = Zones::NERIAKA;	// neriaka
-				in_pp->binds[0].zone_id = Zones::NEKTULOS;	// nektulos
-				break;
-			}
-			case StartZoneIndex::Grobb:
-			{
-				in_pp->zone_id = Zones::GROBB;	// grobb
-				in_pp->binds[0].zone_id = Zones::INNOTHULE;	// innothule
-				break;
-			}
-			case StartZoneIndex::Oggok:
-			{
-				in_pp->zone_id = Zones::OGGOK;	// oggok
-				in_pp->binds[0].zone_id = Zones::FEERROTT;	// feerrott
-				break;
-			}
-			case StartZoneIndex::Kaladim:
-			{
-				in_pp->zone_id = Zones::KALADIMA;	// kaladima
-				in_pp->binds[0].zone_id = Zones::BUTCHER;	// butcher
-				break;
-			}
-			case StartZoneIndex::GreaterFaydark:
-			{
-				in_pp->zone_id = Zones::GFAYDARK;	// gfaydark
-				in_pp->binds[0].zone_id = Zones::GFAYDARK;	// gfaydark
-				break;
-			}
-			case StartZoneIndex::Felwithe:
-			{
-				in_pp->zone_id = Zones::FELWITHEA;	// felwithea
-				in_pp->binds[0].zone_id = Zones::GFAYDARK;	// gfaydark
-				break;
-			}
-			case StartZoneIndex::Akanon:
-			{
-				in_pp->zone_id = Zones::AKANON;	// akanon
-				in_pp->binds[0].zone_id = Zones::STEAMFONT;	// steamfont
-				break;
-			}
-			case StartZoneIndex::Cabilis:
-			{
-				in_pp->zone_id = Zones::CABWEST;	// cabwest
-				in_pp->binds[0].zone_id = Zones::FIELDOFBONE;	// fieldofbone
-				break;
-			}
-			case StartZoneIndex::SharVahl:
-			{
-				in_pp->zone_id = Zones::SHARVAHL;	// sharvahl
-				in_pp->binds[0].zone_id = Zones::SHARVAHL;	// sharvahl
-				break;
-			}
-			case StartZoneIndex::RatheMtn:
-			{
-				in_pp->zone_id = Zones::RATHEMTN;	// rathemtn
-				in_pp->binds[0].zone_id = Zones::RATHEMTN;	// rathemtn
-				break;
-			}
-		}
 	}
 }
 

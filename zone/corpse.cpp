@@ -313,7 +313,7 @@ Corpse::Corpse(Client *c, int32 rez_exp, KilledByTypes in_killed_by) : Mob(
 		// cash
 		// Let's not move the cash when 'RespawnFromHover = true' && 'client->GetClientVersion() < EQClientSoF' since the client doesn't.
 		// (change to first client that supports 'death hover' mode, if not SoF.)
-		if (!RuleB(Character, RespawnFromHover) || c->ClientVersion() < EQ::versions::ClientVersion::SoF) {
+		if (!RuleB(Character, RespawnFromHover)) {
 			auto corpse_copper   = pp->copper;
 			auto corpse_silver   = pp->silver;
 			auto corpse_gold     = pp->gold;
@@ -1406,9 +1406,7 @@ void Corpse::MakeLootRequestPackets(Client *c, const EQApplicationPacket *app)
 
 	// This is required for the 'Loot All' feature to work for SoD clients. I expect it is to tell the client that the
 	// server has now sent all the items on the corpse.
-	if (c->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-		SendLootReqErrorPacket(c, LootResponse::LootAll);
-	}
+	SendLootReqErrorPacket(c, LootResponse::LootAll);
 }
 
 void Corpse::LootCorpseItem(Client *c, const EQApplicationPacket *app)

@@ -8,30 +8,6 @@ extern bool        run_server;
 #include "../common/path_manager.h"
 #include "../common/file.h"
 
-void CheckTitaniumOpcodeFile(const std::string &path)
-{
-	if (File::Exists(path)) {
-		return;
-	}
-
-	auto f = fopen(path.c_str(), "w");
-	if (f) {
-		fprintf(f, "#EQEmu Public Login Server OPCodes\n");
-		fprintf(f, "OP_SessionReady=0x0001\n");
-		fprintf(f, "OP_Login=0x0002\n");
-		fprintf(f, "OP_ServerListRequest=0x0004\n");
-		fprintf(f, "OP_PlayEverquestRequest=0x000d\n");
-		fprintf(f, "OP_PlayEverquestResponse=0x0021\n");
-		fprintf(f, "OP_ChatMessage=0x0016\n");
-		fprintf(f, "OP_LoginAccepted=0x0017\n");
-		fprintf(f, "OP_ServerListResponse=0x0018\n");
-		fprintf(f, "OP_Poll=0x0029\n");
-		fprintf(f, "OP_EnterChat=0x000f\n");
-		fprintf(f, "OP_PollResponse=0x0011\n");
-		fclose(f);
-	}
-}
-
 void CheckSoDOpcodeFile(const std::string &path)
 {
 	if (File::Exists(path)) {
@@ -85,44 +61,6 @@ void CheckLarionOpcodeFile(const std::string &path)
 
 ClientManager::ClientManager()
 {
-	int titanium_port = server.config.GetVariableInt("client_configuration", "titanium_port", 5998);
-
-	EQStreamManagerInterfaceOptions titanium_opts(titanium_port, false, false);
-
-	m_titanium_stream = new EQ::Net::EQStreamManager(titanium_opts);
-	m_titanium_ops    = new RegularOpcodeManager;
-
-	std::string opcodes_path = fmt::format(
-		"{}/{}",
-		PathManager::Instance()->GetOpcodePath(),
-		"login_opcodes.conf"
-	);
-
-	CheckTitaniumOpcodeFile(opcodes_path);
-
-	if (!m_titanium_ops->LoadOpcodes(opcodes_path.c_str())) {
-		LogError(
-			"ClientManager fatal error: couldn't load opcodes for Titanium file [{}]",
-			server.config.GetVariableString("client_configuration", "titanium_opcodes", "login_opcodes.conf")
-		);
-
-		run_server = false;
-	}
-
-	m_titanium_stream->OnNewConnection(
-		[this](std::shared_ptr<EQ::Net::EQStream> stream) {
-			LogInfo(
-				"New Titanium client connection from [{}:{}]",
-				long2ip(stream->GetRemoteIP()),
-				stream->GetRemotePort()
-			);
-
-			stream->SetOpcodeManager(&m_titanium_ops);
-			Client *c = new Client(stream, cv_titanium);
-			m_clients.push_back(c);
-		}
-	);
-
 	int sod_port = server.config.GetVariableInt("client_configuration", "sod_port", 5999);
 
 	EQStreamManagerInterfaceOptions sod_opts(sod_port, false, false);
@@ -201,8 +139,6 @@ ClientManager::ClientManager()
 
 ClientManager::~ClientManager()
 {
-	delete m_titanium_stream;
-	delete m_titanium_ops;
 	delete m_sod_stream;
 	delete m_sod_ops;
 }

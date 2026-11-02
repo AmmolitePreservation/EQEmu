@@ -1198,10 +1198,7 @@ EQ::skills::SkillType Mob::TuneAttackAnimation(int Hand, const EQ::ItemInstance*
 			type = RuleB(Combat, Classic2HBAnimation) ? anim2HWeapon : anim2HSlashing;
 			break;
 		case EQ::item::ItemType2HPiercing: // 2H Piercing
-			if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2)
-				skillinuse = EQ::skills::Skill1HPiercing;
-			else
-				skillinuse = EQ::skills::Skill2HPiercing;
+			skillinuse = EQ::skills::Skill2HPiercing;
 			type = anim2HWeapon;
 			break;
 		case EQ::item::ItemTypeMartial:

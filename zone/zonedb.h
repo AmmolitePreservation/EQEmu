@@ -233,7 +233,6 @@ struct MercTemplate {
 	uint8	ProficiencyID;
 	uint8	TierID;
 	uint8	CostFormula;			// To determine cost to client
-	uint32	ClientVersion;				// Only send valid mercs per expansion
 	uint8	MercNameType;			// Determines if merc gets random name or default text
 	char	MercNamePrefix[25];
 	char	MercNameSuffix[25];

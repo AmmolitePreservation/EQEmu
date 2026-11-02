@@ -50,60 +50,6 @@ static const EQ::constants::LookupEntry constants_static_lookup_entries[EQ::vers
 		ClientUnknown::INULL,
 		ClientUnknown::INULL
 	),
-	/*[ClientVersion::Client62] =*/
-	EQ::constants::LookupEntry(
-		Client62::constants::EXPANSION,
-		Client62::constants::EXPANSION_BIT,
-		Client62::constants::EXPANSIONS_MASK,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL
-	),
-	/*[ClientVersion::Titanium] =*/
-	EQ::constants::LookupEntry(
-		Titanium::constants::EXPANSION,
-		Titanium::constants::EXPANSION_BIT,
-		Titanium::constants::EXPANSIONS_MASK,
-		Titanium::constants::CHARACTER_CREATION_LIMIT,
-		Titanium::constants::SAY_LINK_BODY_SIZE,
-		Titanium::INULL
-	),
-	/*[ClientVersion::SoF] =*/
-	EQ::constants::LookupEntry(
-		SoF::constants::EXPANSION,
-		SoF::constants::EXPANSION_BIT,
-		SoF::constants::EXPANSIONS_MASK,
-		SoF::constants::CHARACTER_CREATION_LIMIT,
-		SoF::constants::SAY_LINK_BODY_SIZE,
-		SoF::INULL
-	),
-	/*[ClientVersion::SoD] =*/
-	EQ::constants::LookupEntry(
-		SoD::constants::EXPANSION,
-		SoD::constants::EXPANSION_BIT,
-		SoD::constants::EXPANSIONS_MASK,
-		SoD::constants::CHARACTER_CREATION_LIMIT,
-		SoD::constants::SAY_LINK_BODY_SIZE,
-		SoD::INULL
-	),
-	/*[ClientVersion::UF] =*/
-	EQ::constants::LookupEntry(
-		UF::constants::EXPANSION,
-		UF::constants::EXPANSION_BIT,
-		UF::constants::EXPANSIONS_MASK,
-		UF::constants::CHARACTER_CREATION_LIMIT,
-		UF::constants::SAY_LINK_BODY_SIZE,
-		UF::INULL
-	),
-	/*[ClientVersion::RoF] =*/
-	EQ::constants::LookupEntry(
-		RoF::constants::EXPANSION,
-		RoF::constants::EXPANSION_BIT,
-		RoF::constants::EXPANSIONS_MASK,
-		RoF::constants::CHARACTER_CREATION_LIMIT,
-		RoF::constants::SAY_LINK_BODY_SIZE,
-		RoF::INULL
-	),
 	/*[ClientVersion::RoF2] =*/
 	EQ::constants::LookupEntry(
 		RoF2::constants::EXPANSION,
@@ -188,168 +134,6 @@ static const EQ::inventory::LookupEntry inventory_static_lookup_entries[EQ::vers
 		false,
 		false,
 		false
-	),
-	/*[MobVersion::Client62] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL,
-			Client62::INULL, Client62::INULL, Client62::INULL
-		),
-
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-
-		false,
-		false,
-		false,
-		false
-	),
-	/*[MobVersion::Titanium] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			EQ::invtype::POSSESSIONS_SIZE,		Titanium::invtype::BANK_SIZE,			Titanium::invtype::SHARED_BANK_SIZE,
-			Titanium::invtype::TRADE_SIZE,			Titanium::invtype::WORLD_SIZE,			Titanium::invtype::LIMBO_SIZE,
-			Titanium::invtype::TRIBUTE_SIZE,		Titanium::INULL,						Titanium::invtype::GUILD_TRIBUTE_SIZE,
-			Titanium::invtype::MERCHANT_SIZE,		Titanium::INULL,						Titanium::invtype::CORPSE_SIZE,
-			Titanium::invtype::BAZAAR_SIZE,			Titanium::invtype::INSPECT_SIZE,		Titanium::INULL,
-			Titanium::invtype::VIEW_MOD_PC_SIZE,	Titanium::invtype::VIEW_MOD_BANK_SIZE,	Titanium::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			Titanium::invtype::VIEW_MOD_LIMBO_SIZE,	Titanium::invtype::ALT_STORAGE_SIZE,	Titanium::invtype::ARCHIVED_SIZE,
-			Titanium::INULL,						Titanium::INULL,						Titanium::INULL,
-			Titanium::INULL,						Titanium::INULL,						Titanium::invtype::OTHER_SIZE
-		),
-
-		Titanium::invslot::EQUIPMENT_BITMASK,
-		Titanium::invslot::GENERAL_BITMASK,
-		Titanium::invslot::CURSOR_BITMASK,
-		Titanium::invslot::POSSESSIONS_BITMASK,
-		Titanium::invslot::CORPSE_BITMASK,
-		Titanium::invbag::SLOT_COUNT,
-		Titanium::invaug::SOCKET_COUNT,
-
-		Titanium::inventory::AllowEmptyBagInBag,
-		Titanium::inventory::AllowClickCastFromBag,
-		Titanium::inventory::ConcatenateInvTypeLimbo,
-		Titanium::inventory::AllowOverLevelEquipment
-	),
-	/*[MobVersion::SoF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			EQ::invtype::POSSESSIONS_SIZE,	SoF::invtype::BANK_SIZE,			SoF::invtype::SHARED_BANK_SIZE,
-			SoF::invtype::TRADE_SIZE,			SoF::invtype::WORLD_SIZE,			SoF::invtype::LIMBO_SIZE,
-			SoF::invtype::TRIBUTE_SIZE,			SoF::INULL,							SoF::invtype::GUILD_TRIBUTE_SIZE,
-			SoF::invtype::MERCHANT_SIZE,		SoF::INULL,							SoF::invtype::CORPSE_SIZE,
-			SoF::invtype::BAZAAR_SIZE,			SoF::invtype::INSPECT_SIZE,			SoF::INULL,
-			SoF::invtype::VIEW_MOD_PC_SIZE,		SoF::invtype::VIEW_MOD_BANK_SIZE,	SoF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			SoF::invtype::VIEW_MOD_LIMBO_SIZE,	SoF::invtype::ALT_STORAGE_SIZE,		SoF::invtype::ARCHIVED_SIZE,
-			SoF::INULL,							SoF::INULL,							SoF::INULL,
-			SoF::INULL,							SoF::INULL,							SoF::invtype::OTHER_SIZE
-		),
-
-		SoF::invslot::EQUIPMENT_BITMASK,
-		SoF::invslot::GENERAL_BITMASK,
-		SoF::invslot::CURSOR_BITMASK,
-		SoF::invslot::POSSESSIONS_BITMASK,
-		SoF::invslot::CORPSE_BITMASK,
-		SoF::invbag::SLOT_COUNT,
-		SoF::invaug::SOCKET_COUNT,
-
-		SoF::inventory::AllowEmptyBagInBag,
-		SoF::inventory::AllowClickCastFromBag,
-		SoF::inventory::ConcatenateInvTypeLimbo,
-		SoF::inventory::AllowOverLevelEquipment
-	),
-	/*[MobVersion::SoD] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			EQ::invtype::POSSESSIONS_SIZE,	SoD::invtype::BANK_SIZE,			SoD::invtype::SHARED_BANK_SIZE,
-			SoD::invtype::TRADE_SIZE,			SoD::invtype::WORLD_SIZE,			SoD::invtype::LIMBO_SIZE,
-			SoD::invtype::TRIBUTE_SIZE,			SoD::INULL,							SoD::invtype::GUILD_TRIBUTE_SIZE,
-			SoD::invtype::MERCHANT_SIZE,		SoD::INULL,							SoD::invtype::CORPSE_SIZE,
-			SoD::invtype::BAZAAR_SIZE,			SoD::invtype::INSPECT_SIZE,			SoD::INULL,
-			SoD::invtype::VIEW_MOD_PC_SIZE,		SoD::invtype::VIEW_MOD_BANK_SIZE,	SoD::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			SoD::invtype::VIEW_MOD_LIMBO_SIZE,	SoD::invtype::ALT_STORAGE_SIZE,		SoD::invtype::ARCHIVED_SIZE,
-			SoD::INULL,							SoD::INULL,							SoD::INULL,
-			SoD::INULL,							SoD::INULL,							SoD::invtype::OTHER_SIZE
-		),
-
-		SoD::invslot::EQUIPMENT_BITMASK,
-		SoD::invslot::GENERAL_BITMASK,
-		SoD::invslot::CURSOR_BITMASK,
-		SoD::invslot::POSSESSIONS_BITMASK,
-		SoD::invslot::CORPSE_BITMASK,
-		SoD::invbag::SLOT_COUNT,
-		SoD::invaug::SOCKET_COUNT,
-
-		SoD::inventory::AllowEmptyBagInBag,
-		SoD::inventory::AllowClickCastFromBag,
-		SoD::inventory::ConcatenateInvTypeLimbo,
-		SoD::inventory::AllowOverLevelEquipment
-	),
-	/*[MobVersion::UF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			EQ::invtype::POSSESSIONS_SIZE,	UF::invtype::BANK_SIZE,				UF::invtype::SHARED_BANK_SIZE,
-			UF::invtype::TRADE_SIZE,			UF::invtype::WORLD_SIZE,			UF::invtype::LIMBO_SIZE,
-			UF::invtype::TRIBUTE_SIZE,			UF::INULL,							UF::invtype::GUILD_TRIBUTE_SIZE,
-			UF::invtype::MERCHANT_SIZE,			UF::INULL,							UF::invtype::CORPSE_SIZE,
-			UF::invtype::BAZAAR_SIZE,			UF::invtype::INSPECT_SIZE,			UF::INULL,
-			UF::invtype::VIEW_MOD_PC_SIZE,		UF::invtype::VIEW_MOD_BANK_SIZE,	UF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			UF::invtype::VIEW_MOD_LIMBO_SIZE,	UF::invtype::ALT_STORAGE_SIZE,		UF::invtype::ARCHIVED_SIZE,
-			UF::INULL,							UF::INULL,							UF::INULL,
-			UF::INULL,							UF::INULL,							UF::invtype::OTHER_SIZE
-		),
-
-		UF::invslot::EQUIPMENT_BITMASK,
-		UF::invslot::GENERAL_BITMASK,
-		UF::invslot::CURSOR_BITMASK,
-		UF::invslot::POSSESSIONS_BITMASK,
-		UF::invslot::CORPSE_BITMASK,
-		UF::invbag::SLOT_COUNT,
-		UF::invaug::SOCKET_COUNT,
-
-		UF::inventory::AllowEmptyBagInBag,
-		UF::inventory::AllowClickCastFromBag,
-		UF::inventory::ConcatenateInvTypeLimbo,
-		UF::inventory::AllowOverLevelEquipment
-	),
-	/*[MobVersion::RoF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			EQ::invtype::POSSESSIONS_SIZE,	RoF::invtype::BANK_SIZE,					RoF::invtype::SHARED_BANK_SIZE,
-			RoF::invtype::TRADE_SIZE,			RoF::invtype::WORLD_SIZE,					RoF::invtype::LIMBO_SIZE,
-			RoF::invtype::TRIBUTE_SIZE,			RoF::invtype::TROPHY_TRIBUTE_SIZE,			RoF::invtype::GUILD_TRIBUTE_SIZE,
-			RoF::invtype::MERCHANT_SIZE,		RoF::invtype::DELETED_SIZE,					RoF::invtype::CORPSE_SIZE,
-			RoF::invtype::BAZAAR_SIZE,			RoF::invtype::INSPECT_SIZE,					RoF::invtype::REAL_ESTATE_SIZE,
-			RoF::invtype::VIEW_MOD_PC_SIZE,		RoF::invtype::VIEW_MOD_BANK_SIZE,			RoF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			RoF::invtype::VIEW_MOD_LIMBO_SIZE,	RoF::invtype::ALT_STORAGE_SIZE,				RoF::invtype::ARCHIVED_SIZE,
-			RoF::invtype::MAIL_SIZE,			RoF::invtype::GUILD_TROPHY_TRIBUTE_SIZE,	RoF::INULL,
-			RoF::INULL,RoF::INULL,RoF::invtype::OTHER_SIZE
-		),
-
-		RoF::invslot::EQUIPMENT_BITMASK,
-		RoF::invslot::GENERAL_BITMASK,
-		RoF::invslot::CURSOR_BITMASK,
-		RoF::invslot::POSSESSIONS_BITMASK,
-		RoF::invslot::CORPSE_BITMASK,
-		RoF::invbag::SLOT_COUNT,
-		RoF::invaug::SOCKET_COUNT,
-
-		RoF::inventory::AllowEmptyBagInBag,
-		RoF::inventory::AllowClickCastFromBag,
-		RoF::inventory::ConcatenateInvTypeLimbo,
-		RoF::inventory::AllowOverLevelEquipment
 	),
 	/*[MobVersion::RoF2] =*/
 	EQ::inventory::LookupEntry(
@@ -594,141 +378,6 @@ static const EQ::inventory::LookupEntry inventory_static_lookup_entries[EQ::vers
 		false,
 		false
 	),
-	/*[MobVersion::OfflineTitanium] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			Titanium::INULL,						Titanium::INULL,						Titanium::INULL,
-			Titanium::invtype::TRADE_SIZE,			Titanium::INULL,						Titanium::INULL,
-			Titanium::INULL,						Titanium::INULL,						Titanium::INULL,
-			Titanium::invtype::MERCHANT_SIZE,		Titanium::INULL,						Titanium::INULL,
-			Titanium::invtype::BAZAAR_SIZE,			Titanium::invtype::INSPECT_SIZE,		Titanium::INULL,
-			Titanium::invtype::VIEW_MOD_PC_SIZE,	Titanium::invtype::VIEW_MOD_BANK_SIZE,	Titanium::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			Titanium::invtype::VIEW_MOD_LIMBO_SIZE,	Titanium::INULL,						Titanium::INULL,
-			Titanium::INULL,						Titanium::INULL,						Titanium::INULL,
-			Titanium::INULL,						Titanium::INULL,						Titanium::INULL
-		),
-
-		Titanium::INULL,
-		Titanium::INULL,
-		Titanium::INULL,
-		Titanium::INULL,
-		Titanium::INULL,
-		Titanium::invbag::SLOT_COUNT,
-		Titanium::invaug::SOCKET_COUNT,
-
-		false,
-		false,
-		false,
-		false
-	),
-	/*[MobVersion::OfflineSoF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			SoF::INULL,							SoF::INULL,							SoF::INULL,
-			SoF::invtype::TRADE_SIZE,			SoF::INULL,							SoF::INULL,
-			SoF::INULL,							SoF::INULL,							SoF::INULL,
-			SoF::invtype::MERCHANT_SIZE,		SoF::INULL,							SoF::INULL,
-			SoF::invtype::BAZAAR_SIZE,			SoF::invtype::INSPECT_SIZE,			SoF::INULL,
-			SoF::invtype::VIEW_MOD_PC_SIZE,		SoF::invtype::VIEW_MOD_BANK_SIZE,	SoF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			SoF::invtype::VIEW_MOD_LIMBO_SIZE,	SoF::INULL,							SoF::INULL,
-			SoF::INULL,							SoF::INULL,							SoF::INULL,
-			SoF::INULL,							SoF::INULL,							SoF::INULL
-		),
-
-		SoF::INULL,
-		SoF::INULL,
-		SoF::INULL,
-		SoF::INULL,
-		SoF::INULL,
-		SoF::invbag::SLOT_COUNT,
-		SoF::invaug::SOCKET_COUNT,
-
-		false,
-		false,
-		false,
-		false
-	),
-	/*[MobVersion::OfflineSoD] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			SoD::INULL,							SoD::INULL,							SoD::INULL,
-			SoD::invtype::TRADE_SIZE,			SoD::INULL,							SoD::INULL,
-			SoD::INULL,							SoD::INULL,							SoD::INULL,
-			SoD::invtype::MERCHANT_SIZE,		SoD::INULL,							SoD::INULL,
-			SoD::invtype::BAZAAR_SIZE,			SoD::invtype::INSPECT_SIZE,			SoD::INULL,
-			SoD::invtype::VIEW_MOD_PC_SIZE,		SoD::invtype::VIEW_MOD_BANK_SIZE,	SoD::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			SoD::invtype::VIEW_MOD_LIMBO_SIZE,	SoD::INULL,							SoD::INULL,
-			SoD::INULL,							SoD::INULL,							SoD::INULL,
-			SoD::INULL,							SoD::INULL,							SoD::INULL
-		),
-
-		SoD::INULL,
-		SoD::INULL,
-		SoD::INULL,
-		SoD::INULL,
-		SoD::INULL,
-		SoD::invbag::SLOT_COUNT,
-		SoD::invaug::SOCKET_COUNT,
-
-		false,
-		false,
-		false,
-		false
-	),
-	/*[MobVersion::OfflineUF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			UF::INULL,							UF::INULL,							UF::INULL,
-			UF::invtype::TRADE_SIZE,			UF::INULL,							UF::INULL,
-			UF::INULL,							UF::INULL,							UF::INULL,
-			UF::invtype::MERCHANT_SIZE,			UF::INULL,							UF::INULL,
-			UF::invtype::BAZAAR_SIZE,			UF::invtype::INSPECT_SIZE,			UF::INULL,
-			UF::invtype::VIEW_MOD_PC_SIZE,		UF::invtype::VIEW_MOD_BANK_SIZE,	UF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			UF::invtype::VIEW_MOD_LIMBO_SIZE,	UF::INULL,							UF::INULL,
-			UF::INULL,							UF::INULL,							UF::INULL,
-			UF::INULL,							UF::INULL,							UF::INULL
-		),
-
-		UF::INULL,
-		UF::INULL,
-		UF::INULL,
-		UF::INULL,
-		UF::INULL,
-		UF::invbag::SLOT_COUNT,
-		UF::invaug::SOCKET_COUNT,
-
-		false,
-		false,
-		false,
-		false
-	),
-	/*[MobVersion::OfflineRoF] =*/
-	EQ::inventory::LookupEntry(
-		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
-			RoF::INULL,							RoF::INULL,							RoF::INULL,
-			RoF::invtype::TRADE_SIZE,			RoF::INULL,							RoF::INULL,
-			RoF::INULL,							RoF::INULL,							RoF::INULL,
-			RoF::invtype::MERCHANT_SIZE,		RoF::INULL,							RoF::INULL,
-			RoF::invtype::BAZAAR_SIZE,			RoF::invtype::INSPECT_SIZE,			RoF::INULL,
-			RoF::invtype::VIEW_MOD_PC_SIZE,		RoF::invtype::VIEW_MOD_BANK_SIZE,	RoF::invtype::VIEW_MOD_SHARED_BANK_SIZE,
-			RoF::invtype::VIEW_MOD_LIMBO_SIZE,	RoF::INULL,							RoF::INULL,
-			RoF::INULL,							RoF::INULL,							RoF::INULL,
-			RoF::INULL,							RoF::INULL,							RoF::INULL
-		),
-
-		RoF::INULL,
-		RoF::INULL,
-		RoF::INULL,
-		RoF::INULL,
-		RoF::INULL,
-		RoF::invbag::SLOT_COUNT,
-		RoF::invaug::SOCKET_COUNT,
-
-		false,
-		false,
-		false,
-		false
-	),
 	/*[MobVersion::OfflineRoF2] =*/
 	EQ::inventory::LookupEntry(
 		EQ::inventory::LookupEntry::InventoryTypeSize_Struct(
@@ -758,181 +407,46 @@ static const EQ::inventory::LookupEntry inventory_static_lookup_entries[EQ::vers
 	)
 };
 
+// Three expansions reshape a RoF2 character's inventory: Prophecy of Ro grew the bank from 16 to 24 slots, The Buried
+// Sea turned on the power source slot and House of Thule the ninth and tenth general slots. A server without one of
+// them keeps the older shape; a GM keeps the power source and general slots but not the bank.
+static const int16  bank_size_before_por         = 16;
+static const uint64 equipment_bitmask_before_tbs = 0x00000000005FFFFF;
+static const uint64 general_bitmask_before_hot   = 0x000000007F800000;
+
 static bool inventory_dictionary_init = false;
 void EQ::inventory::InitializeDynamicLookups() {
 	if (inventory_dictionary_init == true)
 		return;
 	inventory_dictionary_init = true;
 
-	// server is configured for static definitions
 	if (RuleB(World, UseClientBasedExpansionSettings))
 		return;
 
-	// Notes:
-	// - Currently, there are only 3 known expansions that affect inventory-related settings in the clients..
-	//   -- Expansion::PoR "Prophecy of Ro" - toggles between 24 (set) and 16 (clear) bank slots
-	//   -- Expansion::TBS "The Buried Sea" - toggles slotPowerSource activated (set) and deactivated (clear)
-	//   -- Expansion::HoT "House of Thule" - toggles slotGeneral9/slotGeneral10 activated (set) and deactivated (clear)
-	// - Corspe size does not appear to reflect loss of active possessions slots
-	// - Inspect size does not appear to reflect loss of active equipment slots
-	// - Bank size is not overridden by GM flag when expansion bit is (clear)
-	// - Power Source slot is enabled, but not activated, by GM flag when expansion bit is (clear) (RoF+ only)
-	// - General9 and General10 slots are activated by GM flag when expansion bit is (clear)
-	// - Obviously, the client must support the expansion to allow any (set) or override condition
-
-	const uint32 dynamic_check_mask =
-		(
-			EQ::expansions::bitPoR |
-			EQ::expansions::bitTBS |
-			EQ::expansions::bitHoT
-		);
-
-	// if all of the above expansion bits are present, then static references will suffice
-	if ((dynamic_check_mask & RuleI(World, ExpansionSettings)) == dynamic_check_mask)
+	const uint32 expansions = RuleI(World, ExpansionSettings);
+	const uint32 dynamic_check_mask = (EQ::expansions::bitPoR | EQ::expansions::bitTBS | EQ::expansions::bitHoT);
+	if ((dynamic_check_mask & expansions) == dynamic_check_mask)
 		return;
 
-	// Dynamic Lookups (promotive methodology) (all mob versions allowed)
-	for (uint32 iter = static_cast<uint32>(EQ::versions::MobVersion::Unknown); iter <= static_cast<uint32>(EQ::versions::LastPCMobVersion); ++iter) {
-		// no need to dynamic this condition since it is the lowest compatibility standard
-		if ((dynamic_check_mask & ~constants_static_lookup_entries[iter].ExpansionsMask) == dynamic_check_mask)
-			continue;
+	const auto  index = static_cast<int>(versions::MobVersion::RoF2);
+	const auto &base  = inventory_static_lookup_entries[index];
 
-		// only client versions whose supported expansions are affected need to be considered
-		if ((constants_static_lookup_entries[iter].ExpansionsMask & RuleI(World, ExpansionSettings)) == constants_static_lookup_entries[iter].ExpansionsMask)
-			continue;
+	auto nongm = std::make_unique<LookupEntry>(base);
+	if (!(expansions & EQ::expansions::bitPoR))
+		nongm->InventoryTypeSize.Bank = bank_size_before_por;
+	if (!(expansions & EQ::expansions::bitTBS))
+		nongm->EquipmentBitmask = equipment_bitmask_before_tbs;
+	if (!(expansions & EQ::expansions::bitHoT))
+		nongm->GeneralBitmask = general_bitmask_before_hot;
+	nongm->PossessionsBitmask = (nongm->EquipmentBitmask | nongm->GeneralBitmask | nongm->CursorBitmask);
+	nongm->CorpseBitmask      = (nongm->GeneralBitmask | nongm->CursorBitmask | (nongm->EquipmentBitmask << 34));
+	inventory_dynamic_nongm_lookup_entries[index] = std::move(nongm);
 
-		// direct manipulation of lookup indices is safe so long as (int)ClientVersion::<mob> == (int)MobVersion::<mob>
-		inventory_dynamic_nongm_lookup_entries[iter] = std::make_unique<LookupEntry>(inventory_static_lookup_entries[iter]);
-
-		// clamp affected fields to the lowest standard
-		inventory_dynamic_nongm_lookup_entries[iter]->InventoryTypeSize.Bank = Titanium::invtype::BANK_SIZE; // bank size
-		inventory_dynamic_nongm_lookup_entries[iter]->EquipmentBitmask = Titanium::invslot::EQUIPMENT_BITMASK; // power source
-		inventory_dynamic_nongm_lookup_entries[iter]->GeneralBitmask = Titanium::invslot::GENERAL_BITMASK; // general size
-		inventory_dynamic_nongm_lookup_entries[iter]->PossessionsBitmask = 0; // we'll fix later
-		inventory_dynamic_nongm_lookup_entries[iter]->CorpseBitmask = 0; // we'll fix later
-
-		if (RuleI(World, ExpansionSettings) & EQ::expansions::bitPoR) {
-			// update bank size
-			if (constants_static_lookup_entries[iter].ExpansionsMask & EQ::expansions::bitPoR)
-				inventory_dynamic_nongm_lookup_entries[iter]->InventoryTypeSize.Bank = SoF::invtype::BANK_SIZE;
-		}
-
-		if (RuleI(World, ExpansionSettings) & EQ::expansions::bitTBS) {
-			// update power source
-			if (constants_static_lookup_entries[iter].ExpansionsMask & EQ::expansions::bitTBS)
-				inventory_dynamic_nongm_lookup_entries[iter]->EquipmentBitmask = SoF::invslot::EQUIPMENT_BITMASK;
-		}
-
-		if (RuleI(World, ExpansionSettings) & EQ::expansions::bitHoT) {
-			// update general size
-			if (constants_static_lookup_entries[iter].ExpansionsMask & EQ::expansions::bitHoT)
-				inventory_dynamic_nongm_lookup_entries[iter]->GeneralBitmask = RoF::invslot::GENERAL_BITMASK;
-		}
-
-		// fixup possessions bitmask
-		inventory_dynamic_nongm_lookup_entries[iter]->PossessionsBitmask =
-			(
-				inventory_dynamic_nongm_lookup_entries[iter]->EquipmentBitmask |
-				inventory_dynamic_nongm_lookup_entries[iter]->GeneralBitmask |
-				inventory_dynamic_nongm_lookup_entries[iter]->CursorBitmask
-			);
-
-		// fixup corpse bitmask
-		inventory_dynamic_nongm_lookup_entries[iter]->CorpseBitmask =
-			(
-				inventory_dynamic_nongm_lookup_entries[iter]->GeneralBitmask |
-				inventory_dynamic_nongm_lookup_entries[iter]->CursorBitmask |
-				(inventory_dynamic_nongm_lookup_entries[iter]->EquipmentBitmask << 34)
-			);
-
-		// expansion-related fields are now updated and all other fields reflect the static entry values
+	if (!(expansions & EQ::expansions::bitPoR)) {
+		auto gm = std::make_unique<LookupEntry>(base);
+		gm->InventoryTypeSize.Bank = bank_size_before_por;
+		inventory_dynamic_gm_lookup_entries[index] = std::move(gm);
 	}
-
-	// Dynamic GM Lookups (demotive methodology) (client-linked mob versions only)
-	for (uint32 iter = static_cast<uint32>(EQ::versions::MobVersion::Unknown); iter <= static_cast<uint32>(EQ::versions::LastPCMobVersion); ++iter) {
-		// no need to dynamic this condition since it is the lowest compatibility standard
-		if ((dynamic_check_mask & ~constants_static_lookup_entries[iter].ExpansionsMask) == dynamic_check_mask)
-			continue;
-
-		// only client versions whose supported expansions are affected need to be considered
-		if ((constants_static_lookup_entries[iter].ExpansionsMask & RuleI(World, ExpansionSettings)) == constants_static_lookup_entries[iter].ExpansionsMask)
-			continue;
-
-		// special case gm exclusions based on known behaviors
-		switch (iter) {
-		case static_cast<uint32>(versions::MobVersion::RoF2) :
-		case static_cast<uint32>(versions::MobVersion::RoF) :
-			// if bank size is not altered on these clients, then static will suffice
-			// (we already know these clients support this expansion...)
-			if (RuleI(World, ExpansionSettings) & expansions::bitPoR)
-				continue;
-			break;
-		default:
-			break;
-		}
-
-		// direct manipulation of lookup indices is safe so long as (int)ClientVersion::<client> == (int)MobVersion::<client>
-		inventory_dynamic_gm_lookup_entries[iter] = std::make_unique<LookupEntry>(inventory_static_lookup_entries[iter]);
-
-		inventory_dynamic_gm_lookup_entries[iter]->PossessionsBitmask = 0; // we'll fix later
-		inventory_dynamic_gm_lookup_entries[iter]->CorpseBitmask = 0; // we'll fix later
-
-		if (~RuleI(World, ExpansionSettings) & EQ::expansions::bitPoR) {
-			// update bank size
-			if (constants_static_lookup_entries[iter].ExpansionsMask & EQ::expansions::bitPoR)
-				inventory_dynamic_gm_lookup_entries[iter]->InventoryTypeSize.Bank = Titanium::invtype::BANK_SIZE;
-		}
-
-		if (~RuleI(World, ExpansionSettings) & EQ::expansions::bitTBS) {
-			// update power source
-			switch (iter) {
-			case versions::bitUF:
-			case versions::bitSoD:
-			case versions::bitSoF:
-				// gm flag does not override expansion-based behavior
-				// (we already know that only these clients support this behavior)
-				inventory_dynamic_gm_lookup_entries[iter]->EquipmentBitmask = Titanium::invslot::EQUIPMENT_BITMASK;
-				break;
-			default:
-				break;
-			}
-		}
-
-		if (~RuleI(World, ExpansionSettings) & EQ::expansions::bitHoT) {
-			// update general size
-			switch (iter) {
-			case versions::bitUF:
-			case versions::bitSoD:
-			case versions::bitSoF:
-				// gm flag does not override expansion-based behavior
-				// (we already know that only these clients support this behavior)
-				inventory_dynamic_gm_lookup_entries[iter]->GeneralBitmask = Titanium::invslot::GENERAL_BITMASK;
-				break;
-			default:
-				break;
-			}
-		}
-
-		// fixup possessions bitmask
-		inventory_dynamic_gm_lookup_entries[iter]->PossessionsBitmask =
-			(
-				inventory_dynamic_gm_lookup_entries[iter]->EquipmentBitmask |
-				inventory_dynamic_gm_lookup_entries[iter]->GeneralBitmask |
-				inventory_dynamic_gm_lookup_entries[iter]->CursorBitmask
-			);
-
-		// fixup corpse bitmask
-		inventory_dynamic_gm_lookup_entries[iter]->CorpseBitmask =
-			(
-				inventory_dynamic_gm_lookup_entries[iter]->GeneralBitmask |
-				inventory_dynamic_gm_lookup_entries[iter]->CursorBitmask |
-				(inventory_dynamic_gm_lookup_entries[iter]->EquipmentBitmask << 34)
-			);
-
-		// expansion-related fields are now updated and all other fields reflect the static entry values
-	}
-
-	// only client versions that require a change from their static definitions have been given a dynamic (gm) lookup entry
 }
 
 const EQ::inventory::LookupEntry* EQ::inventory::DynamicLookup(versions::MobVersion mob_version, bool gm_flag)
@@ -974,30 +488,6 @@ static const EQ::behavior::LookupEntry behavior_static_lookup_entries[EQ::versio
 	EQ::behavior::LookupEntry(
 		true
 	),
-	/*[MobVersion::Client62] =*/
-	EQ::behavior::LookupEntry(
-		true
-	),
-	/*[MobVersion::Titanium] =*/
-	EQ::behavior::LookupEntry(
-		Titanium::behavior::CoinHasWeight
-	),
-	/*[MobVersion::SoF] =*/
-	EQ::behavior::LookupEntry(
-		SoF::behavior::CoinHasWeight
-	),
-	/*[MobVersion::SoD] =*/
-	EQ::behavior::LookupEntry(
-		SoD::behavior::CoinHasWeight
-	),
-	/*[MobVersion::UF] =*/
-	EQ::behavior::LookupEntry(
-		UF::behavior::CoinHasWeight
-	),
-	/*[MobVersion::RoF] =*/
-	EQ::behavior::LookupEntry(
-		RoF::behavior::CoinHasWeight
-	),
 	/*[MobVersion::RoF2] =*/
 	EQ::behavior::LookupEntry(
 		RoF2::behavior::CoinHasWeight
@@ -1033,26 +523,6 @@ static const EQ::behavior::LookupEntry behavior_static_lookup_entries[EQ::versio
 	/*[MobVersion::BotPet] =*/
 	EQ::behavior::LookupEntry(
 		EQ::behavior::CoinHasWeight
-	),
-	/*[MobVersion::OfflineTitanium] =*/
-	EQ::behavior::LookupEntry(
-		Titanium::behavior::CoinHasWeight
-	),
-	/*[MobVersion::OfflineSoF] =*/
-	EQ::behavior::LookupEntry(
-		SoF::behavior::CoinHasWeight
-	),
-	/*[MobVersion::OfflineSoD] =*/
-	EQ::behavior::LookupEntry(
-		SoD::behavior::CoinHasWeight
-	),
-	/*[MobVersion::OfflineUF] =*/
-	EQ::behavior::LookupEntry(
-		UF::behavior::CoinHasWeight
-	),
-	/*[MobVersion::OfflineRoF] =*/
-	EQ::behavior::LookupEntry(
-		RoF::behavior::CoinHasWeight
 	),
 	/*[MobVersion::OfflineRoF2] =*/
 	EQ::behavior::LookupEntry(
@@ -1120,89 +590,11 @@ static const EQ::spells::LookupEntry spells_static_lookup_entries[EQ::versions::
 		ClientUnknown::INULL,
 		ClientUnknown::INULL
 	),
-	/*[ClientVersion::Client62] =*/
-	EQ::spells::LookupEntry(
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL,
-		Client62::INULL
-	),
-	/*[ClientVersion::Titanium] =*/
-	EQ::spells::LookupEntry(
-		Titanium::spells::SPELL_ID_MAX,
-		Titanium::spells::SPELLBOOK_SIZE,
-		Titanium::spells::SPELL_GEM_COUNT,
-		Titanium::spells::LONG_BUFFS,
-		Titanium::spells::SHORT_BUFFS,
-		Titanium::spells::DISC_BUFFS,
-		Titanium::spells::TOTAL_BUFFS,
-		Titanium::spells::NPC_BUFFS,
-		Titanium::spells::PET_BUFFS,
-		Titanium::spells::MERC_BUFFS
-	),
-	/*[ClientVersion::SoF] =*/
-	EQ::spells::LookupEntry(
-		SoF::spells::SPELL_ID_MAX,
-		SoF::spells::SPELLBOOK_SIZE,
-		SoF::spells::SPELL_GEM_COUNT,
-		SoF::spells::LONG_BUFFS,
-		SoF::spells::SHORT_BUFFS,
-		SoF::spells::DISC_BUFFS,
-		SoF::spells::TOTAL_BUFFS,
-		SoF::spells::NPC_BUFFS,
-		SoF::spells::PET_BUFFS,
-		SoF::spells::MERC_BUFFS
-	),
-	/*[ClientVersion::SoD] =*/
-	EQ::spells::LookupEntry(
-		SoD::spells::SPELL_ID_MAX,
-		SoD::spells::SPELLBOOK_SIZE,
-		SoD::spells::SPELL_GEM_COUNT,
-		SoD::spells::LONG_BUFFS,
-		SoD::spells::SHORT_BUFFS,
-		SoD::spells::DISC_BUFFS,
-		SoD::spells::TOTAL_BUFFS,
-		SoD::spells::NPC_BUFFS,
-		SoD::spells::PET_BUFFS,
-		SoD::spells::MERC_BUFFS
-	),
-	/*[ClientVersion::UF] =*/
-	EQ::spells::LookupEntry(
-		UF::spells::SPELL_ID_MAX,
-		UF::spells::SPELLBOOK_SIZE,
-		UF::spells::SPELL_GEM_COUNT,
-		UF::spells::LONG_BUFFS,
-		UF::spells::SHORT_BUFFS,
-		UF::spells::DISC_BUFFS,
-		UF::spells::TOTAL_BUFFS,
-		UF::spells::NPC_BUFFS,
-		UF::spells::PET_BUFFS,
-		UF::spells::MERC_BUFFS
-	),
-	/*[ClientVersion::RoF] =*/
-	EQ::spells::LookupEntry(
-		RoF::spells::SPELL_ID_MAX,
-		RoF::spells::SPELLBOOK_SIZE,
-		UF::spells::SPELL_GEM_COUNT, // client translators are setup to allow the max value a client supports..however, the top 4 indices are not valid in this case
-		RoF::spells::LONG_BUFFS,
-		RoF::spells::SHORT_BUFFS,
-		RoF::spells::DISC_BUFFS,
-		RoF::spells::TOTAL_BUFFS,
-		RoF::spells::NPC_BUFFS,
-		RoF::spells::PET_BUFFS,
-		RoF::spells::MERC_BUFFS
-	),
 	/*[ClientVersion::RoF2] =*/
 	EQ::spells::LookupEntry(
 		RoF2::spells::SPELL_ID_MAX,
 		RoF2::spells::SPELLBOOK_SIZE,
-		UF::spells::SPELL_GEM_COUNT, // client translators are setup to allow the max value a client supports..however, the top 4 indices are not valid in this case
+		EQ::spells::SPELL_GEM_COUNT,
 		RoF2::spells::LONG_BUFFS,
 		RoF2::spells::SHORT_BUFFS,
 		RoF2::spells::DISC_BUFFS,

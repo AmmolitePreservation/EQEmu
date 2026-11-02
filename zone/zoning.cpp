@@ -930,10 +930,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 			if (entity == 0)
 			{
 				LogError("OP_EndLootRequest: Corpse with id of {} not found for {}.", entity_id_being_looted, GetCleanName());
-				if (ClientVersion() >= EQ::versions::ClientVersion::SoD)
-					Corpse::SendEndLootErrorPacket(this);
-				else
-					Corpse::SendLootReqErrorPacket(this);
+				Corpse::SendEndLootErrorPacket(this);
 			}
 			else if (!entity->IsCorpse())
 			{
@@ -957,7 +954,7 @@ void Client::ZonePC(uint32 zoneID, uint32 instance_id, float x, float y, float z
 			// If we are SoF and later and are respawning from hover, we want the real zone ID, else zero to use the old hack.
 			//
 			if(zone->GetZoneID() == zoneID) {
-				if ((ClientVersionBit() & EQ::versions::maskSoFAndLater) && (!RuleB(Character, RespawnFromHover) || !IsHoveringForRespawn()))
+				if ((!RuleB(Character, RespawnFromHover) || !IsHoveringForRespawn()))
 					gmg->bind_zone_id = 0;
 				else
 					gmg->bind_zone_id = zoneID;

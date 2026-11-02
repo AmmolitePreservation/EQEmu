@@ -1277,7 +1277,7 @@ int32 Bot::GenerateBaseHitPoints() {
 	uint32 lm = GetClassLevelFactor();
 	int32 Post255;
 	int32 NormalSTA = GetSTA();
-	if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (GetOwner() && GetOwner()->CastToClient() && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		float SoDPost255;
 		if (((NormalSTA - 255) / 2) > 0)
 			SoDPost255 = ((static_cast<float>(NormalSTA) - 255.0f) / 2.0f);
@@ -6061,7 +6061,6 @@ int32 Bot::GenerateBaseManaPoints()
 		if (
 			GetOwner() &&
 			GetOwner()->CastToClient() &&
-			GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD &&
 			RuleB(Character, SoDClientUseSoDHPManaEnd)
 		) {
 			if (WisInt > 100) {
@@ -6105,7 +6104,6 @@ int32 Bot::GenerateBaseManaPoints()
 		if (
 			GetOwner() &&
 			GetOwner()->CastToClient() &&
-			GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD &&
 			RuleB(Character, SoDClientUseSoDHPManaEnd)
 		) {
 			if (WisInt > 100) {
@@ -6341,7 +6339,7 @@ int32 Bot::GetMaxStat() {
 	int32 base = 0;
 	if (level < 61)
 		base = 255;
-	else if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoF)
+	else if (GetOwner() && GetOwner()->CastToClient())
 		base = (255 + 5 * (level - 60));
 	else if (level < 71)
 		base = (255 + 5 * (level - 60));
@@ -6848,7 +6846,7 @@ int64 Bot::CalcBaseEndurance() {
 	int32 converted_stats = 0;
 	int32 sta_end = 0;
 	int stats = 0;
-	if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (GetOwner() && GetOwner()->CastToClient() && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		stats = ((GetSTR() + GetSTA() + GetDEX() + GetAGI()) / 4);
 
 		if (stats > 100) {
