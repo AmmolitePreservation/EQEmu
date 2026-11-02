@@ -1023,11 +1023,6 @@ void Perl_Client_SetAATitle(Client* self, std::string title, bool save) // @cate
 	}
 }
 
-uint32_t Perl_Client_GetClientVersion(Client* self) // @categories Script Utility
-{
-	return static_cast<uint32_t>(self->ClientVersion());
-}
-
 void Perl_Client_SetTitleSuffix(Client* self, std::string suffix) // @categories Account and Character
 {
 	if (suffix.size() > 31)
@@ -3521,7 +3516,6 @@ void perl_register_client()
 	package.add("GetClassAbbreviation", &Perl_Client_GetClassAbbreviation);
 	package.add("GetClassBitmask", &Perl_Client_GetClassBitmask);
 	package.add("GetClientMaxLevel", &Perl_Client_GetClientMaxLevel);
-	package.add("GetClientVersion", &Perl_Client_GetClientVersion);
 	package.add("GetCorpseCount", &Perl_Client_GetCorpseCount);
 	package.add("GetCorpseID", &Perl_Client_GetCorpseID);
 	package.add("GetCorpseItemAt", &Perl_Client_GetCorpseItemAt);

@@ -35,7 +35,6 @@ struct Events { };
 struct Factions { };
 struct Slots { };
 struct Materials { };
-struct ClientVersions { };
 struct Appearances { };
 struct Classes { };
 struct Skills { };
@@ -7086,15 +7085,6 @@ luabind::scope lua_register_material() {
 
 			luabind::value("Bracer", static_cast<int>(EQ::textures::armorWrist)), // deprecated
 			luabind::value("Max", static_cast<int>(EQ::textures::materialCount)) // deprecated
-		)];
-}
-
-luabind::scope lua_register_client_version() {
-	return luabind::class_<ClientVersions>("ClientVersion")
-		.enum_("constants")
-		[(
-			luabind::value("Unknown", static_cast<int>(EQ::versions::ClientVersion::Unknown)),
-			luabind::value("RoF2", static_cast<int>(EQ::versions::ClientVersion::RoF2))
 		)];
 }
 

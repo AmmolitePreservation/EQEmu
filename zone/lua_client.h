@@ -294,7 +294,6 @@ public:
 	void SetPEQZoneFlag(uint32 zone_id);
 	void SetAATitle(std::string title);
 	void SetAATitle(std::string title, bool save_to_database);
-	int GetClientVersion();
 	void SetTitleSuffix(const char *text);
 	void EnableTitleSet(uint32 title_set);
 	void SetAAPoints(int points);

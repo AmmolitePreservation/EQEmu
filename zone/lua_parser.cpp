@@ -1276,7 +1276,6 @@ void LuaParser::MapFunctions(lua_State *L) {
 			lua_register_faction(),
 			lua_register_slot(),
 			lua_register_material(),
-			lua_register_client_version(),
 			lua_register_appearance(),
 			lua_register_classes(),
 			lua_register_skills(),
