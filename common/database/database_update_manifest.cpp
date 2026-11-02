@@ -7154,8 +7154,18 @@ ADD COLUMN `entity_variables` TEXT DEFAULT NULL AFTER `rezzable`;
 		.condition = "not_empty",
 		.match = "",
 		.sql = R"(
-DELETE FROM `zone_points` WHERE (`client_version_mask` & 64) = 0;
-DELETE FROM `doors` WHERE (`client_version_mask` & 64) = 0;
+UPDATE `zone_points` SET `max_expansion` = 11 WHERE `target_zone_id` = 5 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
+UPDATE `zone_points` SET `min_expansion` = 12 WHERE `target_zone_id` = 407 AND `zone` IN ('eastkarana', 'highkeep', 'kithicor');
+UPDATE `zone_points` SET `max_expansion` = 11 WHERE (`zone`, `number`, `target_zone_id`) IN (('kithicor', 3, 21), ('befallen', 1, 21), ('ecommons', 2, 21), ('feerrott', 1, 46), ('grobb', 1, 46), ('guktop', 6, 46), ('erudnext', 3, 38), ('paineel', 1, 38), ('rivervale', 99, 33), ('runnyeye', 2, 33));
+UPDATE `zone_points` SET `min_expansion` = 12 WHERE (`zone`, `number`, `target_zone_id`) IN (('kithicor', 3, 408), ('befallen', 1, 408), ('ecommons', 2, 20), ('feerrott', 1, 413), ('grobb', 1, 413), ('guktop', 6, 413), ('erudnext', 3, 414), ('paineel', 1, 414), ('rivervale', 99, 415), ('runnyeye', 2, 415));
+UPDATE `zone_points` SET `max_expansion` = 13 WHERE (`zone`, `number`, `target_zone_id`) IN (('akanon', 1000, 56), ('lfaydark', 1, 56));
+UPDATE `zone_points` SET `min_expansion` = 14 WHERE (`zone`, `number`, `target_zone_id`) IN (('akanon', 1000, 448), ('lfaydark', 1, 448));
+UPDATE `zone_points` SET `max_expansion` = 9 WHERE `zone` = 'poknowledge' AND `number` = 17 AND (`client_version_mask` & 64) = 0;
+UPDATE `zone_points` SET `min_expansion` = 10 WHERE `zone` = 'poknowledge' AND `number` = 17 AND (`client_version_mask` & 64) <> 0;
+UPDATE `doors` SET `max_expansion` = 9 WHERE `zone` = 'corathus' AND `name` = 'POKTELE500' AND (`client_version_mask` & 64) = 0;
+UPDATE `doors` SET `min_expansion` = 10 WHERE `zone` = 'corathus' AND `name` = 'POKTELE500' AND (`client_version_mask` & 64) <> 0;
+DELETE FROM `doors` WHERE `zone` = 'PoKnowledge' AND `name` = 'POKRVPORT500' AND (`client_version_mask` & 64) = 0;
+DELETE FROM `doors` WHERE `zone` = 'guildhall' AND `client_version_mask` = 0;
 ALTER TABLE `zone_points` DROP COLUMN `client_version_mask`;
 ALTER TABLE `doors` DROP COLUMN `client_version_mask`;
 		)",
