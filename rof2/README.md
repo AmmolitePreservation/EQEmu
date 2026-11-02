@@ -50,4 +50,6 @@ Built on peridotguids from its `preGuids` snapshot (Peridot's data at database v
 
 - The era review (RC-8): a drink raised intoxication by the one formula's value for the server's tolerance cap; a Guild Hall deposit and its promotion to the main area, which the banker flag gates, both went through.
 
-Not tested: mercenaries (Peridot has no mercenary tables), tasks, the guild management window, the stat cap past level 70.
+- The collapsed paths content had not exercised (RC-4), with two characters and chat logs: task objectives, updates and completion in the task window; guild invite, ranks, MOTD, chat, a permission refusal and removal; group and raid formation with member mana in both windows; pet commands and taunt persisting across a login; inspect; the Find window; reading a book; the parcel merchant's mail tab; death and respawn; extended-target slots. The worklist's RC-4 entry lists what the link cannot drive (group roles, a practice point, typed text, item drags) and what had no stage (rest state, the aggro meter, tracking, mercenaries).
+
+Not tested: mercenaries (Peridot has no mercenary tables), the stat cap past level 70, rest state and the aggro meter, tracking.
