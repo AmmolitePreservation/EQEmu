@@ -67,7 +67,7 @@ ClientManager::ClientManager()
 	m_sod_stream = new EQ::Net::EQStreamManager(sod_opts);
 	m_sod_ops    = new RegularOpcodeManager;
 
-	opcodes_path = fmt::format(
+	std::string opcodes_path = fmt::format(
 		"{}/{}",
 		PathManager::Instance()->GetOpcodePath(),
 		"login_opcodes_sod.conf"
