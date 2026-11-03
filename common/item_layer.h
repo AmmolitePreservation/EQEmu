@@ -1,15 +1,34 @@
 #ifndef EQEMU_ITEM_LAYER_H
 #define EQEMU_ITEM_LAYER_H
 
+#include "item_guid.h"
 #include "item_instance.h"
 #include "item_location.h"
 #include "loot.h"
+#include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 class Database;
 class SharedDatabase;
+
+// Whose items a client-sent GUID may select: the server decides the scope from the session, the GUID only picks one
+// item within it.
+struct ItemScope {
+	enum class Kind : uint8 {
+		ListedBy
+	};
+
+	Kind   kind;
+	uint32 holder_id;
+
+	// The current listings of a trader.
+	static ItemScope ListedBy(uint32 trader_id) { return ItemScope{Kind::ListedBy, trader_id}; }
+
+	std::string Text() const;
+};
 
 // The one path that issues, moves, updates and retires item instances in item_instances. Every holder loads and
 // saves its items through it; nothing else writes the table.
@@ -74,6 +93,15 @@ public:
 	// An instance rebuilt from a side table takes the GUID of the row held at its location.
 	static void AssignGUID(EQ::ItemInstance &inst, const ItemGUID &guid);
 	static std::optional<ItemGUID> FindGUID(Database &db, const ItemLocation &location);
+
+	// The item a client-sent GUID selects within a scope, with its augments and bag contents, or nothing: a GUID the
+	// scope does not hold, or one with a zero first word (the all-zero text, a placeholder, text that failed to
+	// decode), is refused and logged at Warning with the requester, the GUID and the scope. A listed item carries its
+	// listing's row id as merchant slot and its price.
+	static std::unique_ptr<EQ::ItemInstance> Lookup(Database &db, SharedDatabase &content_db, const ItemScope &scope, const ItemGUID &guid, std::string_view requester);
+
+	// The same refusal, logged by a handler that resolves a client-sent GUID among items already in memory.
+	static void LogRefusal(std::string_view requester, const ItemScope &scope, const ItemGUID &guid);
 
 private:
 	static bool Issue(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const Owner &owner);

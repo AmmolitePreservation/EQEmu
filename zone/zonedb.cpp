@@ -258,33 +258,6 @@ void ZoneDatabase::DeleteWorldContainer(uint32 parent_id, uint32 zone_id)
 	ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id), ItemRetirement::Consumed);
 }
 
-std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char_id, const ItemGUID &guid)
-{
-	const auto listing = TraderRepository::GetListing(database, char_id, guid);
-	if (!listing.id) {
-		LogTrading("Trader [{}] lists no item [{}]", char_id, ItemGUIDText(guid));
-		return nullptr;
-	}
-
-	std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(listing)));
-	if (!inst) {
-		LogTrading("Listing [{}] of trader [{}] has no loadable item", listing.id, char_id);
-		return nullptr;
-	}
-
-	if (inst->GetItem()->NoDrop == 0) {
-		return nullptr;
-	}
-
-	inst->SetMerchantSlot(static_cast<uint32>(listing.id));
-	inst->SetPrice(listing.item_cost);
-
-	if (inst->IsStackable()) {
-		inst->SetMerchantCount(inst->GetCharges());
-	}
-	return std::move(inst);
-}
-
 void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 charges, uint32 new_price) {
 
 	LogTrading("ZoneDatabase::UpdateTraderPrice([{}], [{}], [{}], [{}])", char_id, item_id, charges, new_price);

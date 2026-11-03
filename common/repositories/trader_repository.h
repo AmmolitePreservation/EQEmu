@@ -175,13 +175,9 @@ public:
 		return fmt::format("`guid_first` = {} AND `guid_second` = {} AND `guid_third` = {}", guid.first, guid.second, guid.third);
 	}
 
-	// The listing a client's GUID selects among this trader's, or an empty entry when it names none of them.
+	// The listing a trader has for a GUID, or an empty entry.
 	static Trader GetListing(Database &db, uint32 trader_id, const ItemGUID &guid)
 	{
-		if (guid.IsZero()) {
-			return Trader{};
-		}
-
 		const auto listings = GetWhere(db, fmt::format("`char_id` = '{}' AND {} LIMIT 1", trader_id, GUIDFilter(guid)));
 
 		return listings.empty() ? Trader{} : listings.front();

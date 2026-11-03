@@ -954,9 +954,9 @@ void Client::SendTraderItem(const EQ::ItemInstance &sold, uint16 quantity, Clien
 
 void Client::SendSingleTraderItem(uint32 char_id, const ItemGUID &guid)
 {
-	auto inst = database.LoadSingleTraderItem(char_id, guid);
-	if (inst) {
-		SendItemPacket(EQ::invslot::slotCursor, inst.get(), ItemPacketMerchant); // MainCursor?
+	const auto inst = ItemLayer::Lookup(database, database, ItemScope::ListedBy(char_id), guid, GetCleanName());
+	if (inst && inst->GetItem()->NoDrop != 0) {
+		SendItemPacket(EQ::invslot::slotCursor, inst.get(), ItemPacketMerchant);
 	}
 }
 
@@ -995,7 +995,7 @@ void Client::BulkSendTraderInventory(uint32 char_id)
 // A client's GUID selects only among this trader's satchel items; one naming none of them is refused.
 EQ::ItemInstance *Client::FindTraderItemByGUID(const ItemGUID &guid)
 {
-	if (!guid.IsZero()) {
+	if (guid.first != 0) {
 		for (int16 i = EQ::invslot::GENERAL_BEGIN; i <= EQ::invslot::GENERAL_END; i++) {
 			const auto *bag = GetInv().GetItem(i);
 			if (!bag || bag->GetItem()->BagType != EQ::item::BagTypeTradersSatchel) {
@@ -1011,7 +1011,7 @@ EQ::ItemInstance *Client::FindTraderItemByGUID(const ItemGUID &guid)
 		}
 	}
 
-	LogTrading("Refused [{}] for [{}]: it names none of the trader's listed items", ItemGUIDText(guid), GetCleanName());
+	ItemLayer::LogRefusal(GetCleanName(), ItemScope::ListedBy(CharacterID()), guid);
 
 	return nullptr;
 }
@@ -2375,20 +2375,16 @@ void Client::TraderPriceUpdate(const EQApplicationPacket *app)
 			}
 		}
 
-		const EQ::ItemData *item = nullptr;
-		if (id_of_item_to_add) {
-			item = database.GetItem(id_of_item_to_add);
-		}
-
-		if (!id_of_item_to_add || !item) {
+		if (!id_of_item_to_add) {
+			ItemLayer::LogRefusal(GetCleanName(), ItemScope::ListedBy(CharacterID()), tpus->item_guid);
 			tpus->SubAction = BazaarPriceChange_Fail;
 			QueuePacket(app);
 			TraderEndTrader();
 			safe_delete(newgis);
-
-			LogTrading("Item not found in Trader Satchels either");
 			return;
 		}
+
+		const EQ::ItemData *item = database.GetItem(id_of_item_to_add);
 
 		// It is a limitation of the client that if you have multiple of the same item, but with different charges,
 		// although you can set different prices for them before entering Trader mode. If you Remove them and then
@@ -2615,13 +2611,7 @@ void Client::DoBazaarInspect(BazaarInspect_Struct &in)
 		}
 	}
 
-	const auto listing = TraderRepository::GetListing(database, in.trader_id, in.item_guid);
-	if (!listing.id) {
-		LogTrading("Refused inspect of [{}] by [{}]: trader [{}] lists no such item", ItemGUIDText(in.item_guid), GetCleanName(), in.trader_id);
-		return;
-	}
-
-	std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(listing)));
+	const auto inst = ItemLayer::Lookup(database, database, ItemScope::ListedBy(in.trader_id), in.item_guid, GetCleanName());
 	if (inst) {
 		SendItemPacket(0, inst.get(), ItemPacketViewLink);
 	}
@@ -2672,8 +2662,9 @@ std::string Client::DetermineMoneyString(uint64 cp)
 
 void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicationPacket *app)
 {
-	auto in          = (TraderBuy_Struct *) app->pBuffer;
-	auto trader_item = TraderRepository::GetListing(database, tbs->trader_id, tbs->item_guid);
+	auto       in          = (TraderBuy_Struct *) app->pBuffer;
+	const auto buy_item    = ItemLayer::Lookup(database, database, ItemScope::ListedBy(tbs->trader_id), tbs->item_guid, GetCleanName());
+	const auto trader_item = buy_item ? TraderRepository::FindOne(database, static_cast<int>(buy_item->GetMerchantSlot())) : TraderRepository::Trader{};
 	if (!trader_item.id || GetTraderTransactionDate() < trader_item.listing_date) {
 		LogTrading("Attempt to purchase an item outside of the Bazaar trader_id <red>[{}] item "
 				   "<red>[{}] The Traders data was outdated.",
@@ -2699,16 +2690,6 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 	}
 
 	TraderRepository::UpdateActiveTransaction(database, trader_item.id, true);
-
-	std::unique_ptr<EQ::ItemInstance> buy_item(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(trader_item)));
-	if (!buy_item) {
-		LogTrading("Listing [{}] of trader <red>[{}] has no loadable item", trader_item.id, trader_item.char_id);
-		in->method     = BazaarByParcel;
-		in->sub_action = Failed;
-		TraderRepository::UpdateActiveTransaction(database, trader_item.id, false);
-		TradeRequestFailed(app);
-		return;
-	}
 
 	const int32 listed_charges = buy_item->GetCharges();
 

@@ -4,6 +4,7 @@
 #include "repositories/character_data_repository.h"
 #include "repositories/inventory_snapshots_repository.h"
 #include "repositories/item_instances_repository.h"
+#include "repositories/trader_repository.h"
 #include "shareddb.h"
 #include "strings.h"
 #include <algorithm>
@@ -785,4 +786,50 @@ std::optional<ItemGUID> ItemLayer::FindGUID(Database &db, const ItemLocation &lo
 	}
 
 	return rows.front().guid;
+}
+
+std::string ItemScope::Text() const
+{
+	switch (kind) {
+		case Kind::ListedBy:
+			return fmt::format("the listings of trader [{}]", holder_id);
+	}
+
+	return {};
+}
+
+void ItemLayer::LogRefusal(std::string_view requester, const ItemScope &scope, const ItemGUID &guid)
+{
+	LogWarning("Refused item [{}] for [{}]: not among {}", ItemGUIDText(guid), requester, scope.Text());
+}
+
+std::unique_ptr<EQ::ItemInstance> ItemLayer::Lookup(Database &db, SharedDatabase &content_db, const ItemScope &scope, const ItemGUID &guid, std::string_view requester)
+{
+	if (guid.first == 0) {
+		LogRefusal(requester, scope, guid);
+		return nullptr;
+	}
+
+	switch (scope.kind) {
+		case ItemScope::Kind::ListedBy: {
+			const auto listing = TraderRepository::GetListing(db, scope.holder_id, guid);
+			if (!listing.id) {
+				LogRefusal(requester, scope, guid);
+				return nullptr;
+			}
+
+			std::unique_ptr<EQ::ItemInstance> inst(LoadOne(db, content_db, guid));
+			if (inst) {
+				inst->SetMerchantSlot(static_cast<uint32>(listing.id));
+				inst->SetPrice(listing.item_cost);
+				if (inst->IsStackable()) {
+					inst->SetMerchantCount(inst->GetCharges());
+				}
+			}
+
+			return inst;
+		}
+	}
+
+	return nullptr;
 }
