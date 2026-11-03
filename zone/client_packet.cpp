@@ -15269,16 +15269,16 @@ void Client::Handle_OP_TraderBuy(const EQApplicationPacket *app)
 	auto in     = (TraderBuy_Struct *) app->pBuffer;
 
 	if (RuleB(Bazaar, UseAlternateBazaarSearch) && in->trader_id >= TraderRepository::TRADER_CONVERT_ID) {
-		auto trader = TraderRepository::GetTraderByInstanceAndSerialnumber(
+		auto trader = TraderRepository::GetTraderByInstanceAndGUID(
 			database,
 			in->trader_id - TraderRepository::TRADER_CONVERT_ID,
-			in->serial_number
+			in->item_guid
 		);
 
 		if (!trader.trader_id) {
-			LogTrading("Unable to convert trader id for {} and serial number {}.  Trader Buy aborted.",
+			LogTrading("Unable to convert trader id for {} and item {}.  Trader Buy aborted.",
 				in->trader_id - TraderRepository::TRADER_CONVERT_ID,
-				in->serial_number
+				ItemGUIDText(in->item_guid)
 			);
 			return;
 		}
@@ -15293,11 +15293,11 @@ void Client::Handle_OP_TraderBuy(const EQApplicationPacket *app)
 		case BazaarByVendor: {
 			if (trader) {
 				LogTrading("Buy item directly from vendor id <green>[{}] item_id <green>[{}] quantity <green>[{}] "
-						   "serial_number <green>[{}]",
+						   "item <green>[{}]",
 						   in->trader_id,
 						   in->item_id,
 						   in->quantity,
-						   in->serial_number
+						   ItemGUIDText(in->item_guid)
 				);
 				BuyTraderItem(in, trader, app);
 			}
@@ -15319,11 +15319,11 @@ void Client::Handle_OP_TraderBuy(const EQApplicationPacket *app)
 				return;
 			}
 			LogTrading("Buy item by parcel delivery <green>[{}] item_id <green>[{}] quantity <green>[{}] "
-					   "serial_number <green>[{}]",
+					   "item <green>[{}]",
 					   in->trader_id,
 					   in->item_id,
 					   in->quantity,
-					   in->serial_number
+					   ItemGUIDText(in->item_guid)
 			);
 			BuyTraderItemOutsideBazaar(in, app);
 			break;
@@ -15344,11 +15344,11 @@ void Client::Handle_OP_TraderBuy(const EQApplicationPacket *app)
 			}
 			trader = entity_list.GetClientByCharID(in->trader_id);
 			LogTrading("Buy item by direct inventory delivery <green>[{}] item_id <green>[{}] quantity <green>[{}] "
-					   "serial_number <green>[{}]",
+					   "item <green>[{}]",
 					   in->trader_id,
 					   in->item_id,
 					   in->quantity,
-					   in->serial_number
+					   ItemGUIDText(in->item_guid)
 			);
 			Message(
 				Chat::Yellow,

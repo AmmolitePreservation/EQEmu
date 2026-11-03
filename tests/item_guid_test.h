@@ -15,6 +15,8 @@ public:
 		TEST_ADD(ItemGUIDTest::PlaceholderIsNoItem);
 		TEST_ADD(ItemGUIDTest::WrongLengthIsRefused);
 		TEST_ADD(ItemGUIDTest::ForeignCharacterIsRefused);
+		TEST_ADD(ItemGUIDTest::FieldReadsToTerminator);
+		TEST_ADD(ItemGUIDTest::FieldWithoutItemIsZero);
 	}
 
 	~ItemGUIDTest() {
@@ -59,6 +61,22 @@ private:
 
 	void ForeignCharacterIsRefused() {
 		TEST_ASSERT(!ItemGUIDFromText("20e308i00001000_").has_value());
+	}
+
+	// The client's 17-byte fields carry the text and a terminator.
+	void FieldReadsToTerminator() {
+		const char     field[17] = "20e308i0002uB000";
+		const ItemGUID expected{199176, 139, 11448};
+		TEST_ASSERT(ItemGUIDFromField(std::string_view(field, sizeof(field))) == expected);
+	}
+
+	void FieldWithoutItemIsZero() {
+		const char empty[17] = "";
+		const char zeros[17] = "0000000000000000";
+		const char unterminated[17] = {'2', '0', 'e', '3', '0', '8', 'i', '0', '0', '0', '2', 'u', 'B', '0', '0', '0', '1'};
+		TEST_ASSERT(ItemGUIDFromField(std::string_view(empty, sizeof(empty))).IsZero());
+		TEST_ASSERT(ItemGUIDFromField(std::string_view(zeros, sizeof(zeros))).IsZero());
+		TEST_ASSERT(ItemGUIDFromField(std::string_view(unterminated, sizeof(unterminated))).IsZero());
 	}
 };
 

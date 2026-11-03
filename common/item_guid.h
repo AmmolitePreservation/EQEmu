@@ -16,6 +16,9 @@ struct ItemGUID {
 	bool IsZero() const { return first == 0 && second == 0 && third == 0; }
 	bool operator==(const ItemGUID &other) const { return first == other.first && second == other.second && third == other.third; }
 	bool operator!=(const ItemGUID &other) const { return !(*this == other); }
+
+	template<class Archive>
+	void serialize(Archive &archive) { archive(first, second, third); }
 };
 
 // The text RoF2 and Live carry: the three words as 12 little-endian bytes, read as one big-endian 96-bit number and
@@ -89,6 +92,12 @@ inline std::optional<ItemGUID> ItemGUIDFromText(std::string_view text)
 	}
 
 	return guid;
+}
+
+// An item's GUID from a client's fixed text field, read to its terminator; anything but valid text is no item.
+inline ItemGUID ItemGUIDFromField(std::string_view field)
+{
+	return ItemGUIDFromText(field.substr(0, field.find('\0'))).value_or(ItemGUID{});
 }
 
 #endif //EQEMU_ITEM_GUID_H

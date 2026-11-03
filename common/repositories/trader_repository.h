@@ -170,35 +170,21 @@ public:
 		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
-	static Trader GetItemBySerialNumber(Database &db, uint32 serial_number, uint32 trader_id)
+	static std::string GUIDFilter(const ItemGUID &guid)
 	{
-		Trader     e{};
-		const auto trader_item = GetWhere(
-			db,
-			fmt::format("`char_id` = '{}' AND `item_sn` = '{}' LIMIT 1", trader_id, serial_number)
-		);
-
-		if (trader_item.empty()) {
-			return e;
-		}
-
-		return trader_item.at(0);
+		return fmt::format("`guid_first` = {} AND `guid_second` = {} AND `guid_third` = {}", guid.first, guid.second, guid.third);
 	}
 
-	static Trader GetItemBySerialNumber(Database &db, std::string serial_number, uint32 trader_id)
+	// The listing a client's GUID selects among this trader's, or an empty entry when it names none of them.
+	static Trader GetListing(Database &db, uint32 trader_id, const ItemGUID &guid)
 	{
-		Trader     e{};
-		auto       sn          = Strings::ToUnsignedBigInt(serial_number);
-		const auto trader_item = GetWhere(
-			db,
-			fmt::format("`char_id` = '{}' AND `item_sn` = '{}' LIMIT 1", trader_id, sn)
-		);
-
-		if (trader_item.empty()) {
-			return e;
+		if (guid.IsZero()) {
+			return Trader{};
 		}
 
-		return trader_item.at(0);
+		const auto listings = GetWhere(db, fmt::format("`char_id` = '{}' AND {} LIMIT 1", trader_id, GUIDFilter(guid)));
+
+		return listings.empty() ? Trader{} : listings.front();
 	}
 
 	static int UpdateActiveTransaction(Database &db, uint32 id, bool status)
@@ -229,11 +215,7 @@ public:
 		return DeleteWhere(db, fmt::format("`id` IN({})", Strings::Implode(",", delete_ids)));
 	}
 
-	static DistinctTraders_Struct GetTraderByInstanceAndSerialnumber(
-		Database &db,
-		uint32 instance_id,
-		const char *serial_number
-		)
+	static DistinctTraders_Struct GetTraderByInstanceAndGUID(Database &db, uint32 instance_id, const ItemGUID &guid)
 	{
 		DistinctTraders_Struct trader{};
 
@@ -241,9 +223,9 @@ public:
 			"SELECT t.id, t.char_id, c.name "
 			"FROM trader AS t "
 			"JOIN character_data AS c ON c.id = t.char_id "
-			"WHERE t.char_zone_id = 151 AND t.char_zone_instance_id = {} AND t.item_sn = {} LIMIT 1",
+			"WHERE t.char_zone_id = 151 AND t.char_zone_instance_id = {} AND {} LIMIT 1",
 			instance_id,
-			serial_number
+			GUIDFilter(guid)
 		);
 
 		auto results = db.QueryDatabase(query);
@@ -268,7 +250,7 @@ public:
 		std::vector<BazaarTraderSearch_Struct> all_entries{};
 
 		auto query = fmt::format(
-			"SELECT trader.id, trader.char_id, trader.guid_first, trader.guid_second, trader.guid_third, trader.item_sn, "
+			"SELECT trader.id, trader.char_id, trader.guid_first, trader.guid_second, trader.guid_third, "
 			"trader.item_cost, trader.slot_id, trader.char_entity_id, trader.char_zone_id, trader.char_zone_instance_id, "
 			"trader.active_transaction, UNIX_TIMESTAMP(trader.listing_date), c.`name`, i.item_id, i.charges "
 			"FROM `trader` INNER JOIN character_data AS c ON trader.char_id = c.id "
@@ -290,17 +272,16 @@ public:
 			e.trader.guid_first            = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
 			e.trader.guid_second           = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
 			e.trader.guid_third            = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.trader.item_sn               = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.trader.item_cost             = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.trader.slot_id               = row[7] ? static_cast<uint8_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.trader.char_entity_id        = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.trader.char_zone_id          = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.trader.char_zone_instance_id = row[10] ? static_cast<int32_t>(atoi(row[10])) : 0;
-			e.trader.active_transaction    = row[11] ? static_cast<uint8_t>(strtoul(row[11], nullptr, 10)) : 0;
-			e.trader.listing_date          = row[12] ? strtoll(row[12], nullptr, 10) : 0;
-			e.trader_name                  = row[13] ? row[13] : std::string("");
-			e.item_id                      = row[14] ? static_cast<uint32_t>(strtoul(row[14], nullptr, 10)) : 0;
-			e.charges                      = row[15] ? static_cast<int32_t>(atoi(row[15])) : 0;
+			e.trader.item_cost             = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.trader.slot_id               = row[6] ? static_cast<uint8_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.trader.char_entity_id        = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.trader.char_zone_id          = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
+			e.trader.char_zone_instance_id = row[9] ? static_cast<int32_t>(atoi(row[9])) : 0;
+			e.trader.active_transaction    = row[10] ? static_cast<uint8_t>(strtoul(row[10], nullptr, 10)) : 0;
+			e.trader.listing_date          = row[11] ? strtoll(row[11], nullptr, 10) : 0;
+			e.trader_name                  = row[12] ? row[12] : std::string("");
+			e.item_id                      = row[13] ? static_cast<uint32_t>(strtoul(row[13], nullptr, 10)) : 0;
+			e.charges                      = row[14] ? static_cast<int32_t>(atoi(row[14])) : 0;
 			all_entries.push_back(e);
 		}
 

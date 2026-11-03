@@ -20,6 +20,8 @@
 #ifndef COMMON_ROF2_STRUCTS_H
 #define COMMON_ROF2_STRUCTS_H
 
+#include "../item_guid.h"
+
 
 namespace RoF2
 {
@@ -3317,16 +3319,6 @@ struct BazaarInspect_Struct {
 	uint32 unknown_036;
 };
 
-struct NewBazaarInspect_Struct {
-/*000*/	BazaarWindowStart_Struct Beginning;
-/*004*/	char Name[64];
-/*068*/	uint32 Unknown068;
-/*072*/	int32 SerialNumber;
-/*076*/	uint32 Unknown076;
-/*080*/	uint32 SellerID;
-/*084*/	uint32 Unknown084;
-};
-
 struct BazaarReturnDone_Struct{
 	uint32 Type;
 	uint32 TraderID;
@@ -3557,9 +3549,8 @@ struct TraderItemSerial_Struct {
 	char	serial_number[17];
 	uint8	unknown_018;
 
-	void operator=(uint32 a) {
-		auto _tmp = fmt::format("{:016}", a);
-		strn0cpy(this->serial_number, _tmp.c_str(), sizeof(this->serial_number));
+	void operator=(const ItemGUID &guid) {
+		strn0cpy(serial_number, ItemGUIDText(guid).c_str(), sizeof(serial_number));
 	}
 };
 

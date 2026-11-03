@@ -159,17 +159,7 @@ Bazaar::GetSearchResults(
 	std::string field_criteria_items("FALSE");
 	std::string where_criteria_items(" TRUE ");
 
-	if (search.search_scope == NonRoFBazaarSearchScope) {
-		search_criteria_trader.append(
-			fmt::format(
-				" AND trader.char_entity_id = {} AND trader.char_zone_id = {} AND trader.char_zone_instance_id = {}",
-				search.trader_entity_id,
-				Zones::BAZAAR,
-				char_zone_instance_id
-			)
-		);
-	}
-	else if (search.search_scope == Local_Scope) {
+	if (search.search_scope == Local_Scope) {
 		search_criteria_trader.append(fmt::format(
 			" AND trader.char_zone_id = {} AND trader.char_zone_instance_id = {}",
 			char_zone_id,
@@ -298,7 +288,7 @@ Bazaar::GetSearchResults(
 		BazaarSearchResultsFromDB_Struct r{};
 		r.count                   = 1;
 		r.trader_id               = t.trader.char_id;
-		r.serial_number           = t.trader.item_sn;
+		r.item_guid               = TraderRepository::GUIDOf(t.trader);
 		r.cost                    = t.trader.item_cost;
 		r.slot_id                 = t.trader.slot_id;
 		r.charges                 = t.charges;
@@ -307,7 +297,6 @@ Bazaar::GetSearchResults(
 		r.trader_zone_id          = t.trader.char_zone_id;
 		r.trader_zone_instance_id = t.trader.char_zone_instance_id;
 		r.trader_entity_id        = t.trader.char_entity_id;
-		r.serial_number_RoF       = fmt::format("{:016}\0", t.trader.item_sn);
 		r.item_name               = fmt::format("{:.63}\0", item_results.at(t.item_id).name);
 		r.trader_name             = fmt::format("{:.63}\0", t.trader_name);
 		r.item_stat               = item_results.at(t.item_id).stats;

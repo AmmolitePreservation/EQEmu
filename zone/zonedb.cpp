@@ -258,25 +258,17 @@ void ZoneDatabase::DeleteWorldContainer(uint32 parent_id, uint32 zone_id)
 	ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id), ItemRetirement::Consumed);
 }
 
-std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char_id, int serial_number)
+std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char_id, const ItemGUID &guid)
 {
-	auto results = TraderRepository::GetWhere(
-		database,
-		fmt::format(
-			"`char_id` = '{}' AND `item_sn` = '{}' ORDER BY slot_id",
-			char_id,
-			serial_number
-		)
-	);
-
-	if (results.empty()) {
-		LogTrading("Could not find item serial number {} for character id {}", serial_number, char_id);
+	const auto listing = TraderRepository::GetListing(database, char_id, guid);
+	if (!listing.id) {
+		LogTrading("Trader [{}] lists no item [{}]", char_id, ItemGUIDText(guid));
 		return nullptr;
 	}
 
-	std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(results.at(0))));
+	std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(database, database, TraderRepository::GUIDOf(listing)));
 	if (!inst) {
-		LogTrading("Listing [{}] of trader [{}] has no loadable item", results.at(0).id, char_id);
+		LogTrading("Listing [{}] of trader [{}] has no loadable item", listing.id, char_id);
 		return nullptr;
 	}
 
@@ -284,11 +276,8 @@ std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char
 		return nullptr;
 	}
 
-	const int cost = results.at(0).item_cost;
-
-	inst->SetSerialNumber(serial_number);
-	inst->SetMerchantSlot(serial_number);
-	inst->SetPrice(cost);
+	inst->SetMerchantSlot(static_cast<uint32>(listing.id));
+	inst->SetPrice(listing.item_cost);
 
 	if (inst->IsStackable()) {
 		inst->SetMerchantCount(inst->GetCharges());

@@ -108,7 +108,7 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 
 | Table | Keeps | Loses |
 |---|---|---|
-| `trader` | the seller, `item_sn` (the handle the RoF2 client echoes, which selects within the seller's listings), price, listing slot and date, transaction | item number, augments, charges |
+| `trader` | the seller, price, listing slot and date, transaction | item number, augments, charges, the serial |
 | `character_parcels` | recipient and slot (a money parcel has no row to carry them), `money`, sender, note, sent date | item number, augments, quantity |
 | `guild_bank` | permissions, `who_for`, donator | item number, augments, quantity, guild, area and slot (the row's holder and slot) |
 | `character_evolving_items` | its id (the client's unique id), activated, equipped, amount, progression, final item | item number, character, `deleted_at` (the row's retirement) |
