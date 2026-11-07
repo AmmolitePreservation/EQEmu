@@ -2049,9 +2049,14 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 		}
 	}
 	database.SaveSwap(this, src_slot_id, dst_slot_id);
-	// The client gave the piece it split a placeholder GUID; the issued piece goes back so it holds the real one, as Live does.
-	if (split_piece_slot != INVALID_INDEX) {
-		SendItemPacket(split_piece_slot, m_inv.GetItem(split_piece_slot), split_piece_slot == EQ::invslot::slotCursor ? ItemPacketCharInventory : ItemPacketTrade);
+	// The client gave the piece it split its own GUID (RoF2 copies the stack's); the issued piece goes back so it holds the
+	// real one, as Live does. The client ignores a packet for an occupied cursor, so the cursor is emptied first.
+	if (split_piece_slot == EQ::invslot::slotCursor) {
+		SendSlotEmptied(EQ::invslot::slotCursor, true);
+		SendItemPacket(EQ::invslot::slotCursor, m_inv.GetItem(EQ::invslot::slotCursor), ItemPacketLimbo);
+	}
+	else if (split_piece_slot != INVALID_INDEX) {
+		SendItemPacket(split_piece_slot, m_inv.GetItem(split_piece_slot), ItemPacketTrade);
 	}
 	// Step 8: Re-calc stats
 	CalcBonuses();
