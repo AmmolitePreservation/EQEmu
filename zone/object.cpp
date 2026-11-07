@@ -669,7 +669,7 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 			if (m_inst->HasGUID()) {
 				GroundItemsRepository::Remove(database, m_inst->GetGUID());
 			}
-			sender->SendItemPacket(EQ::invslot::slotCursor, m_inst, ItemPacketTrade);
+			sender->SendItemPacket(EQ::invslot::slotCursor, sender->LandedItem(EQ::invslot::slotCursor), ItemPacketTrade);
 
 			sender->CheckItemDiscoverability(m_inst->GetID());
 

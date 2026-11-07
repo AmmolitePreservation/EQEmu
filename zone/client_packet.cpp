@@ -14004,7 +14004,7 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 	std::string packet;
 	if (!stacked && inst) {
 		PutItemInInventory(freeslotid, *inst);
-		SendItemPacket(freeslotid, inst, ItemPacketTrade);
+		SendItemPacket(freeslotid, LandedItem(freeslotid), ItemPacketTrade);
 	} else if (!stacked) {
 		LogError("OP_ShopPlayerBuy: item->ItemClass Unknown! Type: [{}]", item->ItemClass);
 	}

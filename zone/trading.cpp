@@ -211,7 +211,7 @@ void Client::ResetTrade() {
 
 			if (free_slot != INVALID_INDEX) {
 				PutItemInInventory(free_slot, *inst);
-				SendItemPacket(free_slot, inst, ItemPacketTrade);
+				SendItemPacket(free_slot, LandedItem(free_slot), ItemPacketTrade);
 			}
 			else {
 				DropInst(inst);
@@ -254,7 +254,7 @@ void Client::ResetTrade() {
 				}
 
 				PutItemInInventory(free_slot, *partial_inst);
-				SendItemPacket(free_slot, partial_inst, ItemPacketTrade);
+				SendItemPacket(free_slot, LandedItem(free_slot), ItemPacketTrade);
 				if (inst->GetCharges() == 0) {
 					DeleteItemInInventory(trade_slot, 0, false, ItemRetirement::Stacked);
 					break;
@@ -306,7 +306,7 @@ void Client::ResetTrade() {
 
 			if (free_slot != INVALID_INDEX) {
 				PutItemInInventory(free_slot, *inst);
-				SendItemPacket(free_slot, inst, ItemPacketTrade);
+				SendItemPacket(free_slot, LandedItem(free_slot), ItemPacketTrade);
 			}
 			else {
 				DropInst(inst);
@@ -946,7 +946,7 @@ void Client::SendTraderItem(const EQ::ItemInstance &sold, uint16 quantity, Clien
 	const int16 free_slot_id = m_inv.FindFreeSlot(false, true, inst->GetItem()->Size, is_arrow);
 	if (!TryStacking(inst.get(), ItemPacketTrade, true, false)) {
 		PutItemInInventory(free_slot_id, *inst);
-		SendItemPacket(free_slot_id, inst.get(), ItemPacketTrade);
+		SendItemPacket(free_slot_id, LandedItem(free_slot_id), ItemPacketTrade);
 	}
 
 	Save();

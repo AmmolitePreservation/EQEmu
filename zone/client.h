@@ -1146,6 +1146,8 @@ public:
 	bool PutItemInInventoryWithStacking(EQ::ItemInstance* inst);
 	bool FindNumberOfFreeInventorySlotsWithSizeCheck(std::vector<BuyerLineTradeItems_Struct> items);
 	bool PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update = false);
+	// The stored copy of the item that just landed, which carries the GUID its save issued; the landing's argument never does.
+	const EQ::ItemInstance* LandedItem(int16 slot_id) const;
 	void SendCursorBuffer();
 	// The item in the slot leaves play (all of it, or quantity units of a stack); its row retires with the reason.
 	void DeleteItemInInventory(int16 slot_id, int16 quantity, bool client_update, ItemRetirement reason);

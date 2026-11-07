@@ -6166,7 +6166,7 @@ bool Client::TryReward(uint32 claim_id)
 	}
 
 	PutItemInInventory(free_slot, *claim);
-	SendItemPacket(free_slot, claim, ItemPacketTrade);
+	SendItemPacket(free_slot, LandedItem(free_slot), ItemPacketTrade);
 	safe_delete(claim);
 
 	Save();
@@ -11319,8 +11319,7 @@ void Client::SummonBaggedItems(uint32 bag_item_id, const std::vector<LootItem>& 
 		}
 	}
 
-	PushItemOnCursor(*summoned_bag);
-	SendItemPacket(EQ::invslot::slotCursor, summoned_bag, ItemPacketLimbo);
+	PushItemOnCursor(*summoned_bag, true);
 	safe_delete(summoned_bag);
 }
 

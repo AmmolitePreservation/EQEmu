@@ -369,8 +369,7 @@ void Client::GoFish(bool guarantee, bool use_bait)
 				}
 				else
 				{
-					PushItemOnCursor(*inst);
-					SendItemPacket(EQ::invslot::slotCursor, inst, ItemPacketLimbo);
+					PushItemOnCursor(*inst, true);
 					if (RuleB(TaskSystem, EnableTaskSystem))
 						UpdateTasksForItem(TaskActivityType::Fish, food_id);
 
@@ -508,8 +507,7 @@ void Client::ForageItem(bool guarantee) {
 				MessageString(Chat::White, DUP_LORE);
 				safe_delete(inst);
 			} else {
-				PushItemOnCursor(*inst);
-				SendItemPacket(EQ::invslot::slotCursor, inst, ItemPacketLimbo);
+				PushItemOnCursor(*inst, true);
 				if(RuleB(TaskSystem, EnableTaskSystem)) {
 					UpdateTasksForItem(TaskActivityType::Forage, foragedfood);
 				}

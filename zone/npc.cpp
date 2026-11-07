@@ -1736,12 +1736,12 @@ void NPC::PickPocket(Client* thief)
 		if (item_inst->IsStackable() && RuleB(Character, UseStackablePickPocketing)) {
 			if (!thief->TryStacking(item_inst, ItemPacketTrade, false, false)) {
 				thief->PutItemInInventory(slot_id, *item_inst);
-				thief->SendItemPacket(slot_id, item_inst, ItemPacketTrade);
+				thief->SendItemPacket(slot_id, thief->LandedItem(slot_id), ItemPacketTrade);
 			}
 		}
 		else {
 			thief->PutItemInInventory(slot_id, *item_inst);
-			thief->SendItemPacket(slot_id, item_inst, ItemPacketTrade);
+			thief->SendItemPacket(slot_id, thief->LandedItem(slot_id), ItemPacketTrade);
 		}
 		RemoveItem(item_inst->GetID());
 		thief->SendPickPocketResponse(this, 0, PickPocketItem, item_inst->GetItem());

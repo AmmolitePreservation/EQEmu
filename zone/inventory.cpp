@@ -650,8 +650,7 @@ bool Client::SummonItem(uint32 item_id, int16 charges, uint32 aug1, uint32 aug2,
 
 	// put item into inventory
 	if (to_slot == EQ::invslot::slotCursor) {
-		PushItemOnCursor(*inst);
-		SendItemPacket(EQ::invslot::slotCursor, inst, ItemPacketLimbo);
+		PushItemOnCursor(*inst, true);
 	} else {
 		PutItemInInventory(to_slot, *inst, true);
 	}
@@ -1047,14 +1046,19 @@ void Client::SendSlotChange(int16 slot_id, const EQ::ItemInstance *remaining, bo
 	}
 }
 
+const EQ::ItemInstance* Client::LandedItem(int16 slot_id) const
+{
+	return slot_id == EQ::invslot::slotCursor ? m_inv.GetLastCursorItem() : m_inv.GetItem(slot_id);
+}
+
 bool Client::PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update)
 {
 	LogInventory("Putting item [{}] ([{}]) on the cursor", inst.GetItem()->Name, inst.GetItem()->ID);
 	m_inv.PushCursor(inst);
-	if (client_update) {
-		SendItemPacket(EQ::invslot::slotCursor, &inst, ItemPacketLimbo);
-	}
 	const bool saved = database.SaveCursor(this);
+	if (client_update) {
+		SendItemPacket(EQ::invslot::slotCursor, LandedItem(EQ::invslot::slotCursor), ItemPacketLimbo);
+	}
 	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
 	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
 	return saved;
@@ -1070,12 +1074,11 @@ bool Client::PutItemInInventory(int16 slot_id, const EQ::ItemInstance& inst, boo
 	}
 
 	m_inv.PutItem(slot_id, inst);
-	if (client_update)
-	{
-		SendItemPacket(slot_id, &inst, ItemPacketTrade);
-	}
 	CalcBonuses();
 	const bool saved = database.SaveInventory(this, slot_id);
+	if (client_update) {
+		SendItemPacket(slot_id, LandedItem(slot_id), ItemPacketTrade);
+	}
 	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
 	return saved;
 }
@@ -1101,7 +1104,7 @@ void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, Loo
 		// RoF+ currently has a specialized cursor handler
 	}
 	else {
-		SendLootItemInPacket(&inst, slot_id);
+		SendLootItemInPacket(LandedItem(slot_id), slot_id);
 	}
 
 	if (bag_item_data) {
