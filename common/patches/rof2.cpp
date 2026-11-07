@@ -6454,14 +6454,18 @@ namespace RoF2
 			break;
 		}
 
-		hdr.slot_type      = (inst->GetMerchantSlot() ? invtype::typeMerchant : slot_id.Type);
-		hdr.main_slot      = (inst->GetMerchantSlot() ? inst->GetMerchantSlot() : slot_id.Slot);
-		hdr.sub_slot       = (inst->GetMerchantSlot() ? 0xffff : slot_id.SubIndex);
-		hdr.aug_slot       = (inst->GetMerchantSlot() ? 0xffff : slot_id.AugIndex);
+		// A parcel is listed by its parcel slot, which may be 0; a merchant item's slot never is.
+		const bool   listed       = packet_type == ItemPacketParcel || inst->GetMerchantSlot() != 0;
+		const uint32 listing_slot = packet_type == ItemPacketParcel ? static_cast<uint32>(slot_id_in) : inst->GetMerchantSlot();
+
+		hdr.slot_type      = (listed ? invtype::typeMerchant : slot_id.Type);
+		hdr.main_slot      = (listed ? listing_slot : slot_id.Slot);
+		hdr.sub_slot       = (listed ? 0xffff : slot_id.SubIndex);
+		hdr.aug_slot       = (listed ? 0xffff : slot_id.AugIndex);
 		hdr.price          = inst->GetPrice();
-		hdr.merchant_slot  = ((inst->GetMerchantSlot() ? inst->GetMerchantCount() : 1));
+		hdr.merchant_slot  = (listed ? inst->GetMerchantCount() : 1);
 		hdr.scaled_value   = (inst->IsScaling() ? (inst->GetExp() / 100) : 0);
-		hdr.instance_id    = (inst->GetMerchantSlot() ? inst->GetMerchantSlot() : inst->GetSerialNumber());
+		hdr.instance_id    = (listed ? listing_slot : inst->GetSerialNumber());
 		hdr.parcel_item_id = packet_type == ItemPacketParcel ? inst->GetID() : 0;
 		if (item->EvolvingItem) {
 			hdr.instance_id    = inst->GetEvolveUniqueID() & 0xFFFFFFFF; //lower dword
