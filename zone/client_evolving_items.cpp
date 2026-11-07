@@ -349,6 +349,8 @@ bool Client::DoEvolveCheckProgression(EQ::ItemInstance &inst)
 		return false;
 	}
 
+	// The augments' parcels or retirements and the item's next level are one evolve.
+	DBcore::Transaction evolve(database);
 	if (RuleB(EvolvingItems, EnableParcelMerchants) &&
 		!RuleB(EvolvingItems, DestroyAugmentsOnEvolve) &&
 		inst.IsAugmented()
@@ -411,6 +413,7 @@ bool Client::DoEvolveCheckProgression(EQ::ItemInstance &inst)
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
 
 	PushItemOnCursor(*new_inst, true);
+	evolve.Commit();
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*new_inst, e);
 	e.status = "Evolved Item due to obtaining progression - New Evolve Item placed in inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);

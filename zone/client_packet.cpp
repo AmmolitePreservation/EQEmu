@@ -3218,6 +3218,8 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 		}
 	}
 
+	// The solvent, the augment's row, the item's tree and a returned augment's landing are one act.
+	DBcore::Transaction transaction(database);
 	switch (in_augment->augment_action) {
 		case AugmentActions::Insert:
 		case AugmentActions::Swap:
@@ -3507,12 +3509,12 @@ void Client::Handle_OP_AugmentItem(const EQApplicationPacket *app)
 			);
 			break;
 	}
+	transaction.Commit();
 	safe_delete(item_one_to_push);
 	safe_delete(item_two_to_push);
 
 	return;
 }
-
 void Client::Handle_OP_AutoAttack(const EQApplicationPacket *app)
 {
 	if (app->size != 4) {
@@ -10849,9 +10851,11 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 			}
 		}
 
+		DBcore::Transaction transaction(database);
 		for (const MoveInfo& move : items) {
 			PutItemInInventory(move.to_slot, *move.item); // This saves inventory too
 		}
+		transaction.Commit();
 	}
 
 }
@@ -12932,7 +12936,10 @@ void Client::Handle_OP_RecipeAutoCombine(const EQApplicationPacket *app)
 
 	RecipeAutoCombine_Struct* rac = (RecipeAutoCombine_Struct*)app->pBuffer;
 
+	// The components' retirements and the products' issues are one combine.
+	DBcore::Transaction transaction(database);
 	Object::HandleAutoCombine(this, rac);
+	transaction.Commit();
 	return;
 }
 
@@ -15535,7 +15542,10 @@ void Client::Handle_OP_TradeSkillCombine(const EQApplicationPacket *app)
 
 	// Delegate to tradeskill object to perform combine
 	NewCombine_Struct* in_combine = (NewCombine_Struct*)app->pBuffer;
+	// The components' retirements and the products' issues are one combine.
+	DBcore::Transaction transaction(database);
 	Object::HandleCombine(this, in_combine, m_tradeskill_object);
+	transaction.Commit();
 	return;
 }
 

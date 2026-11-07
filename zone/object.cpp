@@ -211,8 +211,11 @@ decay_timer(300000)
 	FixZ();
 
 	if (m_inst && m_inst->HasGUID()) {
+		// The row's move and the ground row are one drop.
+		DBcore::Transaction drop(database);
 		ItemLayer::MoveRow(database, m_inst->GetGUID(), ItemLocation::OnGround(zone->GetZoneID()));
 		GroundItemsRepository::Place(database, m_inst->GetGUID(), zone->GetInstanceID(), m_data.x, m_data.y, m_data.z, m_data.heading);
+		drop.Commit();
 	}
 }
 
@@ -444,14 +447,16 @@ void Object::Close() {
 		// if they close the container without removing all items
 		auto container = m_inst;
 		if (container) {
+			// Every content's return is one act.
+			DBcore::Transaction returns(database);
 			for (uint8 i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
 				auto inst = container->PopItem(i);
 				if (inst) {
 					user->MoveItemToInventory(inst, true);
 				}
 			}
+			returns.Commit();
 		}
-
 		auto outapp = new EQApplicationPacket(OP_ClearObject, sizeof(ClearObject_Struct));
 		ClearObject_Struct *cos = (ClearObject_Struct *)outapp->pBuffer;
 		cos->Clear = 1;
@@ -654,21 +659,24 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 					safe_delete(outapp);
 
 					if (m_inst->HasGUID()) {
+						DBcore::Transaction pickup(database);
 						ItemLayer::Retire(database, *m_inst, ItemRetirement::Consumed);
 						GroundItemsRepository::Remove(database, m_inst->GetGUID());
+						pickup.Commit();
 					}
-
 					sender->SetTradeskillObject(nullptr);
 					user = nullptr;
 					return true;
 				}
 			}
 
-			// Transfer item to client
+			// Transfer item to client: the landing and the ground row are one pickup
+			DBcore::Transaction pickup(database);
 			sender->PutItemInInventory(EQ::invslot::slotCursor, *m_inst, false);
 			if (m_inst->HasGUID()) {
 				GroundItemsRepository::Remove(database, m_inst->GetGUID());
 			}
+			pickup.Commit();
 			sender->SendItemPacket(EQ::invslot::slotCursor, sender->LandedItem(EQ::invslot::slotCursor), ItemPacketTrade);
 
 			sender->CheckItemDiscoverability(m_inst->GetID());

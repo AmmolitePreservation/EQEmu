@@ -200,8 +200,9 @@ Mob *Trade::GetOwner() const
 
 
 void Client::ResetTrade() {
+	// The coin back and every item's landing are one cancel.
+	DBcore::Transaction transaction(database);
 	AddMoneyToPP(trade->cp, trade->sp, trade->gp, trade->pp, true);
-
 	// step 1: process bags
 	for (int16 trade_slot = EQ::invslot::TRADE_BEGIN; trade_slot <= EQ::invslot::TRADE_END; ++trade_slot) {
 		const EQ::ItemInstance* inst = m_inv[trade_slot];
@@ -314,8 +315,8 @@ void Client::ResetTrade() {
 			RemoveItemFromInventory(trade_slot);
 		}
 	}
+	transaction.Commit();
 }
-
 void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, std::list<void*>* event_details) {
 	if (!tradingWith) {
 		return;
@@ -500,6 +501,9 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 		}
 	}
 	else if(tradingWith->IsNPC()) {
+		// The quest script's writes, the returned items' landings, the kept items' retirements and a pet's moves
+		// are one hand-in.
+		DBcore::Transaction transaction(database);
 
 		bool quest_npc = false;
 		if (parse->HasQuestSub(tradingWith->GetNPCTypeID(), EVENT_TRADE)) {
@@ -672,6 +676,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 		}
 
 		handin_npc->ResetHandin();
+		transaction.Commit();
 
 		for (auto &inst: insts) {
 			if (inst) {

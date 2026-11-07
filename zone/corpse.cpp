@@ -1658,7 +1658,8 @@ void Corpse::LootCorpseItem(Client *c, const EQApplicationPacket *app)
 			}
 		}
 
-		/* First add it to the looter - this will do the bag contents too */
+		/* First add it to the looter - this will do the bag contents too, as one landing */
+		DBcore::Transaction landing(database);
 		if (lootitem->auto_loot > 0) {
 			if (!c->AutoPutLootInInventory(*inst, true, true, bag_item_data)) {
 				c->PutLootInInventory(EQ::invslot::slotCursor, *inst, bag_item_data);
@@ -1667,7 +1668,7 @@ void Corpse::LootCorpseItem(Client *c, const EQApplicationPacket *app)
 		else {
 			c->PutLootInInventory(EQ::invslot::slotCursor, *inst, bag_item_data);
 		}
-
+		landing.Commit();
 		/* Update any tasks that have an activity to loot this item */
 		if (RuleB(TaskSystem, EnableTaskSystem) && IsNPCCorpse()) {
 			c->UpdateTasksOnLoot(this, item->ID, count);
