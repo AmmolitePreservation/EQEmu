@@ -7872,9 +7872,18 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			if (inst->GetCharges() > 0 || inst->IsStackable() || inst->GetItem()->MaxCharges > 0) {
 				gbwis->Quantity = inst->GetCharges();
 			}
-			PushItemOnCursor(*inst.get());
-			SendItemPacket(EQ::invslot::slotCursor, inst.get(), ItemPacketLimbo);
-			GuildBanks->DeleteItem(GuildID(), gbwis->Area, gbwis->SlotID, gbwis->Quantity, this);
+
+			// The landing (the row moved, or a piece issued from the withdrawer's counter) and the bank row's removal
+			// or shrink are one withdrawal; the landed copy carries the piece's GUID to the client.
+			DBcore::Transaction transaction(database);
+			if (!PushItemOnCursor(*inst, true) || !GuildBanks->DeleteItem(GuildID(), gbwis->Area, gbwis->SlotID, gbwis->Quantity, this)) {
+				LogError("Character [{}] could not withdraw item [{}] from guild bank area [{}] slot [{}]", CharacterID(), inst->GetID(), gbwis->Area, gbwis->SlotID);
+				transaction.Rollback();
+				RemoveItemFromInventory(EQ::invslot::slotCursor, true);
+				GuildBankAck();
+				break;
+			}
+			transaction.Commit();
 
 			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::GUILD_BANK_WITHDRAWAL)) {
 				PlayerEvent::GuildBankTransaction log{};
@@ -7893,10 +7902,6 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 				}
 
 				RecordPlayerEventLog(PlayerEvent::GUILD_BANK_WITHDRAWAL, log);
-			}
-
-			else {
-				Message(Chat::Red, "Unable to withdraw 0 quantity of %s", inst->GetItem()->Name);
 			}
 
 			GuildBankAck();

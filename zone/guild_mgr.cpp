@@ -1135,6 +1135,8 @@ bool GuildBankManager::MergeStacks(uint32 guild_id, uint16 slot_id, Client* c)
 
 	std::ranges::sort(queue.begin(), queue.end(), [](auto &a, auto &b) { return a->quantity < b->quantity; });
 
+	// The absorbed stacks' retirements, their side rows and the charges are one merge.
+	DBcore::Transaction transaction(database);
 	for (auto *source : queue) {
 		const int32 room = stack_size - target->quantity;
 		if (room <= 0) {
@@ -1159,11 +1161,11 @@ bool GuildBankManager::MergeStacks(uint32 guild_id, uint16 slot_id, Client* c)
 	}
 
 	ItemLayer::SetCharges(database, target->guid, static_cast<int16>(target->quantity));
+	transaction.Commit();
 	SendGuildBankItemUpdate(guild_id, slot_id, GuildBankMainArea, true, c);
 
 	return true;
 }
-
 bool GuildBankManager::SplitStack(uint32 guild_id, uint16 slot_id, uint32 quantity, Client* c)
 {
 	auto guild_bank = GetGuildBank(guild_id);

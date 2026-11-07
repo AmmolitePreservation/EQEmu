@@ -586,6 +586,9 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 			return;
 		}
 
+		// The item (with its contents) or the coin lands and the parcel row goes in one transaction, so an
+		// interruption leaves the parcel whole.
+		DBcore::Transaction transaction(database);
 		switch (parcel_in.parcel_item_id) {
 			case PARCEL_MONEY_ITEM_ID: {
 				AddMoneyToPP(p->second.money, true);
@@ -595,6 +598,24 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 				break;
 			}
 			default: {
+				auto const free_id = GetInv().FindFirstFreeSlotThatFitsItemWithStacking(inst.get());
+				if (free_id == INVALID_INDEX) {
+					SendParcelRetrieveAck();
+					MessageString(Chat::White, PARCEL_INV_FULL, merchant->GetCleanName());
+					return;
+				}
+
+				if (CheckLoreConflict(inst->GetItem())) {
+					if (RuleB(Parcel, DeleteOnDuplicate)) {
+						MessageString(Chat::Yellow, PARCEL_DUPLICATE_DELETE, inst->GetItem()->Name);
+					}
+					else {
+						MessageString(Chat::Yellow, DUP_LORE);
+						SendParcelRetrieveAck();
+						return;
+					}
+				}
+
 				// A duplicate lore item among the contents is destroyed or stops the delivery, by rule.
 				std::vector<uint8> duplicate_lore_contents;
 				for (auto const &[index, content] : *inst->GetContents()) {
@@ -614,35 +635,20 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 					inst->DeleteItem(index);
 				}
 
-				auto const free_id = GetInv().FindFirstFreeSlotThatFitsItemWithStacking(inst.get());
-				if (free_id == INVALID_INDEX) {
+				if (!AutoPutLootInInventory(*inst.get(), false, true)) {
+					LogError("Parcel slot [{}] of character [{}] did not land item [{}]; the parcel stays", parcel_in.parcel_slot_id, CharacterID(), inst->GetID());
 					SendParcelRetrieveAck();
-					MessageString(Chat::White, PARCEL_INV_FULL, merchant->GetCleanName());
 					return;
 				}
 
-				if (CheckLoreConflict(inst->GetItem())) {
-					if (RuleB(Parcel, DeleteOnDuplicate)) {
-						MessageString(Chat::Yellow, PARCEL_DUPLICATE_DELETE, inst->GetItem()->Name);
-					}
-					else {
-						MessageString(Chat::Yellow, DUP_LORE);
-						SendParcelRetrieveAck();
-						return;
-					}
-				}
-
-				if (AutoPutLootInInventory(*inst.get(), false, true)) {
-					MessageString(
-						Chat::Yellow,
-						PARCEL_DELIVERED_2,
-						merchant->GetCleanName(),
-						std::to_string(inst->GetCharges()).c_str(),
-						inst->GetItem()->Name,
-						p->second.from_name.c_str()
-					);
-				}
-
+				MessageString(
+					Chat::Yellow,
+					PARCEL_DELIVERED_2,
+					merchant->GetCleanName(),
+					std::to_string(inst->GetCharges()).c_str(),
+					inst->GetItem()->Name,
+					p->second.from_name.c_str()
+				);
 				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_RETRIEVE)) {
 					PlayerEvent::ParcelRetrieve e{};
 					e.from_player_name = p->second.from_name;
@@ -660,7 +666,8 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 				}
 			}
 		}
-				DeleteParcel(p->second.id);
+		DeleteParcel(p->second.id);
+		transaction.Commit();
 		SendParcelDelete(parcel_in);
 		m_parcels.erase(p);
 	}
