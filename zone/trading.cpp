@@ -1361,9 +1361,10 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 
 	// This cannot overflow assuming MAX_TRANSACTION_VALUE, checked above, is the default of 2000000000
 	uint32 total_cost = tbs->price * outtbs->quantity;
-
 	outtbs->price = tbs->price;
 
+	// The buyer's coin, the seller's coin, the sold item or piece and its landing with the buyer are one exchange.
+	DBcore::Transaction transaction(database);
 	if (!TakeMoneyFromPP(total_cost)) {
         RecordPlayerEventLog(
             PlayerEvent::POSSIBLE_HACK,
@@ -1385,8 +1386,6 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	total_cost     -= (silver * 10);
 	uint32 copper   = total_cost;
 
-	// The coin, the sold item or piece and its landing with the buyer are one exchange.
-	DBcore::Transaction transaction(database);
 	Trader->AddMoneyToPP(copper, silver, gold, platinum, true);
 	if (buy_item && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::TRADER_PURCHASE)) {
 		auto e = PlayerEvent::TraderPurchaseEvent{
@@ -1773,6 +1772,9 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 				return;
 			}
 
+			// The buyer's trade items, the seller's item and the coin both ways are one exchange; a landing that
+			// fails keeps what was done, as before.
+			DBcore::Transaction transaction(database);
 			for (auto const &ti: sell_line.trade_items) {
 				std::unique_ptr<EQ::ItemInstance> inst(
 					database.CreateItem(
@@ -1793,6 +1795,7 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 							Barter_Failure,
 							Barter_Failure
 						);
+						transaction.Commit();
 						return;
 					}
 				}
@@ -1815,6 +1818,7 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 						Barter_Failure,
 						Barter_Failure
 					);
+					transaction.Commit();
 					return;
 				}
 			}
@@ -1830,6 +1834,7 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 							Barter_Failure,
 							Barter_Failure
 						);
+						transaction.Commit();
 						return;
 					}
 				}
@@ -1838,7 +1843,7 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 			uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
 			AddMoneyToPP(total_cost, false);
 			buyer->TakeMoneyFromPP(total_cost, false);
-
+			transaction.Commit();
 			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::BARTER_TRANSACTION)) {
 				PlayerEvent::BarterTransaction e{};
 				e.status        = "Successful Barter Transaction";
@@ -2744,6 +2749,9 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 	}
 
 	uint64 fee         = std::round(total_cost * RuleR(Bazaar, ParcelDeliveryCostMod));
+
+	// The buyer's coin, the row's move or the piece, the parcel and the listing are one exchange.
+	DBcore::Transaction transaction(database);
 	if (!TakeMoneyFromPP(total_cost + fee, false)) {
 		RecordPlayerEventLog(
 			PlayerEvent::POSSIBLE_HACK,
@@ -2757,6 +2765,7 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 		);
 		in->method     = BazaarByParcel;
 		in->sub_action = InsufficientFunds;
+		transaction.Rollback();
 		TraderRepository::UpdateActiveTransaction(database, trader_item.id, false);
 		TradeRequestFailed(app);
 		return;
@@ -2795,11 +2804,10 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 	parcel_out.slot_id   = next_slot;
 
 	// The whole item's row moves to the parcel; a bought part of a stack is split off, issued from the seller's
-	// counter; the parcel names the row and the listing goes when nothing is left of it, all in one transaction.
+	// counter; the parcel names the row and the listing goes when nothing is left of it.
 	const auto parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, CharacterID(), static_cast<uint16>(next_slot));
 	const bool whole           = !buy_item->IsStackable() || listed_charges <= static_cast<int32>(tbs->quantity);
 
-	DBcore::Transaction transaction(database);
 	bool placed = false;
 	if (whole) {
 		placed = ItemLayer::MoveRow(database, buy_item->GetGUID(), parcel_location);

@@ -2690,6 +2690,8 @@ void Client::Handle_OP_AltCurrencyPurchase(const EQApplicationPacket *app)
 			parse->EventPlayer(EVENT_ALT_CURRENCY_MERCHANT_BUY, this, export_string, 0);
 		}
 
+		// The currency and the landing are one purchase.
+		DBcore::Transaction transaction(database);
 		uint64 current_balance = AddAlternateCurrencyValue(alt_cur_id, -((int) cost));
 		int16  charges         = 1;
 		if (item->MaxCharges != 0) {
@@ -2721,6 +2723,7 @@ void Client::Handle_OP_AltCurrencyPurchase(const EQApplicationPacket *app)
 			PutLootInInventory(EQ::invslot::slotCursor, *inst);
 		}
 		safe_delete(inst);
+		transaction.Commit();
 
 		Save(1);
 	}
@@ -2744,6 +2747,8 @@ void Client::Handle_OP_AltCurrencyReclaim(const EQApplicationPacket *app)
 		ToggleBuyerMode(false);
 	}
 
+	// The items and the currency are one exchange, either way.
+	DBcore::Transaction transaction(database);
 	/* Item to Currency Storage */
 	if (reclaim->reclaim_flag == 1) {
 		uint32 removed = NukeItem(item_id, ItemRetirement::Consumed, invWhereWorn | invWherePersonal | invWhereCursor);
@@ -2768,8 +2773,8 @@ void Client::Handle_OP_AltCurrencyReclaim(const EQApplicationPacket *app)
 			AddAlternateCurrencyValue(reclaim->currency_id, -((int)reclaim->count));
 		}
 	}
+	transaction.Commit();
 }
-
 void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 {
 	VERIFY_PACKET_LENGTH(OP_AltCurrencySell, app, AltCurrencySellItem_Struct);
@@ -2842,6 +2847,8 @@ void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 			return;
 		}
 
+		// The retirement and the currency are one sale.
+		DBcore::Transaction transaction(database);
 		if (!inst->IsStackable())
 		{
 			DeleteItemInInventory(sell->slot_id, 0, false, ItemRetirement::Sold);
@@ -2880,7 +2887,7 @@ void Client::Handle_OP_AltCurrencySell(const EQApplicationPacket *app)
 
 		FastQueuePacket(&outapp);
 		uint64 new_balance = AddAlternateCurrencyValue(alt_cur_id, cost);
-
+		transaction.Commit();
 		if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::MERCHANT_SELL)) {
 			auto e = PlayerEvent::MerchantSellEvent{
 				.npc_id = tar->GetNPCTypeID(),
@@ -13959,9 +13966,9 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 		return;
 	}
 
-	// this area needs some work..two inventory insertion check failure points
-	// below do not return player's money..is this the intended behavior?
-
+	// The coin and the landing are one purchase; a purchase that then finds no room refunds, as Live refuses before
+	// charging.
+	DBcore::Transaction transaction(database);
 	if (!TakeMoneyFromPP(mpo->price)) {
 		auto message = fmt::format(
 			"Vendor Cheat attempted to buy qty [{}] of item_id [{}] item_name[{}] that cost [{}] copper but only has platinum [{}] gold [{}] silver [{}] copper [{}]",
@@ -13987,12 +13994,10 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 		freeslotid = m_inv.FindFreeSlot(false, true, item->Size);
 	}
 
-	// shouldn't we be reimbursing if these two fail?
-
-	//make sure we are not completely full...
 	if (freeslotid == EQ::invslot::slotCursor) {
 		if (m_inv.GetItem(EQ::invslot::slotCursor) != nullptr) {
 			Message(Chat::Red, "You do not have room for any more items.");
+			AddMoneyToPP(mpo->price, true);
 			safe_delete(outapp);
 			safe_delete(inst);
 			return;
@@ -14001,11 +14006,11 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 
 	if (!stacked && freeslotid == INVALID_INDEX) {
 		Message(Chat::Red, "You do not have room for any more items.");
+		AddMoneyToPP(mpo->price, true);
 		safe_delete(outapp);
 		safe_delete(inst);
 		return;
 	}
-
 	std::string packet;
 	if (!stacked && inst) {
 		PutItemInInventory(freeslotid, *inst);
@@ -14038,6 +14043,8 @@ void Client::Handle_OP_ShopPlayerBuy(const EQApplicationPacket *app)
 			SendItemPacket(mp->itemslot, inst, ItemPacketMerchant);
 		}
 	}
+
+	transaction.Commit();
 
 	if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::MERCHANT_PURCHASE)) {
 		auto e = PlayerEvent::MerchantPurchaseEvent{
@@ -14151,22 +14158,20 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 	}
 
 	// The sold item is the whole item, or the part of a stack sold, split off and issued from the seller's counter
-	// before the seller is paid.
+	// before the seller is paid; the piece, the coin, the merchant's stock and the retirement are one sale.
+	DBcore::Transaction transaction(database);
 	ItemGUID sold_item = inst->GetGUID();
 	if (inst->IsStackable() && mp->quantity < static_cast<uint32>(inst->GetCharges())) {
 		std::unique_ptr<EQ::ItemInstance> piece(inst->Clone());
 		ItemLayer::ClearGUID(*piece);
 		piece->SetCharges(mp->quantity);
-
-		DBcore::Transaction transaction(database);
 		if (!ItemLayer::Save(database, *piece, ItemLocation::InTransit(CharacterID()), ItemOwner()) ||
 			!ItemLayer::Retire(database, *piece, ItemRetirement::Sold)) {
 			return;
 		}
-		transaction.Commit();
+
 		sold_item = piece->GetGUID();
 	}
-
 	AddMoneyToPP(price);
 	if (inst->IsStackable() || inst->IsCharged())
 	{
@@ -14270,8 +14275,7 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 		false,
 		ItemRetirement::Sold
 	);
-
-
+	transaction.Commit();
 	//This forces the price to show up correctly for charged items.
 	if (inst->IsCharged())
 		mp->quantity = 1;
@@ -16865,9 +16869,10 @@ void Client::Handle_OP_GuildTributeDonateItem(const EQApplicationPacket *app)
 
 	const auto *inst = GetInv().GetItem(in->slot);
 	auto favor = inst->GetItemGuildFavor() * in->quantity;
-
 	auto guild = guild_mgr.GetGuildByGuildID(guild_id);
 	if (guild) {
+		// The favor rows and the item's retirement are one donation.
+		DBcore::Transaction transaction(database);
 		guild->tribute.favor += favor;
 		guild_mgr.UpdateDbGuildFavor(GuildID(), guild->tribute.favor);
 		auto member_favor = guild_mgr.UpdateDbMemberFavor(GuildID(), CharacterID(), favor);
@@ -16881,9 +16886,8 @@ void Client::Handle_OP_GuildTributeDonateItem(const EQApplicationPacket *app)
 		else {
 			DeleteItemInInventory(in->slot, 0, false, ItemRetirement::Consumed);
 		}
-
+		transaction.Commit();
 		SendGuildTributeDonateItemReply(in, favor);
-
 		if(inst && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::GUILD_TRIBUTE_DONATE_ITEM)) {
 			auto e = PlayerEvent::GuildTributeDonateItem{ .item_id      = inst->GetID(),
 														  .augment_1_id = inst->GetAugmentItemID(0),
