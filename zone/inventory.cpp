@@ -1493,6 +1493,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	uint32 src_slot_check = move_in->from_slot;
 	uint32 dst_slot_check = move_in->to_slot;
 	uint32 stack_count_check = move_in->number_in_stack;
+	int16 split_piece_slot = INVALID_INDEX;
 
 	if(!IsValidSlot(src_slot_check)){
 		// SoF+ sends a Unix timestamp (should be int32) for src and dst slots every 10 minutes for some reason.
@@ -1908,6 +1909,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 				EQ::ItemInstance* inst = database.CreateItem(src_inst->GetItem(), move_in->number_in_stack);
 				m_inv.PutItem(dst_slot_id, *inst);
 				safe_delete(inst);
+				split_piece_slot = dst_slot_id;
 			}
 		}
 	}
@@ -2047,6 +2049,10 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 		}
 	}
 	database.SaveSwap(this, src_slot_id, dst_slot_id);
+	// The client gave the piece it split a placeholder GUID; the issued piece goes back so it holds the real one, as Live does.
+	if (split_piece_slot != INVALID_INDEX) {
+		SendItemPacket(split_piece_slot, m_inv.GetItem(split_piece_slot), split_piece_slot == EQ::invslot::slotCursor ? ItemPacketCharInventory : ItemPacketTrade);
+	}
 	// Step 8: Re-calc stats
 	CalcBonuses();
 	ApplyWeaponsStance();
@@ -2792,6 +2798,21 @@ void Client::SendItemPacket(int16 slot_id, const EQ::ItemInstance* inst, ItemPac
 
 	if (!eqs) {
 		return;
+	}
+
+	if (!inst->HasGUID()) {
+		bool held = false;
+		if (slot_id == EQ::invslot::slotCursor) {
+			for (auto it = m_inv.cursor_cbegin(); it != m_inv.cursor_cend(); ++it) {
+				held = held || *it == inst;
+			}
+		}
+		else {
+			held = m_inv.GetItem(slot_id) == inst;
+		}
+		if (held) {
+			LogError("Character [{}] holds item [{}] in slot [{}] without a GUID; it goes out as zeros (packet type [{}])", CharacterID(), inst->GetID(), slot_id, static_cast<int>(packet_type));
+		}
 	}
 
 	if (packet_type != ItemPacketMerchant) {
