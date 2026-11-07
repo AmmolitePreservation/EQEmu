@@ -326,9 +326,8 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 
 		if(other) {
 			LogTrading("Finishing trade with client [{}]", other->GetName());
-			database.TransactionBegin();
+			DBcore::Transaction transaction(database);
 			AddMoneyToPP(other->trade->cp, other->trade->sp, other->trade->gp, other->trade->pp, true);
-
 			// step 1: process bags
 			for (int16 trade_slot = EQ::invslot::TRADE_BEGIN; trade_slot <= EQ::invslot::TRADE_END; ++trade_slot) {
 				const EQ::ItemInstance* inst = m_inv[trade_slot];
@@ -496,7 +495,7 @@ void Client::FinishTrade(Mob* tradingWith, bool finalizer, void* event_entry, st
 					RemoveItemFromInventory(trade_slot);
 				}
 			}
-			database.TransactionCommit();
+			transaction.Commit();
 			//Do not reset the trade here, done by the caller.
 		}
 	}
@@ -1387,9 +1386,8 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 	uint32 copper   = total_cost;
 
 	// The coin, the sold item or piece and its landing with the buyer are one exchange.
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 	Trader->AddMoneyToPP(copper, silver, gold, platinum, true);
-
 	if (buy_item && PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::TRADER_PURCHASE)) {
 		auto e = PlayerEvent::TraderPurchaseEvent{
 			.item_id              = buy_item->GetID(),
@@ -1452,7 +1450,7 @@ void Client::BuyTraderItem(TraderBuy_Struct *tbs, Client *Trader, const EQApplic
 
 	Trader->FindAndNukeTraderItem(tbs->item_guid, outtbs->quantity, this, 0);
 
-	database.TransactionCommit();
+	transaction.Commit();
 
 	Trader->QueuePacket(outapp.get());
 }
@@ -2801,7 +2799,7 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 	const auto parcel_location = ItemLocation::InHolder(ItemHolderType::Parcel, CharacterID(), static_cast<uint16>(next_slot));
 	const bool whole           = !buy_item->IsStackable() || listed_charges <= static_cast<int32>(tbs->quantity);
 
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 	bool placed = false;
 	if (whole) {
 		placed = ItemLayer::MoveRow(database, buy_item->GetGUID(), parcel_location);
@@ -2823,7 +2821,7 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 	}
 
 	if (!result.id) {
-		database.TransactionRollback();
+		transaction.Rollback();
 		LogError("Failed to add parcel to database.  From {} to {} item {} quantity {}",
 				 parcel_out.from_name,
 				 GetCleanName(),
@@ -2838,7 +2836,7 @@ void Client::BuyTraderItemOutsideBazaar(TraderBuy_Struct *tbs, const EQApplicati
 		return;
 	}
 
-	database.TransactionCommit();
+	transaction.Commit();
 
 	ReturnTraderReq(app, tbs->quantity, buy_item->GetID());
 	if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_SEND)) {

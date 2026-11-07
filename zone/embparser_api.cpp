@@ -5944,7 +5944,7 @@ bool Perl__send_parcel(perl::reference table_ref)
 	e.sent_date = std::time(nullptr);
 
 	// The parcel's item is issued from the recipient's counter, into the parcel slot.
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 	uint32 out = 0;
 	if (ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Parcel, character_id, static_cast<uint16>(next_parcel_slot)), *owner)) {
 		CharacterParcelsRepository::SetGUID(e, inst->GetGUID());
@@ -5952,12 +5952,10 @@ bool Perl__send_parcel(perl::reference table_ref)
 	}
 
 	if (!out) {
-		database.TransactionRollback();
 		return false;
 	}
 
-	database.TransactionCommit();
-
+	transaction.Commit();
 	if (out) {
 		Parcel_Struct ps{};
 		ps.item_slot = e.slot_id;

@@ -1201,26 +1201,22 @@ bool GuildBankManager::SplitStack(uint32 guild_id, uint16 slot_id, uint32 quanti
 	ItemLayer::ClearGUID(*piece);
 	piece->SetCharges(quantity);
 
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 	if (!ItemLayer::Save(database, *piece, ItemLocation::InHolder(ItemHolderType::GuildBankMain, guild_id, static_cast<uint16>(new_slot)), c->ItemOwner())) {
-		database.TransactionRollback();
 		return false;
 	}
-
 	auto new_item     = source;
 	new_item.guid     = piece->GetGUID();
 	new_item.slot     = new_slot;
 	new_item.quantity = quantity;
 	new_item.id       = GuildBankRepository::InsertItem(database, new_item);
 	if (!new_item.id) {
-		database.TransactionRollback();
 		return false;
 	}
 
 	source.quantity -= quantity;
 	ItemLayer::SetCharges(database, source.guid, static_cast<int16>(source.quantity));
-	database.TransactionCommit();
-
+	transaction.Commit();
 	main_area[new_slot] = new_item;
 	SendGuildBankItemUpdate(guild_id, slot_id, GuildBankMainArea, true, c);
 	SendGuildBankItemUpdate(guild_id, new_slot, GuildBankMainArea, true, c);

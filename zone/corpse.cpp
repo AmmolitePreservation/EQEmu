@@ -360,15 +360,14 @@ Corpse::Corpse(Client *c, int32 rez_exp, KilledByTypes in_killed_by) : Mob(
 			}
 		}
 
-		database.TransactionBegin();
+		DBcore::Transaction transaction(database);
 		database.SaveCursor(c);
 		c->CalcBonuses();
 		c->Save();
 		IsRezzed(false);
 		Save();
 		MoveItemRowsToCorpse();
-		database.TransactionCommit();
-
+		transaction.Commit();
 		UpdateEquipmentLight();
 		UpdateActiveLight();
 

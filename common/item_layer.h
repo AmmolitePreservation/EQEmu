@@ -107,6 +107,7 @@ private:
 	static bool Issue(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const Owner &owner);
 	static bool SaveChildren(SharedDatabase &db, EQ::ItemInstance &inst, const std::optional<Owner> &owner);
 	static bool RetireTree(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason);
+	static bool HasChildren(const EQ::ItemInstance &inst);
 };
 
 #endif //EQEMU_ITEM_LAYER_H

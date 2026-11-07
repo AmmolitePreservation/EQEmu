@@ -1648,7 +1648,7 @@ bool BotDatabase::CreateCloneBotInventory(const uint32 bot_id, const uint32 clon
 		return false;
 	}
 
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 	const int copied = ItemLayer::CopyRows(
 		database,
 		ItemLayer::HolderFilter(ItemHolderType::Bot, bot_id),
@@ -1656,11 +1656,10 @@ bool BotDatabase::CreateCloneBotInventory(const uint32 bot_id, const uint32 clon
 		clone_id
 	);
 	if (copied < 0) {
-		database.TransactionRollback();
 		return false;
 	}
 
-	return database.TransactionCommit().Success();
+	return transaction.Commit();
 }
 
 bool BotDatabase::LoadOwnerOptions(Client* c)

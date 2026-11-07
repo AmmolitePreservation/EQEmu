@@ -1295,12 +1295,15 @@ void Client::MoveItemCharges(EQ::ItemInstance &from, int16 to_slot, uint8 type)
 		tmp_inst->SetCharges(tmp_inst->GetCharges() + charges_to_move);
 		from.SetCharges(from.GetCharges() - charges_to_move);
 		SendLootItemInPacket(tmp_inst, to_slot);
-		database.SaveInventory(this, to_slot);
 
-		// A held stack that merged away entirely lives on in the destination; a piece with charges left lands elsewhere.
+		// A held stack that merged away entirely lives on in the destination, in one write with it; a piece with
+		// charges left lands elsewhere.
+		DBcore::Transaction merge(database);
+		database.SaveInventory(this, to_slot);
 		if (from.HasGUID() && from.GetCharges() == 0) {
 			ItemLayer::Retire(database, from, ItemRetirement::Stacked);
 		}
+		merge.Commit();
 	}
 }
 
@@ -3107,18 +3110,19 @@ bool Client::MoveItemToInventory(EQ::ItemInstance *ItemToReturn, bool UpdateClie
 				int ChargesToMove = ItemToReturn->GetCharges() < ChargeSlotsLeft ? ItemToReturn->GetCharges() : ChargeSlotsLeft;
 
 				InvItem->SetCharges(InvItem->GetCharges() + ChargesToMove);
-
 				if(UpdateClient)
 					SendItemPacket(i, InvItem, ItemPacketTrade);
-
+				DBcore::Transaction merge(database);
 				database.SaveInventory(this, i);
 				ItemToReturn->SetCharges(ItemToReturn->GetCharges() - ChargesToMove);
 				if(!ItemToReturn->GetCharges()) {
 					if (ItemToReturn->HasGUID()) {
 						ItemLayer::Retire(database, *ItemToReturn, ItemRetirement::Stacked);
 					}
+					merge.Commit();
 					return true;
 				}
+				merge.Commit();
 			}
 			// If there is a bag in this slot, look inside it.
 			//
@@ -3139,18 +3143,19 @@ bool Client::MoveItemToInventory(EQ::ItemInstance *ItemToReturn, bool UpdateClie
 						int ChargesToMove = ItemToReturn->GetCharges() < ChargeSlotsLeft ? ItemToReturn->GetCharges() : ChargeSlotsLeft;
 
 						InvItem->SetCharges(InvItem->GetCharges() + ChargesToMove);
-
 						if(UpdateClient)
 							SendItemPacket(BaseSlotID + BagSlot, m_inv.GetItem(BaseSlotID + BagSlot), ItemPacketTrade);
-
+						DBcore::Transaction merge(database);
 						database.SaveInventory(this, BaseSlotID + BagSlot);
 						ItemToReturn->SetCharges(ItemToReturn->GetCharges() - ChargesToMove);
 						if(!ItemToReturn->GetCharges()) {
 							if (ItemToReturn->HasGUID()) {
 								ItemLayer::Retire(database, *ItemToReturn, ItemRetirement::Stacked);
 							}
+							merge.Commit();
 							return true;
 						}
+						merge.Commit();
 					}
 				}
 			}

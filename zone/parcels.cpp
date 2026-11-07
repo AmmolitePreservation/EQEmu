@@ -321,7 +321,7 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 			const bool   partial         = inst->IsStackable() && parcel_in->quantity < static_cast<uint32>(inst->GetCharges());
 			const uint32 sent_quantity   = partial ? parcel_in->quantity : static_cast<uint32>(std::max<int16>(inst->GetCharges(), 1));
 
-			database.TransactionBegin();
+			DBcore::Transaction transaction(database);
 			bool placed = false;
 			if (partial) {
 				std::unique_ptr<EQ::ItemInstance> piece(inst->Clone());
@@ -337,7 +337,7 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 
 			auto result = placed ? CharacterParcelsRepository::InsertOne(database, parcel_out) : CharacterParcelsRepository::NewEntity();
 			if (!result.id) {
-				database.TransactionRollback();
+				transaction.Rollback();
 				LogError(
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
@@ -351,7 +351,7 @@ void Client::DoParcelSend(const Parcel_Struct *parcel_in)
 				return;
 			}
 
-			database.TransactionCommit();
+			transaction.Commit();
 
 			if (partial) {
 				inst->SetCharges(inst->GetCharges() - parcel_in->quantity);

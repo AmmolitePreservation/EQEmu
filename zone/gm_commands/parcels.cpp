@@ -279,7 +279,7 @@ void command_parcels(Client *c, const Seperator *sep)
 			parcel_out.slot_id   = next_slot;
 
 			// The item is issued from the sender's counter straight into the parcel slot.
-			database.TransactionBegin();
+			DBcore::Transaction transaction(database);
 			auto result = CharacterParcelsRepository::NewEntity();
 			if (ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Parcel, parcel_out.char_id, static_cast<uint16>(next_slot)), c->ItemOwner())) {
 				CharacterParcelsRepository::SetGUID(parcel_out, inst->GetGUID());
@@ -287,7 +287,6 @@ void command_parcels(Client *c, const Seperator *sep)
 			}
 
 			if (!result.id) {
-				database.TransactionRollback();
 				LogError(
 					"Failed to add parcel to database.  From {} to {} item {} quantity {}",
 					parcel_out.from_name,
@@ -302,7 +301,7 @@ void command_parcels(Client *c, const Seperator *sep)
 				return;
 			}
 
-			database.TransactionCommit();
+			transaction.Commit();
 
 			c->MessageString(
 				Chat::Yellow,

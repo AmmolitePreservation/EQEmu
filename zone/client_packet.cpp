@@ -7783,7 +7783,7 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			item.permissions = GuildBankBankerOnly;
 
 			// The side row and the item row's move are one deposit.
-			database.TransactionBegin();
+			DBcore::Transaction transaction(database);
 			bool deposited = GuildBanks->AddItem(GuildID(), item, this);
 			if (deposited && !ItemLayer::MoveRow(database, item.guid, ItemLocation::InHolder(ItemHolderType::GuildBankDeposit, GuildID(), static_cast<uint16>(item.slot)))) {
 				GuildBanks->DeleteItem(GuildID(), GuildBankDepositArea, item.slot, item.quantity, this);
@@ -7791,14 +7791,14 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 			}
 
 			if (!deposited) {
-				database.TransactionRollback();
+				transaction.Rollback();
 				GuildBankDepositAck(true, sentAction);
 				GetInv().PopItem(EQ::invslot::slotCursor);
 				PushItemOnCursor(*cursor_item_inst, true);
 				break;
 			}
 
-			database.TransactionCommit();
+			transaction.Commit();
 			GuildBankDepositAck(false, sentAction);
 			RemoveItemFromInventory(EQ::invslot::slotCursor);
 
@@ -10706,7 +10706,7 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 		}
 	}
 
-	database.TransactionBegin();
+	DBcore::Transaction transaction(database);
 
 	if (!SwapItem(mi) && IsValidSlot(mi->from_slot) && IsValidSlot(mi->to_slot)) {
 		SwapItemResync(mi);
@@ -10725,7 +10725,7 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 		}
 	}
 
-	database.TransactionCommit();
+	transaction.Commit();
 
 	LogInventory("OP_MoveItem took [{}] ms", bench.elapsedMilliseconds());
 }
@@ -14153,14 +14153,12 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 		ItemLayer::ClearGUID(*piece);
 		piece->SetCharges(mp->quantity);
 
-		database.TransactionBegin();
+		DBcore::Transaction transaction(database);
 		if (!ItemLayer::Save(database, *piece, ItemLocation::InTransit(CharacterID()), ItemOwner()) ||
 			!ItemLayer::Retire(database, *piece, ItemRetirement::Sold)) {
-			database.TransactionRollback();
 			return;
 		}
-		database.TransactionCommit();
-
+		transaction.Commit();
 		sold_item = piece->GetGUID();
 	}
 

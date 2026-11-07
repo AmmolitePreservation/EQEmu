@@ -202,6 +202,12 @@ static bool IsTributeSlot(int16 slot_id)
 
 bool SharedDatabase::SaveCursor(Client *c)
 {
+	// The queue's items are saved as one.
+	std::optional<DBcore::Transaction> queue;
+	if (c->GetInv().CursorSize() > 1) {
+		queue.emplace(*this);
+	}
+
 	uint16 position = 0;
 	for (auto it = c->GetInv().cursor_cbegin(); it != c->GetInv().cursor_cend(); ++it, ++position) {
 		auto *inst = *it;
@@ -215,9 +221,8 @@ bool SharedDatabase::SaveCursor(Client *c)
 		}
 	}
 
-	return true;
+	return !queue || queue->Commit();
 }
-
 // Saves the item in a slot of the character's profile where it now is: a new item is issued, a held one is moved or
 // updated. A bag slot saves the item under its bag, or the whole bag when the bag itself is still unsaved.
 bool SharedDatabase::SaveInventory(Client *c, int16 slot_id)
@@ -266,7 +271,7 @@ bool SharedDatabase::SaveSwap(Client *c, int16 slot_a, int16 slot_b)
 	auto *a = c->GetInv().GetItem(slot_a);
 	auto *b = c->GetInv().GetItem(slot_b);
 
-	TransactionBegin();
+	DBcore::Transaction transaction(*this);
 
 	bool saved = true;
 	if (a && b && a->HasGUID() && !ItemLayer::MoveRow(*this, a->GetGUID(), ItemLocation::InTransit(c->CharacterID()))) {
@@ -282,12 +287,11 @@ bool SharedDatabase::SaveSwap(Client *c, int16 slot_a, int16 slot_b)
 	}
 
 	if (!saved) {
-		TransactionRollback();
 		LogError("Swap of slots [{}] and [{}] for character [{}] was not saved", slot_a, slot_b, c->CharacterID());
 		return false;
 	}
 
-	return TransactionCommit().Success();
+	return transaction.Commit();
 }
 
 // The item's row says the account's shared bank holds it in this slot, or inside a bag there, with this item number.

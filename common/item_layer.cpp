@@ -330,13 +330,24 @@ bool ItemLayer::RestoreSnapshot(Database &db, uint32 character_id, uint32 time_i
 		return false;
 	}
 
-	db.TransactionBegin();
+	DBcore::Transaction transaction(db);
 	if (!PlaceSnapshot(db, character_id, *owner, snapshot)) {
-		db.TransactionRollback();
 		return false;
 	}
 
-	return db.TransactionCommit().Success();
+	return transaction.Commit();
+}
+
+// An item with augments or contents is several rows, written as one.
+bool ItemLayer::HasChildren(const EQ::ItemInstance &inst)
+{
+	for (const auto &[index, child] : inst.m_contents) {
+		if (child) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const std::optional<Owner> &owner)
@@ -344,6 +355,11 @@ bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocat
 	if (!inst.GetItem()) {
 		LogError("Cannot save an item instance without item data at {}", Describe(location));
 		return false;
+	}
+
+	std::optional<DBcore::Transaction> tree;
+	if (HasChildren(inst)) {
+		tree.emplace(db);
 	}
 
 	if (!inst.HasGUID()) {
@@ -360,9 +376,12 @@ bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocat
 		return false;
 	}
 
-	return SaveChildren(db, inst, owner);
-}
+	if (!SaveChildren(db, inst, owner)) {
+		return false;
+	}
 
+	return !tree || tree->Commit();
+}
 bool ItemLayer::Issue(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const Owner &owner)
 {
 	for (int attempt = 1; attempt <= issue_attempts; ++attempt) {
@@ -424,6 +443,11 @@ bool ItemLayer::Update(Database &db, const EQ::ItemInstance &inst, const ItemLoc
 		return false;
 	}
 
+	std::optional<DBcore::Transaction> tree;
+	if (HasChildren(inst)) {
+		tree.emplace(db);
+	}
+
 	if (!ItemInstancesRepository::UpdateOne(db, RowFor(inst, location))) {
 		LogError("Failed to update {} at {}", Describe(inst), Describe(location));
 		return false;
@@ -435,9 +459,8 @@ bool ItemLayer::Update(Database &db, const EQ::ItemInstance &inst, const ItemLoc
 		}
 	}
 
-	return true;
+	return !tree || tree->Commit();
 }
-
 bool ItemLayer::MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &location)
 {
 	if (!ItemInstancesRepository::UpdateLocation(db, guid, location)) {
@@ -455,9 +478,17 @@ bool ItemLayer::Retire(Database &db, const EQ::ItemInstance &inst, ItemRetiremen
 		return false;
 	}
 
-	return RetireTree(db, inst, reason);
-}
+	std::optional<DBcore::Transaction> tree;
+	if (HasChildren(inst)) {
+		tree.emplace(db);
+	}
 
+	if (!RetireTree(db, inst, reason)) {
+		return false;
+	}
+
+	return !tree || tree->Commit();
+}
 bool ItemLayer::RetireTree(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason)
 {
 	if (!RetireRow(db, inst.GetGUID(), reason)) {
