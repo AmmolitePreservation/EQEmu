@@ -141,7 +141,7 @@ One path in the item layer issues, retires and updates; everything else, quest s
 
 The `Inventory` object's PutItem, PushCursor, DeleteItem and SwapItem run through the owning client's landing, retire and swap functions (`EntityList::GetClientByInventory`, `Client::SwapSlots`), since the profile alone only changes memory; a PutItem into a held slot is refused and logged. PopItem, which handed a script an instance whose row stayed behind, is gone. Bots are outside this work.
 
-Scripts get `GetGUID()` and a lookup by GUID; `GetEvolveUniqueID` is replaced by the GUID; `GetSerialNumber` stays as the session handle; no script can set a GUID.
+Scripts have `GetGUID()` on an item (the 16-character text the client shows; zeros for an item not yet issued) and `GetItemByGUID(text)` on a client and on its `Inventory` object (`InventoryProfile::GetItemByGUID`, every bucket, bag and augment socket of the character's own items, nothing for a GUID they do not hold or text that does not decode). `GetEvolveUniqueID` and `GetAugmentEvolveUniqueID` are gone, the GUID being the item's identity and the key of its evolving record; `GetSerialNumber` stays as the session handle where it existed (Lua); no script can set a GUID or a serial.
 
 ### Trust
 
