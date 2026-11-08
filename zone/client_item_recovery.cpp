@@ -7,25 +7,22 @@
 #include "../common/misc_functions.h"
 
 #include <memory>
-// Recovery listings are numbered past every merchant slot (stock and temporary items stay within MERCHANT_SIZE),
-// so a request naming one cannot be read as a purchase.
-static constexpr uint32 RECOVERY_SLOT_BASE = 10000;
-
+// A listed item is keyed by its session serial, which is also the unique id the client echoes from the item
+// header and the number the recovered item keeps when it lands.
 void Client::SendRecoverableItems()
 {
 	m_recovery_listing.clear();
 
 	for (auto &entry : ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States())) {
-		m_recovery_listing.push_back(entry.guid);
-		const uint32 slot = RECOVERY_SLOT_BASE + static_cast<uint32>(m_recovery_listing.size());
+		const uint32 serial = static_cast<uint32>(entry.inst->GetSerialNumber());
+		m_recovery_listing.emplace(serial, entry.guid);
 
-		entry.inst->SetMerchantSlot(slot);
+		entry.inst->SetMerchantSlot(serial);
 		entry.inst->SetMerchantCount(1);
-		entry.inst->SetPrice(ItemRecovery::Currency() ? 1 : 0);
-		SendItemPacket(static_cast<int16>(slot), entry.inst, ItemPacketRecovery);
+		entry.inst->SetPrice(1);
+		SendItemPacket(static_cast<int16>(serial), entry.inst, ItemPacketRecovery);
 		safe_delete(entry.inst);
 	}
-
 	LogInventory("Character [{}] was sent [{}] recoverable items", CharacterID(), m_recovery_listing.size());
 }
 
@@ -45,13 +42,14 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 		return;
 	}
 
-	if (in->listing_slot <= RECOVERY_SLOT_BASE || in->listing_slot - RECOVERY_SLOT_BASE > m_recovery_listing.size()) {
-		LogError("Character [{}] asked to recover listing slot [{}], not one of the [{}] it was sent", CharacterID(), in->listing_slot, m_recovery_listing.size());
+	const auto listing = m_recovery_listing.find(static_cast<uint32>(in->unique_id));
+	if (listing == m_recovery_listing.end()) {
+		LogError("Character [{}] asked to recover unique id [{}], not one of the [{}] it was sent", CharacterID(), in->unique_id, m_recovery_listing.size());
 		return;
 	}
 
-	ItemGUID &guid   = m_recovery_listing[in->listing_slot - RECOVERY_SLOT_BASE - 1];
-	auto      listed = ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States(), guid);
+	const ItemGUID guid   = listing->second;
+	auto           listed = ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States(), guid);
 	if (listed.size() != 1) {
 		LogError("Character [{}] asked to recover [{}], which is no longer listed", CharacterID(), ItemGUIDText(guid));
 		AcknowledgeRecovery(*in, 0);
@@ -69,8 +67,7 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 		}
 	}
 
-	const uint32 currency = ItemRecovery::Currency();
-	if (currency && GetAlternateCurrencyValue(currency) < 1) {
+	if (GetAlternateCurrencyValue(ItemRecovery::currency) < 1) {
 		MessageString(Chat::White, RECOVER_CANNOT_AFFORD, merchant->GetCleanName(), inst->GetItem()->Name);
 		return;
 	}
@@ -84,27 +81,25 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 	// The currency and the item's return are one exchange. Saving the item where it lands writes its rows whole,
 	// so the retirement clears with the location.
 	DBcore::Transaction recovery(database);
-	if (currency && !RemoveAlternateCurrencyValue(currency, 1)) {
-		LogError("Character [{}] could not pay currency [{}] to recover [{}]; nothing changed", CharacterID(), currency, ItemGUIDText(guid));
+	if (!RemoveAlternateCurrencyValue(ItemRecovery::currency, 1)) {
+		LogError("Character [{}] could not pay currency [{}] to recover [{}]; nothing changed", CharacterID(), ItemRecovery::currency, ItemGUIDText(guid));
 		return;
 	}
 	PutLootInInventory(slot, *inst);
 	recovery.Commit();
 
 	LogInventory("Character [{}] recovered [{}] item [{}] into slot [{}]", CharacterID(), ItemGUIDText(guid), inst->GetID(), slot);
-	guid = ItemGUID{};
-	AcknowledgeRecovery(*in, currency ? 1 : 0);
+	m_recovery_listing.erase(listing);
+	AcknowledgeRecovery(*in, 1);
 }
-
 // The request echoed back, as a purchase is, naming the currency handed over.
-void Client::AcknowledgeRecovery(const MerchantRecover_Struct &request, uint32 currency_paid)
+void Client::AcknowledgeRecovery(const MerchantRecover_Struct &request, uint64 currency_paid)
 {
 	auto  outapp = new EQApplicationPacket(OP_ShopRecoverItem, sizeof(MerchantRecover_Struct));
 	auto *out    = reinterpret_cast<MerchantRecover_Struct *>(outapp->pBuffer);
 	*out               = request;
 	out->unknown020    = 0;
 	out->currency_paid = currency_paid;
-	out->unknown028    = 0;
 	QueuePacket(outapp);
 	safe_delete(outapp);
 }

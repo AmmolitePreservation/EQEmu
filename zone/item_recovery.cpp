@@ -9,8 +9,6 @@
 #include <cctype>
 
 std::vector<ItemRetirement> ItemRecovery::s_states;
-uint32                      ItemRecovery::s_currency = 0;
-
 bool ItemRecovery::LoadRules(Zone &zone)
 {
 	std::vector<ItemRetirement> states;
@@ -34,13 +32,11 @@ bool ItemRecovery::LoadRules(Zone &zone)
 		states.push_back(*state);
 	}
 
-	const auto currency = static_cast<uint32>(RuleI(World, RecoveryCurrency));
-	if (currency && !zone.GetCurrencyItemID(currency)) {
-		LogError("Rule World:RecoveryCurrency names alternate currency [{}], which the zone did not load", currency);
+	if (!states.empty() && !zone.GetCurrencyItemID(currency)) {
+		LogError("Recovery needs alternate currency [{}] (Live's Token of Reclamation), which the zone did not load", currency);
 		return false;
 	}
 
-	s_states   = states;
-	s_currency = currency;
+	s_states = states;
 	return true;
 }

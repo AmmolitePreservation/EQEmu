@@ -2249,17 +2249,17 @@ struct Merchant_DelItem_Struct{
 };
 
 // The Recover button of the merchant window's Recover tab (RoF2), and the server's reply on the same opcode. The
-// client sends the last three dwords uninitialised; in the reply it reads currency_paid as the tokens handed over
-// ("You give 1 Token of Reclamation to ...").
+// client (eqgame.exe FUN_006f6090) fills the merchant, itself, the listed item's 64-bit unique id (the header's
+// instance_id and parcel_item_id) and the stack count, and leaves the rest uninitialised; its reply handler
+// (FUN_006eea30) reads currency_paid as the Tokens of Reclamation handed over and prints "You give N Token of
+// Reclamation to <merchant>" when the unique id is non-zero.
 struct MerchantRecover_Struct {
 /*000*/	uint32	npc_id;			// Merchant NPC's entity id
 /*004*/	uint32	player_id;		// Player's entity id
-/*008*/	uint32	listing_slot;	// The slot the item was listed on
-/*012*/	uint32	unknown012;
-/*016*/	uint32	quantity;		// 1
+/*008*/	uint64	unique_id;		// The listed item's unique id
+/*016*/	uint32	quantity;		// The listed item's stack count
 /*020*/	uint32	unknown020;
-/*024*/	uint32	currency_paid;
-/*028*/	uint32	unknown028;
+/*024*/	uint64	currency_paid;
 };
 struct Adventure_Purchase_Struct {
 /*000*/	uint32	Type;	// 1 = LDoN, 2 = Discord, 4 = Norrath's Keepers, 5 = Dark Reign
