@@ -10,7 +10,7 @@ void Client::SendRecoverableItems()
 {
 	m_recovery_listing.clear();
 
-	for (auto &entry : ItemLayer::LoadRecoverable(database, content_db, CharacterID(), ItemRecovery::States())) {
+	for (auto &entry : ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States())) {
 		m_recovery_listing.push_back(entry.guid);
 		const uint32 slot = RECOVERY_SLOT_BASE + static_cast<uint32>(m_recovery_listing.size());
 
