@@ -60,7 +60,7 @@ Live's merchant window has a Recovery page listing the character's destroyed ite
 
 ## EQEmu today
 
-- **The serial.** `GetNextItemInstSerialNumber` (common/item_instance.cpp) is a per-process counter; RoF and RoF2 write it as `{:016}` decimal into the item header's 17-byte string (rof2.cpp:6497) and as `instance_id` (or the merchant slot; RoF2 puts the evolving item's id there, rof2.cpp:6533). Titanium, SoF, SoD and UF carry only `instance_id`. RoF2's Bazaar structs (BazaarInspect, TraderItemSerial, TraderPriceUpdate, TraderBuy) carry `serial_number[17]`.
+- **The serial.** `GetNextItemInstSerialNumber` (common/item_instance.cpp) is a per-process counter; RoF and RoF2 write it as `{:016}` decimal into the item header's 17-byte string (rof2.cpp:6497) and as `instance_id` (or the merchant slot; until SER-1 EQEmu's RoF2 put an evolving item's record id across `instance_id` and `parcel_item_id`, which Live does not: an evolving item's `instance_id` is its serial like any other). Titanium, SoF, SoD and UF carry only `instance_id`. RoF2's Bazaar structs (BazaarInspect, TraderItemSerial, TraderPriceUpdate, TraderBuy) carry `serial_number[17]`.
 - **#4460** saves serials in `inventory`, `sharedbank` and `inventory_snapshots` `guid` columns and reissues fresh serials around them at load (AddGUIDToMap, ClearGUIDMap, shareddb.cpp:686, :893).
 - **Item storage.** Items live in `inventory`, `sharedbank`, `inventory_snapshots`, `character_corpse_items`, `character_parcels` (+ `character_parcels_containers`), `guild_bank`, `trader`, `bot_inventories`, `character_pet_inventory`, `object` and `object_contents`; augments are item numbers in the parent's row (`augment_one`...). `character_evolving_items` keeps evolving state under its own id, matched to inventory at load by character and item number (shareddb.cpp ~800).
 - **Whole-row saves.** `SaveCharacterData` reads the character row and writes it back with `REPLACE INTO` (zonedb.cpp:1062, :1165). Tested on MariaDB 10.5.4: a `REPLACE` on a parent row deletes its `ON DELETE CASCADE` children, and with the default restrict the `REPLACE` fails (error 1451); `INSERT ... ON DUPLICATE KEY UPDATE` keeps them.
@@ -111,7 +111,7 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 | `trader` | the seller, price, listing slot and date, transaction | item number, augments, charges, the serial |
 | `character_parcels` | recipient and slot (a money parcel has no row to carry them), `money`, sender, note, sent date | item number, augments, quantity |
 | `guild_bank` | permissions, `who_for`, donator | item number, augments, quantity, guild, area and slot (the row's holder and slot) |
-| `character_evolving_items` | its id (the client's unique id), activated, equipped, amount, progression, final item | item number, character, `deleted_at` (the row's retirement) |
+| `character_evolving_items` | its id (the row key; the client's handle for the evolve window is the item's serial), activated, equipped, amount, progression, final item | item number, character, `deleted_at` (the row's retirement) |
 | `ground_items` (new; `object` keeps only static content) | instance, position, heading (the zone is the item row's holder id) | |
 | `real_estate_items` (housing, after the merge) | property, placed, transform, upkeep | item columns |
 
