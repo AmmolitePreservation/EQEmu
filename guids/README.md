@@ -185,7 +185,7 @@ The 32-bit serial stays a per-session handle for every client, never saved: the 
 
 ### Encoders
 
-RoF and RoF2 send the GUID as text in Live's alphabet in the item header (every item, augment and bag item its own) and the Bazaar structs, and RoF2 the character's own `{id, origin world}` in the player profile; something not yet an item (merchant stock) is sent as `0000000000000000`; the codec is `ItemGUIDText` and `ItemGUIDFromText` (common/item_guid.h), with unit tests against Live's captured text; housing's fields follow after the merge. Incoming GUID text is decoded with the client's round-trip check and anything invalid is refused. Older clients are unchanged. The RoF encoder is untested: no RoF client (December 10, 2012) survives anywhere we could find, so it uses the alphabet and layout RoF2 and Live share.
+RoF2 sends the GUID as text in Live's alphabet in the item header (every item, augment and bag item its own) and the Bazaar structs, and the character's own `{id, origin world}` in the player profile; something not yet an item (merchant stock) is sent as `0000000000000000`; the codec is `ItemGUIDText` and `ItemGUIDFromText` (common/item_guid.h), with unit tests against Live's captured text; housing's fields follow after the merge. Incoming GUID text is decoded with the client's round-trip check and anything invalid is refused. RoF2 is the branch's only client: the Titanium, SoF, SoD, UF and RoF patches were removed (0402fca09), so there is no other encoder.
 
 ### Inventory snapshots
 
