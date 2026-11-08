@@ -1566,6 +1566,12 @@ Lua_Inventory Lua_Client::GetInventory() {
 	return &self->GetInv();
 }
 
+Lua_ItemInst Lua_Client::GetItemByGUID(std::string guid) {
+	Lua_Safe_Call_Class(Lua_ItemInst);
+	const auto parsed = ItemGUIDFromText(guid);
+	EQ::ItemInstance *found = parsed ? self->GetInv().GetItemByGUID(*parsed) : nullptr;
+	return found;
+}
 void Lua_Client::SendItemScale(Lua_ItemInst inst) {
 	Lua_Safe_Call_Void();
 	self->SendItemScale(inst);
@@ -3816,6 +3822,7 @@ luabind::scope lua_register_client() {
 	.def("GetInstrumentMod", (int(Lua_Client::*)(int))&Lua_Client::GetInstrumentMod)
 	.def("GetIntoxication", (int(Lua_Client::*)(void))&Lua_Client::GetIntoxication)
 	.def("GetInventory", (Lua_Inventory(Lua_Client::*)(void))&Lua_Client::GetInventory)
+	.def("GetItemByGUID", (Lua_ItemInst(Lua_Client::*)(std::string))&Lua_Client::GetItemByGUID)
 	.def("GetInventorySlots", (luabind::object(Lua_Client::*)(lua_State* L))&Lua_Client::GetInventorySlots)
 	.def("GetInvulnerableEnvironmentDamage", (bool(Lua_Client::*)(void))&Lua_Client::GetInvulnerableEnvironmentDamage)
 	.def("GetItemIDAt", (int(Lua_Client::*)(int))&Lua_Client::GetItemIDAt)

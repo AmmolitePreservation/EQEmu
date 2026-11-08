@@ -392,6 +392,7 @@ public:
 	bool PutItemInInventory(int slot_id, Lua_ItemInst inst);
 	bool PushItemOnCursor(Lua_ItemInst inst);
 	Lua_Inventory GetInventory();
+	Lua_ItemInst GetItemByGUID(std::string guid);
 	void SendItemScale(Lua_ItemInst inst);
 	void QueuePacket(Lua_Packet app);
 	void QueuePacket(Lua_Packet app, bool ack_req);

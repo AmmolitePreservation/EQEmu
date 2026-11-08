@@ -18,6 +18,12 @@ Lua_ItemInst Lua_Inventory::GetItem(int slot_id, int bag_slot) {
 	return self->GetItem(slot_id, bag_slot);
 }
 
+Lua_ItemInst Lua_Inventory::GetItemByGUID(std::string guid) {
+	Lua_Safe_Call_Class(Lua_ItemInst);
+	const auto parsed = ItemGUIDFromText(guid);
+	EQ::ItemInstance *found = parsed ? self->GetItemByGUID(*parsed) : nullptr;
+	return found;
+}
 // The profile's owner, whose landing, retire and swap functions write the rows.
 static Client *OwnerOf(EQ::InventoryProfile *inventory, const char *action)
 {
@@ -233,6 +239,7 @@ luabind::scope lua_register_inventory() {
 	.def("GetAugmentIDsBySlotID", (luabind::object(Lua_Inventory::*)(lua_State* L,int16))&Lua_Inventory::GetAugmentIDsBySlotID)
 	.def("GetItem", (Lua_ItemInst(Lua_Inventory::*)(int))&Lua_Inventory::GetItem)
 	.def("GetItem", (Lua_ItemInst(Lua_Inventory::*)(int,int))&Lua_Inventory::GetItem)
+	.def("GetItemByGUID", (Lua_ItemInst(Lua_Inventory::*)(std::string))&Lua_Inventory::GetItemByGUID)
 	.def("GetSlotByItemInst", (int(Lua_Inventory::*)(Lua_ItemInst))&Lua_Inventory::GetSlotByItemInst)
 	.def("HasAugmentEquippedByID", (bool(Lua_Inventory::*)(uint32))&Lua_Inventory::HasAugmentEquippedByID)
 	.def("HasItem", (int(Lua_Inventory::*)(int))&Lua_Inventory::HasItem)

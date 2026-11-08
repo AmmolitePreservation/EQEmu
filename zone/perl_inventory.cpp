@@ -68,6 +68,11 @@ EQ::ItemInstance* Perl_Inventory_GetItem(EQ::InventoryProfile* self, int16_t slo
 	return self->GetItem(slot_id);
 }
 
+EQ::ItemInstance* Perl_Inventory_GetItemByGUID(EQ::InventoryProfile* self, std::string guid)
+{
+	const auto parsed = ItemGUIDFromText(guid);
+	return parsed ? self->GetItemByGUID(*parsed) : nullptr;
+}
 int Perl_Inventory_GetMaterialFromSlot(EQ::InventoryProfile* self, int16_t slot_id)
 {
 	return self->CalcMaterialFromSlot(slot_id);
@@ -217,6 +222,7 @@ void perl_register_inventory()
 	package.add("GetAugmentIDsBySlotID", &Perl_Inventory_GetAugmentIDsBySlotID);
 	package.add("GetBagIndex", &Perl_Inventory_GetBagIndex);
 	package.add("GetItem", &Perl_Inventory_GetItem);
+	package.add("GetItemByGUID", &Perl_Inventory_GetItemByGUID);
 	package.add("GetMaterialFromSlot", &Perl_Inventory_GetMaterialFromSlot);
 	package.add("GetSlotByItemInst", &Perl_Inventory_GetSlotByItemInst);
 	package.add("GetSlotFromMaterial", &Perl_Inventory_GetSlotFromMaterial);

@@ -205,7 +205,8 @@ namespace EQ
 		static bool SupportsContainers(int16 slot_id);
 
 		int GetSlotByItemInst(ItemInstance *inst);
-
+		// The held item with this GUID, in any bucket, inside a bag or in an augment socket, or nothing.
+		ItemInstance *GetItemByGUID(const ItemGUID &guid);
 		uint8 FindBrightestLightType();
 
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, const std::string& value);

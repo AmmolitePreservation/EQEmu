@@ -1102,6 +1102,11 @@ EQ::ItemInstance* Perl_Client_GetItemAt(Client* self, uint32 slot) // @categorie
 	return self->GetInv().GetItem(slot);
 }
 
+EQ::ItemInstance* Perl_Client_GetItemByGUID(Client* self, std::string guid) // @categories Inventory and Items
+{
+	const auto parsed = ItemGUIDFromText(guid);
+	return parsed ? self->GetInv().GetItemByGUID(*parsed) : nullptr;
+}
 EQ::ItemInstance* Perl_Client_GetAugmentAt(Client* self, uint32 slot, uint32 aug_slot) // @categories Inventory and Items
 {
 	EQ::ItemInstance* inst = self->GetInv().GetItem(slot);
@@ -3562,6 +3567,7 @@ void perl_register_client()
 	package.add("GetInventorySlots", &Perl_Client_GetInventorySlots);
 	package.add("GetInvulnerableEnvironmentDamage", &Perl_Client_GetInvulnerableEnvironmentDamage);
 	package.add("GetItemAt", &Perl_Client_GetItemAt);
+	package.add("GetItemByGUID", &Perl_Client_GetItemByGUID);
 	package.add("GetItemCooldown", &Perl_Client_GetItemCooldown);
 	package.add("GetItemIDAt", &Perl_Client_GetItemIDAt);
 	package.add("GetItemInInventory", &Perl_Client_GetItemInInventory);

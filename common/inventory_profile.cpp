@@ -1347,10 +1347,45 @@ int EQ::InventoryProfile::GetSlotByItemInst(ItemInstance *inst) {
 	if (m_cursor.peek_front() == inst) {
 		return invslot::slotCursor;
 	}
-
 	return INVALID_INDEX;
 }
 
+// The instance itself or anything inside it that carries the GUID.
+static EQ::ItemInstance *InstanceWithGUID(EQ::ItemInstance *inst, const ItemGUID &guid)
+{
+	if (!inst) {
+		return nullptr;
+	}
+	if (inst->GetGUID() == guid) {
+		return inst;
+	}
+	for (auto iter = inst->_cbegin(); iter != inst->_cend(); ++iter) {
+		if (auto *found = InstanceWithGUID(iter->second, guid)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
+EQ::ItemInstance *EQ::InventoryProfile::GetItemByGUID(const ItemGUID &guid)
+{
+	if (guid.IsZero()) {
+		return nullptr;
+	}
+	for (const auto *bucket : {&m_worn, &m_inv, &m_bank, &m_shbank, &m_trade}) {
+		for (const auto &[slot_id, inst] : *bucket) {
+			if (auto *found = InstanceWithGUID(inst, guid)) {
+				return found;
+			}
+		}
+	}
+	for (auto iter = m_cursor.cbegin(); iter != m_cursor.cend(); ++iter) {
+		if (auto *found = InstanceWithGUID(*iter, guid)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
 uint8 EQ::InventoryProfile::FindBrightestLightType()
 {
 	uint8 brightest_light_type = 0;

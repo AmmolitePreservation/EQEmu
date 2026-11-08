@@ -299,11 +299,6 @@ void Perl_QuestItem_AddEvolveAmount(EQ::ItemInstance* self, uint64 amount)
 	self->SetEvolveAddToCurrentAmount(amount);
 }
 
-uint32 Perl_QuestItem_GetAugmentEvolveUniqueID(EQ::ItemInstance* self, uint8 slot_id)
-{
-	return self->GetAugmentEvolveUniqueID(slot_id);
-}
-
 bool Perl_QuestItem_GetEvolveActivated(EQ::ItemInstance* self)
 {
 	return self->GetEvolveActivated();
@@ -344,11 +339,11 @@ double Perl_QuestItem_GetEvolveProgression(EQ::ItemInstance* self)
 	return self->GetEvolveProgression();
 }
 
-uint64 Perl_QuestItem_GetEvolveUniqueID(EQ::ItemInstance* self)
+// The item's GUID as the client shows it; zeros for an item not yet issued.
+std::string Perl_QuestItem_GetGUID(EQ::ItemInstance* self)
 {
-	return self->GetEvolveUniqueID();
+	return ItemGUIDText(self->GetGUID());
 }
-
 bool Perl_QuestItem_IsEvolving(EQ::ItemInstance* self)
 {
 	return self->IsEvolving();
@@ -378,7 +373,6 @@ void perl_register_questitem()
 	package.add("CountAugmentByID", &Perl_QuestItem_CountAugmentByID);
 	package.add("DeleteCustomData", &Perl_QuestItem_DeleteCustomData);
 	package.add("GetAugment", &Perl_QuestItem_GetAugment);
-	package.add("GetAugmentEvolveUniqueID", &Perl_QuestItem_GetAugmentEvolveUniqueID);
 	package.add("GetAugmentIDs", &Perl_QuestItem_GetAugmentIDs);
 	package.add("GetAugmentItemID", &Perl_QuestItem_GetAugmentItemID);
 	package.add("GetAugmentType", &Perl_QuestItem_GetAugmentType);
@@ -394,7 +388,7 @@ void perl_register_questitem()
 	package.add("GetEvolveLevel", &Perl_QuestItem_GetEvolveLevel);
 	package.add("GetEvolveLoreID", &Perl_QuestItem_GetEvolveLoreID);
 	package.add("GetEvolveProgression", &Perl_QuestItem_GetEvolveProgression);
-	package.add("GetEvolveUniqueID", &Perl_QuestItem_GetEvolveUniqueID);
+	package.add("GetGUID", &Perl_QuestItem_GetGUID);
 	package.add("GetEXP", &Perl_QuestItem_GetEXP);
 	package.add("GetID", &Perl_QuestItem_GetID);
 	package.add("GetItem", (EQ::ItemData*(*)(EQ::ItemInstance*))&Perl_QuestItem_GetItem);

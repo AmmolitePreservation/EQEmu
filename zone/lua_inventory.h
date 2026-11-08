@@ -33,6 +33,7 @@ public:
 	}
 
 	Lua_ItemInst GetItem(int slot_id);
+	Lua_ItemInst GetItemByGUID(std::string guid);
 	Lua_ItemInst GetItem(int slot_id, int bag_slot);
 	int PutItem(int slot_id, Lua_ItemInst item);
 	int PushCursor(Lua_ItemInst item);
