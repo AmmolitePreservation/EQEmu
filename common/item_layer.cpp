@@ -793,6 +793,11 @@ void ItemLayer::AssignLootGUIDs(EQ::ItemInstance &inst, const LootItem &loot_ite
 void ItemLayer::ClearGUID(EQ::ItemInstance &inst)
 {
 	inst.m_guid = ItemGUID{};
+	for (auto &[index, child] : inst.m_contents) {
+		if (child) {
+			ClearGUID(*child);
+		}
+	}
 }
 
 void ItemLayer::AssignGUID(EQ::ItemInstance &inst, const ItemGUID &guid)

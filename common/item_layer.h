@@ -87,7 +87,8 @@ public:
 	// An instance rebuilt from a corpse's loot entry takes the entry's GUIDs, its augments included.
 	static void AssignLootGUIDs(EQ::ItemInstance &inst, const LootItem &loot_item);
 
-	// A copy that becomes a new item, such as a split piece, is issued afresh when it lands.
+	// A copy that becomes a new item, such as a split piece or a script's clone, is issued afresh when it lands, with
+	// its augments and contents.
 	static void ClearGUID(EQ::ItemInstance &inst);
 
 	// An instance rebuilt from a side table takes the GUID of the row held at its location.
