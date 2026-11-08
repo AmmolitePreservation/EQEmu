@@ -34,8 +34,6 @@
 //#include <iostream>
 
 int32 next_item_serial_number = 1;
-std::unordered_set<uint64> guids{};
-
 static inline int32 GetNextItemInstSerialNumber()
 {
 	// The Bazaar relies on each item a client has up for Trade having a unique
@@ -54,11 +52,6 @@ static inline int32 GetNextItemInstSerialNumber()
 	else {
 		next_item_serial_number++;
 	}
-
-	while (guids.contains(next_item_serial_number)) {
-		next_item_serial_number++;
-	}
-
 	return next_item_serial_number;
 }
 
@@ -1940,16 +1933,6 @@ int EQ::ItemInstance::GetItemSkillsStat(EQ::skills::SkillType skill, bool augmen
 		}
 	}
 	return stat;
-}
-
-void EQ::ItemInstance::AddGUIDToMap(uint64 existing_serial_number)
-{
-	guids.emplace(existing_serial_number);
-}
-
-void EQ::ItemInstance::ClearGUIDMap()
-{
-	guids.clear();
 }
 
 void EQ::ItemInstance::SetTimer(std::string name, uint32 time) const{

@@ -311,9 +311,6 @@ namespace EQ
 		uint32 GetItemGuildFavor() const;
 		std::vector<uint32> GetAugmentIDs() const;
 		std::vector<std::string> GetAugmentNames() const;
-		static void AddGUIDToMap(uint64 existing_serial_number);
-		static void ClearGUIDMap();
-
 		// evolving items stuff
 		CharacterEvolvingItemsRepository::CharacterEvolvingItems &GetEvolvingDetails() const { return m_evolving_details; }
 
