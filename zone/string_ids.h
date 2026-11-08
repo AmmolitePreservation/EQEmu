@@ -101,6 +101,7 @@
 #define DISCIPLINE_CONLOST			278		//You lose the concentration to remain in your fighting discipline.
 #define REZ_REGAIN					289		//You regain some experience from resurrection.
 #define DUP_LORE					290		//Duplicate lore items are not allowed.
+#define RECOVER_CANNOT_AFFORD		4618	//%1 tells you, 'You cannot afford to recover %2.'
 #define TGB_ON						293		//Target other group buff is *ON*.
 #define TGB_OFF						294		//Target other group buff is *OFF*.
 #define DONT_SEE_TARGET				303		//I don't see anyone by that name around here...

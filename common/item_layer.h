@@ -84,7 +84,7 @@ public:
 	// A character's retired items a merchant's Recovery tab lists: those in the states named, oldest retirement
 	// first, each with the augments and bag contents retired in the same act. A row naming an item content lacks
 	// is logged and left out with everything under it. The caller owns the instances.
-	static std::vector<Recoverable> LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states);
+	static std::vector<Recoverable> LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states, const std::optional<ItemGUID> &only = std::nullopt);
 	static std::string HolderFilter(ItemHolderType holder_type, uint32 holder_id);
 	static std::string GUIDFilter(const ItemGUID &guid);
 	static EQ::ItemInstance *LoadOne(Database &db, SharedDatabase &content_db, const ItemGUID &guid);

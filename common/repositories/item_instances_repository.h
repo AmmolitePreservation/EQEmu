@@ -145,7 +145,7 @@ public:
 	// A character's retired rows in the states named: those whose last holder was the character's own inventory,
 	// cursor or bank or one of the character's corpses, then every row inside them retired in the same act (bag
 	// contents, augments), oldest retirement first and parents before children.
-	static std::vector<ItemInstances> GetRecoverable(Database &db, uint32 character_id, const std::string &state_list)
+	static std::vector<ItemInstances> GetRecoverable(Database &db, uint32 character_id, const std::string &state_list, const std::string &row_filter)
 	{
 		const auto select_columns = Strings::Implode(", ", SelectColumns());
 		const auto plain_columns  = Strings::Implode(", ", Columns());
@@ -153,7 +153,7 @@ public:
 			db.QueryDatabase(
 				fmt::format(
 					"WITH RECURSIVE listed AS ("
-					"SELECT {columns}, 0 AS depth FROM {table} WHERE retirement_state IN ({states}) AND ("
+					"SELECT {columns}, 0 AS depth FROM {table} WHERE retirement_state IN ({states}) AND ({row_filter}) AND ("
 					"(holder_type IN ('inventory', 'cursor', 'bank') AND holder_id = {character}) OR "
 					"(holder_type = 'corpse' AND holder_id IN (SELECT id FROM character_corpses WHERE charid = {character}))) "
 					"UNION ALL "
@@ -166,6 +166,7 @@ public:
 					fmt::arg("child_columns", Strings::Replace(plain_columns, ", ", ", child.").insert(0, "child.")),
 					fmt::arg("table", TableName()),
 					fmt::arg("states", state_list),
+					fmt::arg("row_filter", row_filter),
 					fmt::arg("character", character_id),
 					fmt::arg("select_columns", select_columns)
 				)

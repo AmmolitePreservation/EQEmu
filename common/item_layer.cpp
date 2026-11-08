@@ -776,7 +776,7 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 	return held;
 }
 
-std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states)
+std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states, const std::optional<ItemGUID> &only)
 {
 	std::vector<Recoverable> listed;
 	if (states.empty()) {
@@ -791,7 +791,8 @@ std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, Sha
 	std::map<std::array<uint32, 3>, EQ::ItemInstance *> by_guid;
 	std::set<std::array<uint32, 3>>                     left_out;
 
-	for (const auto &row : ItemInstancesRepository::GetRecoverable(db, character_id, state_list)) {
+	const auto row_filter = only ? ItemInstancesRepository::KeyFilter(*only) : std::string("1");
+	for (const auto &row : ItemInstancesRepository::GetRecoverable(db, character_id, state_list, row_filter)) {
 		const std::array<uint32, 3> key{row.guid.first, row.guid.second, row.guid.third};
 		if (row.location.parent_guid) {
 			const auto &p = *row.location.parent_guid;

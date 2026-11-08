@@ -2247,6 +2247,18 @@ struct Merchant_DelItem_Struct{
 /*008*/	uint32	itemslot;
 /*012*/	uint32	unknown012;
 };
+
+// The Recover button of the merchant window's Recover tab (RoF2); the last three dwords arrive uninitialised.
+struct MerchantRecover_Struct {
+/*000*/	uint32	npc_id;			// Merchant NPC's entity id
+/*004*/	uint32	player_id;		// Player's entity id
+/*008*/	uint32	listing_slot;	// The slot the item was listed on
+/*012*/	uint32	unknown012;
+/*016*/	uint32	quantity;		// 1
+/*020*/	uint32	unknown020;
+/*024*/	uint32	unknown024;
+/*028*/	uint32	unknown028;
+};
 struct Adventure_Purchase_Struct {
 /*000*/	uint32	Type;	// 1 = LDoN, 2 = Discord, 4 = Norrath's Keepers, 5 = Dark Reign
 /*000*/	uint32	npcid;
