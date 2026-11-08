@@ -133,11 +133,13 @@ One path in the item layer issues, retires and updates; everything else, quest s
 
 | Kind | Calls | GUID handling |
 |---|---|---|
-| Create | SummonItem, SummonItemIntoInventory, SummonBaggedItems, PushItemOnCursor/PushCursor, PutItem/PutItemInInventory, createitem, send_parcel, AddBotItem, ForageItem | Issued from the receiving character's counter when the item lands with them; a createitem not yet given has none |
-| Remove, consume | DeleteItemInInventory, NukeItem, RemoveItem, RemoveItemByID, DeleteItem, PopItem, CheckHandin/handin, RemoveTaskDeliveredItems, collectitems, RemoveBotItem | The row retires with its reason |
-| Update | SetCharges, SetCustomItemData/DeleteCustomData, UseAugmentContainer, AddEvolveAmount, SetEvolveAmount, SetEvolveProgression | Updates the row by GUID; evolving state is keyed by GUID |
+| Create | SummonItem, SummonItemIntoInventory, SummonBaggedItems, PushItemOnCursor/PushCursor, PutItem/PutItemInInventory, createitem, Clone, send_parcel, ForageItem, a player corpse's AddItem | Issued from the receiving character's counter when the item lands with them; a createitem or a Clone not yet given has none (a Clone's GUIDs are cleared with its contents, so it is a new item); an item a script adds to a player corpse is issued from the corpse's character at the corpse, in one write with the entry, or not added |
+| Remove, consume | DeleteItemInInventory, NukeItem, RemoveItem, RemoveItemByID, DeleteItem, a corpse's RemoveItem, an object's DeleteItem and SetItemID, CheckHandin/handin, RemoveTaskDeliveredItems, collectitems | The row retires with its reason, `consumed` for a script's removal |
+| Update | SetCustomItemData, UseAugmentContainer, SetCharges, SetCustomData/DeleteCustomData, AddEvolveAmount, SetEvolveAmount, SetEvolveProgression | SetCustomItemData saves the slot at once and UseAugmentContainer runs the augment path; the instance setters change the instance, whose row follows at its slot's next save, as upstream saved; evolving state is keyed by GUID |
 | Return, move | ReturnHandinItems, SwapItem, corpse summons | Keeps the GUID |
-| Not items | addloot, AddLootTable, MerchantSetItem | No GUID until looted or bought |
+| Not items | addloot, AddLootTable, an NPC's AddItem, MerchantSetItem | No GUID until looted or bought |
+
+The `Inventory` object's PutItem, PushCursor, DeleteItem and SwapItem run through the owning client's landing, retire and swap functions (`EntityList::GetClientByInventory`, `Client::SwapSlots`), since the profile alone only changes memory; a PutItem into a held slot is refused and logged. PopItem, which handed a script an instance whose row stayed behind, is gone. Bots are outside this work.
 
 Scripts get `GetGUID()` and a lookup by GUID; `GetEvolveUniqueID` is replaced by the GUID; `GetSerialNumber` stays as the session handle; no script can set a GUID.
 
