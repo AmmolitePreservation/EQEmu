@@ -2248,7 +2248,9 @@ struct Merchant_DelItem_Struct{
 /*012*/	uint32	unknown012;
 };
 
-// The Recover button of the merchant window's Recover tab (RoF2); the last three dwords arrive uninitialised.
+// The Recover button of the merchant window's Recover tab (RoF2), and the server's reply on the same opcode. The
+// client sends the last three dwords uninitialised; in the reply it reads currency_paid as the tokens handed over
+// ("You give 1 Token of Reclamation to ...").
 struct MerchantRecover_Struct {
 /*000*/	uint32	npc_id;			// Merchant NPC's entity id
 /*004*/	uint32	player_id;		// Player's entity id
@@ -2256,7 +2258,7 @@ struct MerchantRecover_Struct {
 /*012*/	uint32	unknown012;
 /*016*/	uint32	quantity;		// 1
 /*020*/	uint32	unknown020;
-/*024*/	uint32	unknown024;
+/*024*/	uint32	currency_paid;
 /*028*/	uint32	unknown028;
 };
 struct Adventure_Purchase_Struct {

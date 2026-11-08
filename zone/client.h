@@ -389,7 +389,7 @@ public:
 	void SendZonePoints();
 	void SendBulkParcels();
 	void SendRecoverableItems();
-	void AcknowledgeRecovery(const MerchantRecover_Struct &request);
+	void AcknowledgeRecovery(const MerchantRecover_Struct &request, uint32 currency_paid);
 	void DoParcelCancel();
 	void DoParcelSend(const Parcel_Struct *parcel_in);
 	void DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in);
