@@ -1359,8 +1359,8 @@ static EQ::ItemInstance *InstanceWithGUID(EQ::ItemInstance *inst, const ItemGUID
 	if (inst->GetGUID() == guid) {
 		return inst;
 	}
-	for (auto iter = inst->_cbegin(); iter != inst->_cend(); ++iter) {
-		if (auto *found = InstanceWithGUID(iter->second, guid)) {
+	for (const auto &[index, child] : *inst->GetContents()) {
+		if (auto *found = InstanceWithGUID(child, guid)) {
 			return found;
 		}
 	}
