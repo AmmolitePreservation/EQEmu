@@ -2248,6 +2248,15 @@ struct Merchant_DelItem_Struct{
 /*012*/	uint32	unknown012;
 };
 
+// Takes a row off the Recover tab (RoF2 OP_ShopDelRecoveryItem): the client reads only the 64-bit unique id at
+// offset 8, the same shape as Merchant_DelItem_Struct, whose OP_ShopDelItem reaches the Purchase tab alone
+// (eqgame.exe FUN_006ef4f0 and FUN_006ef3b0).
+struct MerchantDelRecoveryItem_Struct {
+/*000*/	uint32	npc_id;
+/*004*/	uint32	player_id;
+/*008*/	uint64	unique_id;
+};
+
 // The Recover button of the merchant window's Recover tab (RoF2), and the server's reply on the same opcode. The
 // client (eqgame.exe FUN_006f6090) fills the merchant, itself, the listed item's 64-bit unique id (the header's
 // instance_id and parcel_item_id) and the stack count, and leaves the rest uninitialised; its reply handler

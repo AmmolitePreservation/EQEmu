@@ -52,7 +52,9 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 	auto           listed = ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States(), guid);
 	if (listed.size() != 1) {
 		LogError("Character [{}] asked to recover [{}], which is no longer listed", CharacterID(), ItemGUIDText(guid));
+		m_recovery_listing.erase(listing);
 		AcknowledgeRecovery(*in, 0);
+		SendRecoveryListingRemoved(in->npc_id, in->unique_id);
 		return;
 	}
 	std::unique_ptr<EQ::ItemInstance> inst(listed.front().inst);
@@ -91,6 +93,18 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 	LogInventory("Character [{}] recovered [{}] item [{}] into slot [{}]", CharacterID(), ItemGUIDText(guid), inst->GetID(), slot);
 	m_recovery_listing.erase(listing);
 	AcknowledgeRecovery(*in, 1);
+	SendRecoveryListingRemoved(in->npc_id, in->unique_id);
+}
+
+void Client::SendRecoveryListingRemoved(uint32 merchant_id, uint64 unique_id)
+{
+	auto  outapp = new EQApplicationPacket(OP_ShopDelRecoveryItem, sizeof(MerchantDelRecoveryItem_Struct));
+	auto *out    = reinterpret_cast<MerchantDelRecoveryItem_Struct *>(outapp->pBuffer);
+	out->npc_id    = merchant_id;
+	out->player_id = GetID();
+	out->unique_id = unique_id;
+	QueuePacket(outapp);
+	safe_delete(outapp);
 }
 // The request echoed back, as a purchase is, naming the currency handed over.
 void Client::AcknowledgeRecovery(const MerchantRecover_Struct &request, uint64 currency_paid)

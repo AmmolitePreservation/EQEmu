@@ -9,6 +9,7 @@
 #include <cctype>
 
 std::vector<ItemRetirement> ItemRecovery::s_states;
+
 bool ItemRecovery::LoadRules(Zone &zone)
 {
 	std::vector<ItemRetirement> states;
