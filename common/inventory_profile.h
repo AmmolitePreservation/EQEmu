@@ -30,6 +30,7 @@
 #include "classes.h"
 #include "races.h"
 
+#include <functional>
 #include <list>
 #include <vector>
 
@@ -205,8 +206,9 @@ namespace EQ
 		static bool SupportsContainers(int16 slot_id);
 
 		int GetSlotByItemInst(ItemInstance *inst);
-		// The held item with this GUID, in any bucket, inside a bag or in an augment socket, or nothing.
+		// The held item with this GUID or serial, in any bucket, inside a bag or in an augment socket, or nothing.
 		ItemInstance *GetItemByGUID(const ItemGUID &guid);
+		ItemInstance *GetItemBySerialNumber(uint32 serial_number);
 		uint8 FindBrightestLightType();
 
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, const std::string& value);
@@ -219,8 +221,6 @@ namespace EQ
 
 		std::map<int16, ItemInstance*>& GetWorn() { return m_worn; }
 		std::map<int16, ItemInstance*>& GetPersonal() { return m_inv; }
-		int16 HasEvolvingItem(uint64 evolve_unique_id, uint8 quantity, uint8 where);
-
 		inline int16 PushItem(int16 slot_id, ItemInstance* inst) { return _PutItem(slot_id, inst); }
 
 	protected:
@@ -243,10 +243,7 @@ namespace EQ
 		int16 _HasItemByUse(ItemInstQueue& iqueue, uint8 use, uint8 quantity);
 		int16 _HasItemByLoreGroup(std::map<int16, ItemInstance*>& bucket, uint32 loregroup);
 		int16 _HasItemByLoreGroup(ItemInstQueue& iqueue, uint32 loregroup);
-		int16 _HasEvolvingItem(std::map<int16, ItemInstance*>& bucket, uint64 evolve_unique_id, uint8 quantity);
-		int16 _HasEvolvingItem(ItemInstQueue& iqueue, uint64 evolve_unique_id, uint8 quantity);
-
-
+		ItemInstance *FindInstance(const std::function<bool(const ItemInstance &)> &matches);
 		// Player inventory
 		std::map<int16, ItemInstance*>	m_worn;		// Items worn by character
 		std::map<int16, ItemInstance*>	m_inv;		// Items in character personal inventory

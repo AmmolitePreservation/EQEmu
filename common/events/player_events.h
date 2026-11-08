@@ -1645,7 +1645,7 @@ namespace PlayerEvent {
 	struct EvolveItem {
 		std::string status;
 		uint32      item_id;
-		uint64      unique_id;
+		std::string guid;
 		std::string item_name;
 		uint32      level;
 		double      progression;
@@ -1657,7 +1657,7 @@ namespace PlayerEvent {
 			ar(
 				CEREAL_NVP(status),
 				CEREAL_NVP(item_id),
-				CEREAL_NVP(unique_id),
+				CEREAL_NVP(guid),
 				CEREAL_NVP(item_name),
 				CEREAL_NVP(level),
 				CEREAL_NVP(progression)

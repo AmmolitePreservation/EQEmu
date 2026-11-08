@@ -6467,11 +6467,6 @@ namespace RoF2
 		hdr.scaled_value   = (inst->IsScaling() ? (inst->GetExp() / 100) : 0);
 		hdr.instance_id    = (listed ? listing_slot : inst->GetSerialNumber());
 		hdr.parcel_item_id = packet_type == ItemPacketParcel ? inst->GetID() : 0;
-		if (item->EvolvingItem) {
-			hdr.instance_id    = inst->GetEvolveUniqueID() & 0xFFFFFFFF; //lower dword
-			hdr.parcel_item_id = inst->GetEvolveUniqueID() >> 32;        //upper dword
-		}
-
 		hdr.last_cast_time = inst->GetRecastTimestamp();
 		hdr.charges        = (inst->IsStackable() ? (item->MaxCharges ? 1 : 0) : ((inst->GetCharges() > 254)
 			? 0xFFFFFFFF

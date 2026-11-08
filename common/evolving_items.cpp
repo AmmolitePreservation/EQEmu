@@ -68,12 +68,11 @@ void EvolvingItemsManager::DoLootChecks(const uint32 char_id, const uint16 slot_
 	}
 
 	const bool equipped = inst.GetEvolveEquipped();
-	if (!inst.GetEvolveUniqueID() && !LoadRecord(*m_db, inst)) {
+	if (!inst.HasEvolveRecord() && !LoadRecord(*m_db, inst)) {
 		return;
 	}
-
 	inst.SetEvolveEquipped(equipped);
-	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetEvolveUniqueID(), equipped);
+	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetGUID(), equipped);
 }
 
 // An item landing from a holder that does not carry evolving state (a corpse, a parcel, the guild bank) already has its
@@ -100,7 +99,7 @@ bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst
 		}
 	}
 
-	inst.SetEvolveUniqueID(e.id);
+	CharacterEvolvingItemsRepository::SetGUID(inst.GetEvolvingDetails(), inst.GetGUID());
 	inst.SetEvolveActivated(e.activated);
 	inst.SetEvolveEquipped(e.equipped);
 	inst.SetEvolveCurrentAmount(e.current_amount);
@@ -343,5 +342,5 @@ void EvolvingItemsManager::LoadPlayerEvent(const EQ::ItemInstance &inst, PlayerE
 	e.item_name   = inst.GetItem() ? inst.GetItem()->Name : std::string();
 	e.level       = inst.GetEvolveLvl();
 	e.progression = inst.GetEvolveProgression();
-	e.unique_id   = inst.GetEvolveUniqueID();
+	e.guid        = ItemGUIDText(inst.GetGUID());
 }

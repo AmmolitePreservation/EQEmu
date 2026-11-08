@@ -24,15 +24,14 @@ static void RetireAugmentRows(const EQ::ItemInstance &inst)
 
 void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 {
-	const auto in   = reinterpret_cast<EvolveItemToggle *>(app->pBuffer);
-	const int16 slot = GetInv().HasEvolvingItem(in->unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-	if (slot == INVALID_INDEX) {
+	const auto in = reinterpret_cast<EvolveItemToggle *>(app->pBuffer);
+	// The client echoes the item header's two dwords as one number: the serial, and 0 for an item not in a parcel.
+	auto *inst = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->unique_id & 0xFFFFFFFF));
+	if (!inst || !inst->IsEvolving()) {
 		LogWarning("Character [{}] asked to toggle evolving item [{}], which it does not hold", CharacterID(), in->unique_id);
 		return;
 	}
-
-	auto item = CharacterEvolvingItemsRepository::FindOne(database, in->unique_id);
-
+	auto item = CharacterEvolvingItemsRepository::FindByGUID(database, inst->GetGUID());
 	LogEvolveItemDetail(
 		"Character ID <green>[{}] requested to set evolve item with unique id <yellow>[{}] to status <yellow>[{}]",
 		CharacterID(),
@@ -47,14 +46,12 @@ void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 	}
 
 	item.activated = in->activated;
-	GetInv().GetItem(slot)->SetEvolveActivated(item.activated ? true : false);
-
+	inst->SetEvolveActivated(item.activated ? true : false);
 	CharacterEvolvingItemsRepository::ReplaceOne(database, item);
-
-	SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, item);
+	SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, item);
 }
 
-void Client::SendEvolvingPacket(const int8 action, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item)
+void Client::SendEvolvingPacket(const int8 action, const EQ::ItemInstance &inst, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item)
 {
 	auto       out  = std::make_unique<EQApplicationPacket>(OP_EvolveItem, sizeof(EvolveItemToggle));
 	const auto data = reinterpret_cast<EvolveItemToggle *>(out->pBuffer);
@@ -69,7 +66,7 @@ void Client::SendEvolvingPacket(const int8 action, const CharacterEvolvingItemsR
 	);
 
 	data->action     = action;
-	data->unique_id  = item.id;
+	data->unique_id  = inst.GetSerialNumber();
 	data->percentage = item.progression;
 	data->activated  = item.activated;
 
@@ -158,14 +155,12 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 				inst->CalculateEvolveProgression();
 
 				auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
-					database, inst->GetEvolveUniqueID(), inst->GetEvolveCurrentAmount(), inst->GetEvolveProgression()
+					database, inst->GetGUID(), inst->GetEvolveCurrentAmount(), inst->GetEvolveProgression()
 				);
 				if (!e.id) {
 					break;
 				}
-
-				SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+				SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 				LogEvolveItem(
 					"Processing Complete for item id <green>[{1}] Type 1 Amount of EXP - SubType <yellow>[{0}] - "
 					"Assigned <yellow>[{2}] of exp to <green>[{1}]",
@@ -189,16 +184,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 					auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 						database,
-						inst->GetEvolveUniqueID(),
+						inst->GetGUID(),
 						inst->GetEvolveCurrentAmount(),
 						inst->GetEvolveProgression()
 					);
 					if (!e.id) {
 						break;
 					}
-
-					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 					LogEvolveItem(
 						"Processing Complete for item id <green>[{1}] Type 3 Specific Mob Race - SubType "
 						"<yellow>[{0}] "
@@ -223,16 +216,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 					auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 						database,
-						inst->GetEvolveUniqueID(),
+						inst->GetGUID(),
 						inst->GetEvolveCurrentAmount(),
 						inst->GetEvolveProgression()
 					);
 					if (!e.id) {
 						break;
 					}
-
-					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 					LogEvolveItem(
 						"Processing Complete for item id <green>[{1}] Type 4 Specific Zone ID - SubType "
 						"<yellow>[{0}] "
@@ -260,16 +251,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 						auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 							database,
-							inst->GetEvolveUniqueID(),
+							inst->GetGUID(),
 							inst->GetEvolveCurrentAmount(),
 							inst->GetEvolveProgression()
 						);
 						if (!e.id) {
 							break;
 						}
-
-						SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+						SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 						LogEvolveItem(
 							"Processing Complete for item id <green>[{1}] Type 4 Specific Zone ID - SubType "
 							"<yellow>[{0}] "
@@ -441,24 +430,12 @@ void Client::SendEvolveXPTransferWindow()
 
 void Client::SendEvolveXPWindowDetails(const EQApplicationPacket *app)
 {
-	const auto in = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
-
-	const auto item_1_slot =
-		GetInv().HasEvolvingItem(in->item1_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-	const auto item_2_slot =
-		GetInv().HasEvolvingItem(in->item2_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-
-	if (item_1_slot == INVALID_INDEX || item_2_slot == INVALID_INDEX) {
+	const auto in        = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
+	const auto inst_from = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item1_unique_id & 0xFFFFFFFF));
+	const auto inst_to   = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item2_unique_id & 0xFFFFFFFF));
+	if (!inst_from || !inst_to || !inst_from->IsEvolving() || !inst_to->IsEvolving()) {
 		return;
 	}
-
-	const auto inst_from = GetInv().GetItem(item_1_slot);
-	const auto inst_to   = GetInv().GetItem(item_2_slot);
-
-	if (!inst_from || !inst_to) {
-		return;
-	}
-
 	const auto results = EvolvingItemsManager::Instance()->DetermineTransferResults(*inst_from, *inst_to);
 
 	if (!results.item_from_id || !results.item_to_id) {
@@ -484,21 +461,10 @@ void Client::SendEvolveXPWindowDetails(const EQApplicationPacket *app)
 
 void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 {
-	const auto in = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
-
-	const auto item_1_slot =
-		GetInv().HasEvolvingItem(in->item1_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-	const auto item_2_slot =
-		GetInv().HasEvolvingItem(in->item2_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-
-	if (item_1_slot == INVALID_INDEX || item_2_slot == INVALID_INDEX) {
-		return;
-	}
-
-	const auto inst_from = GetInv().GetItem(item_1_slot);
-	const auto inst_to   = GetInv().GetItem(item_2_slot);
-
-	if (!inst_from || !inst_to) {
+	const auto in        = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
+	const auto inst_from = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item1_unique_id & 0xFFFFFFFF));
+	const auto inst_to   = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item2_unique_id & 0xFFFFFFFF));
+	if (!inst_from || !inst_to || !inst_from->IsEvolving() || !inst_to->IsEvolving()) {
 		Message(Chat::Red, "Transfer Failed.  Incompatible Items.");
 		LogEvolveItem("Transfer Failed for Character ID <green>[{}]", CharacterID());
 		return;
@@ -575,8 +541,8 @@ void Client::SendEvolveTransferResults(
 	EvolveXPWindowSend e{};
 	e.action             = EvolvingItems::Actions::TRANSFER_WINDOW_DETAILS;
 	e.compatibility      = compatibility;
-	e.item1_unique_id    = inst_from.GetEvolveUniqueID();
-	e.item2_unique_id    = inst_to.GetEvolveUniqueID();
+	e.item1_unique_id    = inst_from.GetSerialNumber();
+	e.item2_unique_id    = inst_to.GetSerialNumber();
 	e.max_transfer_level = max_transfer_level;
 	e.item1_present      = 1;
 	e.item2_present      = 1;

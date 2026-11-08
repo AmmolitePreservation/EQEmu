@@ -32,9 +32,9 @@ public:
 		return l.empty() ? NewEntity() : l.front();
 	}
 
-	static CharacterEvolvingItems SetCurrentAmountAndProgression(Database& db, const uint64 id, const uint64 amount, const double progression)
+	static CharacterEvolvingItems SetCurrentAmountAndProgression(Database& db, const ItemGUID &guid, const uint64 amount, const double progression)
 	{
-		auto e = FindOne(db, id);
+		auto e = FindByGUID(db, guid);
 		if (e.id == 0) {
 			return NewEntity();
 		}
@@ -46,9 +46,9 @@ public:
 		return e;
 	}
 
-	static CharacterEvolvingItems SetEquipped(Database& db, const uint64 id, const bool equipped)
+	static CharacterEvolvingItems SetEquipped(Database& db, const ItemGUID &guid, const bool equipped)
 	{
-		auto e = FindOne(db, id);
+		auto e = FindByGUID(db, guid);
 		if (e.id == 0) {
 			return NewEntity();
 		}

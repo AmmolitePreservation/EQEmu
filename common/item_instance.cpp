@@ -1952,20 +1952,6 @@ void EQ::ItemInstance::ClearGUIDMap()
 	guids.clear();
 }
 
-uint32 EQ::ItemInstance::GetAugmentEvolveUniqueID(uint8 augment_index) const
-{
-	if (!m_item || !m_item->IsClassCommon()) {
-		return 0;
-	}
-
-	const auto item = GetItem(augment_index);
-	if (item) {
-		return item->GetEvolveUniqueID();
-	}
-
-	return 0;
-}
-
 void EQ::ItemInstance::SetTimer(std::string name, uint32 time) const{
 	Timer t(time);
 	t.Start(time, false);
