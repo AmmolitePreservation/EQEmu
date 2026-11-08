@@ -54,7 +54,7 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 	auto      listed = ItemLayer::LoadRecoverable(database, database, CharacterID(), ItemRecovery::States(), guid);
 	if (listed.size() != 1) {
 		LogError("Character [{}] asked to recover [{}], which is no longer listed", CharacterID(), ItemGUIDText(guid));
-		SendRecoveryListingRemoved(in->npc_id, in->listing_slot);
+		AcknowledgeRecovery(*in);
 		return;
 	}
 	std::unique_ptr<EQ::ItemInstance> inst(listed.front().inst);
@@ -94,16 +94,18 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 
 	LogInventory("Character [{}] recovered [{}] item [{}] into slot [{}]", CharacterID(), ItemGUIDText(guid), inst->GetID(), slot);
 	guid = ItemGUID{};
-	SendRecoveryListingRemoved(in->npc_id, in->listing_slot);
+	AcknowledgeRecovery(*in);
 }
 
-void Client::SendRecoveryListingRemoved(uint32 merchant_id, uint32 listing_slot)
+// The request echoed back, as a purchase is, with the uninitialised dwords cleared.
+void Client::AcknowledgeRecovery(const MerchantRecover_Struct &request)
 {
-	auto  outapp = new EQApplicationPacket(OP_ShopDelItem, sizeof(Merchant_DelItem_Struct));
-	auto *del    = reinterpret_cast<Merchant_DelItem_Struct *>(outapp->pBuffer);
-	del->npcid    = merchant_id;
-	del->playerid = GetID();
-	del->itemslot = listing_slot;
+	auto  outapp = new EQApplicationPacket(OP_ShopRecoverItem, sizeof(MerchantRecover_Struct));
+	auto *out    = reinterpret_cast<MerchantRecover_Struct *>(outapp->pBuffer);
+	*out            = request;
+	out->unknown020 = 0;
+	out->unknown024 = 0;
+	out->unknown028 = 0;
 	QueuePacket(outapp);
 	safe_delete(outapp);
 }
