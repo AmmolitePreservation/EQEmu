@@ -1166,6 +1166,8 @@ public:
 	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason);
 	int16 SlotOfSerialNumber(uint32 serial_number);
 	bool SwapItem(MoveItem_Struct* move_in);
+	// Trades the contents of two slots for a script: the rows are saved as one swap and the client is shown both slots.
+	bool SwapSlots(int16 source_slot, int16 destination_slot);
 	void SwapItemResync(MoveItem_Struct* move_slots);
 	void PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data = 0);
 	bool AutoPutLootInInventory(EQ::ItemInstance& inst, bool try_worn = false, bool try_cursor = true, LootItem** bag_item_data = 0);

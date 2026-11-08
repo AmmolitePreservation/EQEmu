@@ -4,6 +4,7 @@
 #include <luabind/object.hpp>
 
 #include "masterentity.h"
+#include "../common/item_layer.h"
 #include "lua_iteminst.h"
 #include "lua_item.h"
 
@@ -255,11 +256,13 @@ int8 Lua_ItemInst::GetMaxEvolveLvl() {
 	return self->GetMaxEvolveLvl();
 }
 
+// A copy a script makes is a new item, issued when it lands.
 Lua_ItemInst Lua_ItemInst::Clone() {
 	Lua_Safe_Call_Class(Lua_ItemInst);
-	return Lua_ItemInst(self->Clone(), true);
+	auto *copy = self->Clone();
+	ItemLayer::ClearGUID(*copy);
+	return Lua_ItemInst(copy, true);
 }
-
 void Lua_ItemInst::SetTimer(std::string name, uint32 time) {
 	Lua_Safe_Call_Void();
 	self->SetTimer(name, time);

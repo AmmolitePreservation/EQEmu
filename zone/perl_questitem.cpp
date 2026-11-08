@@ -1,6 +1,6 @@
 #include "../common/features.h"
+#include "../common/item_layer.h"
 #include "client.h"
-
 #ifdef EMBPERL_XS_CLASSES
 
 #include "../common/global_define.h"
@@ -97,11 +97,13 @@ void Perl_QuestItem_ClearTimers(EQ::ItemInstance* self)
 	self->ClearTimers();
 }
 
+// A copy a script makes is a new item, issued when it lands.
 EQ::ItemInstance* Perl_QuestItem_Clone(EQ::ItemInstance* self)
 {
-	return self->Clone();
+	auto *copy = self->Clone();
+	ItemLayer::ClearGUID(*copy);
+	return copy;
 }
-
 void Perl_QuestItem_DeleteCustomData(EQ::ItemInstance* self, std::string identifier)
 {
 	self->DeleteCustomData(identifier);

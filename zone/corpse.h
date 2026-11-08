@@ -159,6 +159,8 @@ public:
 	int32 GetPlayerKillItem() { return m_player_kill_item; }
 	void RemoveItem(uint16 lootslot);
 	void RemoveItem(LootItem *item_data);
+	// A script takes an item off the corpse: a player corpse's row retires with it.
+	void ConsumeItem(uint16 lootslot);
 	void RemoveItemByID(uint32 item_id, int quantity = 1);
 	void AddItem(
 		uint32 itemnum,
@@ -179,6 +181,8 @@ public:
 		const ItemGUID *augment_guids = nullptr
 	);
 	void MoveItemRowsToCorpse();
+	// An entry a script adds to a player corpse is issued from the corpse's character at the corpse, or not added.
+	bool IssueEntry(LootItem &entry);
 	static LootItem *LootItemFor(const EQ::ItemInstance &inst, int16 equip_slot);
 	/* Corpse: Coin */
 	void SetCash(uint32 in_copper, uint32 in_silver, uint32 in_gold, uint32 in_platinum);

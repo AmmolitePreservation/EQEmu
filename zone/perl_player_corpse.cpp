@@ -78,9 +78,8 @@ uint32_t Perl_Corpse_GetWornItem(Corpse* self, uint16_t equip_slot) // @categori
 
 void Perl_Corpse_RemoveItem(Corpse* self, uint16_t loot_slot) // @categories Inventory and Items, Corpse
 {
-	self->RemoveItem(loot_slot);
+	self->ConsumeItem(loot_slot);
 }
-
 void Perl_Corpse_SetCash(Corpse* self, uint16 copper, uint16 silver, uint16 gold, uint16 platinum) // @categories Currency and Points, Corpse
 {
 	self->SetCash(copper, silver, gold, platinum);

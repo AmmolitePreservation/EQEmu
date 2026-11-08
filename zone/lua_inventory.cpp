@@ -18,50 +18,65 @@ Lua_ItemInst Lua_Inventory::GetItem(int slot_id, int bag_slot) {
 	return self->GetItem(slot_id, bag_slot);
 }
 
+// The profile's owner, whose landing, retire and swap functions write the rows.
+static Client *OwnerOf(EQ::InventoryProfile *inventory, const char *action)
+{
+	auto *c = entity_list.GetClientByInventory(inventory);
+	if (!c) {
+		LogError("Inventory {} from a script on an inventory no client in this zone owns; nothing changed", action);
+	}
+	return c;
+}
+
 int Lua_Inventory::PutItem(int slot_id, Lua_ItemInst item) {
 	Lua_Safe_Call_Int();
 	EQ::ItemInstance *inst = item;
-	if(!inst) {
-		return 0;
+	auto *c = OwnerOf(self, "PutItem");
+	if (!inst || !c) {
+		return INVALID_INDEX;
+	}
+	if (self->GetItem(slot_id)) {
+		LogError("Inventory PutItem from a script into slot [{}] of character [{}], which holds an item; nothing changed", slot_id, c->CharacterID());
+		return INVALID_INDEX;
 	}
 
-	return self->PutItem(slot_id, *inst);
+	return c->PutItemInInventory(slot_id, *inst, true) ? slot_id : INVALID_INDEX;
 }
 
 int Lua_Inventory::PushCursor(Lua_ItemInst item) {
 	Lua_Safe_Call_Int();
 	EQ::ItemInstance *inst = item;
-	if(!inst) {
-		return 0;
+	auto *c = OwnerOf(self, "PushCursor");
+	if (!inst || !c) {
+		return INVALID_INDEX;
 	}
 
-	return self->PushCursor(*inst);
+	return c->PushItemOnCursor(*inst, true) ? EQ::invslot::slotCursor : INVALID_INDEX;
 }
 
 bool Lua_Inventory::SwapItem(int source_slot, int destination_slot) {
 	Lua_Safe_Call_Bool();
-	EQ::InventoryProfile::SwapItemFailState fail_state = EQ::InventoryProfile::swapInvalid;
-	return self->SwapItem(source_slot, destination_slot, fail_state);
+	auto *c = OwnerOf(self, "SwapItem");
+	return c && c->SwapSlots(source_slot, destination_slot);
 }
 
 bool Lua_Inventory::DeleteItem(int slot_id) {
-	Lua_Safe_Call_Bool();
-	return self->DeleteItem(slot_id);
+	return DeleteItem(slot_id, 0);
 }
 
 bool Lua_Inventory::DeleteItem(int slot_id, int quantity) {
 	Lua_Safe_Call_Bool();
-	return self->DeleteItem(slot_id, quantity);
-}
+	auto *c = OwnerOf(self, "DeleteItem");
+	if (!c || !self->GetItem(slot_id)) {
+		return false;
+	}
 
+	c->DeleteItemInInventory(slot_id, quantity, true, ItemRetirement::Consumed);
+	return true;
+}
 bool Lua_Inventory::CheckNoDrop(int slot_id) {
 	Lua_Safe_Call_Bool();
 	return self->CheckNoDrop(slot_id);
-}
-
-Lua_ItemInst Lua_Inventory::PopItem(int slot_id) {
-	Lua_Safe_Call_Class(Lua_ItemInst);
-	return Lua_ItemInst(self->PopItem(slot_id), true);
 }
 
 int Lua_Inventory::HasItem(int item_id) {
@@ -230,7 +245,6 @@ luabind::scope lua_register_inventory() {
 	.def("HasItemByUse", (int(Lua_Inventory::*)(int,uint8,uint8))&Lua_Inventory::HasItemByUse)
 	.def("HasItemEquippedByID", (bool(Lua_Inventory::*)(uint32))&Lua_Inventory::HasItemEquippedByID)
 	.def("HasSpaceForItem", (bool(Lua_Inventory::*)(Lua_Item,int))&Lua_Inventory::HasSpaceForItem)
-	.def("PopItem", (Lua_ItemInst(Lua_Inventory::*)(int))&Lua_Inventory::PopItem)
 	.def("PushCursor", (int(Lua_Inventory::*)(Lua_ItemInst))&Lua_Inventory::PushCursor)
 	.def("PutItem", (int(Lua_Inventory::*)(int,Lua_ItemInst))&Lua_Inventory::PutItem)
 	.def("SupportsContainers", (bool(Lua_Inventory::*)(int))&Lua_Inventory::SupportsContainers)

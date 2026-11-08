@@ -18,16 +18,31 @@ bool Perl_Inventory_CheckNoDrop(EQ::InventoryProfile* self, int16_t slot_id)
 	return self->CheckNoDrop(slot_id);
 }
 
-bool Perl_Inventory_DeleteItem(EQ::InventoryProfile* self, int16_t slot_id)
+// The profile's owner, whose landing, retire and swap functions write the rows.
+static Client *OwnerOf(EQ::InventoryProfile *inventory, const char *action)
 {
-	return self->DeleteItem(slot_id);
+	auto *c = entity_list.GetClientByInventory(inventory);
+	if (!c) {
+		LogError("Inventory {} from a script on an inventory no client in this zone owns; nothing changed", action);
+	}
+	return c;
 }
 
 bool Perl_Inventory_DeleteItem(EQ::InventoryProfile* self, int16_t slot_id, uint8_t quantity)
 {
-	return self->DeleteItem(slot_id, quantity);
+	auto *c = OwnerOf(self, "DeleteItem");
+	if (!c || !self->GetItem(slot_id)) {
+		return false;
+	}
+
+	c->DeleteItemInInventory(slot_id, quantity, true, ItemRetirement::Consumed);
+	return true;
 }
 
+bool Perl_Inventory_DeleteItem(EQ::InventoryProfile* self, int16_t slot_id)
+{
+	return Perl_Inventory_DeleteItem(self, slot_id, 0);
+}
 int Perl_Inventory_FindFreeSlot(EQ::InventoryProfile* self, bool is_for_bag, bool try_cursor)
 {
 	return self->FindFreeSlot(is_for_bag, try_cursor);
@@ -119,11 +134,6 @@ bool Perl_Inventory_HasSpaceForItem(EQ::InventoryProfile* self, EQ::ItemInstance
 	return self->HasSpaceForItem(item_data, quantity);
 }
 
-EQ::ItemInstance* Perl_Inventory_PopItem(EQ::InventoryProfile* self, int16_t slot_id)
-{
-	return self->PopItem(slot_id);
-}
-
 bool Perl_Inventory_SupportsContainers(EQ::InventoryProfile* self, int16_t slot_id)
 {
 	return self->SupportsContainers(slot_id);
@@ -131,20 +141,33 @@ bool Perl_Inventory_SupportsContainers(EQ::InventoryProfile* self, int16_t slot_
 
 bool Perl_Inventory_SwapItem(EQ::InventoryProfile* self, int16_t source_slot_id, int16_t destination_slot_id)
 {
-	EQ::InventoryProfile::SwapItemFailState fail_state = EQ::InventoryProfile::swapInvalid;
-	return self->SwapItem(source_slot_id, destination_slot_id, fail_state);
+	auto *c = OwnerOf(self, "SwapItem");
+	return c && c->SwapSlots(source_slot_id, destination_slot_id);
 }
 
 int Perl_Inventory_PushCursor(EQ::InventoryProfile* self, EQ::ItemInstance* item)
 {
-	return self->PushCursor(*item);
+	auto *c = OwnerOf(self, "PushCursor");
+	if (!item || !c) {
+		return INVALID_INDEX;
+	}
+
+	return c->PushItemOnCursor(*item, true) ? EQ::invslot::slotCursor : INVALID_INDEX;
 }
 
 int Perl_Inventory_PutItem(EQ::InventoryProfile* self, int16_t slot_id, EQ::ItemInstance* item)
 {
-	return self->PutItem(slot_id, *item);
-}
+	auto *c = OwnerOf(self, "PutItem");
+	if (!item || !c) {
+		return INVALID_INDEX;
+	}
+	if (self->GetItem(slot_id)) {
+		LogError("Inventory PutItem from a script into slot [{}] of character [{}], which holds an item; nothing changed", slot_id, c->CharacterID());
+		return INVALID_INDEX;
+	}
 
+	return c->PutItemInInventory(slot_id, *item, true) ? slot_id : INVALID_INDEX;
+}
 bool Perl_Inventory_HasAugmentEquippedByID(EQ::InventoryProfile* self, uint32_t item_id)
 {
 	return self->HasAugmentEquippedByID(item_id);
@@ -209,7 +232,6 @@ void perl_register_inventory()
 	package.add("HasItemByUse", (int(*)(EQ::InventoryProfile*, uint8_t, uint8_t, uint8_t))&Perl_Inventory_HasItemByUse);
 	package.add("HasItemEquippedByID", &Perl_Inventory_HasItemEquippedByID);
 	package.add("HasSpaceForItem", &Perl_Inventory_HasSpaceForItem);
-	package.add("PopItem", &Perl_Inventory_PopItem);
 	package.add("PushCursor", &Perl_Inventory_PushCursor);
 	package.add("PutItem", &Perl_Inventory_PutItem);
 	package.add("SupportsContainers", &Perl_Inventory_SupportsContainers);

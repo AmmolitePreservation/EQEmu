@@ -104,9 +104,8 @@ uint32 Lua_Corpse::GetWornItem(int16 equipSlot) {
 
 void Lua_Corpse::RemoveItem(uint16 lootslot) {
 	Lua_Safe_Call_Void();
-	self->RemoveItem(lootslot);
+	self->ConsumeItem(lootslot);
 }
-
 void Lua_Corpse::SetCash(uint32 copper, uint32 silver, uint32 gold, uint32 platinum) {
 	Lua_Safe_Call_Void();
 	self->SetCash(copper, silver, gold, platinum);

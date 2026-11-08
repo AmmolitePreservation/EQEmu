@@ -1051,6 +1051,31 @@ const EQ::ItemInstance* Client::LandedItem(int16 slot_id) const
 	return slot_id == EQ::invslot::slotCursor ? m_inv.GetLastCursorItem() : m_inv.GetItem(slot_id);
 }
 
+bool Client::SwapSlots(int16 source_slot, int16 destination_slot)
+{
+	EQ::InventoryProfile::SwapItemFailState fail_state = EQ::InventoryProfile::swapInvalid;
+	if (!m_inv.SwapItem(source_slot, destination_slot, fail_state)) {
+		return false;
+	}
+
+	if (!database.SaveSwap(this, source_slot, destination_slot)) {
+		m_inv.SwapItem(destination_slot, source_slot, fail_state);
+		return false;
+	}
+
+	for (const int16 slot_id : {source_slot, destination_slot}) {
+		const auto *inst = m_inv.GetItem(slot_id);
+		if (inst) {
+			SendItemPacket(slot_id, inst, ItemPacketTrade);
+		}
+		else {
+			SendSlotEmptied(slot_id, true);
+		}
+	}
+	CalcBonuses();
+
+	return true;
+}
 bool Client::PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update)
 {
 	LogInventory("Putting item [{}] ([{}]) on the cursor", inst.GetItem()->Name, inst.GetItem()->ID);

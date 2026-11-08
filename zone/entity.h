@@ -32,6 +32,8 @@
 #include "zonedump.h"
 #include "common.h"
 
+namespace EQ { class InventoryProfile; }
+
 class Encounter;
 class Beacon;
 class Client;
@@ -184,6 +186,8 @@ public:
 		return nullptr;
 	}
 	Client *GetClientByCharID(uint32 iCharID);
+	// The client whose inventory profile this is, for script calls that only hold the profile.
+	Client *GetClientByInventory(const EQ::InventoryProfile *inventory);
 	Client *GetClientByWID(uint32 iWID);
 	Client *GetClientByLSID(uint32 iLSID);
 

@@ -1850,6 +1850,15 @@ Client *EntityList::GetClientByCharID(uint32 iCharID)
 	return nullptr;
 }
 
+Client *EntityList::GetClientByInventory(const EQ::InventoryProfile *inventory)
+{
+	for (auto &[id, client] : client_list) {
+		if (&client->GetInv() == inventory) {
+			return client;
+		}
+	}
+	return nullptr;
+}
 Client *EntityList::GetClientByWID(uint32 iWID)
 {
 	auto it = client_list.begin();

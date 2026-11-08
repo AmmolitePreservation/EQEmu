@@ -826,11 +826,58 @@ void Corpse::AddItem(
 	i->ornamentidfile      = ornamentidfile;
 	i->ornament_hero_model = ornament_hero_model;
 
+	if (m_is_player_corpse && i->guid.IsZero() && !IssueEntry(*i)) {
+		safe_delete(i);
+		return;
+	}
+
 	m_item_list.push_back(i);
 
 	UpdateEquipmentLight();
 }
 
+bool Corpse::IssueEntry(LootItem &entry)
+{
+	if (!m_corpse_db_id) {
+		LogError("Corpse of character [{}] has no row yet; item [{}] was not added", m_character_id, entry.item_id);
+		return false;
+	}
+	for (const auto &held : m_item_list) {
+		if (held->equip_slot == entry.equip_slot) {
+			LogError("Corpse [{}] already holds slot [{}]; item [{}] was not added", m_corpse_db_id, entry.equip_slot, entry.item_id);
+			return false;
+		}
+	}
+
+	const auto owner = ItemLayer::OwnerOf(database, m_character_id);
+	if (!owner) {
+		return false;
+	}
+
+	std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(
+		entry.item_id,
+		static_cast<int16>(entry.charges),
+		entry.aug_1,
+		entry.aug_2,
+		entry.aug_3,
+		entry.aug_4,
+		entry.aug_5,
+		entry.aug_6,
+		entry.attuned,
+		entry.custom_data,
+		entry.ornamenticon,
+		entry.ornamentidfile,
+		entry.ornament_hero_model
+	));
+	const auto location = ItemLocation::InHolder(ItemHolderType::Corpse, m_corpse_db_id, static_cast<uint16>(entry.equip_slot));
+	if (!inst || !ItemLayer::Save(database, *inst, location, owner)) {
+		return false;
+	}
+
+	entry.guid = inst->GetGUID();
+	AugmentGUIDs(inst.get(), entry.augment_guids);
+	return true;
+}
 LootItem *Corpse::GetItem(uint16 lootslot, LootItem **bag_item_data)
 {
 	LootItem *sitem  = nullptr;
@@ -882,6 +929,30 @@ void Corpse::RemoveItem(uint16 lootslot)
 	}
 }
 
+void Corpse::ConsumeItem(uint16 lootslot)
+{
+	if (lootslot == 0xFFFF) {
+		return;
+	}
+
+	for (const auto &item: m_item_list) {
+		if (item->lootslot != lootslot) {
+			continue;
+		}
+		if (!item->guid.IsZero()) {
+			DBcore::Transaction transaction(database);
+			ItemLayer::RetireRow(database, item->guid, ItemRetirement::Consumed);
+			for (const auto &augment_guid : item->augment_guids) {
+				if (!augment_guid.IsZero()) {
+					ItemLayer::RetireRow(database, augment_guid, ItemRetirement::Consumed);
+				}
+			}
+			transaction.Commit();
+		}
+		RemoveItem(item);
+		return;
+	}
+}
 void Corpse::RemoveItem(LootItem *item_data)
 {
 	for (auto iter = m_item_list.begin(); iter != m_item_list.end(); ++iter) {

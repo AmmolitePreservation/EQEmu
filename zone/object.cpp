@@ -473,8 +473,12 @@ void Object::Close() {
 void Object::DeleteItem(uint8 index)
 {
 	if (m_inst && m_inst->IsType(EQ::item::ItemClassBag)) {
+		// A script took the content away: its row retires with it.
+		const auto *content = m_inst->GetItem(index);
+		if (content && content->HasGUID()) {
+			ItemLayer::Retire(database, *content, ItemRetirement::Consumed);
+		}
 		m_inst->DeleteItem(index);
-
 		// This is _highly_ inefficient, but for now it will work: Save entire object to database
 		Save();
 	}
@@ -1148,8 +1152,14 @@ uint32 Object::GetItemID()
 
 void Object::SetItemID(uint32 itemid)
 {
+	// The object's item is replaced: a dropped item's row and ground row go with it.
+	if (m_inst && m_inst->HasGUID()) {
+		DBcore::Transaction transaction(database);
+		ItemLayer::Retire(database, *m_inst, ItemRetirement::Consumed);
+		GroundItemsRepository::Remove(database, m_inst->GetGUID());
+		transaction.Commit();
+	}
 	safe_delete(m_inst);
-
 	if (itemid)
 	{
 		m_inst = database.CreateItem(itemid);
