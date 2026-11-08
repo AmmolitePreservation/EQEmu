@@ -658,6 +658,31 @@ bool Holds(uint32 parent_class, uint32 parent_bag_slots, uint32 child_type, uint
 
 // A row whose item number content does not have retires missingItemRow, a row its parent cannot hold (past a bag's last
 // slot, or under a non-bag without being an augment in a socket) retires unplaceable, and so do the rows under either.
+static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemData *item, const ItemInstancesRepository::ItemInstances &row)
+{
+	auto *inst = content_db.CreateBaseItem(item, row.charges);
+	if (!inst) {
+		return nullptr;
+	}
+
+	ItemLayer::AssignGUID(*inst, row.guid);
+	if (!row.custom_data.empty()) {
+		inst->SetCustomDataString(row.custom_data);
+	}
+	inst->SetOrnamentIcon(row.ornament_icon);
+	inst->SetOrnamentationIDFile(row.ornament_idfile);
+	inst->SetOrnamentHeroModel(row.ornament_hero_model);
+	inst->SetAttuned(row.attuned);
+	if (row.color > 0) {
+		inst->SetColor(row.color);
+	}
+	// A stackable item needs a charge to stay movable.
+	if (row.charges == 0 && inst->IsStackable()) {
+		inst->SetCharges(1);
+	}
+	return inst;
+}
+
 std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter)
 {
 	std::vector<Held> held;
@@ -731,33 +756,11 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 			}
 		}
 
-		auto *inst = content_db.CreateBaseItem(item, row.charges);
+		auto *inst = Instantiate(content_db, item, row);
 		if (!inst) {
 			continue;
 		}
-
-		inst->m_guid = row.guid;
-
-		if (!row.custom_data.empty()) {
-			inst->SetCustomDataString(row.custom_data);
-		}
-
-		inst->SetOrnamentIcon(row.ornament_icon);
-		inst->SetOrnamentationIDFile(row.ornament_idfile);
-		inst->SetOrnamentHeroModel(row.ornament_hero_model);
-		inst->SetAttuned(row.attuned);
-
-		if (row.color > 0) {
-			inst->SetColor(row.color);
-		}
-
-		// A stackable item needs a charge to stay movable.
-		if (row.charges == 0 && inst->IsStackable()) {
-			inst->SetCharges(1);
-		}
-
 		by_guid[{row.guid.first, row.guid.second, row.guid.third}] = inst;
-
 		if (row.location.parent_guid) {
 			const auto &p    = *row.location.parent_guid;
 			auto        find = by_guid.find({p.first, p.second, p.third});
@@ -773,6 +776,56 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 	return held;
 }
 
+std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states)
+{
+	std::vector<Recoverable> listed;
+	if (states.empty()) {
+		return listed;
+	}
+
+	std::string state_list;
+	for (const auto state : states) {
+		state_list += fmt::format("{}'{}'", state_list.empty() ? "" : ", ", ItemRetirementName(state));
+	}
+
+	std::map<std::array<uint32, 3>, EQ::ItemInstance *> by_guid;
+	std::set<std::array<uint32, 3>>                     left_out;
+
+	for (const auto &row : ItemInstancesRepository::GetRecoverable(db, character_id, state_list)) {
+		const std::array<uint32, 3> key{row.guid.first, row.guid.second, row.guid.third};
+		if (row.location.parent_guid) {
+			const auto &p = *row.location.parent_guid;
+			if (left_out.contains({p.first, p.second, p.third})) {
+				left_out.insert(key);
+				continue;
+			}
+		}
+
+		const auto *item = content_db.GetItem(row.item_id);
+		if (!item) {
+			LogError("guid [{} {} {}] item [{}] names an item content does not have; left off the recovery list", row.guid.first, row.guid.second, row.guid.third, row.item_id);
+			left_out.insert(key);
+			continue;
+		}
+
+		auto *inst = Instantiate(content_db, item, row);
+		if (!inst) {
+			left_out.insert(key);
+			continue;
+		}
+		by_guid[key] = inst;
+
+		if (row.location.parent_guid) {
+			const auto &p = *row.location.parent_guid;
+			by_guid.at({p.first, p.second, p.third})->_PutItem(static_cast<uint8>(row.location.parent_index), inst);
+			continue;
+		}
+
+		listed.push_back(Recoverable{row.guid, *row.retirement_state, *row.retired_at, inst});
+	}
+
+	return listed;
+}
 void ItemLayer::CarryGUID(const EQ::ItemInstance &from, EQ::ItemInstance &to)
 {
 	to.m_guid = from.m_guid;

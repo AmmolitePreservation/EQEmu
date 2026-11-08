@@ -49,6 +49,7 @@
 #include "water_map.h"
 #include "worldserver.h"
 #include "zone.h"
+#include "item_recovery.h"
 #include "zone_config.h"
 #include "mob_movement_manager.h"
 #include "npc_scale_manager.h"
@@ -1238,6 +1239,9 @@ bool Zone::Init(bool is_static) {
 	LoadZoneBlockedSpells();
 	LoadVeteranRewards();
 	LoadAlternateCurrencies();
+	if (!ItemRecovery::LoadRules(*this)) {
+		return false;
+	}
 	LoadNPCEmotes(&npc_emote_list);
 	LoadAlternateAdvancement();
 	LoadBaseData();
@@ -1298,8 +1302,8 @@ void Zone::ReloadStaticData() {
 
 	LoadVeteranRewards();
 	LoadAlternateCurrencies();
+	ItemRecovery::LoadRules(*this);
 	LoadNPCEmotes(&npc_emote_list);
-
 	//load the zone config file.
 	if (!LoadZoneCFG(GetShortName(), GetInstanceVersion())) { // try loading the zone name...
 		LoadZoneCFG(

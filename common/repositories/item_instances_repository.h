@@ -142,6 +142,37 @@ public:
 		);
 	}
 
+	// A character's retired rows in the states named: those whose last holder was the character's own inventory,
+	// cursor or bank or one of the character's corpses, then every row inside them retired in the same act (bag
+	// contents, augments), oldest retirement first and parents before children.
+	static std::vector<ItemInstances> GetRecoverable(Database &db, uint32 character_id, const std::string &state_list)
+	{
+		const auto select_columns = Strings::Implode(", ", SelectColumns());
+		const auto plain_columns  = Strings::Implode(", ", Columns());
+		return Collect(
+			db.QueryDatabase(
+				fmt::format(
+					"WITH RECURSIVE listed AS ("
+					"SELECT {columns}, 0 AS depth FROM {table} WHERE retirement_state IN ({states}) AND ("
+					"(holder_type IN ('inventory', 'cursor', 'bank') AND holder_id = {character}) OR "
+					"(holder_type = 'corpse' AND holder_id IN (SELECT id FROM character_corpses WHERE charid = {character}))) "
+					"UNION ALL "
+					"SELECT {child_columns}, listed.depth + 1 FROM {table} AS child JOIN listed "
+					"ON child.parent_guid_first = listed.guid_first AND child.parent_guid_second = listed.guid_second "
+					"AND child.parent_guid_third = listed.guid_third "
+					"WHERE child.retirement_state = listed.retirement_state AND child.retired_at = listed.retired_at"
+					") SELECT {select_columns} FROM listed ORDER BY depth, retired_at, guid_first, guid_second, guid_third",
+					fmt::arg("columns", plain_columns),
+					fmt::arg("child_columns", Strings::Replace(plain_columns, ", ", ", child.").insert(0, "child.")),
+					fmt::arg("table", TableName()),
+					fmt::arg("states", state_list),
+					fmt::arg("character", character_id),
+					fmt::arg("select_columns", select_columns)
+				)
+			)
+		);
+	}
+
 	// The next number in a character's counter: derived, never stored, and correct because no row is ever deleted.
 	static std::optional<uint32_t> NextCounter(Database &db, uint32_t guid_first, uint32_t guid_second)
 	{

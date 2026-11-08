@@ -62,6 +62,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "gm_commands/door_manipulation.h"
 #include "gm_commands/object_manipulation.h"
 #include "client.h"
+#include "item_recovery.h"
 #include "../common/repositories/account_repository.h"
 #include "../common/repositories/character_corpses_repository.h"
 #include "../common/repositories/guild_tributes_repository.h"
@@ -14336,7 +14337,9 @@ void Client::Handle_OP_ShopRequest(const EQApplicationPacket *app)
 	else {
 		tabs_to_display = SellBuy;
 	}
-
+	if (!ItemRecovery::States().empty()) {
+		tabs_to_display |= MerchantWindowTabDisplay::Recover;
+	}
 	int action = MerchantActions::Open;
 	if (merchant_id == 0) {
 		auto outapp = new EQApplicationPacket(OP_ShopRequest, sizeof(MerchantClick_Struct));
@@ -14413,6 +14416,9 @@ void Client::Handle_OP_ShopRequest(const EQApplicationPacket *app)
 
 		if ((tabs_to_display & Parcel) == Parcel) {
 			SendBulkParcels();
+		}
+		if ((tabs_to_display & MerchantWindowTabDisplay::Recover) == MerchantWindowTabDisplay::Recover) {
+			SendRecoverableItems();
 		}
 	}
 

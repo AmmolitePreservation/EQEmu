@@ -74,6 +74,17 @@ public:
 	// come from db, the item data from content_db (the same database in a zone, the content database in world).
 	static std::vector<Held> Load(Database &db, SharedDatabase &content_db, const std::string &holder_filter);
 
+	struct Recoverable {
+		ItemGUID          guid;
+		ItemRetirement    state;
+		time_t            retired_at;
+		EQ::ItemInstance *inst;
+	};
+
+	// A character's retired items a merchant's Recovery tab lists: those in the states named, oldest retirement
+	// first, each with the augments and bag contents retired in the same act. A row naming an item content lacks
+	// is logged and left out with everything under it. The caller owns the instances.
+	static std::vector<Recoverable> LoadRecoverable(Database &db, SharedDatabase &content_db, uint32 character_id, const std::vector<ItemRetirement> &states);
 	static std::string HolderFilter(ItemHolderType holder_type, uint32 holder_id);
 	static std::string GUIDFilter(const ItemGUID &guid);
 	static EQ::ItemInstance *LoadOne(Database &db, SharedDatabase &content_db, const ItemGUID &guid);

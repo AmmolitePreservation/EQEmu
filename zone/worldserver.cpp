@@ -51,6 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "titles.h"
 #include "worldserver.h"
 #include "zone.h"
+#include "item_recovery.h"
 #include "zone_config.h"
 #include "../common/shared_tasks.h"
 #include "shared_task_zone_messaging.h"
@@ -4600,8 +4601,10 @@ void WorldServer::ProcessReload(const ServerReload::Request& request)
 
 		case ServerReload::Type::Rules:
 			RuleManager::Instance()->LoadRules(&database, RuleManager::Instance()->GetActiveRuleset(), true);
+			if (zone) {
+				ItemRecovery::LoadRules(*zone);
+			}
 			break;
-
 		case ServerReload::Type::SkillCaps:
 			SkillCaps::Instance()->ReloadSkillCaps();
 			break;

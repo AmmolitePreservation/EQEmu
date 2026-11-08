@@ -388,6 +388,7 @@ public:
 	);
 	void SendZonePoints();
 	void SendBulkParcels();
+	void SendRecoverableItems();
 	void DoParcelCancel();
 	void DoParcelSend(const Parcel_Struct *parcel_in);
 	void DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in);
@@ -2128,6 +2129,7 @@ private:
 	bool                                                           m_parcel_enabled;
 	bool                                                           m_parcel_merchant_engaged;
 	std::map<uint32, CharacterParcelsRepository::CharacterParcels> m_parcels{};
+	std::vector<ItemGUID>                                          m_recovery_listing{};
 	int Haste; //precalced value
 	uint32 tmSitting; // time stamp started sitting, used for HP regen bonus added on MAY 5, 2004
 

@@ -1,4 +1,5 @@
 #include "zone_event_scheduler.h"
+#include "item_recovery.h"
 #include <ctime>
 
 void ZoneEventScheduler::Process(Zone *zone, WorldContentService *content_service)
@@ -43,7 +44,7 @@ void ZoneEventScheduler::Process(Zone *zone, WorldContentService *content_servic
 				if (e.event_type == ServerEvents::EVENT_TYPE_RULE_CHANGE) {
 					LogScheduler("Deactivating event [{}] resetting rules to normal", e.description);
 					RuleManager::Instance()->LoadRules(m_database, RuleManager::Instance()->GetActiveRuleset(), true);
-
+					ItemRecovery::LoadRules(*zone);
 					// force active events clear and reapply all active events because we reset the entire state
 					// ideally if we could revert only the state of which was originally set we would only remove one active event
 					m_active_events.clear();
