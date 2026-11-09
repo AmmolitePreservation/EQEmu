@@ -7207,7 +7207,7 @@ CREATE TABLE `item_instances` (
 	`parent_guid_second` INT(10) UNSIGNED NULL DEFAULT NULL,
 	`parent_guid_third` INT(10) UNSIGNED NULL DEFAULT NULL,
 	`parent_index` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
-	`retirement_state` ENUM('destroyed', 'sold', 'stacked', 'consumed', 'expired', 'decayed', 'characterDeleted', 'removedByGM', 'rolledBack', 'petDonated', 'botDonated', 'missingItemRow', 'unplaceable') NULL DEFAULT NULL,
+	`retirement_state` ENUM('destroyed', 'sold', 'stacked', 'consumed', 'expired', 'decayed', 'corpseDeleted', 'characterDeleted', 'removedByGM', 'rolledBack', 'petDonated', 'botDonated', 'missingItemRow', 'unplaceable') NULL DEFAULT NULL,
 	`retired_at` DATETIME NULL DEFAULT NULL,
 	`held_slot` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `slot`, NULL)) PERSISTENT,
 	`held_parent_index` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `parent_index`, NULL)) PERSISTENT,

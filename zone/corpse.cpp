@@ -724,7 +724,7 @@ bool Corpse::Save()
 void Corpse::Delete()
 {
 	if (IsPlayerCorpse() && m_corpse_db_id != 0) {
-		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Corpse, m_corpse_db_id), ItemRetirement::Decayed);
+		ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::Corpse, m_corpse_db_id), ItemRetirement::CorpseDeleted);
 		database.DeleteCharacterCorpse(m_corpse_db_id);
 	}
 

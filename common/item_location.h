@@ -50,6 +50,7 @@ enum class ItemRetirement : uint8 {
 	Consumed,
 	Expired,
 	Decayed,
+	CorpseDeleted,
 	CharacterDeleted,
 	RemovedByGM,
 	RolledBack,
@@ -59,13 +60,14 @@ enum class ItemRetirement : uint8 {
 	Unplaceable,
 };
 
-constexpr std::array<std::string_view, 13> item_retirement_names = {
+constexpr std::array<std::string_view, 14> item_retirement_names = {
 	"destroyed",
 	"sold",
 	"stacked",
 	"consumed",
 	"expired",
 	"decayed",
+	"corpseDeleted",
 	"characterDeleted",
 	"removedByGM",
 	"rolledBack",
