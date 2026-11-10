@@ -1,6 +1,6 @@
 # Item GUIDs
 
-Live-style item GUIDs for Peridot's EQEmu: every item instance carries the 12-byte identity Live gives it, from the moment it enters a character's possession until it leaves play, and keeps it through every move. This is the first half of the current work, **GUIDs and PlayerHousing**: GUIDs come first, on this `guids` branch with their own migration, and housing (the `housing` branch's `playerHousing/`) is reworked on top of them once this branch is merged and migrated.
+Live-style item GUIDs for Peridot's EQEmu: every item instance carries the 12-byte identity Live gives it, from the moment it enters a character's possession until it leaves play, and keeps it through every move. This is the first half of the current work, **GUIDs and PlayerHousing**: GUIDs came first, on this `guids` branch with their own migrations, and housing (the `housing` branch's `playerHousing/`) is reworked on top of them there: this branch is merged into `housing` (2026-11-10, 588795685) and migrated on peridothousing.
 
 The rule is the same as housing's: Live's data and client dictate the implementation. Everything under "What Live does" was observed on Live or read from a client; "The design" records the owner's decisions; [`worklist.md`](worklist.md) holds the work, the open questions and the polish items.
 
@@ -95,7 +95,7 @@ Live's merchant window has a Recover tab listing the character's destroyed items
   | `guild_bank_deposit`, `guild_bank_main` | guild | slot |
   | `ground` | zone | none; the ground-drop table holds the position |
 
-  Housing adds its holder type when it is reworked on this branch's tables.
+  Housing adds its own holder type on the `housing` branch (its worklist's REC-18).
 - **One item, one place:** unique indexes on the holder and slot, and on the parent and index, over generated columns that are NULL once a row is retired, so a retired item keeps its last location (the Recovery tab lists a character's retired items by it) without holding the slot.
 - **Retirement:** a state (ENUM of the reasons below, NULL while the item is in play) and its time; a CHECK keeps the two together.
 - **The next counter** is derived, not stored: `MAX(third) + 1` for the character and world, answered from the key alone, and the new row is inserted with it. Two racing issues for one character collide on the key and fail loudly, a retryable fault. Correct because no row is ever deleted.
@@ -113,7 +113,7 @@ EQEmu's tables that carry their own details stay, keyed by the item's GUID with 
 | `guild_bank` | permissions, `who_for`, donator | item number, augments, quantity, guild, area and slot (the row's holder and slot) |
 | `character_evolving_items` | its id (the row key; the client's handle for the evolve window is the item's serial), activated, equipped, amount, progression, final item | item number, character, `deleted_at` (the row's retirement) |
 | `ground_items` (new; `object` keeps only static content) | instance, position, heading (the zone is the item row's holder id) | |
-| `real_estate_items` (housing, after the merge) | property, placed, transform, upkeep | item columns |
+| `real_estate_items` (on `housing`, its worklist's REC-18) | its id (the client's record id), property, placing character, placed, transform, upkeep | item columns |
 
 **As built (SCH-3).** 9330 rebuilds `trader` empty (its rows live only while a Bazaar zone does), gives the other three their GUID columns (and `character_parcels.money`) with a unique index and foreign key, fills them from the copied columns during the move, then drops those columns, and creates `ground_items`. The code reads and writes only the GUID columns. A Bazaar listing is loaded from its row for the customer's window, inspection and a purchase; a purchase from another zone moves the whole item's row to the buyer's parcel or splits the bought part off, issued from the seller's counter, and the seller's zone only forgets the sold item from memory (`Client::RemoveSoldListing`); a price change for all identical listings joins `trader` to the item table. A guild bank entry is its side row plus the item row's place; splitting a stack issues the new piece from the splitter's counter, merging retires the absorbed stacks `stacked`, and part of a withdrawn stack leaves as a new item issued from the withdrawer. An evolving item's record is created at its first landing, after the save that issued its GUID (`DoLootChecks` runs after the save), and found by GUID at load and at any landing whose copy carries no evolving state (an item looted from a corpse or bought in the Bazaar), so an item keeps its one record wherever it goes (`EvolvingItemsManager::LoadRecord`); a move writes only the record's equipped flag; a toggle names a unique id the character must hold. A dropped item gets a `ground_items` row with the drop's position, removed when it is picked up or decays, and `Zone::Init` retires as `decayed` any `ground` row of its zone and instance that a dead zone left behind.
 
@@ -188,7 +188,7 @@ The 32-bit serial stays a per-session handle for every client, never saved: the 
 
 ### Encoders
 
-RoF2 sends the GUID as text in Live's alphabet in the item header (every item, augment and bag item its own) and the Bazaar structs, and the character's own `{id, origin world}` in the player profile; something not yet an item (merchant stock) is sent as `0000000000000000`; the codec is `ItemGUIDText` and `ItemGUIDFromText` (common/item_guid.h), with unit tests against Live's captured text; housing's fields follow after the merge. Incoming GUID text is decoded with the client's round-trip check and anything invalid is refused. RoF2 is the branch's only client: the Titanium, SoF, SoD, UF and RoF patches were removed (0402fca09), so there is no other encoder.
+RoF2 sends the GUID as text in Live's alphabet in the item header (every item, augment and bag item its own) and the Bazaar structs, and the character's own `{id, origin world}` in the player profile; something not yet an item (merchant stock) is sent as `0000000000000000`; the codec is `ItemGUIDText` and `ItemGUIDFromText` (common/item_guid.h), with unit tests against Live's captured text; housing's fields follow on `housing` (its worklist's REC-16). Incoming GUID text is decoded with the client's round-trip check and anything invalid is refused. RoF2 is the branch's only client: the Titanium, SoF, SoD, UF and RoF patches were removed (0402fca09), so there is no other encoder.
 
 ### Inventory snapshots
 
@@ -209,4 +209,4 @@ Character-held GUIDs come out the same from the same data; server stamps carry t
 
 ## Where the work lives
 
-Branch `guids` of AmmolitePreservation/EQEmu, from `main`'s tip 6fedcae84 ("Peridot local changes", the code Peridot runs), in its own worktree; this folder for the design and worklist; tested on **peridotguids**, a new clone of Peridot. Housing is paused on `housing` (its worklist's "GUIDs first" decision, REC-16 to REC-18, DOC-39) until this branch is merged into `housing` and migrated.
+Branch `guids` of AmmolitePreservation/EQEmu, from `main`'s tip 6fedcae84 ("Peridot local changes", the code Peridot runs), in its own worktree; this folder for the design and worklist; tested on **peridotguids**, a new clone of Peridot. The branch is merged into `housing` (2026-11-10, 588795685) and migrated on peridothousing; housing's rework on these tables is its worklist's REC-16 to REC-20, MNU-12 and DOC-39.
