@@ -995,9 +995,7 @@ bool EntityList::MakeDoorSpawnPacket(EQApplicationPacket *app)
 			new_door.invert_state = door->GetInvertState();
 
 			new_door.door_param = door->GetDoorParam();
-			if (client->ClientVersion() == EQ::versions::ClientVersion::RoF2) {
-				new_door.real_estate_door_id = door->GetRealEstateDoorID();
-			}
+			new_door.real_estate_door_id = door->GetRealEstateDoorID();
 			memcpy(ptr, &new_door, sizeof(new_door));
 			ptr += sizeof(new_door);
 			*(ptr - 1) = 0x01;

@@ -19,10 +19,6 @@ namespace housing {
   namespace {
     constexpr size_t referenceGuidLength = 0x14;
 
-    bool isRoF2(Client *client) {
-      return client->ClientVersion() == EQ::versions::ClientVersion::RoF2;
-    }
-
     const EQ::ItemHousingTail &tailOf(uint32 itemId) {
       const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
       if (!tail) {
@@ -33,7 +29,7 @@ namespace housing {
 
     void sendToZone(EmuOpcode opcode, const WireWriter &message) {
       for (const auto &[id, client] : entity_list.GetClientList()) {
-        if (isRoF2(client) && session(client)) {
+        if (session(client)) {
           sendMessage(client, opcode, message);
         }
       }

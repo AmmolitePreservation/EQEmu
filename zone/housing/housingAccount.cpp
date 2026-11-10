@@ -241,7 +241,7 @@ namespace housing {
             credit.amounts[currency] = static_cast<double>(amount);
             depositInto(plot, credit);
             transaction.commit();
-            client->DeleteItemInInventory(EQ::invslot::slotCursor, static_cast<int16>(amount), true);
+            client->DeleteItemInInventory(EQ::invslot::slotCursor, static_cast<int16>(amount), true, ItemRetirement::Consumed);
           }
           tellDeposit(client, currency, credit.amounts.begin()->second);
           break;

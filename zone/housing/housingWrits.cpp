@@ -23,7 +23,7 @@ namespace housing {
       .fixedString(std::string(created.characterName, strnlen(created.characterName, sizeof(created.characterName))), nameLength)
       .fixedString(std::string(created.neighborhoodName, strnlen(created.neighborhoodName, sizeof(created.neighborhoodName))), nameLength);
     for (const auto &[id, client] : entity_list.GetClientList()) {
-      if (client->ClientVersion() == EQ::versions::ClientVersion::RoF2 && client->GuildID() == created.guildId) {
+      if (client->GuildID() == created.guildId) {
         sendMessage(client, OP_RealEstateGuildNeighborhoodCreated, message);
       }
     }

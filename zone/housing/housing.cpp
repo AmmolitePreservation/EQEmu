@@ -42,10 +42,6 @@ namespace housing {
     std::unordered_map<Client *, Session> sessions;
     bool catalogReady = false;
 
-    bool isRoF2(Client *client) {
-      return client->ClientVersion() == EQ::versions::ClientVersion::RoF2;
-    }
-
     bool isAnyType(DefinitionType type, std::initializer_list<DefinitionType> types) {
       return std::find(types.begin(), types.end(), type) != types.end();
     }
@@ -431,10 +427,8 @@ namespace housing {
       }
     }
     for (const auto &[id, client] : entity_list.GetClientList()) {
-      if (isRoF2(client)) {
-        sendZoneContents(client);
-        sendZoneIn(client);
-      }
+      sendZoneContents(client);
+      sendZoneIn(client);
     }
     return catalogReady;
   }
@@ -471,18 +465,14 @@ namespace housing {
   }
 
   void onZoneContents(Client *client) {
-    if (isRoF2(client)) {
-      sendZoneContents(client);
-    }
+    sendZoneContents(client);
   }
 
   void onZoneIn(Client *client) {
     if (arrivedInDiscardedCopy(client)) {
       return;
     }
-    if (isRoF2(client)) {
-      sendZoneIn(client);
-    }
+    sendZoneIn(client);
     if (housingActive()) {
       stripAuraBuffs(client);
       admitOccupant(client);
@@ -623,10 +613,6 @@ namespace housing {
   }
 
   void handlePacket(Client *client, const EQApplicationPacket *app) {
-    if (!isRoF2(client)) {
-      LogError("Housing: [{}] sent housing opcode [{}] from a client that is not RoF2", client->GetCleanName(), static_cast<uint32>(app->GetOpcode()));
-      return;
-    }
     if (!housingActive()) {
       LogHousing("Housing is off in this zone; [{}]'s request [{}] is refused", client->GetCleanName(), static_cast<uint32>(app->GetOpcode()));
       return;
