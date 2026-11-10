@@ -6446,9 +6446,9 @@ namespace RoF2
 
 	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, const std::string& guid, int16 slot_id, ItemPacketType packet_type)
 	{
-		static_assert(offsetof(structs::ItemSerializationHeader, unknown000) == 0, "the item GUID leads the serialized item");
-		if (guid.size() != sizeof(structs::ItemSerializationHeader::unknown000) - 1) {
-			throw std::invalid_argument(fmt::format("housing item GUID [{}] is not {} characters", guid, sizeof(structs::ItemSerializationHeader::unknown000) - 1));
+		static_assert(offsetof(structs::ItemSerializationHeader, guid) == 0, "the item GUID leads the serialized item");
+		if (guid.size() != sizeof(structs::ItemSerializationHeader::guid) - 1) {
+			throw std::invalid_argument(fmt::format("housing item GUID [{}] is not {} characters", guid, sizeof(structs::ItemSerializationHeader::guid) - 1));
 		}
 		EQ::OutBuffer ob;
 		SerializeItem(ob, inst, slot_id, 0, packet_type);
