@@ -30,7 +30,27 @@ Stage 0 (baseline), stage 1 (the item tail: seven items, `itemTail`) and stage 2
 
 Stage 4's forge works from its right-click menu (Use, Adjust Placement, Place, Move to Storage, Move to Inventory, Inspect, Show Items): Use opens the tradeskill window and a combine in it made A Ruby. Stage 6 placed a house (Behroe Style Brick House, record 2) on 101 Market Street (property 100525) in a Cedar Colonial Lake copy, entered it (phinterior1a3, a clean zone-in, so Q11 holds), left it by /leaverealestate and by the front door (both land on the exit point; INT-37 is the front door's zone name) and moved it with Adjust Placement from its menu (REC-15) and claudelink's nudge. Still to run in stage 6: picking the house up (the item display names its property, 5289), swapping houses, packing and unpacking a crate, layouts and a two-house yard (MaxHousesAdditive 1). The state left on peridothousing: Claudehousing owns 100525 with the house, a forge (record 6) and a crate (record 7); plot 100527 was sold.
 
-**Paused 2026-10-25:** GUIDs come first (worklist.md's owner decisions). The shakeout resumes after the `guids` branch is merged and migrated and housing is reworked on top of real GUIDs, with a fresh pass that starts from this section and worklist.md's open items.
+The shakeout stopped here on 2026-10-25 for the GUID work (worklist.md's owner decisions). It restarts with a fresh pass, from this section and worklist.md's open items, once housing is reworked on real GUIDs.
+
+### The `guids` merge, 2026-11-10
+
+`guids` is merged into `housing` (588795685). The VM was stopped and snapshotted first as `preGuidsMerge`: database version 9325 with custom 12, the shakeout state above. On the merged code everything builds but zone. Its 10 errors are in housingMenus.cpp's Mail to Owner and housingPlacement.cpp's placeInto and storeInto, the code the rework replaces (worklist.md REC-16 to REC-19, MNU-12). The server stays stopped until zone builds: the zone binary in `code/build/bin` is the build of 2026-10-24 and does not match the migrated database. The unit tests pass, 148 of 148 (`cd ~/server && ./bin/tests`).
+
+World's updater (`./bin/world database:updates --skip-backup`) took the database from 9325 to 9330, the `rof2` and `guids` migrations:
+
+| Check | Result |
+|---|---|
+| items expected, held, total, retired | 3165, 3165, 3165, 0 |
+| issued by their owner (inventory) | 3012, none wrong |
+| server stamped (guild bank 81, shared bank 72) | 153, consecutive, one time |
+| per-character counters | all consecutive from 0 |
+| guild bank rows linked to their details | 81 of 81 |
+| merchantlist_temp, object | 193 and 1007 rows, unchanged |
+| old item tables left | 0 |
+
+Housing's own tables are untouched, in their old shape: the plot 100525 with its house (100760) and crate (100761), four real_estate_items rows (three on the plot, one in the crate) and the 79 real estate doors. `~/runSQLFile.sh <file>` on the host runs a SQL file against `peq` as root (the password goes from `.env` into the environment and is never printed).
+
+Next is the rework, then a fresh database from Peridot's copy with the updater run from the start (worklist.md PRC-13), since housing's custom migrations are edited in place.
 
 ## The client
 
@@ -40,4 +60,5 @@ Claude's account there is `claudehousing`, its password in OpenBao at `services/
 
 ## Open
 
-- A Zabbix host for the agent, which now reports as peridothousing.
+- Zone does not build until the GUID rework lands (worklist.md REC-16 to REC-19, MNU-12); the server is stopped.
+- The fresh database and the fresh shakeout pass (worklist.md PRC-13).
