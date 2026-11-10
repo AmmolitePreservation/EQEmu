@@ -143,7 +143,6 @@ public:
 
 	void SetConnectionType(char c);
 	ConnectionType GetConnectionType() { return TypeOfConnection; }
-	EQ::versions::ClientVersion GetClientVersion() { return ClientVersion_; }
 
 	inline bool IsMailConnection() { return (TypeOfConnection == ConnectionTypeMail) || (TypeOfConnection == ConnectionTypeCombined); }
 	void SendNotification(int MailBoxNumber, const std::string& Subject, const std::string& From, int MessageID);
@@ -174,8 +173,6 @@ private:
 	bool ForceDisconnect;
 
 	ConnectionType TypeOfConnection;
-	EQ::versions::ClientVersion ClientVersion_;
-	bool UnderfootOrLater;
 };
 
 class Clientlist {

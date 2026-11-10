@@ -91,22 +91,15 @@ public:
 		std::string mail_key_full;
 	};
 	MailKeys GetMailKey(int character_id);
-	bool SaveCursor(
-		uint32 char_id,
-		std::list<EQ::ItemInstance *>::const_iterator &start,
-		std::list<EQ::ItemInstance *>::const_iterator &end
-	);
-	bool SaveInventory(uint32 char_id, const EQ::ItemInstance *inst, int16 slot_id);
-	bool DeleteSharedBankSlot(uint32 char_id, int16 slot_id);
-	bool DeleteInventorySlot(uint32 char_id, int16 slot_id);
-	bool UpdateInventorySlot(uint32 char_id, const EQ::ItemInstance *inst, int16 slot_id);
-	bool UpdateSharedBankSlot(uint32 char_id, const EQ::ItemInstance *inst, int16 slot_id);
+	bool SaveCursor(Client *c);
+	bool SaveInventory(Client *c, int16 slot_id);
+	// Saves two slots whose items may have traded places, in one transaction with one row parked in transit, since
+	// one item, one place refuses the second of two plain updates.
+	bool SaveSwap(Client *c, int16 slot_a, int16 slot_b);
 	bool VerifyInventory(uint32 account_id, int16 slot_id, const EQ::ItemInstance *inst);
-	bool GetSharedBank(uint32 id, EQ::InventoryProfile *inv, bool is_charid);
 	int32 GetSharedPlatinum(uint32 account_id);
 	bool SetSharedPlatinum(uint32 account_id, int32 amount_to_add);
 	bool GetInventory(Client* c);
-	bool GetInventory(uint32 account_id, char *name, EQ::InventoryProfile *inv); // deprecated
 	std::map<uint32, uint32> GetItemRecastTimestamps(uint32 char_id);
 	uint32 GetItemRecastTimestamp(uint32 char_id, uint32 recast_type);
 	void ClearOldRecastTimestamps(uint32 char_id);

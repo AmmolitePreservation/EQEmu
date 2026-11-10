@@ -44,8 +44,8 @@ void command_evolvingitems(Client *c, const Seperator *sep)
 				c->Message(
 					Chat::Yellow,
 					fmt::format(
-						"Unique ID | {:0d}",
-						value->GetEvolveUniqueID()
+						"GUID | {}",
+						ItemGUIDText(value->GetGUID())
 					).c_str()
 				);
 				c->Message(
@@ -137,8 +137,8 @@ void command_evolvingitems(Client *c, const Seperator *sep)
 				c->Message(
 					Chat::Yellow,
 					fmt::format(
-						"Unique ID | {:0d}",
-						value->GetEvolveUniqueID()
+						"GUID | {}",
+						ItemGUIDText(value->GetGUID())
 					).c_str()
 				);
 				c->Message(
@@ -251,8 +251,8 @@ void command_evolvingitems(Client *c, const Seperator *sep)
 				c->Message(
 					Chat::Yellow,
 					fmt::format(
-						"Unique ID | {:0d}",
-						item->GetEvolveUniqueID()
+						"GUID | {}",
+						ItemGUIDText(item->GetGUID())
 					).c_str()
 				);
 				c->Message(

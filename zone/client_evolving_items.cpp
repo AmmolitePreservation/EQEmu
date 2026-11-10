@@ -11,11 +11,27 @@ extern WorldServer worldserver;
 extern QueryServ*  QServ;
 const std::string  SUB_TYPE_DELIMITER = ".";
 
+// The evolved item carries no augments, so those still in the old one are gone with it.
+static void RetireAugmentRows(const EQ::ItemInstance &inst)
+{
+	for (uint8 socket = 0; socket < EQ::invaug::SOCKET_COUNT; socket++) {
+		const auto *augment = inst.GetAugment(socket);
+		if (augment && augment->HasGUID()) {
+			ItemLayer::RetireRow(database, augment->GetGUID(), ItemRetirement::Destroyed);
+		}
+	}
+}
+
 void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 {
-	const auto in   = reinterpret_cast<EvolveItemToggle *>(app->pBuffer);
-	auto       item = CharacterEvolvingItemsRepository::FindOne(database, in->unique_id);
-
+	const auto in = reinterpret_cast<EvolveItemToggle *>(app->pBuffer);
+	// The client echoes the item header's two dwords as one number: the serial, and 0 for an item not in a parcel.
+	auto *inst = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->unique_id & 0xFFFFFFFF));
+	if (!inst || !inst->IsEvolving()) {
+		LogWarning("Character [{}] asked to toggle evolving item [{}], which it does not hold", CharacterID(), in->unique_id);
+		return;
+	}
+	auto item = CharacterEvolvingItemsRepository::FindByGUID(database, inst->GetGUID());
 	LogEvolveItemDetail(
 		"Character ID <green>[{}] requested to set evolve item with unique id <yellow>[{}] to status <yellow>[{}]",
 		CharacterID(),
@@ -29,16 +45,13 @@ void Client::DoEvolveItemToggle(const EQApplicationPacket *app)
 		return;
 	}
 
-	item.activated  = in->activated;
-	const auto inst = GetInv().GetItem(GetInv().HasItem(item.item_id));
+	item.activated = in->activated;
 	inst->SetEvolveActivated(item.activated ? true : false);
-
 	CharacterEvolvingItemsRepository::ReplaceOne(database, item);
-
-	SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, item);
+	SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, item);
 }
 
-void Client::SendEvolvingPacket(const int8 action, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item)
+void Client::SendEvolvingPacket(const int8 action, const EQ::ItemInstance &inst, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item)
 {
 	auto       out  = std::make_unique<EQApplicationPacket>(OP_EvolveItem, sizeof(EvolveItemToggle));
 	const auto data = reinterpret_cast<EvolveItemToggle *>(out->pBuffer);
@@ -53,7 +66,7 @@ void Client::SendEvolvingPacket(const int8 action, const CharacterEvolvingItemsR
 	);
 
 	data->action     = action;
-	data->unique_id  = item.id;
+	data->unique_id  = inst.GetSerialNumber();
 	data->percentage = item.progression;
 	data->activated  = item.activated;
 
@@ -142,14 +155,12 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 				inst->CalculateEvolveProgression();
 
 				auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
-					database, inst->GetEvolveUniqueID(), inst->GetEvolveCurrentAmount(), inst->GetEvolveProgression()
+					database, inst->GetGUID(), inst->GetEvolveCurrentAmount(), inst->GetEvolveProgression()
 				);
 				if (!e.id) {
 					break;
 				}
-
-				SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+				SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 				LogEvolveItem(
 					"Processing Complete for item id <green>[{1}] Type 1 Amount of EXP - SubType <yellow>[{0}] - "
 					"Assigned <yellow>[{2}] of exp to <green>[{1}]",
@@ -173,16 +184,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 					auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 						database,
-						inst->GetEvolveUniqueID(),
+						inst->GetGUID(),
 						inst->GetEvolveCurrentAmount(),
 						inst->GetEvolveProgression()
 					);
 					if (!e.id) {
 						break;
 					}
-
-					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 					LogEvolveItem(
 						"Processing Complete for item id <green>[{1}] Type 3 Specific Mob Race - SubType "
 						"<yellow>[{0}] "
@@ -207,16 +216,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 					auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 						database,
-						inst->GetEvolveUniqueID(),
+						inst->GetGUID(),
 						inst->GetEvolveCurrentAmount(),
 						inst->GetEvolveProgression()
 					);
 					if (!e.id) {
 						break;
 					}
-
-					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+					SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 					LogEvolveItem(
 						"Processing Complete for item id <green>[{1}] Type 4 Specific Zone ID - SubType "
 						"<yellow>[{0}] "
@@ -244,16 +251,14 @@ void Client::ProcessEvolvingItem(const uint64 exp, const Mob *mob)
 
 						auto e = CharacterEvolvingItemsRepository::SetCurrentAmountAndProgression(
 							database,
-							inst->GetEvolveUniqueID(),
+							inst->GetGUID(),
 							inst->GetEvolveCurrentAmount(),
 							inst->GetEvolveProgression()
 						);
 						if (!e.id) {
 							break;
 						}
-
-						SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, e);
-
+						SendEvolvingPacket(EvolvingItems::Actions::UPDATE_ITEMS, *inst, e);
 						LogEvolveItem(
 							"Processing Complete for item id <green>[{1}] Type 4 Specific Zone ID - SubType "
 							"<yellow>[{0}] "
@@ -333,65 +338,71 @@ bool Client::DoEvolveCheckProgression(EQ::ItemInstance &inst)
 		return false;
 	}
 
+	// The augments' parcels or retirements and the item's next level are one evolve.
+	DBcore::Transaction evolve(database);
 	if (RuleB(EvolvingItems, EnableParcelMerchants) &&
 		!RuleB(EvolvingItems, DestroyAugmentsOnEvolve) &&
 		inst.IsAugmented()
 		) {
-                auto const                                                augs = inst.GetAugmentIDs();
-                std::vector<CharacterParcelsRepository::CharacterParcels> parcels;
-                int32 next_slot = FindNextFreeParcelSlotUsingMemory();
-                for (auto const &item_id: augs) {
-                        if (!item_id) {
-                                continue;
-                        }
+		// Each augment's row leaves the evolving item's row for a parcel slot, which the parcel names.
+		std::vector<CharacterParcelsRepository::CharacterParcels> parcels;
+		int32 next_slot = FindNextFreeParcelSlotUsingMemory();
+		for (uint8 socket = 0; socket < EQ::invaug::SOCKET_COUNT; socket++) {
+			const auto *augment = inst.GetAugment(socket);
+			if (!augment || !augment->HasGUID()) {
+				continue;
+			}
 
-                        if (next_slot == INVALID_INDEX) {
-                                break;
-                        }
+			if (next_slot == INVALID_INDEX) {
+				break;
+			}
 
-                        CharacterParcelsRepository::CharacterParcels p{};
-                        p.char_id   = CharacterID();
-                        p.from_name = "Evolving Item Sub-System";
-                        p.note      = fmt::format(
-                                      "System automatically removed from {} which recently evolved.",
-                                      inst.GetItem()->Name
-                                      );
-                        p.slot_id   = next_slot;
-                        p.sent_date = time(nullptr);
-                        p.item_id   = item_id;
-                        p.quantity  = 1;
+			CharacterParcelsRepository::CharacterParcels p{};
+			p.char_id   = CharacterID();
+			p.from_name = "Evolving Item Sub-System";
+			p.note      = fmt::format("System automatically removed from {} which recently evolved.", inst.GetItem()->Name);
+			p.slot_id   = next_slot;
+			p.sent_date = time(nullptr);
+			CharacterParcelsRepository::SetGUID(p, augment->GetGUID());
+
+			if (!ItemLayer::MoveRow(database, augment->GetGUID(), ItemLocation::InHolder(ItemHolderType::Parcel, CharacterID(), static_cast<uint16>(next_slot)))) {
+				continue;
+			}
 
 			if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_SEND)) {
 				PlayerEvent::ParcelSend e{};
 				e.from_player_name = p.from_name;
 				e.to_player_name   = GetCleanName();
-				e.item_id          = p.item_id;
+				e.item_id          = augment->GetID();
 				e.quantity         = 1;
 				e.sent_date        = p.sent_date;
-
 				RecordPlayerEventLog(PlayerEvent::PARCEL_SEND, e);
 			}
 
-                        parcels.push_back(p);
-                        m_parcels.emplace(p.slot_id, p);
-                        next_slot = FindNextFreeParcelSlotUsingMemory();
-                }
+			parcels.push_back(p);
+			m_parcels.emplace(p.slot_id, p);
+			inst.DeleteItem(socket);
+			next_slot = FindNextFreeParcelSlotUsingMemory();
+		}
 
 		CharacterParcelsRepository::InsertMany(database, parcels);
 		SendParcelStatus();
 		SendParcelIconStatus();
 	}
 
+	RetireAugmentRows(inst);
 	CheckItemDiscoverability(new_inst->GetID());
 
 	PlayerEvent::EvolveItem e{};
 
-	RemoveItemBySerialNumber(inst.GetSerialNumber());
+	ItemLayer::CarryGUID(inst, *new_inst);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst.GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(inst, e);
 	e.status = "Evolved Item due to obtaining progression - Old Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
 
 	PushItemOnCursor(*new_inst, true);
+	evolve.Commit();
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*new_inst, e);
 	e.status = "Evolved Item due to obtaining progression - New Evolve Item placed in inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
@@ -419,24 +430,12 @@ void Client::SendEvolveXPTransferWindow()
 
 void Client::SendEvolveXPWindowDetails(const EQApplicationPacket *app)
 {
-	const auto in = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
-
-	const auto item_1_slot =
-		GetInv().HasEvolvingItem(in->item1_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-	const auto item_2_slot =
-		GetInv().HasEvolvingItem(in->item2_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-
-	if (item_1_slot == INVALID_INDEX || item_2_slot == INVALID_INDEX) {
+	const auto in        = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
+	const auto inst_from = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item1_unique_id & 0xFFFFFFFF));
+	const auto inst_to   = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item2_unique_id & 0xFFFFFFFF));
+	if (!inst_from || !inst_to || !inst_from->IsEvolving() || !inst_to->IsEvolving()) {
 		return;
 	}
-
-	const auto inst_from = GetInv().GetItem(item_1_slot);
-	const auto inst_to   = GetInv().GetItem(item_2_slot);
-
-	if (!inst_from || !inst_to) {
-		return;
-	}
-
 	const auto results = EvolvingItemsManager::Instance()->DetermineTransferResults(*inst_from, *inst_to);
 
 	if (!results.item_from_id || !results.item_to_id) {
@@ -462,21 +461,10 @@ void Client::SendEvolveXPWindowDetails(const EQApplicationPacket *app)
 
 void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 {
-	const auto in = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
-
-	const auto item_1_slot =
-		GetInv().HasEvolvingItem(in->item1_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-	const auto item_2_slot =
-		GetInv().HasEvolvingItem(in->item2_unique_id, 1, invWherePersonal | invWhereWorn | invWhereCursor);
-
-	if (item_1_slot == INVALID_INDEX || item_2_slot == INVALID_INDEX) {
-		return;
-	}
-
-	const auto inst_from = GetInv().GetItem(item_1_slot);
-	const auto inst_to   = GetInv().GetItem(item_2_slot);
-
-	if (!inst_from || !inst_to) {
+	const auto in        = reinterpret_cast<EvolveXPWindowReceive *>(app->pBuffer);
+	const auto inst_from = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item1_unique_id & 0xFFFFFFFF));
+	const auto inst_to   = GetInv().GetItemBySerialNumber(static_cast<uint32>(in->item2_unique_id & 0xFFFFFFFF));
+	if (!inst_from || !inst_to || !inst_from->IsEvolving() || !inst_to->IsEvolving()) {
 		Message(Chat::Red, "Transfer Failed.  Incompatible Items.");
 		LogEvolveItem("Transfer Failed for Character ID <green>[{}]", CharacterID());
 		return;
@@ -490,8 +478,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 		return;
 	}
 
-	std::unique_ptr<const EQ::ItemInstance> const inst_from_new(database.CreateItem(results.item_from_id));
-	std::unique_ptr<const EQ::ItemInstance> const inst_to_new(database.CreateItem(results.item_to_id));
+	std::unique_ptr<EQ::ItemInstance> const inst_from_new(database.CreateItem(results.item_from_id));
+	std::unique_ptr<EQ::ItemInstance> const inst_to_new(database.CreateItem(results.item_to_id));
 
 	if (!inst_from_new || !inst_to_new) {
 		Message(Chat::Red, "Transfer Failed.  Incompatible Items.");
@@ -506,7 +494,10 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 
 	PlayerEvent::EvolveItem e{};
 
-	RemoveItemBySerialNumber(inst_from->GetSerialNumber());
+	RetireAugmentRows(*inst_from);
+	RetireAugmentRows(*inst_to);
+	ItemLayer::CarryGUID(*inst_from, *inst_from_new);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst_from->GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*inst_from, e);
 	e.status = "Transfer XP - Original FROM Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
@@ -516,7 +507,8 @@ void Client::DoEvolveTransferXP(const EQApplicationPacket *app)
 	e.status = "Transfer XP - Updated FROM item placed in inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
 
-	RemoveItemBySerialNumber(inst_to->GetSerialNumber());
+	ItemLayer::CarryGUID(*inst_to, *inst_to_new);
+	RemoveItemFromInventory(SlotOfSerialNumber(inst_to->GetSerialNumber()), true);
 	EvolvingItemsManager::Instance()->LoadPlayerEvent(*inst_to, e);
 	e.status = "Transfer XP - Original TO Evolve Item removed from inventory.";
 	RecordPlayerEventLog(PlayerEvent::EVOLVE_ITEM, e);
@@ -549,8 +541,8 @@ void Client::SendEvolveTransferResults(
 	EvolveXPWindowSend e{};
 	e.action             = EvolvingItems::Actions::TRANSFER_WINDOW_DETAILS;
 	e.compatibility      = compatibility;
-	e.item1_unique_id    = inst_from.GetEvolveUniqueID();
-	e.item2_unique_id    = inst_to.GetEvolveUniqueID();
+	e.item1_unique_id    = inst_from.GetSerialNumber();
+	e.item2_unique_id    = inst_to.GetSerialNumber();
 	e.max_transfer_level = max_transfer_level;
 	e.item1_present      = 1;
 	e.item2_present      = 1;

@@ -30,6 +30,7 @@
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/ground_spawns_repository.h"
+#include "../common/repositories/ground_items_repository.h"
 #include "../common/repositories/object_repository.h"
 #include "queryserv.h"
 
@@ -156,7 +157,6 @@ decay_timer(300000)
 {
 	user = nullptr;
 	last_user = nullptr;
-
 	// Initialize members
 	m_id           = 0;
 	m_inst         = (inst) ? inst->Clone() : nullptr;
@@ -164,7 +164,6 @@ decay_timer(300000)
 	m_icon         = 0;
 	m_ground_spawn = false;
 	m_fix_z        = false;
-
 	// Set as much struct data as we can
 	memset(&m_data, 0, sizeof(Object_Struct));
 
@@ -174,12 +173,8 @@ decay_timer(300000)
 	m_data.x       = client->GetX();
 	m_data.y       = client->GetY();
 
-	if (client->ClientVersion() >= EQ::versions::ClientVersion::RoF2) {
-		// RoF2 places items at player's Z, which is 0.625 of their height.
-		m_data.z = client->GetZ() - (client->GetSize() * 0.625f);
-	} else {
-		m_data.z = client->GetZ();
-	}
+	// RoF2 places items at player's Z, which is 0.625 of their height.
+	m_data.z = client->GetZ() - (client->GetSize() * 0.625f);
 
 	m_data.zone_id = zone->GetZoneID();
 
@@ -214,6 +209,14 @@ decay_timer(300000)
 	}
 
 	FixZ();
+
+	if (m_inst && m_inst->HasGUID()) {
+		// The row's move and the ground row are one drop.
+		DBcore::Transaction drop(database);
+		ItemLayer::MoveRow(database, m_inst->GetGUID(), ItemLocation::OnGround(zone->GetZoneID()));
+		GroundItemsRepository::Place(database, m_inst->GetGUID(), zone->GetInstanceID(), m_data.x, m_data.y, m_data.z, m_data.heading);
+		drop.Commit();
+	}
 }
 
 Object::Object(
@@ -454,14 +457,16 @@ void Object::Close() {
 		// if they close the container without removing all items
 		auto container = m_inst;
 		if (container) {
+			// Every content's return is one act.
+			DBcore::Transaction returns(database);
 			for (uint8 i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
 				auto inst = container->PopItem(i);
 				if (inst) {
 					user->MoveItemToInventory(inst, true);
 				}
 			}
+			returns.Commit();
 		}
-
 		auto outapp = new EQApplicationPacket(OP_ClearObject, sizeof(ClearObject_Struct));
 		ClearObject_Struct *cos = (ClearObject_Struct *)outapp->pBuffer;
 		cos->Clear = 1;
@@ -478,8 +483,12 @@ void Object::Close() {
 void Object::DeleteItem(uint8 index)
 {
 	if (m_inst && m_inst->IsType(EQ::item::ItemClassBag)) {
+		// A script took the content away: its row retires with it.
+		const auto *content = m_inst->GetItem(index);
+		if (content && content->HasGUID()) {
+			ItemLayer::Retire(database, *content, ItemRetirement::Consumed);
+		}
 		m_inst->DeleteItem(index);
-
 		// This is _highly_ inefficient, but for now it will work: Save entire object to database
 		Save();
 	}
@@ -531,6 +540,10 @@ void Object::CreateDeSpawnPacket(EQApplicationPacket* app)
 
 bool Object::Process(){
 	if (m_type == ObjectTypes::Temporary && decay_timer.Enabled() && decay_timer.Check()) {
+		if (m_inst && m_inst->HasGUID()) {
+			ItemLayer::Retire(database, *m_inst, ItemRetirement::Decayed);
+			GroundItemsRepository::Remove(database, m_inst->GetGUID());
+		}
 		// Send click to all clients (removes entity on client)
 		auto outapp = new EQApplicationPacket(OP_ClickObject, sizeof(ClickObject_Struct));
 		ClickObject_Struct* click_object = (ClickObject_Struct*)outapp->pBuffer;
@@ -611,7 +624,7 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 
 				const int16 lore_item_slot = sender->GetInv().HasItem(item->ID, 0, invWhereBank);
 				if (lore_item_slot != INVALID_INDEX) { // if the duplicate is in the bank, delete it.
-					sender->DeleteItemInInventory(lore_item_slot);
+					sender->DeleteItemInInventory(lore_item_slot, 0, false, ItemRetirement::Destroyed);
 				} else { // otherwise, we delete the new one
 					cursor_delete = true;
 				}
@@ -659,22 +672,31 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 
 					safe_delete(outapp);
 
+					if (m_inst->HasGUID()) {
+						DBcore::Transaction pickup(database);
+						ItemLayer::Retire(database, *m_inst, ItemRetirement::Consumed);
+						GroundItemsRepository::Remove(database, m_inst->GetGUID());
+						pickup.Commit();
+					}
 					sender->SetTradeskillObject(nullptr);
-
 					user = nullptr;
-
 					return true;
 				}
 			}
 
-			// Transfer item to client
+			// Transfer item to client: the landing and the ground row are one pickup
+			DBcore::Transaction pickup(database);
 			sender->PutItemInInventory(EQ::invslot::slotCursor, *m_inst, false);
-			sender->SendItemPacket(EQ::invslot::slotCursor, m_inst, ItemPacketTrade);
+			if (m_inst->HasGUID()) {
+				GroundItemsRepository::Remove(database, m_inst->GetGUID());
+			}
+			pickup.Commit();
+			sender->SendItemPacket(EQ::invslot::slotCursor, sender->LandedItem(EQ::invslot::slotCursor), ItemPacketTrade);
 
 			sender->CheckItemDiscoverability(m_inst->GetID());
 
 			if (cursor_delete) {    // delete the item if it's a duplicate lore. We have to do this because the client expects the item packet
-				sender->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true);
+				sender->DeleteItemInInventory(EQ::invslot::slotCursor, 1, true, ItemRetirement::Destroyed);
 			}
 
 			if (!m_ground_spawn) {
@@ -732,10 +754,8 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 		} else {
 			coa->open = 0x00;
 
-			if (sender->ClientVersion() >= EQ::versions::ClientVersion::RoF) {
-				coa->drop_id = UINT32_MAX;
-				sender->Message(Chat::White, "Someone else is using that. Try again later.");
-			}
+			coa->drop_id = UINT32_MAX;
+			sender->Message(Chat::White, "Someone else is using that. Try again later.");
 		}
 
 		sender->QueuePacket(outapp);
@@ -1142,8 +1162,14 @@ uint32 Object::GetItemID()
 
 void Object::SetItemID(uint32 itemid)
 {
+	// The object's item is replaced: a dropped item's row and ground row go with it.
+	if (m_inst && m_inst->HasGUID()) {
+		DBcore::Transaction transaction(database);
+		ItemLayer::Retire(database, *m_inst, ItemRetirement::Consumed);
+		GroundItemsRepository::Remove(database, m_inst->GetGUID());
+		transaction.Commit();
+	}
 	safe_delete(m_inst);
-
 	if (itemid)
 	{
 		m_inst = database.CreateItem(itemid);

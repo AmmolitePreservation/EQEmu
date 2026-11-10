@@ -607,17 +607,9 @@ void bot_command_inspect_message(Client *c, const Seperator *sep)
 	if (helper_is_help_or_usage(sep->arg[1])) {
 		c->Message(Chat::White, "usage: %s [set | clear] ([actionable: target | byname | ownergroup | ownerraid | targetgroup | namesgroup | healrotationmembers | healrotationtargets | mmr | byclass | byrace | spawned] ([actionable_name]))", sep->arg[0]);
 		c->Message(Chat::White, "Notes:");
-		if (c->ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-			c->Message(Chat::White, "- Self-inspect and type your bot's inspect message");
-			c->Message(Chat::White, "- Close the self-inspect window to update the server");
-			c->Message(Chat::White, "- Type '%s set' to set the bot's inspect message", sep->arg[0]);
-		}
-		else {
-			c->Message(Chat::White, "- Self-inspect and type your bot's inspect message");
-			c->Message(Chat::White, "- Close the self-inspect window");
-			c->Message(Chat::White, "- Self-inspect again to update the server");
-			c->Message(Chat::White, "- Type '%s set' to set the bot's inspect message", sep->arg[0]);
-		}
+		c->Message(Chat::White, "- Self-inspect and type your bot's inspect message");
+		c->Message(Chat::White, "- Close the self-inspect window to update the server");
+		c->Message(Chat::White, "- Type '%s set' to set the bot's inspect message", sep->arg[0]);
 		return;
 	}
 	const int ab_mask = ActionableBots::ABM_NoFilter;

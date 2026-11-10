@@ -300,8 +300,6 @@ public:
 	void SetPEQZoneFlag(uint32 zone_id);
 	void SetAATitle(std::string title);
 	void SetAATitle(std::string title, bool save_to_database);
-	int GetClientVersion();
-	uint32 GetClientVersionBit();
 	void SetTitleSuffix(const char *text);
 	void EnableTitleSet(uint32 title_set);
 	void SetAAPoints(int points);
@@ -400,6 +398,7 @@ public:
 	bool PutItemInInventory(int slot_id, Lua_ItemInst inst);
 	bool PushItemOnCursor(Lua_ItemInst inst);
 	Lua_Inventory GetInventory();
+	Lua_ItemInst GetItemByGUID(std::string guid);
 	void SendItemScale(Lua_ItemInst inst);
 	void QueuePacket(Lua_Packet app);
 	void QueuePacket(Lua_Packet app, bool ack_req);

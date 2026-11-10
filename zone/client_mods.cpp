@@ -40,10 +40,7 @@ int32 Client::GetMaxStat() const
 	if (level < 61) {
 		base = 255;
 	}
-	else if (ClientVersion() >= EQ::versions::ClientVersion::SoF) {
-		base = 255 + 5 * (level - 60);
-	}
-	else if (level < 71) {
+	else if (RuleI(Expansion, CurrentExpansion) < 0 || RuleI(Expansion, CurrentExpansion) >= static_cast<int>(EQ::expansions::Expansion::SoF) || level < 71) {
 		base = 255 + 5 * (level - 60);
 	}
 	else {
@@ -481,7 +478,7 @@ uint32 Mob::GetClassLevelFactor()
 
 int64 Client::CalcBaseHP()
 {
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		int stats = GetSTA();
 		if (stats > 255) {
 			stats = (stats - 255) / 2;
@@ -568,7 +565,7 @@ int64 Client::CalcBaseMana()
 	if (IsIntelligenceCasterClass()) {
 		WisInt = GetINT();
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoF && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+		if (RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 			ConvertedWisInt = WisInt;
 
 			int over200 = WisInt;
@@ -601,7 +598,7 @@ int64 Client::CalcBaseMana()
 	} else if (IsWisdomCasterClass()) {
 		WisInt = GetWIS();
 
-		if (ClientVersion() >= EQ::versions::ClientVersion::SoF && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+		if (RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 			ConvertedWisInt = WisInt;
 
 			int over200 = WisInt;
@@ -1622,7 +1619,7 @@ void Client::CalcMaxEndurance()
 int64 Client::CalcBaseEndurance()
 {
 	int64 base_end = 0;
-	if (ClientVersion() >= EQ::versions::ClientVersion::SoF && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		double stats = (GetSTR() + GetSTA() + GetDEX() + GetAGI()) / 4.0f;
 
 		if (stats > 201.0f) {

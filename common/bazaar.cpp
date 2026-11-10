@@ -159,17 +159,7 @@ Bazaar::GetSearchResults(
 	std::string field_criteria_items("FALSE");
 	std::string where_criteria_items(" TRUE ");
 
-	if (search.search_scope == NonRoFBazaarSearchScope) {
-		search_criteria_trader.append(
-			fmt::format(
-				" AND trader.char_entity_id = {} AND trader.char_zone_id = {} AND trader.char_zone_instance_id = {}",
-				search.trader_entity_id,
-				Zones::BAZAAR,
-				char_zone_instance_id
-			)
-		);
-	}
-	else if (search.search_scope == Local_Scope) {
+	if (search.search_scope == Local_Scope) {
 		search_criteria_trader.append(fmt::format(
 			" AND trader.char_zone_id = {} AND trader.char_zone_instance_id = {}",
 			char_zone_id,
@@ -271,7 +261,7 @@ Bazaar::GetSearchResults(
 	}
 
 	for (auto const &i: trader_results) {
-		trader_items_ids.push_back(std::to_string(i.trader.item_id));
+		trader_items_ids.push_back(std::to_string(i.item_id));
 	}
 
 	auto const item_results = ItemsRepository::GetItemsForBazaarSearch(
@@ -291,26 +281,25 @@ Bazaar::GetSearchResults(
 	all_entries.reserve(trader_results.size());
 
 	for (auto const& t:trader_results) {
-		if (!item_results.contains(t.trader.item_id)) {
+		if (!item_results.contains(t.item_id)) {
 			continue;
 		}
 
 		BazaarSearchResultsFromDB_Struct r{};
 		r.count                   = 1;
 		r.trader_id               = t.trader.char_id;
-		r.serial_number           = t.trader.item_sn;
+		r.item_guid               = TraderRepository::GUIDOf(t.trader);
 		r.cost                    = t.trader.item_cost;
 		r.slot_id                 = t.trader.slot_id;
-		r.charges                 = t.trader.item_charges;
-		r.stackable               = item_results.at(t.trader.item_id).stackable;
-		r.icon_id                 = item_results.at(t.trader.item_id).icon;
+		r.charges                 = t.charges;
+		r.stackable               = item_results.at(t.item_id).stackable;
+		r.icon_id                 = item_results.at(t.item_id).icon;
 		r.trader_zone_id          = t.trader.char_zone_id;
 		r.trader_zone_instance_id = t.trader.char_zone_instance_id;
 		r.trader_entity_id        = t.trader.char_entity_id;
-		r.serial_number_RoF       = fmt::format("{:016}\0", t.trader.item_sn);
-		r.item_name               = fmt::format("{:.63}\0", item_results.at(t.trader.item_id).name);
+		r.item_name               = fmt::format("{:.63}\0", item_results.at(t.item_id).name);
 		r.trader_name             = fmt::format("{:.63}\0", t.trader_name);
-		r.item_stat               = item_results.at(t.trader.item_id).stats;
+		r.item_stat               = item_results.at(t.item_id).stats;
 
 		if (RuleB(Bazaar, UseAlternateBazaarSearch)) {
 			if (convert ||

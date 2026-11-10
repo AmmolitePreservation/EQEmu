@@ -56,6 +56,7 @@ SET(common_sources
     ip_util.cpp
     item_data.cpp
     item_instance.cpp
+    item_layer.cpp
     itemHousingTail.cpp
     json_config.cpp
     light_source.cpp
@@ -119,18 +120,8 @@ SET(common_sources
     net/websocket_server.cpp
     net/websocket_server_connection.cpp
     patches/patches.cpp
-    patches/sod.cpp
-    patches/sod_limits.cpp
-    patches/sof.cpp
-    patches/sof_limits.cpp
-    patches/rof.cpp
-    patches/rof_limits.cpp
     patches/rof2.cpp
     patches/rof2_limits.cpp
-    patches/titanium.cpp
-    patches/titanium_limits.cpp
-    patches/uf.cpp
-    patches/uf_limits.cpp
     StackWalker/StackWalker.cpp
     util/directory.cpp
     util/uuid.cpp)
@@ -175,7 +166,6 @@ SET(repositories
     repositories/base/base_character_bind_repository.h
     repositories/base/base_character_buffs_repository.h
     repositories/base/base_character_corpses_repository.h
-    repositories/base/base_character_corpse_items_repository.h
     repositories/base/base_character_currency_repository.h
     repositories/base/base_character_data_repository.h
     repositories/base/base_character_disciplines_repository.h
@@ -190,11 +180,9 @@ SET(repositories
     repositories/base/base_character_material_repository.h
     repositories/base/base_character_memmed_spells_repository.h
     repositories/base/base_character_parcels_repository.h
-    repositories/base/base_character_parcels_containers_repository.h
     repositories/base/base_character_peqzone_flags_repository.h
     repositories/base/base_character_pet_buffs_repository.h
     repositories/base/base_character_pet_info_repository.h
-    repositories/base/base_character_pet_inventory_repository.h
     repositories/base/base_character_potionbelt_repository.h
     repositories/base/base_character_skills_repository.h
     repositories/base/base_character_spells_repository.h
@@ -232,6 +220,7 @@ SET(repositories
     repositories/base/base_global_loot_repository.h
     repositories/base/base_gm_ips_repository.h
     repositories/base/base_graveyard_repository.h
+    repositories/base/base_ground_items_repository.h
     repositories/base/base_ground_spawns_repository.h
     repositories/base/base_group_id_repository.h
     repositories/base/base_group_leaders_repository.h
@@ -244,7 +233,6 @@ SET(repositories
     repositories/base/base_horses_repository.h
     repositories/base/base_instance_list_repository.h
     repositories/base/base_instance_list_player_repository.h
-    repositories/base/base_inventory_repository.h
     repositories/base/base_inventory_snapshots_repository.h
     repositories/base/base_ip_exemptions_repository.h
     repositories/base/base_items_repository.h
@@ -278,7 +266,6 @@ SET(repositories
     repositories/base/base_npc_types_repository.h
     repositories/base/base_npc_types_tint_repository.h
     repositories/base/base_object_repository.h
-    repositories/base/base_object_contents_repository.h
     repositories/base/base_perl_event_export_settings_repository.h
     repositories/base/base_petitions_repository.h
     repositories/base/base_pets_repository.h
@@ -390,7 +377,6 @@ SET(repositories
     repositories/character_bind_repository.h
     repositories/character_buffs_repository.h
     repositories/character_corpses_repository.h
-    repositories/character_corpse_items_repository.h
     repositories/character_currency_repository.h
     repositories/character_data_repository.h
     repositories/character_disciplines_repository.h
@@ -405,11 +391,9 @@ SET(repositories
     repositories/character_material_repository.h
     repositories/character_memmed_spells_repository.h
     repositories/character_parcels_repository.h
-    repositories/character_parcels_containers_repository.h
     repositories/character_peqzone_flags_repository.h
     repositories/character_pet_buffs_repository.h
     repositories/character_pet_info_repository.h
-    repositories/character_pet_inventory_repository.h
     repositories/character_potionbelt_repository.h
     repositories/character_skills_repository.h
     repositories/character_spells_repository.h
@@ -447,6 +431,7 @@ SET(repositories
     repositories/global_loot_repository.h
     repositories/gm_ips_repository.h
     repositories/graveyard_repository.h
+    repositories/ground_items_repository.h
     repositories/ground_spawns_repository.h
     repositories/group_id_repository.h
     repositories/group_leaders_repository.h
@@ -459,9 +444,9 @@ SET(repositories
     repositories/horses_repository.h
     repositories/instance_list_repository.h
     repositories/instance_list_player_repository.h
-    repositories/inventory_repository.h
     repositories/inventory_snapshots_repository.h
     repositories/ip_exemptions_repository.h
+    repositories/item_instances_repository.h
     repositories/items_repository.h
     repositories/items_evolving_details_repository.h
     repositories/ldon_trap_entries_repository.h
@@ -493,7 +478,6 @@ SET(repositories
     repositories/npc_types_repository.h
     repositories/npc_types_tint_repository.h
     repositories/object_repository.h
-    repositories/object_contents_repository.h
     repositories/perl_event_export_settings_repository.h
     repositories/petitions_repository.h
     repositories/pets_repository.h
@@ -657,7 +641,10 @@ SET(common_headers
     ip_util.h
     item_data.h
     item_fieldlist.h
+    item_guid.h
     item_instance.h
+    item_layer.h
+    item_location.h
     itemHousingTail.h
     json_config.h
     light_source.h
@@ -743,33 +730,13 @@ SET(common_headers
     net/websocket_server.h
     net/websocket_server_connection.h
     patches/patches.h
-    patches/sod.h
-    patches/sod_limits.h
-    patches/sod_ops.h
-    patches/sod_structs.h
-    patches/sof.h
-    patches/sof_limits.h
-    patches/sof_ops.h
-    patches/sof_structs.h
     patches/ss_declare.h
     patches/ss_define.h
     patches/ss_register.h
-    patches/rof.h
-    patches/rof_limits.h
-    patches/rof_ops.h
-    patches/rof_structs.h
     patches/rof2.h
     patches/rof2_limits.h
     patches/rof2_ops.h
     patches/rof2_structs.h
-    patches/titanium.h
-    patches/titanium_limits.h
-    patches/titanium_ops.h
-    patches/titanium_structs.h
-    patches/uf.h
-    patches/uf_limits.h
-    patches/uf_ops.h
-    patches/uf_structs.h
     termcolor/rang.hpp
     stacktrace/backward.hpp
     StackWalker/StackWalker.h
@@ -831,46 +798,16 @@ SOURCE_GROUP(Net FILES
 
 SOURCE_GROUP(Patches FILES
     patches/patches.h
-    patches/sod.h
-    patches/sod_limits.h
-    patches/sod_ops.h
-    patches/sod_structs.h
-    patches/sof.h
-    patches/sof_limits.h
-    patches/sof_ops.h
-    patches/sof_structs.h
     patches/ss_declare.h
     patches/ss_define.h
     patches/ss_register.h
-    patches/rof.h
-    patches/rof_limits.h
-    patches/rof_ops.h
-    patches/rof_structs.h
     patches/rof2.h
     patches/rof2_limits.h
     patches/rof2_ops.h
     patches/rof2_structs.h
-    patches/titanium.h
-    patches/titanium_limits.h
-    patches/titanium_ops.h
-    patches/titanium_structs.h
-    patches/uf.h
-    patches/uf_limits.h
-    patches/uf_ops.h
-    patches/uf_structs.h
     patches/patches.cpp
-    patches/sod.cpp
-    patches/sod_limits.cpp
-    patches/sof.cpp
-    patches/sof_limits.cpp
-    patches/rof.cpp
-    patches/rof_limits.cpp
     patches/rof2.cpp
     patches/rof2_limits.cpp
-    patches/titanium.cpp
-    patches/titanium_limits.cpp
-    patches/uf.cpp
-    patches/uf_limits.cpp
 )
 
 SOURCE_GROUP(StackWalker FILES
@@ -892,7 +829,6 @@ ADD_LIBRARY(common ${common_sources} ${common_headers} ${repositories})
 
 IF (UNIX)
     SET_SOURCE_FILES_PROPERTIES("SocketLib/Mime.cpp" PROPERTY COMPILE_FLAGS -Wno-unused-result)
-    SET_SOURCE_FILES_PROPERTIES("patches/sod.cpp" "patches/sof.cpp" "patches/rof.cpp" "patches/rof2.cpp" "patches/uf.cpp" PROPERTIES COMPILE_FLAGS -O0)
 ENDIF (UNIX)
 
 IF (EQEMU_BUILD_PCH)

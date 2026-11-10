@@ -26,9 +26,11 @@
 
 
 #include "item_instance.h"
+#include "item_location.h"
 #include "classes.h"
 #include "races.h"
 
+#include <functional>
 #include <list>
 #include <vector>
 
@@ -68,6 +70,7 @@ public:
 	EQ::ItemInstance* pop();
 	EQ::ItemInstance* pop_back();
 	EQ::ItemInstance* peek_front() const;
+	EQ::ItemInstance* peek_back() const;
 
 protected:
 	/////////////////////////
@@ -131,6 +134,7 @@ namespace EQ
 
 		// Get cursor item in front of queue
 		ItemInstance* GetCursorItem();
+		ItemInstance* GetLastCursorItem() const { return m_cursor.peek_back(); }
 
 		// Swap items in inventory
 		enum SwapItemFailState : int8 { swapInvalid = -1, swapPass = 0, swapNotAllowed, swapNullData, swapRaceClass, swapDeity, swapLevel };
@@ -183,6 +187,10 @@ namespace EQ
 
 		// Calculate slot_id for an item within a bag
 		static int16 CalcSlotId(int16 slot_id); // Calc parent bag's slot_id
+		// The item table's location for a top-level slot id, and the slot id for such a location. Bag slots, whose
+		// rows name their bag, world container slots and tribute slots, which are never saved, have none.
+		static std::optional<ItemLocation> LocationForSlot(int16 slot_id, uint32 character_id, uint32 account_id);
+		static int16 SlotForLocation(const ItemLocation& location);
 		static int16 CalcSlotId(int16 bagslot_id, uint8 bagidx); // Calc slot_id for item inside bag
 		static uint8 CalcBagIdx(int16 slot_id); // Calc bagidx for slot_id
 		static int16 CalcSlotFromMaterial(uint8 material);
@@ -198,20 +206,21 @@ namespace EQ
 		static bool SupportsContainers(int16 slot_id);
 
 		int GetSlotByItemInst(ItemInstance *inst);
-
+		// The held item with this GUID or serial, in any bucket, inside a bag or in an augment socket, or nothing.
+		ItemInstance *GetItemByGUID(const ItemGUID &guid);
+		ItemInstance *GetItemBySerialNumber(uint32 serial_number);
 		uint8 FindBrightestLightType();
 
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, const std::string& value);
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, int value);
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, float value);
 		void SetCustomItemData(uint32 character_id, int16 slot_id, const std::string &identifier, bool value);
+		void SaveCustomItemData(uint32 character_id, int16 slot_id);
 		std::string GetCustomItemData(int16 slot_id, const std::string& identifier);
 		static const int GetItemStatValue(uint32 item_id, const std::string& identifier);
 
 		std::map<int16, ItemInstance*>& GetWorn() { return m_worn; }
 		std::map<int16, ItemInstance*>& GetPersonal() { return m_inv; }
-		int16 HasEvolvingItem(uint64 evolve_unique_id, uint8 quantity, uint8 where);
-
 		inline int16 PushItem(int16 slot_id, ItemInstance* inst) { return _PutItem(slot_id, inst); }
 
 	protected:
@@ -234,10 +243,7 @@ namespace EQ
 		int16 _HasItemByUse(ItemInstQueue& iqueue, uint8 use, uint8 quantity);
 		int16 _HasItemByLoreGroup(std::map<int16, ItemInstance*>& bucket, uint32 loregroup);
 		int16 _HasItemByLoreGroup(ItemInstQueue& iqueue, uint32 loregroup);
-		int16 _HasEvolvingItem(std::map<int16, ItemInstance*>& bucket, uint64 evolve_unique_id, uint8 quantity);
-		int16 _HasEvolvingItem(ItemInstQueue& iqueue, uint64 evolve_unique_id, uint8 quantity);
-
-
+		ItemInstance *FindInstance(const std::function<bool(const ItemInstance &)> &matches);
 		// Player inventory
 		std::map<int16, ItemInstance*>	m_worn;		// Items worn by character
 		std::map<int16, ItemInstance*>	m_inv;		// Items in character personal inventory

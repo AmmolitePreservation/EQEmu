@@ -400,7 +400,6 @@ const std::map<uint32, std::string>& EQ::constants::GetConsiderColorMap()
 		{ ConsiderColor::Red,           "Red" },
 		{ ConsiderColor::Yellow,        "Yellow" },
 		{ ConsiderColor::LightBlue,     "Light Blue" },
-		{ ConsiderColor::WhiteTitanium, "White" },
 	};
 
 	return consider_color_map;

@@ -17,6 +17,7 @@ SET(zone_sources
     cheat_manager.cpp
     client.cpp
     client_evolving_items.cpp
+    client_item_recovery.cpp
     client_bot.cpp
     client_mods.cpp
     client_packet.cpp
@@ -87,6 +88,7 @@ SET(zone_sources
     hate_list.cpp
     horse.cpp
     inventory.cpp
+    item_recovery.cpp
     loot.cpp
     main.cpp
     map.cpp
@@ -209,6 +211,7 @@ SET(zone_headers
     housing/housingWire.h
     housing/housingWorldObjects.h
     housing/housingWrits.h
+    item_recovery.h
     lua_bot.h
     lua_bit.h
     lua_buff.h

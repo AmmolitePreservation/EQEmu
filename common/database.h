@@ -37,6 +37,7 @@
 
 class MySQLRequestResult;
 class Client;
+class SharedDatabase;
 
 namespace EQ {
 	class InventoryProfile;
@@ -102,6 +103,7 @@ public:
 	bool MoveCharacterToZone(uint32 character_id, uint32 zone_id);
 	bool ReserveName(uint32 account_id, const std::string& name);
 	bool SaveCharacterCreate(uint32 character_id, uint32 account_id, PlayerProfile_Struct* pp);
+	void RetireCharacterItems(uint32 character_id);
 	bool UpdateName(const std::string& old_name, const std::string& new_name);
 	bool UpdateNameByID(const int character_id, const std::string& new_name);
 	bool CopyCharacter(
@@ -273,7 +275,7 @@ public:
 
 	void SourceDatabaseTableFromUrl(const std::string& table_name, const std::string& url);
 	void SourceSqlFromUrl(const std::string& url);
-	void PurgeCharacterParcels();
+	void PurgeCharacterParcels(SharedDatabase &content_db);
 	void Encode(std::string &in);
 	void Decode(std::string &in);
 

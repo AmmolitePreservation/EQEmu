@@ -16,7 +16,7 @@ void command_emptyinventory(Client *c, const Seperator *sep)
 		if (item) {
 			uint32 stack_size = std::max(static_cast<uint32>(item->GetCharges()), static_cast<uint32>(1));
 			removed_count += stack_size;
-			t->DeleteItemInInventory(slot_id, 0, true);
+			t->DeleteItemInInventory(slot_id, 0, true, ItemRetirement::RemovedByGM);
 		}
 	}
 

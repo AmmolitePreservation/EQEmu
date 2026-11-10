@@ -484,7 +484,7 @@ namespace RoF2
 
 				for (auto i: results) {
 					VARSTRUCT_ENCODE_TYPE(uint32, bufptr, i.trader_id);                          //trader ID
-					VARSTRUCT_ENCODE_STRING(bufptr, i.serial_number_RoF.c_str());                //serial
+					VARSTRUCT_ENCODE_STRING(bufptr, ItemGUIDText(i.item_guid).c_str());          //guid
 					VARSTRUCT_ENCODE_TYPE(uint32, bufptr, i.cost);                               //cost
 					VARSTRUCT_ENCODE_TYPE(uint32, bufptr, i.stackable ? i.charges : i.count);    //quantity
 					VARSTRUCT_ENCODE_TYPE(uint32, bufptr, i.item_id);                            //ID
@@ -2924,8 +2924,10 @@ namespace RoF2
 		outapp->WriteUInt32(0);		// Unknown
 		outapp->WriteUInt32(0);		// Unknown
 		outapp->WriteUInt32(emu->endurance);
-		outapp->WriteUInt32(0);		// Unknown - Observed 0x7cde - This is also seen in guild packets sent to this character.
-		outapp->WriteUInt32(0);		// Unknown - Observed 0x64
+		// The character's own GUID, {character, world}: the client keeps it at PcClient +0x2950 (0x5797a3) and uses it as
+		// the character id of its EQ Players link (0x52eb04).
+		outapp->WriteUInt32(emu->char_id);
+		outapp->WriteUInt32(emu->origin_world_id);
 
 		outapp->WriteUInt32(64);	// Name Length
 
@@ -4134,14 +4136,7 @@ namespace RoF2
 				LogTrading("(RoF2)  action <green>[{}]", action);
 
 				eq->action = structs::RoF2BazaarTraderBuyerActions::ListTraderItems;
-				std::transform(
-					std::begin(emu->items),
-					std::end(emu->items),
-					std::begin(eq->items),
-					[&](const uint32 x) {
-						return x;
-					}
-				);
+				std::copy(std::begin(emu->items), std::end(emu->items), std::begin(eq->items));
 				std::copy_n(
 					std::begin(emu->item_cost),
 					EQ::invtype::BAZAAR_SIZE,
@@ -4222,18 +4217,30 @@ namespace RoF2
 				break;
 			}
 			case BuyTraderItem: {
-				EQApplicationPacket *in = *p;
-				*p = nullptr;
-
-				auto eq = (structs::TraderBuy_Struct *) in->pBuffer;
+				ENCODE_LENGTH_EXACT(TraderBuy_Struct);
+				SETUP_DIRECT_ENCODE(TraderBuy_Struct, structs::TraderBuy_Struct);
 				LogTrading(
-					"(RoF2) BuyTraderItem action <green>[{}] item_id <green>[{}] item_sn <green>[{}] buyer <green>[{}]",
+					"(RoF2) BuyTraderItem action <green>[{}] item_id <green>[{}] item <green>[{}] buyer <green>[{}]",
 					action,
-					eq->item_id,
-					eq->serial_number,
-					eq->buyer_name
+					emu->item_id,
+					ItemGUIDText(emu->item_guid),
+					emu->buyer_name
 				);
-				dest->FastQueuePacket(&in);
+
+				OUT(action);
+				OUT(method);
+				OUT(sub_action);
+				OUT(trader_id);
+				OUT(item_id);
+				OUT(price);
+				OUT(already_sold);
+				OUT(quantity);
+				OUT_str(buyer_name);
+				OUT_str(seller_name);
+				OUT_str(item_name);
+				strn0cpy(eq->serial_number, ItemGUIDText(emu->item_guid).c_str(), sizeof(eq->serial_number));
+
+				FINISH_ENCODE();
 				break;
 			}
 			default: {
@@ -4269,7 +4276,7 @@ namespace RoF2
 		OUT_str(buyer_name);
 		OUT_str(seller_name);
 		OUT_str(item_name);
-		OUT_str(serial_number);
+		strn0cpy(eq->serial_number, ItemGUIDText(emu->item_guid).c_str(), sizeof(eq->serial_number));
 
 		FINISH_ENCODE();
 	}
@@ -4278,16 +4285,10 @@ namespace RoF2
 	{
 		ENCODE_LENGTH_EXACT(TraderDelItem_Struct);
 		SETUP_DIRECT_ENCODE(TraderDelItem_Struct, structs::TraderDelItem_Struct);
-		LogTrading(
-			"(RoF2) trader_id <green>[{}] item_id <green>[{}]",
-			emu->trader_id,
-			emu->item_id
-		);
 
 		eq->TraderID = emu->trader_id;
-		auto serial  = fmt::format("{:016}\n", emu->item_id);
-		strn0cpy(eq->SerialNumber, serial.c_str(), sizeof(eq->SerialNumber));
-		LogTrading("(RoF2) TraderID <green>[{}], SerialNumber: <green>[{}]", emu->trader_id, emu->item_id);
+		strn0cpy(eq->SerialNumber, ItemGUIDText(emu->item_guid).c_str(), sizeof(eq->SerialNumber));
+		LogTrading("(RoF2) TraderID <green>[{}], item <green>[{}]", emu->trader_id, eq->SerialNumber);
 
 		FINISH_ENCODE();
 	}
@@ -4334,7 +4335,7 @@ namespace RoF2
 				OUT_str(buyer_name);
 				OUT_str(seller_name);
 				OUT_str(item_name);
-				OUT_str(serial_number);
+				strn0cpy(eq->serial_number, ItemGUIDText(emu->item_guid).c_str(), sizeof(eq->serial_number));
 
 				FINISH_ENCODE();
 				break;
@@ -5118,26 +5119,6 @@ namespace RoF2
 				LogTradingDetail("(RoF2) Pass thru OP_Barter packet action <red>[{}]", emu->action);
 			}
 		}
-	}
-
-	DECODE(OP_BazaarSearch)
-	{
-		char *Buffer = (char *)__packet->pBuffer;
-
-		uint8 SubAction = VARSTRUCT_DECODE_TYPE(uint8, Buffer);
-		LogTrading("(RoF2) action <green>[{}]", SubAction);
-
-		if ((SubAction != BazaarInspectItem) || (__packet->size != sizeof(structs::NewBazaarInspect_Struct)))
-			return;
-
-		SETUP_DIRECT_DECODE(NewBazaarInspect_Struct, structs::NewBazaarInspect_Struct);
-
-		IN(Beginning.Action);
-		memcpy(emu->Name, eq->Name, sizeof(emu->Name));
-		IN(SerialNumber);
-		LogTrading("(RoF2) action <green>[{}] serial_number <green>[{}]", eq->Beginning.Action, eq->SerialNumber);
-
-		FINISH_DIRECT_DECODE();
 	}
 
 	DECODE(OP_BlockedBuffs)
@@ -6184,9 +6165,9 @@ namespace RoF2
 				std::transform(
 					std::begin(eq->items),
 					std::end(eq->items),
-					std::begin(emu->serial_number),
-					[&](const structs::TraderItemSerial_Struct x) {
-						return Strings::ToUnsignedBigInt(x.serial_number,0);
+					std::begin(emu->item_guid),
+					[](const structs::TraderItemSerial_Struct &x) {
+						return ItemGUIDFromField(std::string_view(x.serial_number, sizeof(x.serial_number)));
 					}
 				);
 
@@ -6214,9 +6195,9 @@ namespace RoF2
 				LogTrading("(RoF2) PriceUpdate action <green>[{}]", action);
 
 				emu->Action       = PriceUpdate;
-				emu->SerialNumber = Strings::ToUnsignedBigInt(eq->serial_number, 0);
-				if (emu->SerialNumber == 0) {
-					LogTrading("(RoF2) Price change with invalid serial number <red>[{}]", eq->serial_number);
+				emu->item_guid = ItemGUIDFromField(std::string_view(eq->serial_number, sizeof(eq->serial_number)));
+				if (emu->item_guid.IsZero()) {
+					LogTrading("(RoF2) Price change naming no item <red>[{}]", eq->serial_number);
 				}
 				emu->NewPrice = eq->new_price;
 
@@ -6308,10 +6289,10 @@ namespace RoF2
 				IN(item_id);
 				IN(trader_id);
 				emu->action        = BazaarInspect;
-				emu->serial_number = Strings::ToUnsignedInt(eq->serial_number, 0);
-				if (emu->serial_number == 0) {
+				emu->item_guid = ItemGUIDFromField(std::string_view(eq->serial_number, sizeof(eq->serial_number)));
+				if (emu->item_guid.IsZero()) {
 					LogTrading(
-						"(RoF2) trader_id = <green>[{}] requested a BazaarInspect with an invalid serial number of <red>[{}]",
+						"(RoF2) trader_id = <green>[{}] requested a BazaarInspect naming no item <red>[{}]",
 						eq->trader_id,
 						eq->serial_number
 					);
@@ -6319,7 +6300,7 @@ namespace RoF2
 					return;
 				}
 
-				LogTrading("(RoF2) BazaarInspect action <green>[{}] item_id <green>[{}] serial_number <green>[{}]",
+				LogTrading("(RoF2) BazaarInspect action <green>[{}] item_id <green>[{}] item <green>[{}]",
 						   action,
 						   eq->item_id,
 						   eq->serial_number
@@ -6359,7 +6340,7 @@ namespace RoF2
 				IN_str(buyer_name);
 				IN_str(seller_name);
 				IN_str(item_name);
-				IN_str(serial_number);
+				emu->item_guid = ItemGUIDFromField(std::string_view(eq->serial_number, sizeof(eq->serial_number)));
 
 				FINISH_DIRECT_DECODE();
 				break;
@@ -6493,8 +6474,9 @@ namespace RoF2
 
 		RoF2::structs::ItemSerializationHeader hdr;
 
-		//sprintf(hdr.unknown000, "06e0002Y1W00");
-		strn0cpy(hdr.unknown000, fmt::format("{:016}\0", inst->GetSerialNumber()).c_str(),sizeof(hdr.unknown000));
+		// Something not yet an item (merchant stock) has no GUID and is sent as zeros.
+		const std::string guid_text = inst->HasGUID() ? ItemGUIDText(inst->GetGUID()) : std::string(item_guid_zero_text);
+		strn0cpy(hdr.guid, guid_text.c_str(), sizeof(hdr.guid));
 
 		hdr.stacksize = 1;
 
@@ -6520,20 +6502,19 @@ namespace RoF2
 			break;
 		}
 
-		hdr.slot_type      = (inst->GetMerchantSlot() ? invtype::typeMerchant : slot_id.Type);
-		hdr.main_slot      = (inst->GetMerchantSlot() ? inst->GetMerchantSlot() : slot_id.Slot);
-		hdr.sub_slot       = (inst->GetMerchantSlot() ? 0xffff : slot_id.SubIndex);
-		hdr.aug_slot       = (inst->GetMerchantSlot() ? 0xffff : slot_id.AugIndex);
-		hdr.price          = inst->GetPrice();
-		hdr.merchant_slot  = ((inst->GetMerchantSlot() ? inst->GetMerchantCount() : 1));
-		hdr.scaled_value   = (inst->IsScaling() ? (inst->GetExp() / 100) : 0);
-		hdr.instance_id    = (inst->GetMerchantSlot() ? inst->GetMerchantSlot() : inst->GetSerialNumber());
-		hdr.parcel_item_id = packet_type == ItemPacketParcel ? inst->GetID() : 0;
-		if (item->EvolvingItem) {
-			hdr.instance_id    = inst->GetEvolveUniqueID() & 0xFFFFFFFF; //lower dword
-			hdr.parcel_item_id = inst->GetEvolveUniqueID() >> 32;        //upper dword
-		}
+		// A parcel is listed by its parcel slot, which may be 0; a merchant item's slot never is.
+		const bool   listed       = packet_type == ItemPacketParcel || inst->GetMerchantSlot() != 0;
+		const uint32 listing_slot = packet_type == ItemPacketParcel ? static_cast<uint32>(slot_id_in) : inst->GetMerchantSlot();
 
+		hdr.slot_type      = (listed ? invtype::typeMerchant : slot_id.Type);
+		hdr.main_slot      = (listed ? listing_slot : slot_id.Slot);
+		hdr.sub_slot       = (listed ? 0xffff : slot_id.SubIndex);
+		hdr.aug_slot       = (listed ? 0xffff : slot_id.AugIndex);
+		hdr.price          = inst->GetPrice();
+		hdr.merchant_slot  = (listed ? inst->GetMerchantCount() : 1);
+		hdr.scaled_value   = (inst->IsScaling() ? (inst->GetExp() / 100) : 0);
+		hdr.instance_id    = (listed ? listing_slot : inst->GetSerialNumber());
+		hdr.parcel_item_id = packet_type == ItemPacketParcel ? inst->GetID() : 0;
 		hdr.last_cast_time = inst->GetRecastTimestamp();
 		hdr.charges        = (inst->IsStackable() ? (item->MaxCharges ? 1 : 0) : ((inst->GetCharges() > 254)
 			? 0xFFFFFFFF

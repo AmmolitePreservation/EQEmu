@@ -25,6 +25,9 @@ public:
 		int32_t  instance_id;
 		uint32_t itemid;
 		uint32_t charges;
+		uint32_t guid_first;
+		uint32_t guid_second;
+		uint32_t guid_third;
 	};
 
 	static std::string PrimaryKey()
@@ -41,6 +44,9 @@ public:
 			"instance_id",
 			"itemid",
 			"charges",
+			"guid_first",
+			"guid_second",
+			"guid_third",
 		};
 	}
 
@@ -53,6 +59,9 @@ public:
 			"instance_id",
 			"itemid",
 			"charges",
+			"guid_first",
+			"guid_second",
+			"guid_third",
 		};
 	}
 
@@ -99,6 +108,9 @@ public:
 		e.instance_id = 0;
 		e.itemid      = 0;
 		e.charges     = 1;
+		e.guid_first  = 0;
+		e.guid_second = 0;
+		e.guid_third  = 0;
 
 		return e;
 	}
@@ -141,6 +153,9 @@ public:
 			e.instance_id = row[3] ? static_cast<int32_t>(atoi(row[3])) : 0;
 			e.itemid      = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
 			e.charges     = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 1;
+			e.guid_first  = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.guid_second = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.guid_third  = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 
 			return e;
 		}
@@ -180,6 +195,9 @@ public:
 		v.push_back(columns[3] + " = " + std::to_string(e.instance_id));
 		v.push_back(columns[4] + " = " + std::to_string(e.itemid));
 		v.push_back(columns[5] + " = " + std::to_string(e.charges));
+		v.push_back(columns[6] + " = " + std::to_string(e.guid_first));
+		v.push_back(columns[7] + " = " + std::to_string(e.guid_second));
+		v.push_back(columns[8] + " = " + std::to_string(e.guid_third));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -207,6 +225,9 @@ public:
 		v.push_back(std::to_string(e.instance_id));
 		v.push_back(std::to_string(e.itemid));
 		v.push_back(std::to_string(e.charges));
+		v.push_back(std::to_string(e.guid_first));
+		v.push_back(std::to_string(e.guid_second));
+		v.push_back(std::to_string(e.guid_third));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -242,6 +263,9 @@ public:
 			v.push_back(std::to_string(e.instance_id));
 			v.push_back(std::to_string(e.itemid));
 			v.push_back(std::to_string(e.charges));
+			v.push_back(std::to_string(e.guid_first));
+			v.push_back(std::to_string(e.guid_second));
+			v.push_back(std::to_string(e.guid_third));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}
@@ -281,6 +305,9 @@ public:
 			e.instance_id = row[3] ? static_cast<int32_t>(atoi(row[3])) : 0;
 			e.itemid      = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
 			e.charges     = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 1;
+			e.guid_first  = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.guid_second = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.guid_third  = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -311,6 +338,9 @@ public:
 			e.instance_id = row[3] ? static_cast<int32_t>(atoi(row[3])) : 0;
 			e.itemid      = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
 			e.charges     = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 1;
+			e.guid_first  = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.guid_second = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
+			e.guid_third  = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
 
 			all_entries.push_back(e);
 		}
@@ -391,6 +421,9 @@ public:
 		v.push_back(std::to_string(e.instance_id));
 		v.push_back(std::to_string(e.itemid));
 		v.push_back(std::to_string(e.charges));
+		v.push_back(std::to_string(e.guid_first));
+		v.push_back(std::to_string(e.guid_second));
+		v.push_back(std::to_string(e.guid_third));
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -419,6 +452,9 @@ public:
 			v.push_back(std::to_string(e.instance_id));
 			v.push_back(std::to_string(e.itemid));
 			v.push_back(std::to_string(e.charges));
+			v.push_back(std::to_string(e.guid_first));
+			v.push_back(std::to_string(e.guid_second));
+			v.push_back(std::to_string(e.guid_third));
 
 			insert_chunks.push_back("(" + Strings::Implode(",", v) + ")");
 		}

@@ -18,7 +18,10 @@
 
 #include "../common/global_define.h"
 #include "../common/rulesys.h"
-
+#include "../common/item_layer.h"
+#include "../common/item_instance.h"
+#include "../common/shareddb.h"
+#include "../common/repositories/character_corpses_repository.h"
 #include <ctype.h>
 #include <iomanip>
 #include <iostream>
@@ -408,10 +411,11 @@ bool Database::DeleteCharacter(const std::string& name)
 		return true;
 	}
 
+	RetireCharacterItems(e.id);
+
 	for (const auto &t : DatabaseSchema::GetCharacterTables()) {
 		const std::string& table_name               = t.first;
 		const std::string& character_id_column_name = t.second;
-
 		QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
@@ -421,18 +425,47 @@ bool Database::DeleteCharacter(const std::string& name)
 			)
 		);
 	}
-
 	LogInfo("character_name [{}] ({}) is being [{}]", e.name, e.id, delete_type);
 
 	return true;
 }
 
+// Everything a hard-deleted character held: its possessions and parcels, its pets' items, its corpses' items and its
+// bots' items. The account's shared bank stays with the account.
+void Database::RetireCharacterItems(uint32 character_id)
+{
+	ItemLayer::RetireWhere(
+		*this,
+		fmt::format("holder_type IN ('inventory', 'cursor', 'bank', 'trade', 'parcel', 'pet', 'suspended_pet') AND holder_id = {}", character_id),
+		ItemRetirement::CharacterDeleted
+	);
+
+	for (const auto &corpse : CharacterCorpsesRepository::GetWhere(*this, fmt::format("`charid` = {}", character_id))) {
+		ItemLayer::RetireWhere(*this, ItemLayer::HolderFilter(ItemHolderType::Corpse, corpse.id), ItemRetirement::CharacterDeleted);
+	}
+
+	if (RuleB(Bots, Enabled) && DoesTableExist("bot_data")) {
+		ItemLayer::RetireWhere(
+			*this,
+			fmt::format("holder_type = 'bot' AND holder_id IN (SELECT bot_id FROM bot_data WHERE owner_id = {})", character_id),
+			ItemRetirement::CharacterDeleted
+		);
+	}
+}
+
 bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, PlayerProfile_Struct *pp)
 {
+	const int world_id = RuleI(World, WorldID);
+	if (world_id < 0 || world_id > std::numeric_limits<uint16>::max()) {
+		LogError("Rule World:WorldID [{}] is outside 0 to 65535; character [{}] was not created", world_id, pp->name);
+		return false;
+	}
+
 	auto c = CharacterDataRepository::NewEntity();
 
 	c.id                      = character_id;
 	c.account_id              = account_id;
+	c.origin_world_id         = static_cast<uint16_t>(world_id);
 	c.name                    = pp->name;
 	c.last_name               = pp->last_name;
 	c.gender                  = pp->gender;
@@ -2070,6 +2103,19 @@ bool Database::CopyCharacter(
 		}
 	}
 
+	// The copy's items are new items issued from its own counter, in the same places.
+	const int copied = ItemLayer::CopyRows(
+		*this,
+		fmt::format("holder_type IN ('inventory', 'cursor', 'bank', 'trade', 'parcel', 'pet', 'suspended_pet') AND holder_id = {}", source_character_id),
+		ItemLayer::Owner{static_cast<uint32>(new_character_id), character.origin_world_id},
+		static_cast<uint32>(new_character_id)
+	);
+	if (copied < 0) {
+		TransactionRollback();
+		return false;
+	}
+	LogInfo("Copying item rows [{}]", Strings::Commify(copied));
+
 	auto r = TransactionCommit();
 	if (!r.Success()) {
 		LogError("Transaction failed [{}] rolling back", r.ErrorMessage());
@@ -2212,11 +2258,10 @@ void Database::Decode(std::string &in)
 	}
 };
 
-void Database::PurgeCharacterParcels()
+void Database::PurgeCharacterParcels(SharedDatabase &content_db)
 {
 	auto filter  = fmt::format("sent_date < (NOW() - INTERVAL {} DAY)", RuleI(Parcel, ParcelPruneDelay));
 	auto results = CharacterParcelsRepository::GetWhere(*this, filter);
-	auto prune   = CharacterParcelsRepository::DeleteWhere(*this, filter);
 
 	PlayerEvent::ParcelDelete                  pd{};
 	PlayerEventLogsRepository::PlayerEventLogs pel{};
@@ -2224,18 +2269,33 @@ void Database::PurgeCharacterParcels()
 	pel.event_type_name = PlayerEvent::EventName[pel.event_type_id];
 	std::stringstream ss;
 	for (auto const   &r: results) {
-		pd.from_name    = r.from_name;
-		pd.item_id      = r.item_id;
-		pd.augment_1_id = r.aug_slot_1;
-		pd.augment_2_id = r.aug_slot_2;
-		pd.augment_3_id = r.aug_slot_3;
-		pd.augment_4_id = r.aug_slot_4;
-		pd.augment_5_id = r.aug_slot_5;
-		pd.augment_6_id = r.aug_slot_6;
-		pd.note         = r.note;
-		pd.quantity     = r.quantity;
-		pd.sent_date    = r.sent_date;
-		pd.char_id      = r.char_id;
+		pd = {};
+		if (CharacterParcelsRepository::IsMoney(r)) {
+			pd.item_id  = PARCEL_MONEY_ITEM_ID;
+			pd.quantity = r.money;
+		}
+		else {
+			const auto guid = CharacterParcelsRepository::GUIDOf(r);
+
+			std::unique_ptr<EQ::ItemInstance> inst(ItemLayer::LoadOne(*this, content_db, guid));
+			if (inst) {
+				pd.item_id      = inst->GetID();
+				pd.augment_1_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN);
+				pd.augment_2_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 1);
+				pd.augment_3_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 2);
+				pd.augment_4_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 3);
+				pd.augment_5_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 4);
+				pd.augment_6_id = inst->GetAugmentItemID(EQ::invaug::SOCKET_BEGIN + 5);
+				pd.quantity     = inst->GetCharges();
+			}
+
+			ItemLayer::RetireRow(*this, guid, ItemRetirement::Expired);
+		}
+
+		pd.from_name = r.from_name;
+		pd.note      = r.note;
+		pd.sent_date = r.sent_date;
+		pd.char_id   = r.char_id;
 		{
 			cereal::JSONOutputArchiveSingleLine ar(ss);
 			pd.serialize(ar);
@@ -2249,6 +2309,8 @@ void Database::PurgeCharacterParcels()
 		ss.str("");
 		ss.clear();
 	}
+
+	CharacterParcelsRepository::DeleteWhere(*this, filter);
 
 	LogInfo(
 		"Purged <yellow>[{}] parcels that were over <yellow>[{}] days old.",

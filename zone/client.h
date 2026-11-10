@@ -50,6 +50,7 @@ namespace EQ
 #include "../common/races.h"
 #include "../common/seperator.h"
 #include "../common/inventory_profile.h"
+#include "../common/item_layer.h"
 #include "../common/guilds.h"
 //#include "../common/item_data.h"
 #include "xtargetautohaters.h"
@@ -368,13 +369,13 @@ public:
 					const char *message9 = nullptr);
 	void Tell_StringID(uint32 string_id, const char *who, const char *message);
 	void SendColoredText(uint32 color, std::string message);
-	void SendTraderItem(uint32 item_id,uint16 quantity, TraderRepository::Trader &trader);
+	void SendTraderItem(const EQ::ItemInstance &sold, uint16 quantity, Client *seller);
 	void DoBazaarSearch(BazaarSearchCriteria_Struct search_criteria);
-	uint16 FindTraderItem(int32 SerialNumber,uint16 Quantity);
-	uint32 FindTraderItemSerialNumber(int32 ItemID);
-	EQ::ItemInstance* FindTraderItemBySerialNumber(int32 SerialNumber);
-	void FindAndNukeTraderItem(int32 serial_number, int16 quantity, Client* customer, uint16 trader_slot);
-	void NukeTraderItem(uint16 slot, int16 charges, int16 quantity, Client* customer, uint16 trader_slot, int32 serial_number, int32 item_id = 0);
+	uint16 FindTraderItem(const ItemGUID &guid, uint16 quantity);
+	EQ::ItemInstance *FindTraderItemByGUID(const ItemGUID &guid);
+	void FindAndNukeTraderItem(const ItemGUID &guid, int16 quantity, Client* customer, uint16 trader_slot);
+	void RemoveSoldListing(const ItemGUID &guid, int16 quantity);
+	void NukeTraderItem(uint16 slot, int16 charges, int16 quantity, Client* customer, uint16 trader_slot, const ItemGUID &guid, int32 item_id = 0);
 	void ReturnTraderReq(const EQApplicationPacket* app,int16 traderitemcharges, uint32 itemid = 0);
 	void TradeRequestFailed(const EQApplicationPacket* app);
 	void BuyTraderItem(TraderBuy_Struct* tbs, Client* trader, const EQApplicationPacket* app);
@@ -387,10 +388,14 @@ public:
 	);
 	void SendZonePoints();
 	void SendBulkParcels();
+	void SendRecoverableItems();
+	void AcknowledgeRecovery(const MerchantRecover_Struct &request, uint64 currency_paid);
+	void SendRecoveryListingRemoved(uint32 merchant_id, uint64 unique_id);
 	void DoParcelCancel();
 	void DoParcelSend(const Parcel_Struct *parcel_in);
 	void DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in);
 	void SendParcel(Parcel_Struct &parcel);
+	void SendParcelPacket(const CharacterParcelsRepository::CharacterParcels &parcel);
 	void SendParcelStatus();
 	void SendParcelAck();
 	void SendParcelRetrieveAck();
@@ -586,7 +591,7 @@ public:
 
 	void ServerFilter(SetServerFilter_Struct* filter);
 	void BulkSendTraderInventory(uint32 char_id);
-	void SendSingleTraderItem(uint32 char_id, int serial_number);
+	void SendSingleTraderItem(uint32 char_id, const ItemGUID &guid);
 	void BulkSendMerchantInventory(int merchant_id, int npcid);
 
 	inline uint8 GetLanguageSkill(uint8 language_id) const { return m_pp.languages[language_id]; }
@@ -848,6 +853,8 @@ public:
 	inline int GetAccountCreation() const { return account_creation; }
 	inline int16 Admin() const { return admin; }
 	inline uint32 CharacterID() const { return character_id; }
+	inline uint16 OriginWorldID() const { return m_pp.origin_world_id; }
+	inline ItemLayer::Owner ItemOwner() const { return ItemLayer::Owner{character_id, m_pp.origin_world_id}; }
 	void UpdateAdmin(bool from_database = true);
 	void UpdateWho(uint8 remove = 0);
 	bool GMHideMe(Client* client = 0);
@@ -1132,7 +1139,7 @@ public:
 
 	// Item methods
 	void UseAugmentContainer(int container_slot);
-	uint32 NukeItem(uint32 itemnum, uint8 where_to_check =
+	uint32 NukeItem(uint32 itemnum, ItemRetirement reason, uint8 where_to_check =
 			(invWhereWorn | invWherePersonal | invWhereBank | invWhereSharedBank | invWhereTrading | invWhereCursor));
 	void SetTint(int16 slot_id, uint32 color);
 	void SetTint(int16 slot_id, EQ::textures::Tint_Struct& color);
@@ -1144,15 +1151,28 @@ public:
 	bool PutItemInInventoryWithStacking(EQ::ItemInstance* inst);
 	bool FindNumberOfFreeInventorySlotsWithSizeCheck(std::vector<BuyerLineTradeItems_Struct> items);
 	bool PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update = false);
+	// The stored copy of the item that just landed, which carries the GUID its save issued; the landing's argument never does.
+	const EQ::ItemInstance* LandedItem(int16 slot_id) const;
 	void SendCursorBuffer();
-	void DeleteItemInInventory(int16 slot_id, int16 quantity = 0, bool client_update = false, bool update_db = true);
+	// The item in the slot leaves play (all of it, or quantity units of a stack); its row retires with the reason.
+	void DeleteItemInInventory(int16 slot_id, int16 quantity, bool client_update, ItemRetirement reason);
+	// The item in the slot left this inventory for another holder, whose landing moved its row, or never had one.
+	void RemoveItemFromInventory(int16 slot_id, bool client_update = false);
+	void SendSlotEmptied(int16 slot_id, bool client_update);
+	void SendSlotChange(int16 slot_id, const EQ::ItemInstance *remaining, bool is_deleted, int16 quantity, bool client_update);
+	void MoveItemToPet(const EQ::ItemInstance &inst, NPC *pet);
+	bool SaveInventory(int16 slot_id) { return database.SaveInventory(this, slot_id); }
+	bool SaveCursor() { return database.SaveCursor(this); }
 	uint32 CountItem(uint32 item_id);
 	void ResetItemCooldown(uint32 item_id);
 	void SetItemCooldown(uint32 item_id, bool use_saved_timer = false, uint32 in_seconds = 1);
 	uint32 GetItemCooldown(uint32 item_id);
 	void RemoveItem(uint32 item_id, uint32 quantity = 1);
-	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity = 1);
+	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason);
+	int16 SlotOfSerialNumber(uint32 serial_number);
 	bool SwapItem(MoveItem_Struct* move_in);
+	// Trades the contents of two slots for a script: the rows are saved as one swap and the client is shown both slots.
+	bool SwapSlots(int16 source_slot, int16 destination_slot);
 	void SwapItemResync(MoveItem_Struct* move_slots);
 	void PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data = 0);
 	bool AutoPutLootInInventory(EQ::ItemInstance& inst, bool try_worn = false, bool try_cursor = true, LootItem** bag_item_data = 0);
@@ -1563,7 +1583,6 @@ public:
 	std::vector<Client*> GetPartyMembers();
 
 	inline const EQ::versions::ClientVersion ClientVersion() const { return m_ClientVersion; }
-	inline const uint32 ClientVersionBit() const { return m_ClientVersionBit; }
 	inline void SetClientVersion(EQ::versions::ClientVersion client_version) { m_ClientVersion = client_version; }
 
 	/** Adventure Stuff **/
@@ -1733,7 +1752,7 @@ public:
 	void HandleLFGuildResponse(ServerPacket *pack);
 	void SendLFGuildStatus();
 	void SendGuildLFGuildStatus();
-	inline bool XTargettingAvailable() const { return ((m_ClientVersionBit & EQ::versions::maskUFAndLater) && RuleB(Character, EnableXTargetting)); }
+	inline bool XTargettingAvailable() const { return (RuleB(Character, EnableXTargetting)); }
 	inline uint8 GetMaxXTargets() const { return MaxXTargets; }
 	void SetMaxXTargets(uint8 NewMax);
 	bool IsXTarget(const Mob *m) const;
@@ -1767,7 +1786,7 @@ public:
 	void DeleteItemRecastTimer(uint32 item_id);
 	bool HasItemRecastTimer(int32 spell_id, uint32 inventory_slot);
 
-	inline bool AggroMeterAvailable() const { return ((m_ClientVersionBit & EQ::versions::maskRoF2AndLater)) && RuleB(Character, EnableAggroMeter); } // RoF untested
+	inline bool AggroMeterAvailable() const { return RuleB(Character, EnableAggroMeter); } // RoF untested
 	inline void SetAggroMeterLock(int in) { m_aggrometer.set_lock_id(in); }
 
 	void ProcessAggroMeter(); // builds packet and sends
@@ -1922,7 +1941,7 @@ public:
 
 	// Evolving Item Info
 	void ProcessEvolvingItem(const uint64 exp, const Mob* mob);
-	void SendEvolvingPacket(int8 action, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item);
+	void SendEvolvingPacket(int8 action, const EQ::ItemInstance &inst, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item);
 	void DoEvolveItemToggle(const EQApplicationPacket* app);
 	void DoEvolveItemDisplayFinalResult(const EQApplicationPacket* app);
 	bool DoEvolveCheckProgression(EQ::ItemInstance &inst);
@@ -2114,6 +2133,7 @@ private:
 	bool                                                           m_parcel_enabled;
 	bool                                                           m_parcel_merchant_engaged;
 	std::map<uint32, CharacterParcelsRepository::CharacterParcels> m_parcels{};
+	std::map<uint32, ItemGUID>                                     m_recovery_listing{};
 	int Haste; //precalced value
 	uint32 tmSitting; // time stamp started sitting, used for HP regen bonus added on MAY 5, 2004
 
@@ -2291,7 +2311,6 @@ private:
 	uint32 AttemptedMessages;
 
 	EQ::versions::ClientVersion m_ClientVersion;
-	uint32 m_ClientVersionBit;
 
 	int XPRate;
 

@@ -233,7 +233,6 @@ struct MercTemplate {
 	uint8	ProficiencyID;
 	uint8	TierID;
 	uint8	CostFormula;			// To determine cost to client
-	uint32	ClientVersion;				// Only send valid mercs per expansion
 	uint8	MercNameType;			// Determines if merc gets random name or default text
 	char	MercNamePrefix[25];
 	char	MercNameSuffix[25];
@@ -285,25 +284,6 @@ struct ClientMercEntry {
 	uint32 npcid;
 };
 
-struct CharacterCorpseItemEntry
-{
-	uint32 item_id;
-	int16 equip_slot;
-	uint16 charges;
-	uint16 lootslot;
-	uint32 aug_1;
-	uint32 aug_2;
-	uint32 aug_3;
-	uint32 aug_4;
-	uint32 aug_5;
-	uint32 aug_6;
-	bool attuned;
-	std::string custom_data;
-	uint32 ornamenticon;
-	uint32 ornamentidfile;
-	uint32 ornament_hero_model;
-};
-
 struct CharacterCorpseEntry
 {
 	bool locked;
@@ -335,7 +315,6 @@ struct CharacterCorpseEntry
 	uint32 drakkin_heritage;
 	uint32 drakkin_tattoo;
 	uint32 drakkin_details;
-	std::vector<CharacterCorpseItemEntry> items;
 	std::string entity_variables;
 };
 
@@ -394,7 +373,6 @@ public:
 	void	DeleteTraderItem(uint32 char_id);
 	void	DeleteTraderItem(uint32 char_id,uint16 slot_id);
 
-	std::unique_ptr<EQ::ItemInstance> LoadSingleTraderItem(uint32 char_id, int serial_number);
 	Trader_Struct* LoadTraderItem(uint32 char_id);
 	TraderCharges_Struct* LoadTraderItemWithCharges(uint32 char_id);
 
@@ -491,7 +469,6 @@ public:
 	int64 CountCharacterCorpses(uint32 character_id);
 	int64 CountCharacterCorpsesByZoneID(uint32 character_id, uint32 zone_id);
 	bool DeleteCharacterCorpse(uint32 corpse_id);
-	bool DeleteItemOffCharacterCorpse(uint32 corpse_id, uint32 slot_id, uint32 item_id);
 	uint32 GetCharacterBuriedCorpseCount(uint32 character_id);
 	int64 GetCharacterCorpseCount(uint32 character_id);
 	uint32 GetCharacterCorpseDecayTimer(uint32 corpse_id);
@@ -595,7 +572,7 @@ public:
 	void	RefreshPetitionsFromDB();
 
 	/* Merchants  */
-	void	SaveMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id, uint32 item, uint32 charges);
+	void	SaveMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id, uint32 item, uint32 charges, const ItemGUID &sold);
 	void	DeleteMerchantTemp(uint32 npcid, uint32 slot, uint32 zone_id, uint32 instance_id);
 
 	/* Tradeskills  */

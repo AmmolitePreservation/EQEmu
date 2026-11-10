@@ -24,7 +24,7 @@ VERBOSE = False  # messaging: {False - minimal, True - robust}
 base_path = os.getcwd()[:-14]  # '/utils/scripts'
 base_path = base_path.replace('\\', '/')
 
-client_list = ['Titanium', 'SoF', 'SoD', 'UF', 'RoF', 'RoF2']
+client_list = ['RoF2']
 server_list = ['Login', 'World', 'Zone', 'UCS', 'Query', 'EQLaunch', 'HeadlessClient', 'Common']  # 'Common' is not a server..but, may contain shared functions
 server_dirs = {'Login': 'loginserver', 'World': 'world', 'Zone': 'zone', 'UCS': 'ucs', 'Query': 'queryserv', 'EQLaunch': 'eqlaunch', 'HeadlessClient': 'hc', 'Common': 'common'}
 file_exts = ['cpp', 'h']

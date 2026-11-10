@@ -344,7 +344,7 @@ void Client::OPCombatAbility(const CombatAbility_Struct *ca_atk)
 	pTimerType timer = pTimerCombatAbility;
 	// RoF2+ Tiger Claw is unlinked from other monk skills, if they ever do that for other classes there will need
 	// to be more checks here
-	if (ClientVersion() >= EQ::versions::ClientVersion::RoF2 && ca_atk->m_skill == EQ::skills::SkillTigerClaw) {
+	if (ca_atk->m_skill == EQ::skills::SkillTigerClaw) {
 		timer = pTimerCombatAbility2;
 	}
 
@@ -999,7 +999,7 @@ bool Client::RangedAttack(Mob* other, bool CanDoubleAttack) {
 			(ChanceAvoidConsume < 100 && zone->random.Int(0,99) > ChanceAvoidConsume)
 		)
 	) {
-		DeleteItemInInventory(ammo_slot, 1, true);
+		DeleteItemInInventory(ammo_slot, 1, true, ItemRetirement::Consumed);
 		LogCombat("Consumed Archery Ammo from slot {}.", ammo_slot);
 	} else if (!consumes_ammo) {
 		LogCombat("Archery Ammo Consumption is disabled.");
@@ -1608,7 +1608,7 @@ void Client::ThrowingAttack(Mob* other, bool CanDoubleAttack) { //old was 51
 
 	// Consume Ammo, unless Ammo Consumption is disabled
 	if (RuleB(Combat, ThrowingConsumesAmmo)) {
-		DeleteItemInInventory(ammo_slot, 1, true);
+		DeleteItemInInventory(ammo_slot, 1, true, ItemRetirement::Consumed);
 		LogCombat("Consumed Throwing Ammo from slot {}.", ammo_slot);
 	} else {
 		LogCombat("Throwing Ammo Consumption is disabled.");

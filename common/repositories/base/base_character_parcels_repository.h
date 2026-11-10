@@ -21,15 +21,11 @@ public:
 	struct CharacterParcels {
 		uint32_t    id;
 		uint32_t    char_id;
-		uint32_t    item_id;
-		uint32_t    aug_slot_1;
-		uint32_t    aug_slot_2;
-		uint32_t    aug_slot_3;
-		uint32_t    aug_slot_4;
-		uint32_t    aug_slot_5;
-		uint32_t    aug_slot_6;
+		uint32_t    guid_first;
+		uint32_t    guid_second;
+		uint32_t    guid_third;
+		uint32_t    money;
 		uint32_t    slot_id;
-		uint32_t    quantity;
 		std::string from_name;
 		std::string note;
 		time_t      sent_date;
@@ -45,15 +41,11 @@ public:
 		return {
 			"id",
 			"char_id",
-			"item_id",
-			"aug_slot_1",
-			"aug_slot_2",
-			"aug_slot_3",
-			"aug_slot_4",
-			"aug_slot_5",
-			"aug_slot_6",
+			"guid_first",
+			"guid_second",
+			"guid_third",
+			"money",
 			"slot_id",
-			"quantity",
 			"from_name",
 			"note",
 			"sent_date",
@@ -65,15 +57,11 @@ public:
 		return {
 			"id",
 			"char_id",
-			"item_id",
-			"aug_slot_1",
-			"aug_slot_2",
-			"aug_slot_3",
-			"aug_slot_4",
-			"aug_slot_5",
-			"aug_slot_6",
+			"guid_first",
+			"guid_second",
+			"guid_third",
+			"money",
 			"slot_id",
-			"quantity",
 			"from_name",
 			"note",
 			"UNIX_TIMESTAMP(sent_date)",
@@ -117,20 +105,16 @@ public:
 	{
 		CharacterParcels e{};
 
-		e.id         = 0;
-		e.char_id    = 0;
-		e.item_id    = 0;
-		e.aug_slot_1 = 0;
-		e.aug_slot_2 = 0;
-		e.aug_slot_3 = 0;
-		e.aug_slot_4 = 0;
-		e.aug_slot_5 = 0;
-		e.aug_slot_6 = 0;
-		e.slot_id    = 0;
-		e.quantity   = 0;
-		e.from_name  = "";
-		e.note       = "";
-		e.sent_date  = 0;
+		e.id          = 0;
+		e.char_id     = 0;
+		e.guid_first  = 0;
+		e.guid_second = 0;
+		e.guid_third  = 0;
+		e.money       = 0;
+		e.slot_id     = 0;
+		e.from_name   = "";
+		e.note        = "";
+		e.sent_date   = 0;
 
 		return e;
 	}
@@ -167,20 +151,16 @@ public:
 		if (results.RowCount() == 1) {
 			CharacterParcels e{};
 
-			e.id         = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.char_id    = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.item_id    = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.aug_slot_1 = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.aug_slot_2 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.aug_slot_3 = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.aug_slot_4 = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.aug_slot_5 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.aug_slot_6 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.slot_id    = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.quantity   = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.from_name  = row[11] ? row[11] : "";
-			e.note       = row[12] ? row[12] : "";
-			e.sent_date  = strtoll(row[13] ? row[13] : "-1", nullptr, 10);
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.char_id     = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_first  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_second = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.guid_third  = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.money       = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.slot_id     = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.from_name   = row[7] ? row[7] : "";
+			e.note        = row[8] ? row[8] : "";
+			e.sent_date   = strtoll(row[9] ? row[9] : "-1", nullptr, 10);
 
 			return e;
 		}
@@ -215,18 +195,14 @@ public:
 		auto columns = Columns();
 
 		v.push_back(columns[1] + " = " + std::to_string(e.char_id));
-		v.push_back(columns[2] + " = " + std::to_string(e.item_id));
-		v.push_back(columns[3] + " = " + std::to_string(e.aug_slot_1));
-		v.push_back(columns[4] + " = " + std::to_string(e.aug_slot_2));
-		v.push_back(columns[5] + " = " + std::to_string(e.aug_slot_3));
-		v.push_back(columns[6] + " = " + std::to_string(e.aug_slot_4));
-		v.push_back(columns[7] + " = " + std::to_string(e.aug_slot_5));
-		v.push_back(columns[8] + " = " + std::to_string(e.aug_slot_6));
-		v.push_back(columns[9] + " = " + std::to_string(e.slot_id));
-		v.push_back(columns[10] + " = " + std::to_string(e.quantity));
-		v.push_back(columns[11] + " = '" + Strings::Escape(e.from_name) + "'");
-		v.push_back(columns[12] + " = '" + Strings::Escape(e.note) + "'");
-		v.push_back(columns[13] + " = FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");
+		v.push_back(columns[2] + " = " + std::to_string(e.guid_first));
+		v.push_back(columns[3] + " = " + std::to_string(e.guid_second));
+		v.push_back(columns[4] + " = " + std::to_string(e.guid_third));
+		v.push_back(columns[5] + " = " + std::to_string(e.money));
+		v.push_back(columns[6] + " = " + std::to_string(e.slot_id));
+		v.push_back(columns[7] + " = '" + Strings::Escape(e.from_name) + "'");
+		v.push_back(columns[8] + " = '" + Strings::Escape(e.note) + "'");
+		v.push_back(columns[9] + " = FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");
 
 		auto results = db.QueryDatabase(
 			fmt::format(
@@ -250,15 +226,11 @@ public:
 
 		v.push_back(std::to_string(e.id));
 		v.push_back(std::to_string(e.char_id));
-		v.push_back(std::to_string(e.item_id));
-		v.push_back(std::to_string(e.aug_slot_1));
-		v.push_back(std::to_string(e.aug_slot_2));
-		v.push_back(std::to_string(e.aug_slot_3));
-		v.push_back(std::to_string(e.aug_slot_4));
-		v.push_back(std::to_string(e.aug_slot_5));
-		v.push_back(std::to_string(e.aug_slot_6));
+		v.push_back(std::to_string(e.guid_first));
+		v.push_back(std::to_string(e.guid_second));
+		v.push_back(std::to_string(e.guid_third));
+		v.push_back(std::to_string(e.money));
 		v.push_back(std::to_string(e.slot_id));
-		v.push_back(std::to_string(e.quantity));
 		v.push_back("'" + Strings::Escape(e.from_name) + "'");
 		v.push_back("'" + Strings::Escape(e.note) + "'");
 		v.push_back("FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");
@@ -293,15 +265,11 @@ public:
 
 			v.push_back(std::to_string(e.id));
 			v.push_back(std::to_string(e.char_id));
-			v.push_back(std::to_string(e.item_id));
-			v.push_back(std::to_string(e.aug_slot_1));
-			v.push_back(std::to_string(e.aug_slot_2));
-			v.push_back(std::to_string(e.aug_slot_3));
-			v.push_back(std::to_string(e.aug_slot_4));
-			v.push_back(std::to_string(e.aug_slot_5));
-			v.push_back(std::to_string(e.aug_slot_6));
+			v.push_back(std::to_string(e.guid_first));
+			v.push_back(std::to_string(e.guid_second));
+			v.push_back(std::to_string(e.guid_third));
+			v.push_back(std::to_string(e.money));
 			v.push_back(std::to_string(e.slot_id));
-			v.push_back(std::to_string(e.quantity));
 			v.push_back("'" + Strings::Escape(e.from_name) + "'");
 			v.push_back("'" + Strings::Escape(e.note) + "'");
 			v.push_back("FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");
@@ -338,20 +306,16 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			CharacterParcels e{};
 
-			e.id         = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.char_id    = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.item_id    = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.aug_slot_1 = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.aug_slot_2 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.aug_slot_3 = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.aug_slot_4 = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.aug_slot_5 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.aug_slot_6 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.slot_id    = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.quantity   = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.from_name  = row[11] ? row[11] : "";
-			e.note       = row[12] ? row[12] : "";
-			e.sent_date  = strtoll(row[13] ? row[13] : "-1", nullptr, 10);
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.char_id     = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_first  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_second = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.guid_third  = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.money       = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.slot_id     = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.from_name   = row[7] ? row[7] : "";
+			e.note        = row[8] ? row[8] : "";
+			e.sent_date   = strtoll(row[9] ? row[9] : "-1", nullptr, 10);
 
 			all_entries.push_back(e);
 		}
@@ -376,20 +340,16 @@ public:
 		for (auto row = results.begin(); row != results.end(); ++row) {
 			CharacterParcels e{};
 
-			e.id         = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
-			e.char_id    = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
-			e.item_id    = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
-			e.aug_slot_1 = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
-			e.aug_slot_2 = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
-			e.aug_slot_3 = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
-			e.aug_slot_4 = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
-			e.aug_slot_5 = row[7] ? static_cast<uint32_t>(strtoul(row[7], nullptr, 10)) : 0;
-			e.aug_slot_6 = row[8] ? static_cast<uint32_t>(strtoul(row[8], nullptr, 10)) : 0;
-			e.slot_id    = row[9] ? static_cast<uint32_t>(strtoul(row[9], nullptr, 10)) : 0;
-			e.quantity   = row[10] ? static_cast<uint32_t>(strtoul(row[10], nullptr, 10)) : 0;
-			e.from_name  = row[11] ? row[11] : "";
-			e.note       = row[12] ? row[12] : "";
-			e.sent_date  = strtoll(row[13] ? row[13] : "-1", nullptr, 10);
+			e.id          = row[0] ? static_cast<uint32_t>(strtoul(row[0], nullptr, 10)) : 0;
+			e.char_id     = row[1] ? static_cast<uint32_t>(strtoul(row[1], nullptr, 10)) : 0;
+			e.guid_first  = row[2] ? static_cast<uint32_t>(strtoul(row[2], nullptr, 10)) : 0;
+			e.guid_second = row[3] ? static_cast<uint32_t>(strtoul(row[3], nullptr, 10)) : 0;
+			e.guid_third  = row[4] ? static_cast<uint32_t>(strtoul(row[4], nullptr, 10)) : 0;
+			e.money       = row[5] ? static_cast<uint32_t>(strtoul(row[5], nullptr, 10)) : 0;
+			e.slot_id     = row[6] ? static_cast<uint32_t>(strtoul(row[6], nullptr, 10)) : 0;
+			e.from_name   = row[7] ? row[7] : "";
+			e.note        = row[8] ? row[8] : "";
+			e.sent_date   = strtoll(row[9] ? row[9] : "-1", nullptr, 10);
 
 			all_entries.push_back(e);
 		}
@@ -466,15 +426,11 @@ public:
 
 		v.push_back(std::to_string(e.id));
 		v.push_back(std::to_string(e.char_id));
-		v.push_back(std::to_string(e.item_id));
-		v.push_back(std::to_string(e.aug_slot_1));
-		v.push_back(std::to_string(e.aug_slot_2));
-		v.push_back(std::to_string(e.aug_slot_3));
-		v.push_back(std::to_string(e.aug_slot_4));
-		v.push_back(std::to_string(e.aug_slot_5));
-		v.push_back(std::to_string(e.aug_slot_6));
+		v.push_back(std::to_string(e.guid_first));
+		v.push_back(std::to_string(e.guid_second));
+		v.push_back(std::to_string(e.guid_third));
+		v.push_back(std::to_string(e.money));
 		v.push_back(std::to_string(e.slot_id));
-		v.push_back(std::to_string(e.quantity));
 		v.push_back("'" + Strings::Escape(e.from_name) + "'");
 		v.push_back("'" + Strings::Escape(e.note) + "'");
 		v.push_back("FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");
@@ -502,15 +458,11 @@ public:
 
 			v.push_back(std::to_string(e.id));
 			v.push_back(std::to_string(e.char_id));
-			v.push_back(std::to_string(e.item_id));
-			v.push_back(std::to_string(e.aug_slot_1));
-			v.push_back(std::to_string(e.aug_slot_2));
-			v.push_back(std::to_string(e.aug_slot_3));
-			v.push_back(std::to_string(e.aug_slot_4));
-			v.push_back(std::to_string(e.aug_slot_5));
-			v.push_back(std::to_string(e.aug_slot_6));
+			v.push_back(std::to_string(e.guid_first));
+			v.push_back(std::to_string(e.guid_second));
+			v.push_back(std::to_string(e.guid_third));
+			v.push_back(std::to_string(e.money));
 			v.push_back(std::to_string(e.slot_id));
-			v.push_back(std::to_string(e.quantity));
 			v.push_back("'" + Strings::Escape(e.from_name) + "'");
 			v.push_back("'" + Strings::Escape(e.note) + "'");
 			v.push_back("FROM_UNIXTIME(" + (e.sent_date > 0 ? std::to_string(e.sent_date) : "null") + ")");

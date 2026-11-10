@@ -26,7 +26,7 @@
 #include <vector>
 #include "sof_char_create_data.h"
 #include "../common/repositories/character_instance_safereturns_repository.h"
-#include "../common/repositories/inventory_repository.h"
+#include "../common/item_layer.h"
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/zone_store.h"
 #include "../common/repositories/character_data_repository.h"
@@ -39,19 +39,12 @@ WorldDatabase content_db;
 extern std::vector<RaceClassAllocation> character_create_allocations;
 extern std::vector<RaceClassCombos> character_create_race_class_combos;
 
-void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, uint32 client_version_bit)
+void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, EQ::versions::ClientVersion client_version)
 {
-	EQ::versions::ClientVersion
-		   client_version  = EQ::versions::ConvertClientVersionBitToClientVersion(client_version_bit);
 	size_t character_limit = EQ::constants::StaticLookup(client_version)->CharacterCreationLimit;
 
 	if (character_limit > EQ::constants::CHARACTER_CREATION_LIMIT) {
 		character_limit = EQ::constants::CHARACTER_CREATION_LIMIT;
-	}
-
-	// Force Titanium clients to use '8'
-	if (client_version == EQ::versions::ClientVersion::Titanium) {
-		character_limit = 8;
 	}
 
 	auto characters = CharacterDataRepository::GetWhere(
@@ -77,10 +70,11 @@ void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **o
 		character_ids.push_back(e.id);
 	}
 
-	const auto& inventories = InventoryRepository::GetWhere(
+	auto inventories = ItemLayer::Load(
 		*this,
+		content_db,
 		fmt::format(
-			"`character_id` IN ({}) AND `slot_id` BETWEEN {} AND {}",
+			"holder_type = 'inventory' AND holder_id IN ({}) AND slot BETWEEN {} AND {}",
 			Strings::Join(character_ids, ","),
 			EQ::invslot::slotHead,
 			EQ::invslot::slotFeet
@@ -380,6 +374,10 @@ void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **o
 		}
 		buff_ptr += sizeof(CharacterSelectEntry_Struct);
 	}
+
+	for (auto &held : inventories) {
+		safe_delete(held.inst);
+	}
 }
 
 int WorldDatabase::MoveCharacterToBind(int character_id, uint8 bind_number)
@@ -499,17 +497,11 @@ int WorldDatabase::MoveCharacterToInstanceSafeReturn(
 
 bool WorldDatabase::GetStartZone(
 	PlayerProfile_Struct *pp,
-	CharCreate_Struct *p_char_create_struct,
-	bool is_titanium
+	CharCreate_Struct *p_char_create_struct
 )
 {
-	// SoF doesn't send the player_choice field in character creation, it now sends the real zoneID instead.
-	//
-	// For SoF, search for an entry in start_zones with a matching zone_id, class, race and deity.
-	//
-	// For now, if no row matching row is found, send them to Crescent Reach, as that is probably the most likely
-	// reason for no match being found.
-	//
+	// The client sends the start zone's id; the row is matched by zone, class, deity and race, and a character with
+	// no row goes to Crescent Reach.
 	if (!pp || !p_char_create_struct) {
 		return false;
 	}
@@ -525,45 +517,26 @@ bool WorldDatabase::GetStartZone(
 	pp->binds[0].zone_id     = 0;
 	pp->binds[0].instance_id = 0;
 
-	// see if we have an entry for start_zone. We can support both titanium & SOF+ by having two entries per class/race/deity combo with different zone_ids
-	std::string query;
+	const std::string query = StringFormat(
+		"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE zone_id = %i "
+		"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
+		p_char_create_struct->start_zone,
+		p_char_create_struct->class_,
+		p_char_create_struct->deity,
+		p_char_create_struct->race,
+		ContentFilterCriteria::apply().c_str()
+	);
 
-	if (is_titanium) {
-		// Titanium sends player choice (starting city) instead of a zone id
-		query = StringFormat(
-			"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE player_choice = %i "
-			"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
-			p_char_create_struct->start_zone,
-			p_char_create_struct->class_,
-			p_char_create_struct->deity,
-			p_char_create_struct->race,
-			ContentFilterCriteria::apply().c_str()
-		);
-		LogInfo("Titanium Start zone query: [{}]\n", query.c_str());
-	}
-	else {
-		query = StringFormat(
-			"SELECT x, y, z, heading, start_zone, bind_id, bind_x, bind_y, bind_z FROM start_zones WHERE zone_id = %i "
-			"AND player_class = %i AND player_deity = %i AND player_race = %i %s",
-			p_char_create_struct->start_zone,
-			p_char_create_struct->class_,
-			p_char_create_struct->deity,
-			p_char_create_struct->race,
-			ContentFilterCriteria::apply().c_str()
-		);
-		LogInfo("SoF Start zone query: [{}]\n", query.c_str());
-	}
-
-    auto results = QueryDatabase(query);
+	auto results = QueryDatabase(query);
 	if(!results.Success()) {
 		return false;
 	}
 
-	LogInfo("SoF Start zone query: [{}]\n", query.c_str());
+	LogInfo("Start zone query: [{}]", query.c_str());
 
 	if (results.RowCount() == 0) {
 		printf("No start_zones entry in database, using defaults\n");
-		is_titanium ? SetTitaniumDefaultStartZone(pp, p_char_create_struct) : SetSoFDefaultStartZone(pp, p_char_create_struct);
+		SetDefaultStartZone(pp, p_char_create_struct);
     }
     else {
 		LogInfo("Found starting location in start_zones");
@@ -613,10 +586,10 @@ bool WorldDatabase::GetStartZone(
 	return true;
 }
 
-void WorldDatabase::SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc){
-	int sof_start_zone_id = RuleI(World, SoFStartZoneID);
-	if (sof_start_zone_id > 0) {
-			in_pp->zone_id = sof_start_zone_id;
+void WorldDatabase::SetDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc){
+	int start_zone_id = RuleI(World, StartZoneID);
+	if (start_zone_id > 0) {
+			in_pp->zone_id = start_zone_id;
 			in_cc->start_zone = in_pp->zone_id;
 	}
 	else if (in_cc->start_zone == RuleI(World, TutorialZoneID)) {
@@ -628,117 +601,6 @@ void WorldDatabase::SetSoFDefaultStartZone(PlayerProfile_Struct* in_pp, CharCrea
 		in_pp->z = in_pp->binds[0].z = 0.79f;
 		in_pp->heading = in_pp->binds[0].heading = 0.0f;
 		in_pp->zone_id = in_pp->binds[0].zone_id = Zones::CRESCENT; // Crescent Reach.
-	}
-}
-
-void WorldDatabase::SetTitaniumDefaultStartZone(PlayerProfile_Struct* in_pp, CharCreate_Struct* in_cc)
-{
-	int titanium_start_zone_id = RuleI(World, TitaniumStartZoneID);
-	if (titanium_start_zone_id > 0) {
-		in_pp->zone_id = titanium_start_zone_id;
-		in_pp->binds[0].zone_id = titanium_start_zone_id;
-	} else {
-		switch (in_cc->start_zone)
-		{
-			case StartZoneIndex::Odus:
-			{
-				if (in_cc->deity == Deity::CazicThule) // Cazic-Thule Erudites go to Paineel
-				{
-					in_pp->zone_id = Zones::PAINEEL; // paineel
-					in_pp->binds[0].zone_id = Zones::PAINEEL;
-				}
-				else
-				{
-					in_pp->zone_id = Zones::ERUDNEXT;	// erudnext
-					in_pp->binds[0].zone_id = Zones::TOX;	// tox
-				}
-				break;
-			}
-			case StartZoneIndex::Qeynos:
-			{
-				in_pp->zone_id = Zones::QEYNOS2;	// qeynos2
-				in_pp->binds[0].zone_id = Zones::QEYNOS2;	// qeynos2
-				break;
-			}
-			case StartZoneIndex::Halas:
-			{
-				in_pp->zone_id = Zones::HALAS;	// halas
-				in_pp->binds[0].zone_id = Zones::EVERFROST;	// everfrost
-				break;
-			}
-			case StartZoneIndex::Rivervale:
-			{
-				in_pp->zone_id = Zones::RIVERVALE;	// rivervale
-				in_pp->binds[0].zone_id = Zones::KITHICOR;	// kithicor
-				break;
-			}
-			case StartZoneIndex::Freeport:
-			{
-				in_pp->zone_id = Zones::FREPORTW;	// freportw
-				in_pp->binds[0].zone_id = Zones::FREPORTW;	// freportw
-				break;
-			}
-			case StartZoneIndex::Neriak:
-			{
-				in_pp->zone_id = Zones::NERIAKA;	// neriaka
-				in_pp->binds[0].zone_id = Zones::NEKTULOS;	// nektulos
-				break;
-			}
-			case StartZoneIndex::Grobb:
-			{
-				in_pp->zone_id = Zones::GROBB;	// grobb
-				in_pp->binds[0].zone_id = Zones::INNOTHULE;	// innothule
-				break;
-			}
-			case StartZoneIndex::Oggok:
-			{
-				in_pp->zone_id = Zones::OGGOK;	// oggok
-				in_pp->binds[0].zone_id = Zones::FEERROTT;	// feerrott
-				break;
-			}
-			case StartZoneIndex::Kaladim:
-			{
-				in_pp->zone_id = Zones::KALADIMA;	// kaladima
-				in_pp->binds[0].zone_id = Zones::BUTCHER;	// butcher
-				break;
-			}
-			case StartZoneIndex::GreaterFaydark:
-			{
-				in_pp->zone_id = Zones::GFAYDARK;	// gfaydark
-				in_pp->binds[0].zone_id = Zones::GFAYDARK;	// gfaydark
-				break;
-			}
-			case StartZoneIndex::Felwithe:
-			{
-				in_pp->zone_id = Zones::FELWITHEA;	// felwithea
-				in_pp->binds[0].zone_id = Zones::GFAYDARK;	// gfaydark
-				break;
-			}
-			case StartZoneIndex::Akanon:
-			{
-				in_pp->zone_id = Zones::AKANON;	// akanon
-				in_pp->binds[0].zone_id = Zones::STEAMFONT;	// steamfont
-				break;
-			}
-			case StartZoneIndex::Cabilis:
-			{
-				in_pp->zone_id = Zones::CABWEST;	// cabwest
-				in_pp->binds[0].zone_id = Zones::FIELDOFBONE;	// fieldofbone
-				break;
-			}
-			case StartZoneIndex::SharVahl:
-			{
-				in_pp->zone_id = Zones::SHARVAHL;	// sharvahl
-				in_pp->binds[0].zone_id = Zones::SHARVAHL;	// sharvahl
-				break;
-			}
-			case StartZoneIndex::RatheMtn:
-			{
-				in_pp->zone_id = Zones::RATHEMTN;	// rathemtn
-				in_pp->binds[0].zone_id = Zones::RATHEMTN;	// rathemtn
-				break;
-			}
-		}
 	}
 }
 
@@ -833,7 +695,7 @@ bool WorldDatabase::LoadCharacterCreateCombos()
 }
 
 bool WorldDatabase::GetCharSelInventory(
-	const std::vector<InventoryRepository::Inventory> &inventories,
+	const std::vector<ItemLayer::Held> &inventories,
 	const CharacterDataRepository::CharacterData &character,
 	EQ::InventoryProfile *inv
 )
@@ -842,12 +704,13 @@ bool WorldDatabase::GetCharSelInventory(
 		return false;
 	}
 
-	for (const auto& e : inventories) {
-		if (e.character_id != character.id) {
+	for (const auto &held : inventories) {
+		if (held.location.holder_id != character.id || !held.location.slot) {
 			continue;
 		}
 
-		switch (e.slot_id) {
+		const int16 slot_id = static_cast<int16>(*held.location.slot);
+		switch (slot_id) {
 			case EQ::invslot::slotFace:
 			case EQ::invslot::slotEar2:
 			case EQ::invslot::slotNeck:
@@ -860,54 +723,7 @@ bool WorldDatabase::GetCharSelInventory(
 				break;
 		}
 
-
-		uint32 augment_ids[EQ::invaug::SOCKET_COUNT] = {
-			e.augment_one,
-			e.augment_two,
-			e.augment_three,
-			e.augment_four,
-			e.augment_five,
-			e.augment_six
-		};
-
-		const EQ::ItemData* item = content_db.GetItem(e.item_id);
-		if (!item) {
-			continue;
-		}
-
-		EQ::ItemInstance *inst = content_db.CreateBaseItem(item, e.charges);
-
-		if (!inst) {
-			continue;
-		}
-
-		inst->SetCharges(e.charges);
-
-		if (e.color > 0) {
-			inst->SetColor(e.color);
-		}
-
-		if (item->IsClassCommon()) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				if (augment_ids[i]) {
-					inst->PutAugment(this, i, augment_ids[i]);
-				}
-			}
-		}
-
-		inst->SetAttuned(e.instnodrop);
-
-		if (!e.custom_data.empty()) {
-			inst->SetCustomDataString(e.custom_data);
-		}
-
-		inst->SetOrnamentIcon(e.ornament_icon);
-		inst->SetOrnamentationIDFile(e.ornament_idfile);
-		inst->SetOrnamentHeroModel(e.ornament_hero_model);
-
-		inv->PutItem(e.slot_id, *inst);
-
-		safe_delete(inst);
+		inv->PutItem(slot_id, *held.inst);
 	}
 
 	return true;

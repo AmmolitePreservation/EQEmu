@@ -45,9 +45,6 @@ extern UCSDatabase       database;
 
 void ProcessMailTo(Client *c, const std::string& from, const std::string& subject, const std::string& message);
 
-void Client45ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink);
-void Client50ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink);
-void Client55ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink);
 
 WorldServer::WorldServer()
 {
@@ -131,24 +128,7 @@ void WorldServer::ProcessMessage(uint16 opcode, EQ::Net::Packet &p)
 
 		if (Message[0] == ';')
 		{
-			std::string new_message;
-			switch (c->GetClientVersion()) {
-			case EQ::versions::ClientVersion::Titanium:
-				Client45ToServerSayLink(new_message, Message.substr(1, std::string::npos));
-				break;
-			case EQ::versions::ClientVersion::SoF:
-			case EQ::versions::ClientVersion::SoD:
-			case EQ::versions::ClientVersion::UF:
-				Client50ToServerSayLink(new_message, Message.substr(1, std::string::npos));
-				break;
-			case EQ::versions::ClientVersion::RoF:
-				Client55ToServerSayLink(new_message, Message.substr(1, std::string::npos));
-				break;
-			case EQ::versions::ClientVersion::RoF2:
-			default:
-				new_message = Message.substr(1, std::string::npos);
-				break;
-			}
+			std::string new_message = Message.substr(1, std::string::npos);
 
 			c->SendChannelMessageByNumber(new_message);
 		}
@@ -173,107 +153,3 @@ void WorldServer::ProcessMessage(uint16 opcode, EQ::Net::Packet &p)
 	}
 }
 
-void Client45ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink) {
-	if (clientSayLink.find('\x12') == std::string::npos) {
-		serverSayLink = clientSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(clientSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 45) {
-				serverSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26          31 32    36       37       (Source)
-			// 6.2:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX       X  XXXX  X        XXXXXXXX (45)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX  XXXXX XXXXXXXX (56)
-			// Diff:                                       ^^^^^         ^   ^^^^^
-
-			serverSayLink.push_back('\x12');
-			serverSayLink.append(segments[segment_iter].substr(0, 31));
-			serverSayLink.append("00000");
-			serverSayLink.append(segments[segment_iter].substr(31, 5));
-			serverSayLink.push_back('0');
-			serverSayLink.push_back(segments[segment_iter][36]);
-			serverSayLink.append("00000");
-			serverSayLink.append(segments[segment_iter].substr(37));
-			serverSayLink.push_back('\x12');
-		}
-		else {
-			serverSayLink.append(segments[segment_iter]);
-		}
-	}
-}
-
-void Client50ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink) {
-	if (clientSayLink.find('\x12') == std::string::npos) {
-		serverSayLink = clientSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(clientSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 50) {
-				serverSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26          31 32    36 37    42       (Source)
-			// SoF:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX       X  XXXX  X  XXXXX XXXXXXXX (50)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX  XXXXX XXXXXXXX (56)
-			// Diff:                                       ^^^^^         ^
-
-			serverSayLink.push_back('\x12');
-			serverSayLink.append(segments[segment_iter].substr(0, 31));
-			serverSayLink.append("00000");
-			serverSayLink.append(segments[segment_iter].substr(31, 5));
-			serverSayLink.push_back('0');
-			serverSayLink.append(segments[segment_iter].substr(36));
-			serverSayLink.push_back('\x12');
-		}
-		else {
-			serverSayLink.append(segments[segment_iter]);
-		}
-	}
-}
-
-void Client55ToServerSayLink(std::string& serverSayLink, const std::string& clientSayLink) {
-	if (clientSayLink.find('\x12') == std::string::npos) {
-		serverSayLink = clientSayLink;
-		return;
-	}
-
-	auto segments = Strings::Split(clientSayLink, '\x12');
-
-	for (size_t segment_iter = 0; segment_iter < segments.size(); ++segment_iter) {
-		if (segment_iter & 1) {
-			if (segments[segment_iter].length() <= 55) {
-				serverSayLink.append(segments[segment_iter]);
-				// TODO: log size mismatch error
-				continue;
-			}
-
-			// Idx:  0 1     6     11    16    21    26    31    36 37    41 42    47       (Source)
-			// RoF:  X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX  X  XXXXX XXXXXXXX (55)
-			// RoF2: X XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX X  XXXX XX  XXXXX XXXXXXXX (56)
-			// Diff:                                                     ^
-
-			serverSayLink.push_back('\x12');
-			serverSayLink.append(segments[segment_iter].substr(0, 41));
-			serverSayLink.push_back('0');
-			serverSayLink.append(segments[segment_iter].substr(41));
-			serverSayLink.push_back('\x12');
-		}
-		else {
-			serverSayLink.append(segments[segment_iter]);
-		}
-	}
-}

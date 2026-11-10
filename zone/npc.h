@@ -393,13 +393,9 @@ public:
 	void	LoadMercenaryTypes();
 	void	LoadMercenaries();
 	std::list<MercType> GetMercenaryTypesList() {return mercTypeList; };
-	std::list<MercType> GetMercenaryTypesList( uint32 expansion );
 	std::list<MercData> GetMercenariesList() {return mercDataList; };
-	std::list<MercData> GetMercenariesList( uint32 expansion );
 	int		GetNumMercenaryTypes() { return static_cast<int>(mercTypeList.size()); };
-	int		GetNumMercenaryTypes( uint32 expansion );
 	int		GetNumberOfMercenaries() { return static_cast<int>(mercDataList.size()); };
-	int		GetNumberOfMercenaries( uint32 expansion );
 
 	inline bool GetNPCAggro() const { return npc_aggro; }
 	inline void SetNPCAggro(bool in_npc_aggro) { npc_aggro = in_npc_aggro; }
@@ -569,6 +565,7 @@ public:
 		uint32           count              = 0;
 		EQ::ItemInstance *item              = nullptr;
 		bool             is_multiquest_item = false; // state
+		bool             returned_to_player = false; // state
 	};
 
 	struct HandinMoney {
@@ -596,8 +593,14 @@ public:
 		std::vector<EQ::ItemInstance *> items
 	);
 	Handin ReturnHandinItems(Client *c);
+	void MarkHandinItemReturned(const EQ::ItemInstance *inst);
+	void RetireKeptHandinItems();
 	void ResetHandin();
 	void ResetMultiQuest();
+	// A player's item the pet took: the loot entry for it takes the item's GUID; the slot it went to, or SLOT_INVALID.
+	int16 AdoptPetItem(const EQ::ItemInstance &inst);
+	// A restored pet's loot entries take the GUIDs of the rows its owner's pet holder has.
+	void AdoptPetItemRows();
 	bool HasProcessedHandinReturn() { return m_has_processed_handin_return; }
 	bool HandinStarted() { return m_handin_started; }
 

@@ -4,6 +4,7 @@
 #include <luabind/object.hpp>
 
 #include "masterentity.h"
+#include "../common/item_layer.h"
 #include "lua_iteminst.h"
 #include "lua_item.h"
 
@@ -255,11 +256,13 @@ int8 Lua_ItemInst::GetMaxEvolveLvl() {
 	return self->GetMaxEvolveLvl();
 }
 
+// A copy a script makes is a new item, issued when it lands.
 Lua_ItemInst Lua_ItemInst::Clone() {
 	Lua_Safe_Call_Class(Lua_ItemInst);
-	return Lua_ItemInst(self->Clone(), true);
+	auto *copy = self->Clone();
+	ItemLayer::ClearGUID(*copy);
+	return Lua_ItemInst(copy, true);
 }
-
 void Lua_ItemInst::SetTimer(std::string name, uint32 time) {
 	Lua_Safe_Call_Void();
 	self->SetTimer(name, time);
@@ -349,12 +352,6 @@ void Lua_ItemInst::AddEvolveAmount(uint64 amount)
 	self->SetEvolveAddToCurrentAmount(amount);
 }
 
-uint32 Lua_ItemInst::GetAugmentEvolveUniqueID(uint8 slot_id)
-{
-	Lua_Safe_Call_Int();
-	return self->GetAugmentEvolveUniqueID(slot_id);
-}
-
 bool Lua_ItemInst::GetEvolveActivated()
 {
 	Lua_Safe_Call_Bool();
@@ -365,12 +362,6 @@ uint64 Lua_ItemInst::GetEvolveAmount()
 {
 	Lua_Safe_Call_Int();
 	return self->GetEvolveCurrentAmount();
-}
-
-uint32 Lua_ItemInst::GetEvolveCharacterID()
-{
-	Lua_Safe_Call_Int();
-	return self->GetEvolveCharID();
 }
 
 bool Lua_ItemInst::GetEvolveEquipped()
@@ -388,7 +379,7 @@ uint32 Lua_ItemInst::GetEvolveFinalItemID()
 uint32 Lua_ItemInst::GetEvolveItemID()
 {
 	Lua_Safe_Call_Int();
-	return self->GetEvolveItemID();
+	return self->GetID();
 }
 
 int8 Lua_ItemInst::GetEvolveLevel()
@@ -407,12 +398,6 @@ float Lua_ItemInst::GetEvolveProgression()
 {
 	Lua_Safe_Call_Real();
 	return self->GetEvolveProgression();
-}
-
-uint64 Lua_ItemInst::GetEvolveUniqueID()
-{
-	Lua_Safe_Call_Int();
-	return self->GetEvolveUniqueID();
 }
 
 bool Lua_ItemInst::IsEvolving()
@@ -439,6 +424,12 @@ int Lua_ItemInst::GetSerialNumber()
 	return self->GetSerialNumber();
 }
 
+// The item's GUID as the client shows it; zeros for an item not yet issued.
+std::string Lua_ItemInst::GetGUID()
+{
+	Lua_Safe_Call_String();
+	return ItemGUIDText(self->GetGUID());
+}
 luabind::scope lua_register_iteminst() {
 	return luabind::class_<Lua_ItemInst>("ItemInst")
 	.def(luabind::constructor<>())
@@ -454,7 +445,6 @@ luabind::scope lua_register_iteminst() {
 	.def("CountAugmentByID", (int(Lua_ItemInst::*)(uint32))&Lua_ItemInst::CountAugmentByID)
 	.def("DeleteCustomData", (void(Lua_ItemInst::*)(const std::string &))&Lua_ItemInst::DeleteCustomData)
 	.def("GetAugment", (Lua_ItemInst(Lua_ItemInst::*)(int))&Lua_ItemInst::GetAugment)
-	.def("GetAugmentEvolveUniqueID", (uint32(Lua_ItemInst::*)(uint8))&Lua_ItemInst::GetAugmentEvolveUniqueID)
 	.def("GetAugmentIDs", (luabind::object(Lua_ItemInst::*)(lua_State*))&Lua_ItemInst::GetAugmentIDs)
 	.def("GetAugmentItemID", (uint32(Lua_ItemInst::*)(int))&Lua_ItemInst::GetAugmentItemID)
 	.def("GetAugmentType", (int(Lua_ItemInst::*)(void))&Lua_ItemInst::GetAugmentType)
@@ -465,14 +455,12 @@ luabind::scope lua_register_iteminst() {
 	.def("GetExp", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetExp)
 	.def("GetEvolveActivated", (bool(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveActivated)
 	.def("GetEvolveAmount", (uint64(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveAmount)
-	.def("GetEvolveCharacterID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveCharacterID)
 	.def("GetEvolveEquipped", (bool(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveEquipped)
 	.def("GetEvolveFinalItemID", (uint64(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveFinalItemID)
 	.def("GetEvolveItemID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveItemID)
 	.def("GetEvolveLevel", (int8(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveLevel)
 	.def("GetEvolveLoreID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveLoreID)
 	.def("GetEvolveProgression", (float(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveProgression)
-	.def("GetEvolveUniqueID", (uint64(Lua_ItemInst::*)(void))&Lua_ItemInst::GetEvolveUniqueID)
 	.def("GetID", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetID)
 	.def("GetItem", (Lua_Item(Lua_ItemInst::*)(void))&Lua_ItemInst::GetItem)
 	.def("GetItem", (Lua_ItemInst(Lua_ItemInst::*)(uint8))&Lua_ItemInst::GetItem)
@@ -482,6 +470,7 @@ luabind::scope lua_register_iteminst() {
 	.def("GetMaxEvolveLvl", (int(Lua_ItemInst::*)(void))&Lua_ItemInst::GetMaxEvolveLvl)
 	.def("GetName", (std::string(Lua_ItemInst::*)(void))&Lua_ItemInst::GetName)
 	.def("GetSerialNumber", (int(Lua_ItemInst::*)(void))&Lua_ItemInst::GetSerialNumber)
+	.def("GetGUID", (std::string(Lua_ItemInst::*)(void))&Lua_ItemInst::GetGUID)
 	.def("GetPrice", (uint32(Lua_ItemInst::*)(void))&Lua_ItemInst::GetPrice)
 	.def("GetTaskDeliveredCount", &Lua_ItemInst::GetTaskDeliveredCount)
 	.def("GetTotalItemCount", (uint8(Lua_ItemInst::*)(void))&Lua_ItemInst::GetTotalItemCount)

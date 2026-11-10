@@ -4,7 +4,7 @@ This repository is **Peridot's EQEmu server source**: upstream EQEmu at `ab45d43
 
 ## Current work: GUIDs and player housing
 
-**The current work is Live-style item GUIDs and server-side player housing (real estate) for the RoF2 client, as equal peers, GUIDs first.** GUIDs are built on the `guids` branch (its `guids/` folder has the design and worklist); housing on this `housing` branch is paused until `guids` is merged into it and migrated, then reworked on top of it. The client-side research that drives housing lives in [`playerHousing/`](playerHousing/README.md); start with its *Start here* section.
+**The current work is Live-style item GUIDs and server-side player housing (real estate) for the RoF2 client, as equal peers, GUIDs first.** GUIDs are built on the `guids` branch, which is merged into this `housing` branch: [`guids/`](guids/README.md) has what Live does and the design, with its [worklist](guids/worklist.md). Housing is reworked on top of the GUID tables. The client-side research that drives housing lives in [`playerHousing/`](playerHousing/README.md); start with its *Start here* section.
 
 *Everything below this line is upstream EQEmu's README.*
 
@@ -125,9 +125,7 @@ Every system, packet, opcode, and game mechanic has been reconstructed through c
  🧑‍💻🖥️ Supported Clients
 </h1>
 
-|Titanium Edition|Secrets of Faydwer|Seeds of Destruction|Underfoot|Rain of Fear|
-|:---:|:---:|:---:|:---:|:---:|
-|<img src="http://i.imgur.com/hrwDxoM.jpg" height="150">|<img src="http://i.imgur.com/cRDW5tn.png" height="150">|<img src="http://i.imgur.com/V48kuVn.jpg" height="150">|<img src="http://i.imgur.com/IJQ0XMa.jpg" height="150">|<img src="http://i.imgur.com/OMpHkKa.png" height="100">|
+This fork supports one client: Rain of Fear 2 (the May 10 2013 build). See `rof2/README.md`.
 
 ## 📚 Resources
 

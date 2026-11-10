@@ -17,6 +17,7 @@
 */
 
 #include "../common/bodytypes.h"
+#include "../common/repositories/item_instances_repository.h"
 #include "../common/classes.h"
 #include "../common/global_define.h"
 #include "../common/misc_functions.h"
@@ -573,12 +574,10 @@ void NPC::SetTarget(Mob* mob) {
 
 	if (owner) {
 		auto client = owner->CastToClient();
-		if (client->ClientVersionBit() & EQ::versions::maskUFAndLater) {
-			auto app = new EQApplicationPacket(OP_PetHoTT, sizeof(ClientTarget_Struct));
-			auto ct = (ClientTarget_Struct *)app->pBuffer;
-			ct->new_target = mob ? mob->GetID() : 0;
-			client->FastQueuePacket(&app);
-		}
+		auto app = new EQApplicationPacket(OP_PetHoTT, sizeof(ClientTarget_Struct));
+		auto ct = (ClientTarget_Struct *)app->pBuffer;
+		ct->new_target = mob ? mob->GetID() : 0;
+		client->FastQueuePacket(&app);
 	}
 	Mob::SetTarget(mob);
 }
@@ -1738,12 +1737,12 @@ void NPC::PickPocket(Client* thief)
 		if (item_inst->IsStackable() && RuleB(Character, UseStackablePickPocketing)) {
 			if (!thief->TryStacking(item_inst, ItemPacketTrade, false, false)) {
 				thief->PutItemInInventory(slot_id, *item_inst);
-				thief->SendItemPacket(slot_id, item_inst, ItemPacketTrade);
+				thief->SendItemPacket(slot_id, thief->LandedItem(slot_id), ItemPacketTrade);
 			}
 		}
 		else {
 			thief->PutItemInInventory(slot_id, *item_inst);
-			thief->SendItemPacket(slot_id, item_inst, ItemPacketTrade);
+			thief->SendItemPacket(slot_id, thief->LandedItem(slot_id), ItemPacketTrade);
 		}
 		RemoveItem(item_inst->GetID());
 		thief->SendPickPocketResponse(this, 0, PickPocketItem, item_inst->GetItem());
@@ -4820,6 +4819,7 @@ NPC::Handin NPC::ReturnHandinItems(Client *c)
 					}
 
 					c->PushItemOnCursor(*i.item, true);
+					MarkHandinItemReturned(i.item);
 					LogNpcHandin(
 						"Hand-in failed, returning item [{}] i.is_multiquest_item [{}]",
 						i.item->GetItem()->Name,
@@ -4930,12 +4930,66 @@ NPC::Handin NPC::ReturnHandinItems(Client *c)
 	return returned;
 }
 
+int16 NPC::AdoptPetItem(const EQ::ItemInstance &inst)
+{
+	for (auto *loot_item : m_loot_items) {
+		if (loot_item->item_id == inst.GetID() && loot_item->equip_slot != EQ::invslot::SLOT_INVALID && loot_item->guid.IsZero()) {
+			loot_item->guid = inst.GetGUID();
+			return loot_item->equip_slot;
+		}
+	}
+
+	return EQ::invslot::SLOT_INVALID;
+}
+
+void NPC::AdoptPetItemRows()
+{
+	auto *owner = GetOwner();
+	if (!owner || !owner->IsClient()) {
+		return;
+	}
+
+	const auto rows = ItemInstancesRepository::GetWhere(
+		database,
+		fmt::format("{} AND retirement_state IS NULL", ItemLayer::HolderFilter(ItemHolderType::Pet, owner->CastToClient()->CharacterID()))
+	);
+
+	for (const auto &row : rows) {
+		for (auto *loot_item : m_loot_items) {
+			if (row.location.slot && loot_item->equip_slot == static_cast<int16>(*row.location.slot) && loot_item->item_id == row.item_id && loot_item->guid.IsZero()) {
+				loot_item->guid = row.guid;
+				break;
+			}
+		}
+	}
+}
+
+void NPC::MarkHandinItemReturned(const EQ::ItemInstance *inst)
+{
+	for (auto &i : m_hand_in.original_items) {
+		if (i.item == inst) {
+			i.returned_to_player = true;
+		}
+	}
+}
+
+// A handed-in item the player did not get back was kept by the NPC: consumed.
+void NPC::RetireKeptHandinItems()
+{
+	for (auto &i : m_hand_in.original_items) {
+		if (i.item && i.item->HasGUID() && !i.returned_to_player) {
+			ItemLayer::Retire(database, *i.item, ItemRetirement::Consumed);
+		}
+	}
+}
+
 void NPC::ResetHandin()
 {
 	LogNpcHandin("Resetting hand-in bucket for [{}]", GetCleanName());
 	m_has_processed_handin_return = false;
 	m_handin_started              = false;
 	if (!IsMultiQuestEnabled()) {
+		RetireKeptHandinItems();
 		for (auto &i: m_hand_in.original_items) {
 			safe_delete(i.item);
 		}
@@ -4946,6 +5000,7 @@ void NPC::ResetHandin()
 
 void NPC::ResetMultiQuest() {
 	LogNpcHandin("Resetting multi-quest hand-in bucket for [{}]", GetCleanName());
+	RetireKeptHandinItems();
 	for (auto &i: m_hand_in.original_items) {
 		safe_delete(i.item);
 	}

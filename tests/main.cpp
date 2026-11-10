@@ -33,6 +33,8 @@
 #include "skills_util_test.h"
 #include "task_state_test.h"
 #include "housingTest.h"
+#include "item_guid_test.h"
+#include "item_layer_lookup_test.h"
 
 const EQEmuConfig *Config;
 
@@ -58,6 +60,8 @@ int main()
 		tests.add(new SkillsUtilsTest());
 		tests.add(new TaskStateTest());
 		tests.add(new HousingTest());
+		tests.add(new ItemGUIDTest());
+		tests.add(new ItemLayerLookupTest());
 		tests.run(*output, true);
 	}
 	catch (std::exception &ex) {

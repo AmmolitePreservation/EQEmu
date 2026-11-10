@@ -67,26 +67,46 @@ void EvolvingItemsManager::DoLootChecks(const uint32 char_id, const uint16 slot_
 		return;
 	}
 
-	if (!inst.GetEvolveUniqueID()) {
-		auto e = CharacterEvolvingItemsRepository::NewEntity();
-
-		e.character_id  = char_id;
-		e.item_id       = inst.GetID();
-		e.equipped      = inst.GetEvolveEquipped();
-		e.final_item_id = EvolvingItemsManager::Instance()->GetFinalItemID(inst);
-
-		auto r = CharacterEvolvingItemsRepository::InsertOne(*m_db, e);
-		e.id   = r.id;
-
-		inst.SetEvolveUniqueID(e.id);
-		inst.SetEvolveCharID(e.character_id);
-		inst.SetEvolveItemID(e.item_id);
-		inst.SetEvolveFinalItemID(e.final_item_id);
-
+	const bool equipped = inst.GetEvolveEquipped();
+	if (!inst.HasEvolveRecord() && !LoadRecord(*m_db, inst)) {
 		return;
 	}
+	inst.SetEvolveEquipped(equipped);
+	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetGUID(), equipped);
+}
 
-	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetEvolveUniqueID(), inst.GetEvolveEquipped());
+// An item landing from a holder that does not carry evolving state (a corpse, a parcel, the guild bank) already has its
+// record if it ever landed before; only a first landing makes one.
+bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst) const
+{
+	if (!inst.HasGUID()) {
+		LogError("Evolving item [{}] has no GUID yet, so its record cannot be found or made", inst.GetID());
+		return false;
+	}
+
+	auto e = CharacterEvolvingItemsRepository::FindByGUID(db, inst.GetGUID());
+	if (!e.id) {
+		e = CharacterEvolvingItemsRepository::NewEntity();
+		CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
+		e.equipped      = inst.GetEvolveEquipped();
+		e.final_item_id = GetFinalItemID(inst);
+
+		e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
+		if (!e.id) {
+			const auto guid = inst.GetGUID();
+			LogError("Evolving item [{}] guid [{} {} {}]: its record could not be made", inst.GetID(), guid.first, guid.second, guid.third);
+			return false;
+		}
+	}
+
+	CharacterEvolvingItemsRepository::SetGUID(inst.GetEvolvingDetails(), inst.GetGUID());
+	inst.SetEvolveActivated(e.activated);
+	inst.SetEvolveEquipped(e.equipped);
+	inst.SetEvolveCurrentAmount(e.current_amount);
+	inst.CalculateEvolveProgression();
+	inst.SetEvolveFinalItemID(e.final_item_id);
+
+	return true;
 }
 
 uint32 EvolvingItemsManager::GetFinalItemID(const EQ::ItemInstance &inst) const
@@ -322,5 +342,5 @@ void EvolvingItemsManager::LoadPlayerEvent(const EQ::ItemInstance &inst, PlayerE
 	e.item_name   = inst.GetItem() ? inst.GetItem()->Name : std::string();
 	e.level       = inst.GetEvolveLvl();
 	e.progression = inst.GetEvolveProgression();
-	e.unique_id   = inst.GetEvolveUniqueID();
+	e.guid        = ItemGUIDText(inst.GetGUID());
 }

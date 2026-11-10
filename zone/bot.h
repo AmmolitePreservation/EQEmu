@@ -699,7 +699,7 @@ public:
 	bool CheckDataBucket(std::string bucket_name, const std::string& bucket_value, uint8 bucket_comparison);
 
 	// Bot Equipment & Inventory Class Methods
-	void BotTradeAddItem(const EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database = true);
+	void BotTradeAddItem(EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database = true);
 	void EquipBot();
 	bool CheckLoreConflict(const EQ::ItemData* item);
 	void UpdateEquipmentLight() override
@@ -1006,8 +1006,8 @@ public:
 		uint32 attack
 	);
 	void BotRemoveEquipItem(uint16 slot_id);
-	void RemoveBotItemBySlot(uint16 slot_id
-);
+	// The bot's item in the slot leaves it: retired with the reason, or, without one, moved on by another landing.
+	void RemoveBotItemBySlot(uint16 slot_id, std::optional<ItemRetirement> reason = std::nullopt);
 	void AddBotItem(
 		uint16 slot_id,
 		uint32 item_id,

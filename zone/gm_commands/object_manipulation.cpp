@@ -1137,7 +1137,6 @@ void ObjectManipulation::CommandHandler(Client *c, const Seperator *sep)
 			}
 
 			door.incline             = od.incline; // unknown20 = optional incline value
-			door.client_version_mask = 0xFFFFFFFF;
 
 			Doors *doors = new Doors(door);
 

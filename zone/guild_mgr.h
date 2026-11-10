@@ -20,8 +20,8 @@ class ServerPacket;
 
 struct GuildBankItems
 {
-	std::map<int32, GuildBankRepository::GuildBank> main_area{};
-	std::map<int32, GuildBankRepository::GuildBank> deposit_area{};
+	std::map<int32, GuildBankRepository::GuildBankItem> main_area{};
+	std::map<int32, GuildBankRepository::GuildBankItem> deposit_area{};
 };
 
 struct GuildBank
@@ -117,7 +117,7 @@ class GuildBankManager
 public:
 	~GuildBankManager();
 	void SendGuildBank(Client *c);
-	bool AddItem(GuildBankRepository::GuildBank &guild_bank_item, Client* client);
+	bool AddItem(uint32 guild_id, GuildBankRepository::GuildBankItem &guild_bank_item, Client* client);
 	int Promote(uint32 GuildID, int SlotID, Client* c);
 	void SetPermissions(uint32 GuildID, uint16 SlotID, uint32 Permissions, const char *MemberName, Client* c);
 	std::unique_ptr<EQ::ItemInstance> GetItem(uint32 guild_id, uint16 area, uint16 slot_id, uint32 quantity);

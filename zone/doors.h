@@ -36,7 +36,6 @@ public:
 	uint8 IsLDoNDoor() { return m_is_ldon_door; }
 	uint16 GetLockpick() { return m_lockpick; }
 	uint16 GetSize() { return m_size; }
-	uint32 GetClientVersionMask() { return m_client_version_mask; }
 	uint32 GetDoorDBID() { return m_database_id; }
 	int32 GetDoorParam() { return m_door_param; }
 	uint32 GetEntityID() { return m_entity_id; }
@@ -112,7 +111,6 @@ private:
 	uint8     m_is_ldon_door;
 	int       m_dz_switch_id = 0;
 	uint32    m_real_estate_door_id = 0;
-	uint32    m_client_version_mask;
 	bool      m_is_blacklisted_to_open = false; // is door blacklisted to open by npcs
 };
 #endif

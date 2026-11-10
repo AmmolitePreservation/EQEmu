@@ -49,6 +49,7 @@
 #include "water_map.h"
 #include "worldserver.h"
 #include "zone.h"
+#include "item_recovery.h"
 #include "zone_config.h"
 #include "mob_movement_manager.h"
 #include "npc_scale_manager.h"
@@ -57,6 +58,7 @@
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/repositories/character_exp_modifiers_repository.h"
 #include "../common/repositories/merchantlist_repository.h"
+#include "../common/repositories/ground_items_repository.h"
 #include "../common/repositories/object_repository.h"
 #include "../common/repositories/rule_sets_repository.h"
 #include "../common/repositories/level_exp_mods_repository.h"
@@ -214,7 +216,6 @@ bool Zone::LoadZoneObjects()
 			d.name                = Strings::Replace(e.objectname, "_ACTORDEF", "");
 			d.dest_zone           = "NONE";
 			d.incline             = e.incline;
-			d.client_version_mask = 0xFFFFFFFF;
 
 			if (e.size_percentage == 0) {
 				d.size = 100;
@@ -404,7 +405,8 @@ bool Zone::LoadGroundSpawns() {
 	return(true);
 }
 
-int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold) {
+// A pooled row keeps the GUID of the sold item that made it; sales into it and purchases from it change only its count.
+int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold, const ItemGUID &sold_item) {
 
 	LogInventory("[{}] [{}] charges of [{}]", ((sold) ? "Sold" : "Bought"),
 		charges, item);
@@ -465,7 +467,7 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 					ml.origslot = ml.slot;
 				}
 				if (ml.charges > 0) {
-					database.SaveMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID(), item, ml.charges);
+					database.SaveMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID(), item, ml.charges, ml.guid);
 					tmp_merlist.push_back(ml);
 				} else {
 					database.DeleteMerchantTemp(npcid, ml.origslot, GetZoneID(), GetInstanceID());
@@ -525,9 +527,10 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 
 		first_empty_mslot = idx;
 
-		database.SaveMerchantTemp(npcid, first_empty_slot, GetZoneID(), GetInstanceID(), item, charges);
+		database.SaveMerchantTemp(npcid, first_empty_slot, GetZoneID(), GetInstanceID(), item, charges, sold_item);
 		tmp_merlist = tmpmerchanttable[npcid];
 		TempMerchantList ml2;
+		ml2.guid = sold_item;
 		ml2.charges = charges;
 		LogInventory("Adding slot [{}] with [{}] charges.", first_empty_mslot, charges);
 		ml2.item = item;
@@ -538,6 +541,17 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 		tmpmerchanttable[npcid] = tmp_merlist;
 		return ml2.slot;
 	}
+}
+
+ItemGUID Zone::GetTempMerchantGUID(uint32 npc_id, uint32 slot)
+{
+	for (const auto &e : tmpmerchanttable[npc_id]) {
+		if (e.slot == slot) {
+			return e.guid;
+		}
+	}
+
+	return {};
 }
 
 uint32 Zone::GetTempMerchantQuantity(uint32 NPCID, uint32 Slot) {
@@ -590,7 +604,10 @@ void Zone::LoadTempMerchantData()
 				npcid,
 				slot,
 				charges,
-				itemid
+				itemid,
+				COALESCE(guid_first, 0),
+				COALESCE(guid_second, 0),
+				COALESCE(guid_third, 0)
 				FROM merchantlist_temp
 				WHERE npcid IN ({})
 				AND zone_id = {}
@@ -622,6 +639,7 @@ void Zone::LoadTempMerchantData()
 		temp_merchant_list.slot     = Strings::ToUnsignedInt(row[1]);
 		temp_merchant_list.charges  = Strings::ToUnsignedInt(row[2]);
 		temp_merchant_list.item     = Strings::ToUnsignedInt(row[3]);
+		temp_merchant_list.guid     = ItemGUID{Strings::ToUnsignedInt(row[4]), Strings::ToUnsignedInt(row[5]), Strings::ToUnsignedInt(row[6])};
 		temp_merchant_list.origslot = temp_merchant_list.slot;
 
 		LogMerchants(
@@ -777,7 +795,7 @@ void Zone::LoadMercenaryTemplates()
 		SELECT DISTINCT MTem.merc_template_id, MTyp.dbstring
 		AS merc_type_id, MTem.dbstring
 		AS merc_subtype_id, MTyp.race_id, MS.class_id, MTyp.proficiency_id, MS.tier_id, 0
-		AS CostFormula, MTem.clientversion, MTem.merc_npc_type_id
+		AS CostFormula, MTem.merc_npc_type_id
 		FROM merc_types MTyp, merc_templates MTem, merc_subtypes MS
 		WHERE MTem.merc_type_id = MTyp.merc_type_id AND MTem.merc_subtype_id = MS.merc_subtype_id
 		ORDER BY MTyp.race_id, MS.class_id, MTyp.proficiency_id
@@ -794,11 +812,10 @@ void Zone::LoadMercenaryTemplates()
 			.MercSubType = Strings::ToUnsignedInt(row[2]),
 			.RaceID = static_cast<uint16>(Strings::ToUnsignedInt(row[3])),
 			.ClassID = static_cast<uint8>(Strings::ToUnsignedInt(row[4])),
-			.MercNPCID = Strings::ToUnsignedInt(row[9]),
+			.MercNPCID = Strings::ToUnsignedInt(row[8]),
 			.ProficiencyID = static_cast<uint8>(Strings::ToUnsignedInt(row[5])),
 			.TierID = static_cast<uint8>(Strings::ToUnsignedInt(row[6])),
-			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7])),
-			.ClientVersion = Strings::ToUnsignedInt(row[8])
+			.CostFormula = static_cast<uint8>(Strings::ToUnsignedInt(row[7]))
 		};
 
 		for (int i = 0; i < MaxMercStanceID; i++) {
@@ -1219,11 +1236,15 @@ bool Zone::Init(bool is_static) {
 	LogInfo("Loading adventure flavor text");
 	LoadAdventureFlavor();
 	LoadGroundSpawns();
+	GroundItemsRepository::RetireStranded(database, GetZoneID(), GetInstanceID());
 	LoadZoneObjects();
 	LoadZoneDoors();
 	LoadZoneBlockedSpells();
 	LoadVeteranRewards();
 	LoadAlternateCurrencies();
+	if (!ItemRecovery::LoadRules(*this)) {
+		return false;
+	}
 	LoadNPCEmotes(&npc_emote_list);
 	LoadAlternateAdvancement();
 	LoadBaseData();
@@ -1289,8 +1310,8 @@ void Zone::ReloadStaticData() {
 
 	LoadVeteranRewards();
 	LoadAlternateCurrencies();
+	ItemRecovery::LoadRules(*this);
 	LoadNPCEmotes(&npc_emote_list);
-
 	//load the zone config file.
 	if (!LoadZoneCFG(GetShortName(), GetInstanceVersion())) { // try loading the zone name...
 		LoadZoneCFG(
@@ -2051,11 +2072,6 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-		if (!(zp->client_version_mask & mask_test)) {
-			iterator.Advance();
-			continue;
-		}
 
 		if (zp->target_zone_id == to)
 		{
@@ -2088,18 +2104,18 @@ ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, uint32 to, Clien
 		closest_zp = nullptr;
 
 	if(!closest_zp)
-		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z, client);
+		closest_zp = GetClosestZonePointWithoutZone(location.x, location.y, location.z);
 
 	return closest_zp;
 }
 
 ZonePoint* Zone::GetClosestZonePoint(const glm::vec3& location, const char* to_name, Client* client, float max_distance) {
 	if(to_name == nullptr)
-		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, client, max_distance);
+		return GetClosestZonePointWithoutZone(location.x, location.y, location.z, max_distance);
 	return GetClosestZonePoint(location, ZoneID(to_name), client, max_distance);
 }
 
-ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Client* client, float max_distance) {
+ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, float max_distance) {
 	LinkedListIterator<ZonePoint*> iterator(zone_point_list);
 	ZonePoint* closest_zp = nullptr;
 	float closest_dist = FLT_MAX;
@@ -2108,13 +2124,6 @@ ZonePoint* Zone::GetClosestZonePointWithoutZone(float x, float y, float z, Clien
 	while(iterator.MoreElements())
 	{
 		ZonePoint* zp = iterator.GetData();
-		uint32 mask_test = client->ClientVersionBit();
-
-		if(!(zp->client_version_mask & mask_test))
-		{
-			iterator.Advance();
-			continue;
-		}
 
 		float delta_x = zp->x - x;
 		float delta_y = zp->y - y;
@@ -2166,7 +2175,6 @@ bool ZoneDatabase::LoadStaticZonePoints(LinkedList<ZonePoint *> *zone_point_list
 		zp->target_heading       = zone_point.target_heading;
 		zp->number               = zone_point.number;
 		zp->target_zone_instance = zone_point.target_instance;
-		zp->client_version_mask  = zone_point.client_version_mask;
 		zp->is_virtual           = zone_point.is_virtual > 0;
 		zp->height               = zone_point.height;
 		zp->width                = zone_point.width;

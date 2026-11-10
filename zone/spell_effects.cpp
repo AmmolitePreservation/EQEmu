@@ -157,7 +157,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 		if (spells[spell_id].endurance_upkeep > 0)
 			SetEndurUpkeep(true);
 
-		if (IsClient() && CastToClient()->ClientVersionBit() & EQ::versions::maskUFAndLater)
+		if (IsClient())
 		{
 			EQApplicationPacket *outapp = MakeBuffsPacket(false);
 			CastToClient()->FastQueuePacket(&outapp);
@@ -696,7 +696,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							strstr(transI->GetItem()->Name, "Flesh") ||
 							strstr(transI->GetItem()->Name, "parts") ||
 							strstr(transI->GetItem()->Name, "Parts")){
-							CastToClient()->DeleteItemInInventory(EQ::invslot::slotCursor, fcharges, true);
+							CastToClient()->DeleteItemInInventory(EQ::invslot::slotCursor, fcharges, true, ItemRetirement::Consumed);
 							CastToClient()->SummonItem(13073, fcharges);
 						}
 						else{
@@ -828,7 +828,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				// This was done in AddBuff, but we were not a pet yet, so
 				// the target windows didn't get updated.
 				EQApplicationPacket *outapp = MakeBuffsPacket();
-				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater);
+				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false);
 				safe_delete(outapp);
 
 				if(caster->IsClient()){
@@ -884,36 +884,33 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 #endif
 				if(IsClient())
 				{
-					if (CastToClient()->ClientVersionBit() & EQ::versions::maskSoDAndLater)
+					uint8 bt = BodyType::Undead;
+
+					int MessageID = SENSE_UNDEAD;
+
+					if(effect == SE_SenseSummoned)
 					{
-						uint8 bt = BodyType::Undead;
-
-						int MessageID = SENSE_UNDEAD;
-
-						if(effect == SE_SenseSummoned)
-						{
-							bt = BodyType::Summoned;
-							MessageID = SENSE_SUMMONED;
-						}
-						else if(effect == SE_SenseAnimals)
-						{
-							bt = BodyType::Animal;
-							MessageID = SENSE_ANIMAL;
-						}
-
-						Mob *ClosestMob = entity_list.GetClosestMobByBodyType(this, bt, true);
-
-						if(ClosestMob)
-						{
-							MessageString(Chat::Spells, MessageID);
-							SetHeading(CalculateHeadingToTarget(ClosestMob->GetX(), ClosestMob->GetY()));
-							SetTarget(ClosestMob);
-							CastToClient()->SendTargetCommand(ClosestMob->GetID());
-							SentPositionPacket(0.0f, 0.0f, 0.0f, 0.0f, 0, true);
-						}
-						else
-							MessageString(Chat::Red, SENSE_NOTHING);
+						bt = BodyType::Summoned;
+						MessageID = SENSE_SUMMONED;
 					}
+					else if(effect == SE_SenseAnimals)
+					{
+						bt = BodyType::Animal;
+						MessageID = SENSE_ANIMAL;
+					}
+
+					Mob *ClosestMob = entity_list.GetClosestMobByBodyType(this, bt, true);
+
+					if(ClosestMob)
+					{
+						MessageString(Chat::Spells, MessageID);
+						SetHeading(CalculateHeadingToTarget(ClosestMob->GetX(), ClosestMob->GetY()));
+						SetTarget(ClosestMob);
+						CastToClient()->SendTargetCommand(ClosestMob->GetID());
+						SentPositionPacket(0.0f, 0.0f, 0.0f, 0.0f, 0, true);
+					}
+					else
+						MessageString(Chat::Red, SENSE_NOTHING);
 				}
 				break;
 			}
@@ -1238,8 +1235,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							charges = 1;
 
 						if (SummonedItem) {
-							c->PushItemOnCursor(*SummonedItem);
-							c->SendItemPacket(EQ::invslot::slotCursor, SummonedItem, ItemPacketLimbo);
+							c->PushItemOnCursor(*SummonedItem, true);
 							safe_delete(SummonedItem);
 						}
 						SummonedItem = database.CreateItem(spell.base_value[i], charges);
@@ -1315,20 +1311,18 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					Mob *pet=GetPet();
 					if (IsClient() && pet) {
 						auto c = CastToClient();
-						if (c->ClientVersionBit() & EQ::versions::maskUFAndLater) {
-							c->SetPetCommandState(PET_BUTTON_SIT, 0);
-							c->SetPetCommandState(PET_BUTTON_STOP, 0);
-							c->SetPetCommandState(PET_BUTTON_REGROUP, 0);
-							c->SetPetCommandState(PET_BUTTON_FOLLOW, 1);
-							c->SetPetCommandState(PET_BUTTON_GUARD, 0);
-							// Creating pet from spell - taunt always false
-							// If suspended pet - that will be restore there
-							// If logging in, client will send toggle
-							c->SetPetCommandState(PET_BUTTON_HOLD, 0);
-							c->SetPetCommandState(PET_BUTTON_GHOLD, 0);
-							c->SetPetCommandState(PET_BUTTON_FOCUS, 0);
-							c->SetPetCommandState(PET_BUTTON_SPELLHOLD, 0);
-						}
+						c->SetPetCommandState(PET_BUTTON_SIT, 0);
+						c->SetPetCommandState(PET_BUTTON_STOP, 0);
+						c->SetPetCommandState(PET_BUTTON_REGROUP, 0);
+						c->SetPetCommandState(PET_BUTTON_FOLLOW, 1);
+						c->SetPetCommandState(PET_BUTTON_GUARD, 0);
+						// Creating pet from spell - taunt always false
+						// If suspended pet - that will be restore there
+						// If logging in, client will send toggle
+						c->SetPetCommandState(PET_BUTTON_HOLD, 0);
+						c->SetPetCommandState(PET_BUTTON_GHOLD, 0);
+						c->SetPetCommandState(PET_BUTTON_FOCUS, 0);
+						c->SetPetCommandState(PET_BUTTON_SPELLHOLD, 0);
 					}
 				}
 				break;
@@ -1711,7 +1705,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 #endif
 				// This is handled by the client prior to SoD.
 				//
-				if (IsClient() && (CastToClient()->ClientVersionBit() & EQ::versions::maskSoDAndLater))
+				if (IsClient())
 					CastToClient()->LocateCorpse();
 
 				break;
@@ -3448,8 +3442,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 	if (SummonedItem) {
 		Client *c=CastToClient();
-		c->PushItemOnCursor(*SummonedItem);
-		c->SendItemPacket(EQ::invslot::slotCursor, SummonedItem, ItemPacketLimbo);
+		c->PushItemOnCursor(*SummonedItem, true);
 		safe_delete(SummonedItem);
 	}
 
@@ -3877,10 +3870,6 @@ void Mob::BuffProcess()
 						LogSpells("Buff [{}] in slot [{}] has [{}] tics remaining", buffs[buffs_i].spellid, buffs_i, buffs[buffs_i].ticsremaining);
 					}
 				}
-				else if (IsClient() && !(CastToClient()->ClientVersionBit() & EQ::versions::maskSoFAndLater))
-				{
-					buffs[buffs_i].UpdateClient = true;
-				}
 			}
 
 			if(IsClient())
@@ -3889,8 +3878,6 @@ void Mob::BuffProcess()
 				{
 					CastToClient()->SendBuffDurationPacket(buffs[buffs_i], buffs_i);
 					// Hack to get UF to play nicer, RoF seems fine without it
-					if (CastToClient()->ClientVersion() == EQ::versions::ClientVersion::UF && buffs[buffs_i].hit_number > 0)
-						CastToClient()->SendBuffNumHitPacket(buffs[buffs_i], buffs_i);
 					buffs[buffs_i].UpdateClient = false;
 				}
 			}
@@ -4159,7 +4146,7 @@ void Mob::DoBuffTic(const Buffs_Struct &buff, int slot, Mob *caster)
 		case SE_LocateCorpse: {
 			// This is handled by the client prior to SoD.
 
-			if (IsClient() && (CastToClient()->ClientVersionBit() & EQ::versions::maskSoDAndLater))
+			if (IsClient())
 				CastToClient()->LocateCorpse();
 		}
 
@@ -4453,7 +4440,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 				EQApplicationPacket *outapp = MakeBuffsPacket(true, true);
 
-				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater, true, true);
+				entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, true, true);
 
 				if (IsAIControlled())
 				{
@@ -4687,7 +4674,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket();
 
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false);
 		if(IsClient() && GetTarget() == this) {
 			CastToClient()->QueuePacket(outapp);
 		}
@@ -4697,11 +4684,11 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 
 	if (IsNPC()) {
 		EQApplicationPacket *outapp = MakeBuffsPacket();
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater, true);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, true);
 		safe_delete(outapp);
 	}
 
-	if (IsClient() && CastToClient()->ClientVersionBit() & EQ::versions::maskUFAndLater)
+	if (IsClient())
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket(false);
 		CastToClient()->FastQueuePacket(&outapp);
@@ -9716,13 +9703,8 @@ bool Mob::TrySpellProjectile(Mob* spell_target, uint16 spell_id, float speed) {
 		//Only use fire graphic for fire spells.
 		if (spells[spell_id].resist_type == RESIST_FIRE) {
 
-			if (IsClient()) {
-				if (CastToClient()->ClientVersionBit() <= 4) //Titanium needs alternate graphic.
-					ProjectileAnimation(spell_target, (RuleI(Spells, FRProjectileItem_Titanium)), false, speed, 0.0f, 0.0f, arc);
-				else
-					ProjectileAnimation(spell_target, (RuleI(Spells, FRProjectileItem_SOF)), false, speed, 0.0f, 0.0f, arc);
-			}
-
+			if (IsClient())
+				ProjectileAnimation(spell_target, (RuleI(Spells, FRProjectileItem)), false, speed, 0.0f, 0.0f, arc);
 			else
 				ProjectileAnimation(spell_target, (RuleI(Spells, FRProjectileItem_NPC)), false, speed, 0.0f, 0.0f, arc);
 		}

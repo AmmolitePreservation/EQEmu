@@ -22,7 +22,6 @@
 #include "doors.h"
 #include "quest_parser_collection.h"
 #include "lua_parser.h"
-#include "../common/repositories/bot_inventories_repository.h"
 #include "../common/repositories/bot_spell_settings_repository.h"
 #include "../common/repositories/bot_starting_items_repository.h"
 #include "../common/data_verification.h"
@@ -1277,7 +1276,7 @@ int32 Bot::GenerateBaseHitPoints() {
 	uint32 lm = GetClassLevelFactor();
 	int32 Post255;
 	int32 NormalSTA = GetSTA();
-	if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (GetOwner() && GetOwner()->CastToClient() && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		float SoDPost255;
 		if (((NormalSTA - 255) / 2) > 0)
 			SoDPost255 = ((static_cast<float>(NormalSTA) - 255.0f) / 2.0f);
@@ -1972,7 +1971,7 @@ bool Bot::BotRangedAttack(Mob* other, bool can_double_attack) {
 			LogCombatDetail("Consumed Archery Ammo from slot {}.", EQ::invslot::slotAmmo);
 
 			if (ammo_item->GetCharges() < 1) {
-				RemoveBotItemBySlot(EQ::invslot::slotAmmo);
+				RemoveBotItemBySlot(EQ::invslot::slotAmmo, ItemRetirement::Consumed);
 				BotRemoveEquipItem(EQ::invslot::slotAmmo);
 			}
 		}
@@ -1991,7 +1990,7 @@ bool Bot::BotRangedAttack(Mob* other, bool can_double_attack) {
 			LogCombatDetail("Consumed Throwing Ammo from slot {}.", EQ::invslot::slotAmmo);
 
 			if (ammo_item->GetCharges() < 1) {
-				RemoveBotItemBySlot(EQ::invslot::slotAmmo);
+				RemoveBotItemBySlot(EQ::invslot::slotAmmo, ItemRetirement::Consumed);
 				BotRemoveEquipItem(EQ::invslot::slotAmmo);
 			}
 		}
@@ -3717,13 +3716,16 @@ bool Bot::Spawn(Client* botCharacterOwner) {
 }
 
 // Deletes the inventory record for the specified item from the database for this bot.
-void Bot::RemoveBotItemBySlot(uint16 slot_id)
+void Bot::RemoveBotItemBySlot(uint16 slot_id, std::optional<ItemRetirement> reason)
 {
 	if (!GetBotID()) {
 		return;
 	}
 
-	database.botdb.DeleteItemBySlot(GetBotID(), slot_id);
+	auto *inst = m_inv.GetItem(slot_id);
+	if (inst && reason) {
+		ItemLayer::Retire(database, *inst, *reason);
+	}
 
 	m_inv.DeleteItem(slot_id);
 	UpdateEquipmentLight();
@@ -4066,7 +4068,7 @@ void Bot::BotRemoveEquipItem(uint16 slot_id)
 	}
 }
 
-void Bot::BotTradeAddItem(const EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database)
+void Bot::BotTradeAddItem(EQ::ItemInstance* inst, uint16 slot_id, bool save_to_database)
 {
 	if (!inst) {
 		return;
@@ -4181,7 +4183,7 @@ void Bot::RemoveBotItem(uint32 item_id) {
 
 
 		if (inst->GetID() == item_id) {
-			RemoveBotItemBySlot(slot_id);
+			RemoveBotItemBySlot(slot_id, ItemRetirement::Consumed);
 			BotRemoveEquipItem(slot_id);
 			CalcBotStats(GetOwner()->CastToClient()->GetBotOption(Client::booStatsUpdate));
 			return;
@@ -4760,21 +4762,9 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 		} else if (return_iterator.from_bot_slot >= invslot::TRADE_BEGIN && return_iterator.from_bot_slot <= invslot::TRADE_END) { // failed trade returns
 			client->PutItemInInventory(return_iterator.to_client_slot, *return_iterator.return_item_instance);
 			client->SendItemPacket(return_iterator.to_client_slot, return_iterator.return_item_instance, ItemPacketTrade);
-			client->DeleteItemInInventory(return_iterator.from_bot_slot);
+			client->RemoveItemFromInventory(return_iterator.from_bot_slot);
 		} else { // successful trade returns
 			auto return_instance = m_inv.PopItem(return_iterator.from_bot_slot);
-
-			//	// TODO: add logging
-
-			if (!database.botdb.DeleteItemBySlot(GetBotID(), return_iterator.from_bot_slot)) {
-				OwnerMessage(
-					fmt::format(
-						"Failed to delete item by slot from slot {}.",
-						return_iterator.from_bot_slot
-					).c_str()
-				);
-			}
-
 			BotRemoveEquipItem(return_iterator.from_bot_slot);
 
 			if (parse->BotHasQuestSub(EVENT_UNEQUIP_ITEM_BOT)) {
@@ -4794,14 +4784,12 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 				linker.SetLinkType(EQ::saylink::SayLinkItemInst);
 				linker.SetItemInst(return_instance);
 				auto item_link = linker.GenerateLink();
-
 				OwnerMessage(
 					fmt::format(
 						"I have returned {}.",
 						item_link
 					)
 				);
-
 				client->PutItemInInventory(return_iterator.to_client_slot, *return_instance, true);
 			}
 
@@ -4855,8 +4843,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 		}
 
 		trade_iterator.trade_item_instance = nullptr; // actual deletion occurs in client delete below
-
-		client->DeleteItemInInventory(trade_iterator.from_client_slot, 0, (trade_iterator.from_client_slot == EQ::invslot::slotCursor));
+		client->RemoveItemFromInventory(trade_iterator.from_client_slot, (trade_iterator.from_client_slot == EQ::invslot::slotCursor));
 
 		// database currently has unattuned item saved in inventory..it will be attuned on next bot load
 		// this prevents unattuned item returns in the mean time (TODO: re-work process)
@@ -4883,7 +4870,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 			EQ::ItemInstance* insts[1] = { 0 };
 			user_inv = client->GetInv();
 			insts[0] = user_inv.GetItem(invslot::slotCursor);
-			client->DeleteItemInInventory(invslot::slotCursor);
+			client->DeleteItemInInventory(invslot::slotCursor, 0, false, ItemRetirement::Consumed);
 
 			// copy to be filtered by task updates, null trade slots preserved for quest event arg
 			std::vector<EQ::ItemInstance*> items(insts, insts + std::size(insts));
@@ -4901,7 +4888,7 @@ void Bot::PerformTradeWithClient(int16 begin_slot_id, int16 end_slot_id, Client*
 			user_inv = client->GetInv();
 			for (int i = EQ::invslot::TRADE_BEGIN; i <= EQ::invslot::TRADE_END; ++i) {
 				insts[i - EQ::invslot::TRADE_BEGIN] = user_inv.GetItem(i);
-				client->DeleteItemInInventory(i);
+				client->DeleteItemInInventory(i, 0, false, ItemRetirement::Consumed);
 			}
 
 			// copy to be filtered by task updates, null trade slots preserved for quest event arg
@@ -5679,7 +5666,7 @@ bool Bot::IsBotAttackAllowed(Mob* attacker, Mob* target, bool& hasRuleDefined) {
 
 void Bot::EquipBot() {
 	GetBotItems(m_inv);
-	const EQ::ItemInstance* inst = nullptr;
+	EQ::ItemInstance* inst = nullptr;
 	const EQ::ItemData* item = nullptr;
 	for (int slot_id = EQ::invslot::EQUIPMENT_BEGIN; slot_id <= EQ::invslot::EQUIPMENT_END; ++slot_id) {
 		inst = GetBotItem(slot_id);
@@ -6061,7 +6048,6 @@ int32 Bot::GenerateBaseManaPoints()
 		if (
 			GetOwner() &&
 			GetOwner()->CastToClient() &&
-			GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD &&
 			RuleB(Character, SoDClientUseSoDHPManaEnd)
 		) {
 			if (WisInt > 100) {
@@ -6105,7 +6091,6 @@ int32 Bot::GenerateBaseManaPoints()
 		if (
 			GetOwner() &&
 			GetOwner()->CastToClient() &&
-			GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD &&
 			RuleB(Character, SoDClientUseSoDHPManaEnd)
 		) {
 			if (WisInt > 100) {
@@ -6341,9 +6326,7 @@ int32 Bot::GetMaxStat() {
 	int32 base = 0;
 	if (level < 61)
 		base = 255;
-	else if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoF)
-		base = (255 + 5 * (level - 60));
-	else if (level < 71)
+	else if (RuleI(Expansion, CurrentExpansion) < 0 || RuleI(Expansion, CurrentExpansion) >= static_cast<int>(EQ::expansions::Expansion::SoF) || level < 71)
 		base = (255 + 5 * (level - 60));
 	else
 		base = 330;
@@ -6848,7 +6831,7 @@ int64 Bot::CalcBaseEndurance() {
 	int32 converted_stats = 0;
 	int32 sta_end = 0;
 	int stats = 0;
-	if (GetOwner() && GetOwner()->CastToClient() && GetOwner()->CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::SoD && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
+	if (GetOwner() && GetOwner()->CastToClient() && RuleB(Character, SoDClientUseSoDHPManaEnd)) {
 		stats = ((GetSTR() + GetSTA() + GetDEX() + GetAGI()) / 4);
 
 		if (stats > 100) {
@@ -8835,32 +8818,34 @@ void Bot::AddBotStartingItems(uint16 race_id, uint8 class_id)
 		return;
 	}
 
-	std::vector<BotInventoriesRepository::BotInventories> v;
+	// A bot's starting items are issued from its owner's counter, as the bot's own.
+	std::optional<ItemLayer::Owner> owner;
+	if (GetBotOwner() && GetBotOwner()->IsClient()) {
+		owner = GetBotOwner()->CastToClient()->ItemOwner();
+	}
 
 	for (const auto& e : l) {
 		if (
 			CanClassEquipItem(e.item_id) &&
 			(CanRaceEquipItem(e.item_id) || RuleB(Bots, AllowBotEquipAnyRaceGear))
 		) {
-			auto i = BotInventoriesRepository::NewEntity();
+			auto *inst = database.CreateItem(
+				e.item_id,
+				e.item_charges,
+				e.augment_one,
+				e.augment_two,
+				e.augment_three,
+				e.augment_four,
+				e.augment_five,
+				e.augment_six
+			);
+			if (!inst) {
+				continue;
+			}
 
-			i.bot_id       = GetBotID();
-			i.slot_id      = e.slot_id;
-			i.item_id      = e.item_id;
-			i.inst_charges = e.item_charges;
-			i.augment_1    = e.augment_one;
-			i.augment_2    = e.augment_two;
-			i.augment_3    = e.augment_three;
-			i.augment_4    = e.augment_four;
-			i.augment_5    = e.augment_five;
-			i.augment_6    = e.augment_six;
-
-			v.emplace_back(i);
+			ItemLayer::Save(database, *inst, ItemLocation::InHolder(ItemHolderType::Bot, GetBotID(), e.slot_id), owner);
+			safe_delete(inst);
 		}
-	}
-
-	if (!v.empty()) {
-		BotInventoriesRepository::InsertMany(content_db, v);
 	}
 }
 

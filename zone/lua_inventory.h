@@ -18,11 +18,8 @@ namespace luabind {
 
 luabind::scope lua_register_inventory();
 
-// This class should be deprecated due to the nature of inventory actions.
-// Direct manipulation of the inventory system bypasses the client management
-// of database calls and can lead to lost items, duplicated items and/or
-// desync'd inventories, if not handled correctly.
-
+// The calls that change what a character holds run through the owning client's landing, retire and swap
+// functions, which write the rows; the profile alone only changes memory.
 class Lua_Inventory : public Lua_Ptr<EQ::InventoryProfile>
 {
 	typedef EQ::InventoryProfile NativeType;
@@ -36,6 +33,7 @@ public:
 	}
 
 	Lua_ItemInst GetItem(int slot_id);
+	Lua_ItemInst GetItemByGUID(std::string guid);
 	Lua_ItemInst GetItem(int slot_id, int bag_slot);
 	int PutItem(int slot_id, Lua_ItemInst item);
 	int PushCursor(Lua_ItemInst item);
@@ -45,7 +43,6 @@ public:
 	bool CheckNoDrop(int slot_id);
 	uint32 CountAugmentEquippedByID(uint32 item_id);
 	uint32 CountItemEquippedByID(uint32 item_id);
-	Lua_ItemInst PopItem(int slot_id);
 	bool HasAugmentEquippedByID(uint32 item_id);
 	bool HasItemEquippedByID(uint32 item_id);
 	int HasItem(int item_id);

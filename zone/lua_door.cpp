@@ -195,11 +195,6 @@ bool Lua_Door::IsLDoNDoor() {
 	return self->IsLDoNDoor();
 }
 
-uint32 Lua_Door::GetClientVersionMask() {
-	Lua_Safe_Call_Int();
-	return self->GetClientVersionMask();
-}
-
 int Lua_Door::GetDoorParam() {
 	Lua_Safe_Call_Int();
 	return self->GetDoorParam();
@@ -281,7 +276,6 @@ luabind::scope lua_register_door() {
 	.def("ForceOpen", (void(Lua_Door::*)(Lua_Mob))&Lua_Door::ForceOpen)
 	.def("ForceOpen", (void(Lua_Door::*)(Lua_Mob,bool))&Lua_Door::ForceOpen)
 	.def("GetDisableTimer", (bool(Lua_Door::*)(void))&Lua_Door::GetDisableTimer)
-	.def("GetClientVersionMask", (uint32(Lua_Door::*)(void))&Lua_Door::GetClientVersionMask)
 	.def("GetDestinationHeading", (float(Lua_Door::*)(void))&Lua_Door::GetDestinationHeading)
 	.def("GetDestinationInstanceID", (int(Lua_Door::*)(void))&Lua_Door::GetDestinationInstanceID)
 	.def("GetDestinationX", (float(Lua_Door::*)(void))&Lua_Door::GetDestinationX)

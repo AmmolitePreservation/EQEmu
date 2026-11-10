@@ -1727,7 +1727,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 						inv_slot_id = c->GetInv().HasItem(component, 1, invWhereWorn|invWherePersonal);
 						if(inv_slot_id != -1)
 						{
-							c->DeleteItemInInventory(inv_slot_id, 1, true);
+							c->DeleteItemInInventory(inv_slot_id, 1, true, ItemRetirement::Consumed);
 						}
 						else
 						{	// some kind of error in the code if this happens
@@ -1777,7 +1777,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 	}
 
 	if (IsClient() && DeleteChargeFromSlot >= 0) {
-		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);
+		CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true, ItemRetirement::Consumed);
 	}
 	else if (IsBot() && DeleteChargeFromSlot >= 0) {
 		EQ::ItemInstance* inst = CastToBot()->GetBotItem(DeleteChargeFromSlot);
@@ -3781,7 +3781,7 @@ int Mob::AddBuff(Mob *caster, uint16 spell_id, int duration, int32 level_overrid
 	{
 		EQApplicationPacket *outapp = MakeBuffsPacket();
 
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false);
 
 		if(IsClient() && GetTarget() == this)
 			CastToClient()->QueuePacket(outapp);
@@ -3791,7 +3791,7 @@ int Mob::AddBuff(Mob *caster, uint16 spell_id, int duration, int32 level_overrid
 
 	if (IsNPC()) {
 		EQApplicationPacket *outapp = MakeBuffsPacket();
-		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, EQ::versions::maskSoDAndLater, true);
+		entity_list.QueueClientsByTarget(this, outapp, false, nullptr, true, false, true);
 		safe_delete(outapp);
 	}
 
@@ -6592,9 +6592,6 @@ void Client::SendBuffDurationPacket(Buffs_Struct &buff, int slot)
 
 void Client::SendBuffNumHitPacket(Buffs_Struct &buff, int slot)
 {
-	// UF+ use this packet
-	if (ClientVersion() < EQ::versions::ClientVersion::UF)
-		return;
 	EQApplicationPacket *outapp = nullptr;
 	outapp = new EQApplicationPacket(OP_BuffCreate, sizeof(BuffIcon_Struct) + sizeof(BuffIconEntry_Struct));
 	BuffIcon_Struct *bi = (BuffIcon_Struct *)outapp->pBuffer;
@@ -6650,11 +6647,8 @@ void Mob::SendBuffsToClient(Client *c)
 	if(!c)
 		return;
 
-	if (c->ClientVersionBit() & EQ::versions::maskSoDAndLater)
-	{
-		EQApplicationPacket *outapp = MakeBuffsPacket();
-		c->FastQueuePacket(&outapp);
-	}
+	EQApplicationPacket *outapp = MakeBuffsPacket();
+	c->FastQueuePacket(&outapp);
 }
 
 EQApplicationPacket *Mob::MakeBuffsPacket(bool for_target, bool clear_buffs)
@@ -7325,7 +7319,7 @@ void Mob::DoBardCastingFromItemClick(bool is_casting_bard_song, uint32 cast_time
 		int16 DeleteChargeFromSlot = GetItemSlotToConsumeCharge(spell_id, item_slot);
 		if (SpellFinished(spell_id, entity_list.GetMob(target_id), CastingSlot::Item, 0, item_slot)) {
 			if (IsClient() && DeleteChargeFromSlot >= 0) {
-				CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true);
+				CastToClient()->DeleteItemInInventory(DeleteChargeFromSlot, 1, true, ItemRetirement::Consumed);
 			}
 			else if (IsBot() && DeleteChargeFromSlot >= 0) {
 				EQ::ItemInstance* inst = CastToBot()->GetBotItem(DeleteChargeFromSlot);
@@ -7431,57 +7425,17 @@ bool Mob::CheckItemRaceClassDietyRestrictionsOnCast(uint32 inventory_slot) {
 	bitmask = bitmask << (CastToClient()->GetClass() - 1);
 	if (itm && itm->GetItem()->Classes != 65535) {
 		if ((itm->GetItem()->Click.Type == EQ::item::ItemEffectEquipClick) && !(itm->GetItem()->Classes & bitmask)) {
-			if (CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoF) {
-				std::string message = fmt::format(
-					"Attempted to click an equip-only effect on item_name [{}] item_id [{}] which they shouldn't be able to equip!",
-					itm->GetItem()->Name,
-					itm->GetItem()->ID
-				);
-
-				RecordPlayerEventLogWithClient(CastToClient(), PlayerEvent::POSSIBLE_HACK, PlayerEvent::PossibleHackEvent{.message = message});
-			}
-			else {
-				MessageString(Chat::Red, MUST_EQUIP_ITEM);
-			}
+			MessageString(Chat::Red, MUST_EQUIP_ITEM);
 			return(false);
 		}
 		if ((itm->GetItem()->Click.Type == EQ::item::ItemEffectClick2) && !(itm->GetItem()->Classes & bitmask)) {
-			if (CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoF) {
-				std::string message = fmt::format(
-					"Attempted to click a race/class restricted effect on item_name [{}] item_id [{}] which they shouldn't be able to click!",
-					itm->GetItem()->Name,
-					itm->GetItem()->ID
-				);
-
-				RecordPlayerEventLogWithClient(CastToClient(), PlayerEvent::POSSIBLE_HACK, PlayerEvent::PossibleHackEvent{.message = message});
-			}
-			else {
-				if (CastToClient()->ClientVersion() >= EQ::versions::ClientVersion::RoF)
-				{
-					// Line 181 in eqstr_us.txt was changed in RoF+
-					Message(Chat::Yellow, "Your race, class, or deity cannot use this item.");
-				}
-				else
-				{
-					MessageString(Chat::Red, CANNOT_USE_ITEM);
-				}
-			}
+			// Line 181 in eqstr_us.txt was changed in RoF+
+			Message(Chat::Yellow, "Your race, class, or deity cannot use this item.");
 			return(false);
 		}
 	}
 	if (itm && (itm->GetItem()->Click.Type == EQ::item::ItemEffectEquipClick) && inventory_slot > EQ::invslot::EQUIPMENT_END) {
-		if (CastToClient()->ClientVersion() < EQ::versions::ClientVersion::SoF) {
-			std::string message = fmt::format(
-				"Attempted to click an equip-only effect on item_name [{}] item_id [{}] without equipping it!",
-				itm->GetItem()->Name,
-				itm->GetItem()->ID
-			);
-
-			RecordPlayerEventLogWithClient(CastToClient(), PlayerEvent::POSSIBLE_HACK, PlayerEvent::PossibleHackEvent{.message = message});
-		}
-		else {
-			MessageString(Chat::Red, MUST_EQUIP_ITEM);
-		}
+		MessageString(Chat::Red, MUST_EQUIP_ITEM);
 		return(false);
 	}
 

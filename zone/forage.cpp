@@ -342,7 +342,7 @@ void Client::GoFish(bool guarantee, bool use_bait)
 
 		if (use_bait) {
 			//consume bait, should we always consume bait on success?
-			DeleteItemInInventory(bslot, 1, true);    //do we need client update?
+			DeleteItemInInventory(bslot, 1, true, ItemRetirement::Consumed);    //do we need client update?
 		}
 
 		if (food_id == 0) {
@@ -369,8 +369,7 @@ void Client::GoFish(bool guarantee, bool use_bait)
 				}
 				else
 				{
-					PushItemOnCursor(*inst);
-					SendItemPacket(EQ::invslot::slotCursor, inst, ItemPacketLimbo);
+					PushItemOnCursor(*inst, true);
 					if (RuleB(TaskSystem, EnableTaskSystem))
 						UpdateTasksForItem(TaskActivityType::Fish, food_id);
 
@@ -407,7 +406,7 @@ void Client::GoFish(bool guarantee, bool use_bait)
 	{
 		//chance to use bait when you dont catch anything...
 		if (zone->random.Int(0, 4) == 1) {
-			DeleteItemInInventory(bslot, 1, true);	//do we need client update?
+			DeleteItemInInventory(bslot, 1, true, ItemRetirement::Consumed);	//do we need client update?
 			MessageString(Chat::Skills, FISHING_LOST_BAIT);	//You lost your bait!
 		} else {
 			if (zone->random.Int(0, 15) == 1)	//give about a 1 in 15 chance to spill your beer. we could make this a rule, but it doesn't really seem worth it
@@ -432,7 +431,7 @@ void Client::GoFish(bool guarantee, bool use_bait)
 		const EQ::ItemData* fishing_item = Pole->GetItem();
 		if (fishing_item && fishing_item->SubType == 0 && zone->random.Int(0, 49) == 1) {
 			MessageString(Chat::Skills, FISHING_POLE_BROKE);	//Your fishing pole broke!
-			DeleteItemInInventory(EQ::invslot::slotPrimary, 0, true);
+			DeleteItemInInventory(EQ::invslot::slotPrimary, 0, true, ItemRetirement::Destroyed);
 		}
 	}
 
@@ -508,8 +507,7 @@ void Client::ForageItem(bool guarantee) {
 				MessageString(Chat::White, DUP_LORE);
 				safe_delete(inst);
 			} else {
-				PushItemOnCursor(*inst);
-				SendItemPacket(EQ::invslot::slotCursor, inst, ItemPacketLimbo);
+				PushItemOnCursor(*inst, true);
 				if(RuleB(TaskSystem, EnableTaskSystem)) {
 					UpdateTasksForItem(TaskActivityType::Forage, foragedfood);
 				}

@@ -752,12 +752,12 @@ int Perl_Client_GetHorseId(Client* self) // @categories Account and Character, S
 
 uint32 Perl_Client_NukeItem(Client* self, uint32 item_id) // @categories Inventory and Items
 {
-	return self->NukeItem(item_id, 0xFF);
+	return self->NukeItem(item_id, ItemRetirement::Consumed, 0xFF);
 }
 
 uint32 Perl_Client_NukeItem(Client* self, uint32 item_id, uint8 slot_to_check) // @categories Inventory and Items
 {
-	return self->NukeItem(item_id, slot_to_check);
+	return self->NukeItem(item_id, ItemRetirement::Consumed, slot_to_check);
 }
 
 void Perl_Client_SetTint(Client* self, int16 slot_id, uint32 color) // @categories Inventory and Items
@@ -787,17 +787,17 @@ int Perl_Client_GetAugmentIDAt(Client* self, int16 slot_id, uint8 aug_slot) // @
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id);
+	self->DeleteItemInInventory(slot_id, 0, false, ItemRetirement::Consumed);
 }
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id, int16 quantity) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id, quantity);
+	self->DeleteItemInInventory(slot_id, quantity, false, ItemRetirement::Consumed);
 }
 
 void Perl_Client_DeleteItemInInventory(Client* self, int16 slot_id, int16 quantity, bool client_update) // @categories Inventory and Items
 {
-	self->DeleteItemInInventory(slot_id, quantity, client_update);
+	self->DeleteItemInInventory(slot_id, quantity, client_update, ItemRetirement::Consumed);
 }
 
 void Perl_Client_SummonItem(Client* self, uint32 item_id) // @categories Inventory and Items, Script Utility
@@ -1054,16 +1054,6 @@ void Perl_Client_SetAATitle(Client* self, std::string title, bool save) // @cate
 	}
 }
 
-uint32_t Perl_Client_GetClientVersion(Client* self) // @categories Script Utility
-{
-	return static_cast<uint32_t>(self->ClientVersion());
-}
-
-uint32_t Perl_Client_GetClientVersionBit(Client* self) // @categories Script Utility
-{
-	return self->ClientVersionBit();
-}
-
 void Perl_Client_SetTitleSuffix(Client* self, std::string suffix) // @categories Account and Character
 {
 	if (suffix.size() > 31)
@@ -1143,6 +1133,11 @@ EQ::ItemInstance* Perl_Client_GetItemAt(Client* self, uint32 slot) // @categorie
 	return self->GetInv().GetItem(slot);
 }
 
+EQ::ItemInstance* Perl_Client_GetItemByGUID(Client* self, std::string guid) // @categories Inventory and Items
+{
+	const auto parsed = ItemGUIDFromText(guid);
+	return parsed ? self->GetInv().GetItemByGUID(*parsed) : nullptr;
+}
 EQ::ItemInstance* Perl_Client_GetAugmentAt(Client* self, uint32 slot, uint32 aug_slot) // @categories Inventory and Items
 {
 	EQ::ItemInstance* inst = self->GetInv().GetItem(slot);
@@ -3558,8 +3553,6 @@ void perl_register_client()
 	package.add("GetClassAbbreviation", &Perl_Client_GetClassAbbreviation);
 	package.add("GetClassBitmask", &Perl_Client_GetClassBitmask);
 	package.add("GetClientMaxLevel", &Perl_Client_GetClientMaxLevel);
-	package.add("GetClientVersion", &Perl_Client_GetClientVersion);
-	package.add("GetClientVersionBit", &Perl_Client_GetClientVersionBit);
 	package.add("GetCorpseCount", &Perl_Client_GetCorpseCount);
 	package.add("GetCorpseID", &Perl_Client_GetCorpseID);
 	package.add("GetCorpseItemAt", &Perl_Client_GetCorpseItemAt);
@@ -3606,6 +3599,7 @@ void perl_register_client()
 	package.add("GetInventorySlots", &Perl_Client_GetInventorySlots);
 	package.add("GetInvulnerableEnvironmentDamage", &Perl_Client_GetInvulnerableEnvironmentDamage);
 	package.add("GetItemAt", &Perl_Client_GetItemAt);
+	package.add("GetItemByGUID", &Perl_Client_GetItemByGUID);
 	package.add("GetItemCooldown", &Perl_Client_GetItemCooldown);
 	package.add("GetItemIDAt", &Perl_Client_GetItemIDAt);
 	package.add("GetItemInInventory", &Perl_Client_GetItemInInventory);

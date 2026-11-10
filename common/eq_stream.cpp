@@ -976,9 +976,9 @@ EQRawApplicationPacket *p=nullptr;
 		if(OpMgr != nullptr && *OpMgr != nullptr) {
 			EmuOpcode emu_op = (*OpMgr)->EQToEmu(p->opcode);
 			if(emu_op == OP_Unknown) {
-				LogNetcode("Unable to convert EQ opcode {:#04x} to an Application opcode", p->opcode);
+				LogNetcode("Unable to convert EQ opcode {:#04x} (size [{}]) to an Application opcode", p->opcode, p->Size());
+				LogNetcodeDetail("{}", DumpPacketToString(p));
 			}
-
 			p->SetOpcode(emu_op);
 		}
 	}

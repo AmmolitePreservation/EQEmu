@@ -14,7 +14,7 @@ void command_nukeitem(Client *c, const Seperator *sep)
 	}
 
 	auto item_id = Strings::ToInt(sep->arg[1]);
-	auto deleted_count = target->NukeItem(item_id);
+	auto deleted_count = target->NukeItem(item_id, ItemRetirement::RemovedByGM);
 	if (deleted_count) {
 		c->Message(
 			Chat::White,

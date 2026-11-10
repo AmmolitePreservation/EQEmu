@@ -137,12 +137,8 @@ bool RuleManager::SetRule(const std::string &rule_name, const std::string &rule_
 		return (false);
 	}
 
-	if (reload) {
-		bool is_client = Strings::EqualFold(rule_name, "World:UseClientBasedExpansionSettings");
-		bool is_world = Strings::EqualFold(rule_name, "World:ExpansionSettings");
-		if (is_client || is_world) {
-			return false;
-		}
+	if (reload && Strings::EqualFold(rule_name, "World:ExpansionSettings")) {
+		return false;
 	}
 
 	switch (type) {
@@ -172,12 +168,10 @@ bool RuleManager::SetRule(const std::string &rule_name, const std::string &rule_
 }
 
 void RuleManager::ResetRules(bool reload) {
-	std::string client_rule;
 	std::string world_rule;
 
-	// these rules must not change during server runtime
+	// this rule must not change during server runtime
 	if (reload) {
-		GetRule("World:UseClientBasedExpansionSettings", client_rule);
 		GetRule("World:ExpansionSettings", world_rule);
 	}
 
@@ -193,9 +187,8 @@ void RuleManager::ResetRules(bool reload) {
 		m_RuleStringValues[ String__##rule_name ] = default_value;
 	#include "ruletypes.h"
 
-	// restore these rules to their pre-reset values
+	// restore it to its pre-reset value
 	if (reload) {
-		SetRule("World:UseClientBasedExpansionSettings", client_rule);
 		SetRule("World:ExpansionSettings", world_rule);
 	}
 }
@@ -368,10 +361,7 @@ void RuleManager::SaveRules(Database *db, const std::string &rule_set_name) {
 void RuleManager::_SaveRule(Database *db, RuleType type, uint16 index) {
 	const auto rule_name = _GetRuleName(type, index);
 
-	if (
-		(type == BoolRule && Strings::EqualFold(rule_name, "World:UseClientBasedExpansionSettings")) ||
-		(type == IntRule && Strings::EqualFold(rule_name, "World:ExpansionSettings"))
-	) {
+	if (type == IntRule && Strings::EqualFold(rule_name, "World:ExpansionSettings")) {
 		return;
 	}
 

@@ -91,6 +91,11 @@ EQ::ItemInstance* ItemInstQueue::peek_front() const
 	return (m_list.empty()) ? nullptr : m_list.front();
 }
 
+EQ::ItemInstance* ItemInstQueue::peek_back() const
+{
+	return (m_list.empty()) ? nullptr : m_list.back();
+}
+
 //
 // class EQ::InventoryProfile
 //
@@ -1091,6 +1096,55 @@ int16 EQ::InventoryProfile::CalcSlotId(int16 slot_id)
 	return parent_slot_id;
 }
 
+std::optional<ItemLocation> EQ::InventoryProfile::LocationForSlot(int16 slot_id, uint32 character_id, uint32 account_id)
+{
+	if (EQ::ValueWithin(slot_id, invslot::EQUIPMENT_BEGIN, invslot::GENERAL_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Inventory, character_id, static_cast<uint16>(slot_id));
+	}
+
+	if (slot_id == invslot::slotCursor) {
+		return ItemLocation::InHolder(ItemHolderType::Cursor, character_id, 0);
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::BANK_BEGIN, invslot::BANK_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Bank, character_id, static_cast<uint16>(slot_id - invslot::BANK_BEGIN));
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::SHARED_BANK_BEGIN, invslot::SHARED_BANK_END)) {
+		return ItemLocation::InHolder(ItemHolderType::SharedBank, account_id, static_cast<uint16>(slot_id - invslot::SHARED_BANK_BEGIN));
+	}
+
+	if (EQ::ValueWithin(slot_id, invslot::TRADE_BEGIN, invslot::TRADE_END)) {
+		return ItemLocation::InHolder(ItemHolderType::Trade, character_id, static_cast<uint16>(slot_id - invslot::TRADE_BEGIN));
+	}
+
+	return std::nullopt;
+}
+
+int16 EQ::InventoryProfile::SlotForLocation(const ItemLocation& location)
+{
+	if (!location.holder_type) {
+		return INVALID_INDEX;
+	}
+
+	const int16 slot = location.slot ? static_cast<int16>(*location.slot) : 0;
+
+	switch (*location.holder_type) {
+		case ItemHolderType::Inventory:
+			return slot;
+		case ItemHolderType::Cursor:
+			return invslot::slotCursor;
+		case ItemHolderType::Bank:
+			return invslot::BANK_BEGIN + slot;
+		case ItemHolderType::SharedBank:
+			return invslot::SHARED_BANK_BEGIN + slot;
+		case ItemHolderType::Trade:
+			return invslot::TRADE_BEGIN + slot;
+		default:
+			return INVALID_INDEX;
+	}
+}
+
 // Calculate slot_id for an item within a bag
 int16 EQ::InventoryProfile::CalcSlotId(int16 bagslot_id, uint8 bagidx)
 {
@@ -1293,10 +1347,55 @@ int EQ::InventoryProfile::GetSlotByItemInst(ItemInstance *inst) {
 	if (m_cursor.peek_front() == inst) {
 		return invslot::slotCursor;
 	}
-
 	return INVALID_INDEX;
 }
 
+// The instance itself or anything inside it that the predicate accepts.
+static EQ::ItemInstance *InstanceMatching(EQ::ItemInstance *inst, const std::function<bool(const EQ::ItemInstance &)> &matches)
+{
+	if (!inst) {
+		return nullptr;
+	}
+	if (matches(*inst)) {
+		return inst;
+	}
+	for (const auto &[index, child] : *inst->GetContents()) {
+		if (auto *found = InstanceMatching(child, matches)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
+EQ::ItemInstance *EQ::InventoryProfile::FindInstance(const std::function<bool(const ItemInstance &)> &matches)
+{
+	for (const auto *bucket : {&m_worn, &m_inv, &m_bank, &m_shbank, &m_trade}) {
+		for (const auto &[slot_id, inst] : *bucket) {
+			if (auto *found = InstanceMatching(inst, matches)) {
+				return found;
+			}
+		}
+	}
+	for (auto iter = m_cursor.cbegin(); iter != m_cursor.cend(); ++iter) {
+		if (auto *found = InstanceMatching(*iter, matches)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
+EQ::ItemInstance *EQ::InventoryProfile::GetItemByGUID(const ItemGUID &guid)
+{
+	if (guid.IsZero()) {
+		return nullptr;
+	}
+	return FindInstance([&](const ItemInstance &inst) { return inst.GetGUID() == guid; });
+}
+
+EQ::ItemInstance *EQ::InventoryProfile::GetItemBySerialNumber(uint32 serial_number)
+{
+	return FindInstance([&](const ItemInstance &inst) { return inst.GetSerialNumber() == serial_number; });
+}
 uint8 EQ::InventoryProfile::FindBrightestLightType()
 {
 	uint8 brightest_light_type = 0;
@@ -1851,184 +1950,6 @@ int16 EQ::InventoryProfile::FindFirstFreeSlotThatFitsItem(const EQ::ItemData *it
 }
 
 //This function has the same flaw as noted above
-// Helper functions for evolving items
-int16 EQ::InventoryProfile::HasEvolvingItem(uint64 evolve_unique_id, uint8 quantity, uint8 where)
-{
-	int16 slot_id = INVALID_INDEX;
-
-	// Altered by Father Nitwit to support a specification of
-	// where to search, with a default value to maintain compatibility
-
-	// Check each inventory bucket
-	if (where & invWhereWorn) {
-		slot_id = _HasEvolvingItem(m_worn, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	if (where & invWherePersonal) {
-		slot_id = _HasEvolvingItem(m_inv, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	if (where & invWhereBank) {
-		slot_id = _HasEvolvingItem(m_bank, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	if (where & invWhereSharedBank) {
-		slot_id = _HasEvolvingItem(m_shbank, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	if (where & invWhereTrading) {
-		slot_id = _HasEvolvingItem(m_trade, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	// Behavioral change - Limbo is no longer checked due to improper handling of return value
-	if (where & invWhereCursor) {
-		// Check cursor queue
-		slot_id = _HasEvolvingItem(m_cursor, evolve_unique_id, quantity);
-		if (slot_id != INVALID_INDEX) {
-			return slot_id;
-		}
-	}
-
-	return slot_id;
-}
-
-// Internal Method: Checks an inventory bucket for a particular evolving item unique id
-int16 EQ::InventoryProfile::_HasEvolvingItem(
-	std::map<int16, ItemInstance *> &bucket, uint64 evolve_unique_id, uint8 quantity)
-{
-	uint32 quantity_found = 0;
-
-	for (auto const &[key, value]: bucket) {
-		if (!value) {
-			continue;
-		}
-
-		if (key <= EQ::invslot::POSSESSIONS_END && key >= EQ::invslot::POSSESSIONS_BEGIN) {
-			if (((uint64) 1 << key & m_lookup->PossessionsBitmask) == 0) {
-				continue;
-			}
-		}
-		else if (key <= EQ::invslot::BANK_END && key >= EQ::invslot::BANK_BEGIN) {
-			if (key - EQ::invslot::BANK_BEGIN >= m_lookup->InventoryTypeSize.Bank) {
-				continue;
-			}
-		}
-
-
-		if (value->GetEvolveUniqueID() == evolve_unique_id) {
-			quantity_found += value->GetCharges() <= 0 ? 1 : value->GetCharges();
-			if (quantity_found >= quantity) {
-				return key;
-			}
-		}
-
-		for (int index = invaug::SOCKET_BEGIN; index <= invaug::SOCKET_END; ++index) {
-			if (value->GetAugmentEvolveUniqueID(index) == evolve_unique_id && quantity <= 1) {
-				return invslot::SLOT_AUGMENT_GENERIC_RETURN;
-			}
-		}
-
-		if (!value->IsClassBag()) {
-			continue;
-		}
-
-		for (auto const &[bag_key, bag_value]: *value->GetContents()) {
-			if (!bag_value) {
-				continue;
-			}
-
-			if (bag_value->GetEvolveUniqueID() == evolve_unique_id) {
-				quantity_found += bag_value->GetCharges() <= 0 ? 1 : bag_value->GetCharges();
-				if (quantity_found >= quantity) {
-					return CalcSlotId(key, bag_key);
-				}
-			}
-
-			for (int index = invaug::SOCKET_BEGIN; index <= invaug::SOCKET_END; ++index) {
-				if (bag_value->GetAugmentEvolveUniqueID(index) == evolve_unique_id && quantity <= 1) {
-					return invslot::SLOT_AUGMENT_GENERIC_RETURN;
-				}
-			}
-		}
-	}
-
-	return INVALID_INDEX;
-}
-
-// Internal Method: Checks an inventory queue type bucket for a particular item
-int16 EQ::InventoryProfile::_HasEvolvingItem(ItemInstQueue &iqueue, uint64 evolve_unique_id, uint8 quantity)
-{
-	// The downfall of this (these) queue procedure is that callers presume that when an item is
-	// found, it is presented as being available on the cursor. In cases of a parity check, this
-	// is sufficient. However, in cases where referential criteria is considered, this can lead
-	// to unintended results. Funtionality should be observed when referencing the return value
-	// of this query
-
-	uint32 quantity_found = 0;
-
-	for (auto const &inst: iqueue) {
-		if (!inst) {
-			continue;
-		}
-
-		if (inst->GetEvolveUniqueID() == evolve_unique_id) {
-			quantity_found += inst->GetCharges() <= 0 ? 1 : inst->GetCharges();
-			if (quantity_found >= quantity) {
-				return invslot::slotCursor;
-			}
-		}
-
-		for (int index = invaug::SOCKET_BEGIN; index <= invaug::SOCKET_END; ++index) {
-			if (inst->GetAugmentEvolveUniqueID(index) == evolve_unique_id && quantity <= 1) {
-				return invslot::SLOT_AUGMENT_GENERIC_RETURN;
-			}
-		}
-
-		if (!inst->IsClassBag()) {
-			continue;
-		}
-
-		for (auto const &[bag_key, bag_value]: *inst->GetContents()) {
-			if (!bag_value) {
-				continue;
-			}
-
-			if (bag_value->GetEvolveUniqueID() == evolve_unique_id) {
-				quantity_found += bag_value->GetCharges() <= 0 ? 1 : bag_value->GetCharges();
-				if (quantity_found >= quantity) {
-					return CalcSlotId(invslot::slotCursor, bag_key);
-				}
-			}
-
-			for (int index = invaug::SOCKET_BEGIN; index <= invaug::SOCKET_END; ++index) {
-				if (bag_value->GetAugmentEvolveUniqueID(index) == evolve_unique_id && quantity <= 1) {
-					return invslot::SLOT_AUGMENT_GENERIC_RETURN;
-				}
-			}
-		}
-
-		// We only check the visible cursor due to lack of queue processing ability (client allows duplicate in limbo)
-		break;
-	}
-
-	return INVALID_INDEX;
-}
-
 
 int16 EQ::InventoryProfile::FindFirstFreeSlotThatFitsItemWithStacking(ItemInstance *item_inst) const
 {

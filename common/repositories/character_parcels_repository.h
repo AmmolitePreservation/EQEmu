@@ -4,6 +4,7 @@
 #include "../database.h"
 #include "../strings.h"
 #include "base/base_character_parcels_repository.h"
+#include "../item_guid.h"
 
 class CharacterParcelsRepository: public BaseCharacterParcelsRepository {
 public:
@@ -43,7 +44,63 @@ public:
 	 * method and encapsulate filters there
 	 */
 
-	// Custom extended repository methods here
+	// A parcel is an item (its GUID) or money (copper); the writes here keep the other NULL.
+	static ItemGUID GUIDOf(const CharacterParcels &e)
+	{
+		return ItemGUID{e.guid_first, e.guid_second, e.guid_third};
+	}
+
+	static void SetGUID(CharacterParcels &e, const ItemGUID &guid)
+	{
+		e.guid_first  = guid.first;
+		e.guid_second = guid.second;
+		e.guid_third  = guid.third;
+	}
+
+	static bool IsMoney(const CharacterParcels &e)
+	{
+		return GUIDOf(e).IsZero();
+	}
+
+	static CharacterParcels InsertOne(Database &db, CharacterParcels e)
+	{
+		const bool is_money = IsMoney(e);
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"INSERT INTO {} (char_id, guid_first, guid_second, guid_third, money, slot_id, from_name, note, sent_date) "
+				"VALUES ({}, {}, {}, {}, {}, {}, '{}', '{}', FROM_UNIXTIME({}))",
+				TableName(),
+				e.char_id,
+				is_money ? "NULL" : std::to_string(e.guid_first),
+				is_money ? "NULL" : std::to_string(e.guid_second),
+				is_money ? "NULL" : std::to_string(e.guid_third),
+				is_money ? std::to_string(e.money) : "NULL",
+				e.slot_id,
+				Strings::Escape(e.from_name),
+				Strings::Escape(e.note),
+				e.sent_date
+			)
+		);
+		if (!results.Success()) {
+			return NewEntity();
+		}
+
+		e.id = results.LastInsertedID();
+
+		return e;
+	}
+
+	static int InsertMany(Database &db, const std::vector<CharacterParcels> &entries)
+	{
+		int inserted = 0;
+		for (const auto &e : entries) {
+			if (InsertOne(db, e).id) {
+				inserted++;
+			}
+		}
+
+		return inserted;
+	}
 	struct ParcelCountAndCharacterName
 	{
 		std::string character_name;

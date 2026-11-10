@@ -186,17 +186,48 @@ MySQLRequestResult DBcore::QueryDatabase(const char *query, uint32 querylen, boo
 
 void DBcore::TransactionBegin()
 {
-	QueryDatabase("START TRANSACTION");
+	if (m_transaction_depth == 0) {
+		m_transaction_failed = false;
+		QueryDatabase("START TRANSACTION");
+	}
+
+	m_transaction_depth++;
 }
 
 MySQLRequestResult DBcore::TransactionCommit()
 {
+	if (m_transaction_depth == 0) {
+		LogError("TransactionCommit without a transaction");
+		return MySQLRequestResult(nullptr);
+	}
+
+	m_transaction_depth--;
+
+	if (m_transaction_depth > 0) {
+		return MySQLRequestResult(nullptr);
+	}
+
+	if (m_transaction_failed) {
+		QueryDatabase("ROLLBACK");
+		return MySQLRequestResult(nullptr, 0, 0, 0, 0, 0, strcpy(new char[64], "an inner transaction rolled back"));
+	}
+
 	return QueryDatabase("COMMIT");
 }
 
 void DBcore::TransactionRollback()
 {
-	QueryDatabase("ROLLBACK");
+	if (m_transaction_depth == 0) {
+		LogError("TransactionRollback without a transaction");
+		return;
+	}
+
+	m_transaction_failed = true;
+	m_transaction_depth--;
+
+	if (m_transaction_depth == 0) {
+		QueryDatabase("ROLLBACK");
+	}
 }
 
 uint32 DBcore::DoEscapeString(char *tobuf, const char *frombuf, uint32 fromlen)

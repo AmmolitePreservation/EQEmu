@@ -505,7 +505,6 @@ void Client::SendExpansionPacketData(PlayerLoginReply &plrs)
 	if (server.options.IsDisplayExpansions()) {
 
 		int32_t expansion       = server.options.GetMaxExpansions();
-		int32_t owned_expansion = (expansion << 1) | 1;
 
 		if (m_client_version == cv_sod) {
 
@@ -533,17 +532,6 @@ void Client::SendExpansionPacketData(PlayerLoginReply &plrs)
 			auto out = std::make_unique<EQApplicationPacket>(OP_LoginExpansionPacketData, buf);
 			m_connection->QueuePacket(out.get());
 
-		}
-		else if (m_client_version == cv_titanium) {
-			if (expansion >= EQ::expansions::bitPoR) {
-				// Titanium shipped with 10 expansions.  Set owned expansions to be max 10.
-				plrs.offer_min_days = ((EQ::expansions::bitDoD << 2) | 1) - 2;
-			}
-			else {
-				plrs.offer_min_days = owned_expansion;
-			}
-			// Titanium shipped with 10 expansions.  Set owned expansions to be max 10.
-			plrs.web_offer_min_views = ((EQ::expansions::bitDoD << 2) | 1) - 2;
 		}
 	}
 }

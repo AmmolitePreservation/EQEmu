@@ -28,6 +28,7 @@
 #include "../cereal/include/cereal/types/vector.hpp"
 #include "../common/version.h"
 #include "emu_constants.h"
+#include "item_guid.h"
 #include "textures.h"
 #include "types.h"
 
@@ -1130,6 +1131,7 @@ struct PlayerProfile_Struct
 /*19559*/	uint8				unknown19595[5];	// ***Placeholder (6/29/2005)
 /*19564*/	uint32				RestTimer;
 /*19568*/	uint32				char_id;			// Found as part of bazaar revamp (5/15/2024)
+/*19572*/	uint16				origin_world_id;	// the world the character was created on
 
 	// All player profile packets are translated and this overhead is ignored in out-bound packets
 	PlayerProfile_Struct() : m_player_profile_version(EQ::versions::MobVersion::Unknown) { }
@@ -2252,6 +2254,29 @@ struct Merchant_DelItem_Struct{
 /*008*/	uint32	itemslot;
 /*012*/	uint32	unknown012;
 };
+
+// Takes a row off the Recover tab (RoF2 OP_ShopDelRecoveryItem): the client reads only the 64-bit unique id at
+// offset 8, the same shape as Merchant_DelItem_Struct, whose OP_ShopDelItem reaches the Purchase tab alone
+// (eqgame.exe FUN_006ef4f0 and FUN_006ef3b0).
+struct MerchantDelRecoveryItem_Struct {
+/*000*/	uint32	npc_id;
+/*004*/	uint32	player_id;
+/*008*/	uint64	unique_id;
+};
+
+// The Recover button of the merchant window's Recover tab (RoF2), and the server's reply on the same opcode. The
+// client (eqgame.exe FUN_006f6090) fills the merchant, itself, the listed item's 64-bit unique id (the header's
+// instance_id and parcel_item_id) and the stack count, and leaves the rest uninitialised; its reply handler
+// (FUN_006eea30) reads currency_paid as the Tokens of Reclamation handed over and prints "You give N Token of
+// Reclamation to <merchant>" when the unique id is non-zero.
+struct MerchantRecover_Struct {
+/*000*/	uint32	npc_id;			// Merchant NPC's entity id
+/*004*/	uint32	player_id;		// Player's entity id
+/*008*/	uint64	unique_id;		// The listed item's unique id
+/*016*/	uint32	quantity;		// The listed item's stack count
+/*020*/	uint32	unknown020;
+/*024*/	uint64	currency_paid;
+};
 struct Adventure_Purchase_Struct {
 /*000*/	uint32	Type;	// 1 = LDoN, 2 = Discord, 4 = Norrath's Keepers, 5 = Dark Reign
 /*000*/	uint32	npcid;
@@ -3056,7 +3081,6 @@ enum {
 	BazaarTrader_ShowItems        = 11,
 	BazaarSearchDone              = 12,
 	BazaarTrader_CustomerBrowsing = 13,
-	BazaarInspectItem             = 18,
 	BazaarSearchDone2             = 19,
 	BazaarTrader_StartTraderMode2 = 22
 };
@@ -3106,21 +3130,11 @@ struct BazaarSearchCriteria_Struct {
 };
 
 struct BazaarInspect_Struct {
-	uint32 action;
-	char   player_name[64];
-	uint32 serial_number;
-	uint32 item_id;
-	uint32 trader_id;
-};
-
-struct NewBazaarInspect_Struct {
-/*000*/	BazaarWindowStart_Struct Beginning;
-/*004*/	char Name[64];
-/*068*/	uint32 Unknown068;
-/*072*/	uint32 Unknown072;
-/*076*/	uint32 Unknown076;
-/*080*/	int32 SerialNumber;
-/*084*/	uint32 Unknown084;
+	uint32   action;
+	char     player_name[64];
+	ItemGUID item_guid;
+	uint32   item_id;
+	uint32   trader_id;
 };
 
 struct BazaarReturnDone_Struct{
@@ -3136,21 +3150,6 @@ struct BazaarDeliveryCost_Struct {
 	uint16 voucher_delivery_cost;
 	float  parcel_deliver_cost; //percentage of item cost
 	uint32 unknown_010;
-};
-
-struct BazaarSearchResults_Struct {
-/*000*/	BazaarWindowStart_Struct Beginning;
-/*004*/	uint32	NumItems;
-/*008*/	uint32	SerialNumber;
-/*012*/	uint32	SellerID;
-/*016*/	uint32	Cost;
-/*020*/	uint32	ItemStat;
-/*024*/	char	ItemName[64];
-/*088*/
-	// New fields for SoD+, stripped off when encoding for older clients.
-	char	SellerName[64];
-	uint32	ItemID;
-	uint32	ItemID2;
 };
 
 
@@ -3738,23 +3737,23 @@ struct WhoAllReturnStruct {
 };
 
 struct Trader_Struct {
-/*000*/	uint32	action;
-/*004*/	uint32	unknown_004;
-/*008*/	uint64	items[EQ::invtype::BAZAAR_SIZE];
-/*648*/	uint32	item_cost[EQ::invtype::BAZAAR_SIZE];
+	uint32   action;
+	uint32   unknown_004;
+	ItemGUID items[EQ::invtype::BAZAAR_SIZE];
+	uint32   item_cost[EQ::invtype::BAZAAR_SIZE];
 };
 
 struct ClickTrader_Struct {
-/*000*/	uint32	action;
-/*004*/	uint32	unknown_004;
-/*008*/	int64	serial_number[EQ::invtype::BAZAAR_SIZE] {};
-/*648*/	uint32	item_cost[EQ::invtype::BAZAAR_SIZE] {};
+	uint32   action;
+	uint32   unknown_004;
+	ItemGUID item_guid[EQ::invtype::BAZAAR_SIZE] {};
+	uint32   item_cost[EQ::invtype::BAZAAR_SIZE] {};
 };
 
 struct GetItems_Struct{
-	uint32	items[EQ::invtype::BAZAAR_SIZE];
-	int32	serial_number[EQ::invtype::BAZAAR_SIZE];
-	int32	charges[EQ::invtype::BAZAAR_SIZE];
+	uint32   items[EQ::invtype::BAZAAR_SIZE];
+	ItemGUID item_guid[EQ::invtype::BAZAAR_SIZE];
+	int32    charges[EQ::invtype::BAZAAR_SIZE];
 };
 
 struct BecomeTrader_Struct {
@@ -3780,23 +3779,21 @@ struct Trader_ShowItems_Struct{
 };
 
 struct TraderBuy_Struct {
-/*000*/ uint32	action;
-/*004*/	uint32	method;
-/*008*/ uint32	sub_action;
-/*012*/	uint32	unknown_012;
-/*016*/ uint32	trader_id;
-/*020*/ char	buyer_name[64];
-/*084*/ char	seller_name[64];
-/*148*/ char	unknown_148[32];
-/*180*/ char	item_name[64];
-/*244*/ char	serial_number[17];
-/*261*/ char	unknown_261[3];
-/*264*/ uint32	item_id;
-/*268*/ uint32	price;
-/*272*/ uint32	already_sold;
-/*276*/ uint32	unknown_276;
-/*280*/ uint32	quantity;
-/*284*/
+	uint32   action;
+	uint32   method;
+	uint32   sub_action;
+	uint32   unknown_012;
+	uint32   trader_id;
+	char     buyer_name[64];
+	char     seller_name[64];
+	char     unknown_148[32];
+	char     item_name[64];
+	ItemGUID item_guid;
+	uint32   item_id;
+	uint32   price;
+	uint32   already_sold;
+	uint32   unknown_276;
+	uint32   quantity;
 };
 
 struct TraderItemUpdate_Struct{
@@ -3808,12 +3805,12 @@ struct TraderItemUpdate_Struct{
 };
 
 struct TraderPriceUpdate_Struct {
-/*000*/	uint32	Action;
-/*004*/	uint32	SubAction;
-/*008*/	int32	SerialNumber;
-/*012*/	uint32	Unknown012;
-/*016*/	uint32	NewPrice;
-/*020*/	uint32	Unknown016;
+	uint32   Action;
+	uint32   SubAction;
+	ItemGUID item_guid;
+	uint32   Unknown012;
+	uint32   NewPrice;
+	uint32   Unknown016;
 };
 
 struct MoneyUpdate_Struct{
@@ -3824,10 +3821,10 @@ struct MoneyUpdate_Struct{
 };
 
 struct TraderDelItem_Struct{
-	uint32 unknown_000;
-	uint32 trader_id;
-	uint32 item_id;
-	uint32 unknown_012;
+	uint32   unknown_000;
+	uint32   trader_id;
+	ItemGUID item_guid;
+	uint32   unknown_012;
 };
 
 struct TraderClick_Struct{
@@ -4402,6 +4399,7 @@ struct TempMerchantList {
 	uint32	item;
 	uint32	charges; //charges/quantity
 	uint32	origslot;
+	ItemGUID	guid; // the sold item that made a player-sold row; none for stock a script set
 };
 
 struct AltCurrencyDefinition_Struct {
@@ -6432,16 +6430,15 @@ enum BazaarPurchaseSubActions {
 };
 
 enum BazaarSearchScopes {
-	Local_Scope             = 0,
-	AllTraders_Scope        = 1,
-	NonRoFBazaarSearchScope = 99
+	Local_Scope      = 0,
+	AllTraders_Scope = 1
 };
 
 struct BazaarSearchResultsFromDB_Struct {
 	uint32      count;
 	uint32      trader_id;
+	ItemGUID    item_guid;
 	uint32      item_id;
-	uint32      serial_number;
 	uint32      charges;
 	uint32      cost;
 	uint32      slot_id;
@@ -6453,7 +6450,6 @@ struct BazaarSearchResultsFromDB_Struct {
 	uint32      item_stat;
 	bool        stackable;
 	std::string item_name;
-	std::string serial_number_RoF;
 	std::string trader_name;
 
 	template<class Archive>
@@ -6462,8 +6458,8 @@ struct BazaarSearchResultsFromDB_Struct {
 		archive(
 			CEREAL_NVP(count),
 			CEREAL_NVP(trader_id),
+			CEREAL_NVP(item_guid),
 			CEREAL_NVP(item_id),
-			CEREAL_NVP(serial_number),
 			CEREAL_NVP(charges),
 			CEREAL_NVP(cost),
 			CEREAL_NVP(slot_id),
@@ -6475,7 +6471,6 @@ struct BazaarSearchResultsFromDB_Struct {
 			CEREAL_NVP(item_stat),
 			CEREAL_NVP(stackable),
 			CEREAL_NVP(item_name),
-			CEREAL_NVP(serial_number_RoF),
 			CEREAL_NVP(trader_name)
 		);
 	}

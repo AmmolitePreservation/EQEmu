@@ -86,8 +86,7 @@ public:
 
 	bool LoadItemSlots(const uint32 bot_id, std::map<uint16, uint32>& m);
 	bool LoadItemBySlot(const uint32 bot_id, const uint32 slot_id, uint32& item_id);
-	bool SaveItemBySlot(Bot* b, const uint32 slot_id, const EQ::ItemInstance* inst);
-	bool DeleteItemBySlot(const uint32 bot_id, const uint32 slot_id);
+	bool SaveItemBySlot(Bot* b, const uint32 slot_id, EQ::ItemInstance* inst);
 
 	bool SaveEquipmentColor(const uint32 bot_id, const int16 slot_id, const uint32 color);
 
@@ -181,7 +180,6 @@ public:
 		static const char* LoadItems();
 		static const char* DeleteItems();
 		static const char* SaveItemBySlot();
-		static const char* DeleteItemBySlot();
 		static const char* SaveEquipmentColor();
 
 		/* fail::Bot pet functions   */

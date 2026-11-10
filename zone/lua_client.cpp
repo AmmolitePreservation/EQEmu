@@ -878,12 +878,12 @@ int Lua_Client::GetHorseId() {
 
 void Lua_Client::NukeItem(uint32 item_num) {
 	Lua_Safe_Call_Void();
-	self->NukeItem(item_num, 0xFF);
+	self->NukeItem(item_num, ItemRetirement::Consumed, 0xFF);
 }
 
 void Lua_Client::NukeItem(uint32 item_num, int where_to_check) {
 	Lua_Safe_Call_Void();
-	self->NukeItem(item_num, where_to_check);
+	self->NukeItem(item_num, ItemRetirement::Consumed, where_to_check);
 }
 
 void Lua_Client::SetTint(int slot_id, uint32 color) {
@@ -913,12 +913,12 @@ int Lua_Client::GetAugmentIDAt(int slot_id, int aug_slot) {
 
 void Lua_Client::DeleteItemInInventory(int slot_id, int quantity) {
 	Lua_Safe_Call_Void();
-	self->DeleteItemInInventory(slot_id, quantity);
+	self->DeleteItemInInventory(slot_id, quantity, false, ItemRetirement::Consumed);
 }
 
 void Lua_Client::DeleteItemInInventory(int slot_id, int quantity, bool update_client) {
 	Lua_Safe_Call_Void();
-	self->DeleteItemInInventory(slot_id, quantity, update_client);
+	self->DeleteItemInInventory(slot_id, quantity, update_client, ItemRetirement::Consumed);
 }
 
 void Lua_Client::SummonItem(uint32 item_id) {
@@ -1138,16 +1138,6 @@ void Lua_Client::SetAATitle(std::string title, bool save_to_database) {
 	} else {
 		title_manager.CreateNewPlayerTitle(self, title);
 	}
-}
-
-int Lua_Client::GetClientVersion() {
-	Lua_Safe_Call_Int();
-	return static_cast<unsigned int>(self->ClientVersion());
-}
-
-uint32 Lua_Client::GetClientVersionBit() {
-	Lua_Safe_Call_Int();
-	return self->ClientVersionBit();
 }
 
 void Lua_Client::SetTitleSuffix(const char *text) {
@@ -1607,6 +1597,12 @@ Lua_Inventory Lua_Client::GetInventory() {
 	return &self->GetInv();
 }
 
+Lua_ItemInst Lua_Client::GetItemByGUID(std::string guid) {
+	Lua_Safe_Call_Class(Lua_ItemInst);
+	const auto parsed = ItemGUIDFromText(guid);
+	EQ::ItemInstance *found = parsed ? self->GetInv().GetItemByGUID(*parsed) : nullptr;
+	return found;
+}
 void Lua_Client::SendItemScale(Lua_ItemInst inst) {
 	Lua_Safe_Call_Void();
 	self->SendItemScale(inst);
@@ -3821,8 +3817,6 @@ luabind::scope lua_register_client() {
 	.def("GetClassAbbreviation", (std::string(Lua_Client::*)(void))&Lua_Client::GetClassAbbreviation)
 	.def("GetClassBitmask", (uint16(Lua_Client::*)(void))&Lua_Client::GetClassBitmask)
 	.def("GetClientMaxLevel", (int(Lua_Client::*)(void))&Lua_Client::GetClientMaxLevel)
-	.def("GetClientVersion", (int(Lua_Client::*)(void))&Lua_Client::GetClientVersion)
-	.def("GetClientVersionBit", (uint32(Lua_Client::*)(void))&Lua_Client::GetClientVersionBit)
 	.def("GetCorpseCount", (int64(Lua_Client::*)(void))&Lua_Client::GetCorpseCount)
 	.def("GetCorpseID", (int(Lua_Client::*)(int))&Lua_Client::GetCorpseID)
 	.def("GetCorpseItemAt", (int(Lua_Client::*)(int,int))&Lua_Client::GetCorpseItemAt)
@@ -3860,6 +3854,7 @@ luabind::scope lua_register_client() {
 	.def("GetInstrumentMod", (int(Lua_Client::*)(int))&Lua_Client::GetInstrumentMod)
 	.def("GetIntoxication", (int(Lua_Client::*)(void))&Lua_Client::GetIntoxication)
 	.def("GetInventory", (Lua_Inventory(Lua_Client::*)(void))&Lua_Client::GetInventory)
+	.def("GetItemByGUID", (Lua_ItemInst(Lua_Client::*)(std::string))&Lua_Client::GetItemByGUID)
 	.def("GetInventorySlots", (luabind::object(Lua_Client::*)(lua_State* L))&Lua_Client::GetInventorySlots)
 	.def("GetInvulnerableEnvironmentDamage", (bool(Lua_Client::*)(void))&Lua_Client::GetInvulnerableEnvironmentDamage)
 	.def("GetItemIDAt", (int(Lua_Client::*)(int))&Lua_Client::GetItemIDAt)

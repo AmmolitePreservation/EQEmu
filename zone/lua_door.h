@@ -66,7 +66,6 @@ public:
 	uint8 GetTriggerDoorID();
 	uint8 GetTriggerType();
 	bool IsLDoNDoor();
-	uint32 GetClientVersionMask();
 	int GetDoorParam();
 	bool HasDestinationZone();
 	bool IsDestinationZoneSame();

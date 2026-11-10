@@ -18,7 +18,8 @@
 #include "../common/repositories/npc_types_repository.h"
 #include "../common/repositories/character_bind_repository.h"
 #include "../common/repositories/character_pet_buffs_repository.h"
-#include "../common/repositories/character_pet_inventory_repository.h"
+#include "../common/repositories/inventory_snapshots_repository.h"
+#include "../common/repositories/item_instances_repository.h"
 #include "../common/repositories/character_pet_info_repository.h"
 #include "../common/repositories/character_buffs_repository.h"
 #include "../common/repositories/character_languages_repository.h"
@@ -38,7 +39,6 @@
 #include "../common/repositories/character_item_recast_repository.h"
 #include "../common/repositories/account_repository.h"
 #include "../common/repositories/respawn_times_repository.h"
-#include "../common/repositories/object_contents_repository.h"
 #include "../common/repositories/mercs_repository.h"
 #include "../common/repositories/merc_buffs_repository.h"
 #include "../common/repositories/merc_inventory_repository.h"
@@ -48,7 +48,7 @@
 #include "../common/repositories/character_exp_modifiers_repository.h"
 #include "../common/repositories/character_data_repository.h"
 #include "../common/repositories/character_corpses_repository.h"
-#include "../common/repositories/character_corpse_items_repository.h"
+#include "../common/item_layer.h"
 #include "../common/repositories/zone_repository.h"
 
 #include "../common/repositories/trader_repository.h"
@@ -217,47 +217,30 @@ void ZoneDatabase::LoadWorldContainer(uint32 parent_id, EQ::ItemInstance* contai
 		return;
 	}
 
-	const auto& l = ObjectContentsRepository::GetWhere(
-		database,
-		fmt::format(
-			"`parentid` = {}",
-			parent_id
-		)
-	);
-
-	for (const auto& e : l) {
-		const uint32 augments[EQ::invaug::SOCKET_COUNT] = {
-			e.augslot1,
-			e.augslot2,
-			e.augslot3,
-			e.augslot4,
-			e.augslot5,
-			static_cast<uint32>(e.augslot6)
-		};
-
-		auto inst = database.CreateItem(e.itemid, e.charges);
-
-		if (inst && inst->GetItem()->IsClassCommon()) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				if (augments[i]) {
-					inst->PutAugment(&database, i, augments[i]);
-				}
-			}
-
-			container->PutItem(e.bagidx, *inst);
+	for (auto &held : ItemLayer::Load(database, database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id))) {
+		if (!held.location.slot || *held.location.slot > EQ::invbag::SLOT_END) {
+			LogError("World container [{}] holds a row without a valid slot; skipped", parent_id);
+			safe_delete(held.inst);
+			continue;
 		}
 
-		safe_delete(inst);
+		container->PutItem(static_cast<uint8>(*held.location.slot), *held.inst);
+		safe_delete(held.inst);
 	}
 }
 
+// A dropped bag's contents stay under the bag; a world container's contents take its slots. Items reach either from
+// an inventory, so they already have GUIDs.
 void ZoneDatabase::SaveWorldContainer(uint32 zone_id, uint32 parent_id, const EQ::ItemInstance* container)
 {
 	if (!container) {
 		return;
 	}
 
-	DeleteWorldContainer(parent_id, zone_id);
+	if (container->HasGUID()) {
+		ItemLayer::Update(database, *container, ItemLocation::OnGround(zone_id));
+		return;
+	}
 
 	for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; index++) {
 		auto inst = container->GetItem(index);
@@ -265,104 +248,14 @@ void ZoneDatabase::SaveWorldContainer(uint32 zone_id, uint32 parent_id, const EQ
 			continue;
 		}
 
-		uint32 augments[EQ::invaug::SOCKET_COUNT] = { 0, 0, 0, 0, 0, 0 };
-
-		if (inst->IsType(EQ::item::ItemClassCommon)) {
-			for (int i = EQ::invaug::SOCKET_BEGIN; i <= EQ::invaug::SOCKET_END; i++) {
-				auto augment = inst->GetAugment(i);
-				augments[i] = (augment && augment->GetItem()) ? augment->GetItem()->ID : 0;
-			}
-		}
-
-		ObjectContentsRepository::ReplaceOne(
-			database,
-			ObjectContentsRepository::ObjectContents{
-				.zoneid = zone_id,
-				.parentid = parent_id,
-				.bagidx = index,
-				.itemid = inst->GetItem()->ID,
-				.charges = inst->GetCharges(),
-				.droptime = std::time(nullptr),
-				.augslot1 = augments[0],
-				.augslot2 = augments[1],
-				.augslot3 = augments[2],
-				.augslot4 = augments[3],
-				.augslot5 = augments[4],
-				.augslot6 = static_cast<int32_t>(augments[5])
-			}
-		);
+		ItemLayer::Update(database, *inst, ItemLocation::InHolder(ItemHolderType::WorldContainer, parent_id, index));
 	}
 }
 
+// A combine consumed the container's contents.
 void ZoneDatabase::DeleteWorldContainer(uint32 parent_id, uint32 zone_id)
 {
-	ObjectContentsRepository::DeleteWhere(
-		database,
-		fmt::format(
-			"`parentid` = {} AND `zoneid` = {}",
-			parent_id,
-			zone_id
-		)
-	);
-}
-
-std::unique_ptr<EQ::ItemInstance> ZoneDatabase::LoadSingleTraderItem(uint32 char_id, int serial_number)
-{
-	auto results = TraderRepository::GetWhere(
-		database,
-		fmt::format(
-			"`char_id` = '{}' AND `item_sn` = '{}' ORDER BY slot_id",
-			char_id,
-			serial_number
-		)
-	);
-
-	if (results.empty()) {
-		LogTrading("Could not find item serial number {} for character id {}", serial_number, char_id);
-		return nullptr;
-	}
-
-	int item_id = results.at(0).item_id;
-	int charges = results.at(0).item_charges;
-	int cost    = results.at(0).item_cost;
-
-	const EQ::ItemData *item = database.GetItem(item_id);
-	if (!item) {
-		LogTrading("Unable to create item.");
-		return nullptr;
-	}
-
-	if (item->NoDrop == 0) {
-		return nullptr;
-	}
-
-	std::unique_ptr<EQ::ItemInstance> inst(
-		database.CreateItem(
-			item_id,
-			charges,
-			results.at(0).aug_slot_1,
-			results.at(0).aug_slot_2,
-			results.at(0).aug_slot_3,
-			results.at(0).aug_slot_4,
-			results.at(0).aug_slot_5,
-			results.at(0).aug_slot_6
-		)
-	);
-	if (!inst) {
-		LogTrading("Unable to create item instance.");
-		return nullptr;
-	}
-
-	inst->SetCharges(charges);
-	inst->SetSerialNumber(serial_number);
-	inst->SetMerchantSlot(serial_number);
-	inst->SetPrice(cost);
-
-	if (inst->IsStackable()) {
-		inst->SetMerchantCount(charges);
-	}
-
-	return std::move(inst);
+	ItemLayer::RetireWhere(database, ItemLayer::HolderFilter(ItemHolderType::WorldContainer, parent_id), ItemRetirement::Consumed);
 }
 
 void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 charges, uint32 new_price) {
@@ -377,15 +270,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 	if (new_price == 0) {
 		LogTrading("Removing Trader items from the DB for char_id [{}], item_id [{}]", char_id, item_id);
 
-		auto results = TraderRepository::DeleteWhere(
-			database,
-			fmt::format(
-				"`char_id` = '{}' AND `item_id` = {}",
-				char_id,
-				item_id
-			)
-		);
-		if (!results) {
+		auto results = TraderRepository::DeleteByItem(database, char_id, item_id);
+		if (results < 0) {
 			LogDebug("[CLIENT] Failed to remove trader item(s): [{}] for char_id: [{}]",
 					 item_id,
 					 char_id
@@ -396,8 +282,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 	}
 
 	if (!item->Stackable) {
-		auto results = TraderRepository::UpdateItem(database, char_id, new_price, item_id, charges);
-		if (!results) {
+		auto results = TraderRepository::UpdatePriceByItem(database, char_id, item_id, charges, new_price);
+		if (results < 0) {
 			LogTrading(
 				"Failed to update price for trader item [{}] for char_id: [{}]",
 				item_id,
@@ -407,8 +293,8 @@ void ZoneDatabase::UpdateTraderItemPrice(int char_id, uint32 item_id, uint32 cha
 		return;
 	}
 
-	auto results = TraderRepository::UpdateItem(database, char_id, new_price, item_id, 0);
-	if (!results) {
+	auto results = TraderRepository::UpdatePriceByItem(database, char_id, item_id, 0, new_price);
+	if (results < 0) {
 		LogTrading(
 			"Failed to update price for trader item [{}] for char_id: [{}]",
 			item_id,
@@ -557,6 +443,7 @@ bool ZoneDatabase::LoadCharacterData(uint32 character_id, PlayerProfile_Struct* 
 	pp->guildAutoconsent         = e.guild_auto_consent;
 	pp->RestTimer                = e.RestTimer;
 	pp->char_id                  = e.id;
+	pp->origin_world_id          = e.origin_world_id;
 	m_epp->aa_effects            = e.e_aa_effects;
 	m_epp->perAA                 = e.e_percent_to_aa;
 	m_epp->expended_aa           = e.e_expended_aa_spent;
@@ -1315,59 +1202,55 @@ bool ZoneDatabase::NoRentExpired(const std::string& name)
 }
 
 bool ZoneDatabase::SaveCharacterInvSnapshot(uint32 character_id) {
-	uint32 time_index = time(nullptr);
-	std::string query = StringFormat(
-		"INSERT "
-		"INTO"
-		" `inventory_snapshots` "
-		"(`time_index`,"
-		" `charid`,"
-		" `slotid`,"
-		" `itemid`,"
-		" `charges`,"
-		" `color`,"
-		" `augslot1`,"
-		" `augslot2`,"
-		" `augslot3`,"
-		" `augslot4`,"
-		" `augslot5`,"
-		" `augslot6`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornamenticon`,"
-		" `ornamentidfile`,"
-		" `ornament_hero_model`,"
-		" `guid`"
-		") "
-		"SELECT"
-		" %u,"
-		" `character_id`,"
-		" `slot_id`,"
-		" `item_id`,"
-		" `charges`,"
-		" `color`,"
-		" `augment_one`,"
-		" `augment_two`,"
-		" `augment_three`,"
-		" `augment_four`,"
-		" `augment_five`,"
-		" `augment_six`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornament_icon`,"
-		" `ornament_idfile`,"
-		" `ornament_hero_model`,"
-		" `guid` "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u",
-		time_index,
-		character_id
-	);
-	auto results = database.QueryDatabase(query);
-	LogInventory("[{}] ([{}])", character_id, (results.Success() ? "pass" : "fail"));
-	return results.Success();
+	const bool saved = InventorySnapshotsRepository::Capture(database, character_id, time(nullptr));
+	LogInventory("[{}] ([{}])", character_id, (saved ? "pass" : "fail"));
+	return saved;
+}
+
+// The snapshot views list items by EQEmu slot id, as they did when augments were columns of their item.
+static std::vector<std::pair<int16, uint32>> ItemsBySlot(const std::vector<ItemInstancesRepository::ItemInstances> &rows)
+{
+	std::map<std::array<uint32, 3>, const ItemInstancesRepository::ItemInstances *> by_guid;
+	for (const auto &r : rows) {
+		by_guid[{r.guid.first, r.guid.second, r.guid.third}] = &r;
+	}
+
+	std::vector<std::pair<int16, uint32>> items;
+	for (const auto &r : rows) {
+		if (!r.location.parent_guid) {
+			items.emplace_back(EQ::InventoryProfile::SlotForLocation(r.location), r.item_id);
+			continue;
+		}
+
+		const auto &p      = *r.location.parent_guid;
+		const auto  parent = by_guid.find({p.first, p.second, p.third});
+		if (parent == by_guid.end() || parent->second->location.parent_guid) {
+			continue;
+		}
+
+		const auto *bag = database.GetItem(parent->second->item_id);
+		if (!bag || !bag->IsClassBag()) {
+			continue;
+		}
+
+		items.emplace_back(
+			EQ::InventoryProfile::CalcSlotId(EQ::InventoryProfile::SlotForLocation(parent->second->location), r.location.parent_index),
+			r.item_id
+		);
+	}
+
+	std::ranges::sort(items);
+
+	return items;
+}
+
+static void ItemsMissingFrom(
+	const std::vector<std::pair<int16, uint32>> &items,
+	const std::vector<std::pair<int16, uint32>> &other,
+	std::list<std::pair<int16, uint32>> &missing
+)
+{
+	std::ranges::set_difference(items, other, std::back_inserter(missing));
 }
 
 int ZoneDatabase::CountCharacterInvSnapshots(uint32 character_id) {
@@ -1470,113 +1353,25 @@ bool ZoneDatabase::ValidateCharacterInvSnapshotTimestamp(uint32 character_id, ui
 }
 
 void ZoneDatabase::ParseCharacterInvSnapshot(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &parse_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" `slotid`,"
-		" `itemid` "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `charid` = %u "
-		"AND"
-		" `time_index` = %u "
-		"ORDER BY"
-		" `slotid`",
-		character_id,
-		timestamp
-	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		parse_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
+	for (const auto &item : ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp))) {
+		parse_list.push_back(item);
+	}
 }
 
 void ZoneDatabase::DivergeCharacterInvSnapshotFromInventory(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &compare_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" slotid,"
-		" itemid "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `time_index` = %u "
-		"AND"
-		" `charid` = %u "
-		"AND"
-		" `slotid` NOT IN "
-		"("
-		"SELECT"
-		" a.`slotid` "
-		"FROM"
-		" `inventory_snapshots` a "
-		"JOIN"
-		" `inventory` b "
-		"USING"
-		" (`slot_id`, `item_id`) "
-		"WHERE"
-		" a.`time_index` = %u "
-		"AND"
-		" a.`charid` = %u "
-		"AND"
-		" b.`character_id` = %u"
-		")",
-		timestamp,
-		character_id,
-		timestamp,
-		character_id,
-		character_id
+	ItemsMissingFrom(
+		ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp)),
+		ItemsBySlot(ItemInstancesRepository::GetHeld(*this, InventorySnapshotsRepository::HolderFilter(character_id))),
+		compare_list
 	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		compare_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
 }
 
 void ZoneDatabase::DivergeCharacterInventoryFromInvSnapshot(uint32 character_id, uint32 timestamp, std::list<std::pair<int16, uint32>> &compare_list) {
-	std::string query = StringFormat(
-		"SELECT"
-		" `slotid`,"
-		" `itemid` "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u "
-		"AND"
-		" `slotid` NOT IN "
-		"("
-		"SELECT"
-		" a.`slotid` "
-		"FROM"
-		" `inventory` a "
-		"JOIN"
-		" `inventory_snapshots` b "
-		"USING"
-		" (`slotid`, `itemid`) "
-		"WHERE"
-		" b.`time_index` = %u "
-		"AND"
-		" b.`charid` = %u "
-		"AND"
-		" a.`character_id` = %u"
-		")",
-		character_id,
-		timestamp,
-		character_id,
-		character_id
+	ItemsMissingFrom(
+		ItemsBySlot(ItemInstancesRepository::GetHeld(*this, InventorySnapshotsRepository::HolderFilter(character_id))),
+		ItemsBySlot(InventorySnapshotsRepository::GetItemRows(*this, character_id, timestamp)),
+		compare_list
 	);
-	auto results = QueryDatabase(query);
-
-	if (!results.Success())
-		return;
-
-	for (auto row : results)
-		compare_list.emplace_back(std::pair<int16, uint32>(Strings::ToInt(row[0]), Strings::ToUnsignedInt(row[1])));
 }
 
 bool ZoneDatabase::RestoreCharacterInvSnapshot(uint32 character_id, uint32 timestamp) {
@@ -1587,73 +1382,10 @@ bool ZoneDatabase::RestoreCharacterInvSnapshot(uint32 character_id, uint32 times
 		return false;
 	}
 
-	std::string query = StringFormat(
-		"DELETE "
-		"FROM"
-		" `inventory` "
-		"WHERE"
-		" `character_id` = %u",
-		character_id
-	);
-	auto results = database.QueryDatabase(query);
-	if (!results.Success())
-		return false;
-
-	query = StringFormat(
-		"INSERT "
-		"INTO"
-		" `inventory` "
-		"(`character_id`,"
-		" `slot_id`,"
-		" `item_id`,"
-		" `charges`,"
-		" `color`,"
-		" `augment_one`,"
-		" `augment_two`,"
-		" `augment_three`,"
-		" `augment_four`,"
-		" `augment_five`,"
-		" `augment_six`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornament_icon`,"
-		" `ornament_idfile`,"
-		" `ornament_hero_model`,"
-		" `guid` "
-		") "
-		"SELECT"
-		" `charid`,"
-		" `slotid`,"
-		" `itemid`,"
-		" `charges`,"
-		" `color`,"
-		" `augslot1`,"
-		" `augslot2`,"
-		" `augslot3`,"
-		" `augslot4`,"
-		" `augslot5`,"
-		" `augslot6`,"
-		" `instnodrop`,"
-		" `custom_data`,"
-		" `ornamenticon`,"
-		" `ornamentidfile`,"
-		" `ornament_hero_model`, "
-		" `guid` "
-		"FROM"
-		" `inventory_snapshots` "
-		"WHERE"
-		" `charid` = %u "
-		"AND"
-		" `time_index` = %u",
-		character_id,
-		timestamp
-	);
-	results = database.QueryDatabase(query);
-
+	const bool restored = ItemLayer::RestoreSnapshot(*this, character_id, timestamp);
 	LogInventory("[{}] snapshot for [{}] @ [{}]",
-		(results.Success() ? "restored" : "failed to restore"), character_id, timestamp);
-
-	return results.Success();
+		(restored ? "restored" : "failed to restore"), character_id, timestamp);
+	return restored;
 }
 
 const NPCType *ZoneDatabase::LoadNPCTypesData(uint32 npc_type_id, bool bulk_load /*= false*/)
@@ -2516,7 +2248,8 @@ void ZoneDatabase::SaveMerchantTemp(
 	uint32 zone_id,
 	uint32 instance_id,
 	uint32 item_id,
-	uint32 charges
+	uint32 charges,
+	const ItemGUID &sold
 )
 {
 	auto e = MerchantlistTempRepository::NewEntity();
@@ -2528,7 +2261,7 @@ void ZoneDatabase::SaveMerchantTemp(
 	e.itemid      = item_id;
 	e.charges     = charges;
 
-	MerchantlistTempRepository::ReplaceOne(*this, e);
+	MerchantlistTempRepository::Save(*this, e, sold);
 }
 
 void ZoneDatabase::DeleteMerchantTemp(uint32 npc_id, uint32 slot_id, uint32 zone_id, uint32 instance_id)
@@ -2613,10 +2346,8 @@ void ZoneDatabase::RefreshGroupFromDB(Client *client){
 	client->QueuePacket(outapp);
 	safe_delete(outapp);
 
-	if (client->ClientVersion() >= EQ::versions::ClientVersion::SoD) {
-		group->NotifyMainTank(client, 1);
-		group->NotifyPuller(client, 1);
-	}
+	group->NotifyMainTank(client, 1);
+	group->NotifyPuller(client, 1);
 
 	group->NotifyMainAssist(client, 1);
 	group->NotifyMarkNPC(client);
@@ -3081,9 +2812,6 @@ void ZoneDatabase::SavePetInfo(Client *client)
 	std::vector<CharacterPetBuffsRepository::CharacterPetBuffs> pet_buffs;
 	auto pet_buff = CharacterPetBuffsRepository::NewEntity();
 
-	std::vector<CharacterPetInventoryRepository::CharacterPetInventory> inventory;
-	auto item = CharacterPetInventoryRepository::NewEntity();
-
 	for (int pet_info_type = PetInfoType::Current; pet_info_type <= PetInfoType::Suspended; pet_info_type++) {
 		p = client->GetPetInfo(pet_info_type);
 		if (!p) {
@@ -3137,41 +2865,9 @@ void ZoneDatabase::SavePetInfo(Client *client)
 			pet_buffs.push_back(pet_buff);
 		}
 
-		uint32 pet_inventory_count = 0;
-
-		for (
-			int slot_id = EQ::invslot::EQUIPMENT_BEGIN;
-			slot_id <= EQ::invslot::EQUIPMENT_END;
-			slot_id++
-		) {
-			if (!p->Items[slot_id]) {
-				continue;
-			}
-
-			pet_inventory_count++;
-		}
-
-		inventory.reserve(pet_inventory_count);
-
-		for (
-			int slot_id = EQ::invslot::EQUIPMENT_BEGIN;
-			slot_id <= EQ::invslot::EQUIPMENT_END;
-			slot_id++
-		) {
-			if (!p->Items[slot_id]) {
-				continue;
-			}
-
-			item.char_id = client->CharacterID();
-			item.pet     = pet_info_type;
-			item.slot    = slot_id;
-			item.item_id = p->Items[slot_id];
-
-			inventory.push_back(item);
-		}
 	}
 
-	CharacterPetInfoRepository::DeleteWhere(
+		CharacterPetInfoRepository::DeleteWhere(
 		database,
 		fmt::format(
 			"`char_id` = {}",
@@ -3195,17 +2891,6 @@ void ZoneDatabase::SavePetInfo(Client *client)
 		CharacterPetBuffsRepository::InsertMany(database, pet_buffs);
 	}
 
-	CharacterPetInventoryRepository::DeleteWhere(
-		database,
-		fmt::format(
-			"`char_id` = {}",
-			client->CharacterID()
-		)
-	);
-
-	if (!inventory.empty()) {
-		CharacterPetInventoryRepository::InsertMany(database, inventory);
-	}
 }
 
 void ZoneDatabase::RemoveTempFactions(Client *client) {
@@ -3318,30 +3003,22 @@ void ZoneDatabase::LoadPetInfo(Client *client)
 		}
 	}
 
-	const auto& inventory = CharacterPetInventoryRepository::GetWhere(
+	// The pet's items are rows held by the pet or suspended pet holder; the pet info carries their item numbers by slot.
+	const auto rows = ItemInstancesRepository::GetWhere(
 		database,
 		fmt::format(
-			"`char_id` = {}",
+			"holder_type IN ('pet', 'suspended_pet') AND holder_id = {} AND retirement_state IS NULL",
 			client->CharacterID()
 		)
 	);
 
-	if (!inventory.empty()) {
-		for (const auto& e : inventory) {
-			if (e.pet == PetInfoType::Current) {
-				p = pet_info;
-			} else if (e.pet == PetInfoType::Suspended) {
-				p = suspended_pet_info;
-			} else {
-				continue;
-			}
-
-			if (!EQ::ValueWithin(e.slot, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
-				continue;
-			}
-
-			p->Items[e.slot] = e.item_id;
+	for (const auto &row : rows) {
+		p = row.location.IsInHolder(ItemHolderType::Pet) ? pet_info : suspended_pet_info;
+		if (!row.location.slot || !EQ::ValueWithin(*row.location.slot, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+			continue;
 		}
+
+		p->Items[*row.location.slot] = row.item_id;
 	}
 }
 
@@ -3774,36 +3451,6 @@ uint32 ZoneDatabase::SaveCharacterCorpse(
 
 	e = CharacterCorpsesRepository::InsertOne(*this, e);
 
-	std::vector<CharacterCorpseItemsRepository::CharacterCorpseItems> v;
-
-	v.reserve(c.items.size());
-
-	auto ci = CharacterCorpseItemsRepository::NewEntity();
-
-	for (const auto& i : c.items) {
-		ci.corpse_id           = e.id;
-		ci.equip_slot          = i.equip_slot;
-		ci.item_id             = i.item_id;
-		ci.charges             = i.charges;
-		ci.aug_1               = i.aug_1;
-		ci.aug_2               = i.aug_2;
-		ci.aug_3               = i.aug_3;
-		ci.aug_4               = i.aug_4;
-		ci.aug_5               = i.aug_5;
-		ci.aug_6               = i.aug_6;
-		ci.attuned             = i.attuned;
-		ci.custom_data         = i.custom_data;
-		ci.ornamenticon        = i.ornamenticon;
-		ci.ornamentidfile      = i.ornamentidfile;
-		ci.ornament_hero_model = i.ornament_hero_model;
-
-		v.emplace_back(ci);
-	}
-
-	if (!v.empty()) {
-		CharacterCorpseItemsRepository::ReplaceMany(*this, v);
-	}
-
 	return e.id;
 }
 
@@ -4020,19 +3667,6 @@ uint32 ZoneDatabase::GetFirstCorpseID(uint32 character_id)
 	}
 
 	return l[0].id;
-}
-
-bool ZoneDatabase::DeleteItemOffCharacterCorpse(uint32 corpse_id, uint32 slot_id, uint32 item_id)
-{
-	return CharacterCorpseItemsRepository::DeleteWhere(
-		*this,
-		fmt::format(
-			"`corpse_id` = {} AND `equip_slot` = {} AND `item_id` = {}",
-			corpse_id,
-			slot_id,
-			item_id
-		)
-	);
 }
 
 bool ZoneDatabase::BuryCharacterCorpse(uint32 corpse_id)

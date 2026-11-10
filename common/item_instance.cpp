@@ -36,8 +36,6 @@
 //#include <iostream>
 
 int32 next_item_serial_number = 1;
-std::unordered_set<uint64> guids{};
-
 static inline int32 GetNextItemInstSerialNumber()
 {
 	// The Bazaar relies on each item a client has up for Trade having a unique
@@ -56,11 +54,6 @@ static inline int32 GetNextItemInstSerialNumber()
 	else {
 		next_item_serial_number++;
 	}
-
-	while (guids.contains(next_item_serial_number)) {
-		next_item_serial_number++;
-	}
-
 	return next_item_serial_number;
 }
 
@@ -152,6 +145,7 @@ EQ::ItemInstance::ItemInstance(const ItemInstance& copy)
 	}
 
 	m_SerialNumber = copy.m_SerialNumber;
+	m_guid         = copy.m_guid;
 	m_custom_data  = copy.m_custom_data;
 	m_timers       = copy.m_timers;
 
@@ -1944,41 +1938,6 @@ int EQ::ItemInstance::GetItemSkillsStat(EQ::skills::SkillType skill, bool augmen
 		}
 	}
 	return stat;
-}
-
-void EQ::ItemInstance::AddGUIDToMap(uint64 existing_serial_number)
-{
-	guids.emplace(existing_serial_number);
-}
-
-void EQ::ItemInstance::ClearGUIDMap()
-{
-	guids.clear();
-}
-
-bool EQ::ItemInstance::TransferOwnership(Database &db, const uint32 to_char_id) const
-{
-	if (!to_char_id || !IsEvolving()) {
-		return false;
-	}
-
-	SetEvolveCharID(to_char_id);
-	CharacterEvolvingItemsRepository::UpdateCharID(db, GetEvolveUniqueID(), to_char_id);
-	return true;
-}
-
-uint32 EQ::ItemInstance::GetAugmentEvolveUniqueID(uint8 augment_index) const
-{
-	if (!m_item || !m_item->IsClassCommon()) {
-		return 0;
-	}
-
-	const auto item = GetItem(augment_index);
-	if (item) {
-		return item->GetEvolveUniqueID();
-	}
-
-	return 0;
 }
 
 void EQ::ItemInstance::SetTimer(std::string name, uint32 time) const{

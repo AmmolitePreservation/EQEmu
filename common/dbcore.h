@@ -31,9 +31,44 @@ public:
 	MySQLRequestResult QueryDatabase(const char *query, uint32 querylen, bool retryOnFailureOnce = true);
 	MySQLRequestResult QueryDatabase(const std::string& query, bool retryOnFailureOnce = true);
 	MySQLRequestResult QueryDatabaseMulti(const std::string &query);
+	// Transactions nest: only the outermost Begin starts one and only the outermost Commit ends it, since MySQL commits
+	// an open transaction when it sees a second START TRANSACTION; a Rollback at any depth makes the outermost Commit
+	// roll back instead.
 	void TransactionBegin();
 	MySQLRequestResult TransactionCommit();
 	void TransactionRollback();
+
+	// A transaction scope: begun on construction, ended by Commit, and rolled back by the destructor when the scope
+	// is left any other way, so an early return never leaves a transaction open. Scopes nest as the calls do.
+	class Transaction {
+	public:
+		explicit Transaction(DBcore &db) : m_db(db) { m_db.TransactionBegin(); }
+		~Transaction()
+		{
+			if (m_open) {
+				m_db.TransactionRollback();
+			}
+		}
+		Transaction(const Transaction &) = delete;
+		Transaction &operator=(const Transaction &) = delete;
+
+		// False when the commit failed or an inner scope rolled back.
+		bool Commit()
+		{
+			m_open = false;
+			return m_db.TransactionCommit().Success();
+		}
+
+		void Rollback()
+		{
+			m_open = false;
+			m_db.TransactionRollback();
+		}
+
+	private:
+		DBcore &m_db;
+		bool    m_open{true};
+	};
 	std::string Escape(const std::string& s);
 	uint32 DoEscapeString(char *tobuf, const char *frombuf, uint32 fromlen);
 	void ping();
@@ -72,6 +107,8 @@ private:
 	bool Open(uint32 *errnum = nullptr, char *errbuf = nullptr);
 
 	MYSQL*  mysql;
+	int     m_transaction_depth{0};
+	bool    m_transaction_failed{false};
 	bool    mysqlOwner;
 	Mutex   *m_mutex;
 	eStatus pStatus;

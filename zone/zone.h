@@ -71,7 +71,6 @@ struct ZonePoint {
 	float  target_heading;
 	uint16 target_zone_id;
 	int32  target_zone_instance;
-	uint32 client_version_mask;
 	bool   is_virtual;
 	int    height;
 	int    width;
@@ -194,7 +193,7 @@ public:
 	inline void ShowNPCGlobalLoot(Client *c, NPC *t) { m_global_loot.ShowNPCGlobalLoot(c, t); }
 	inline void ShowZoneGlobalLoot(Client *c) { m_global_loot.ShowZoneGlobalLoot(c); }
 	int GetZoneTotalBlockedSpells() { return zone_total_blocked_spells; }
-	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false);
+	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false, const ItemGUID &sold_item = {});
 	int32 MobsAggroCount() { return aggroedmobs; }
 	DynamicZone *GetDynamicZone();
 
@@ -269,6 +268,7 @@ public:
 	uint32 CountSpawn2();
 	uint32 GetSpawnKillCount(uint32 in_spawnid);
 	uint32 GetTempMerchantQuantity(uint32 NPCID, uint32 Slot);
+	ItemGUID GetTempMerchantGUID(uint32 npc_id, uint32 slot);
 
 	uint32 GetCurrencyID(uint32 item_id);
 	uint32 GetCurrencyItemID(uint32 currency_id);
@@ -348,7 +348,7 @@ public:
 
 	WaterMap *watermap;
 	ZonePoint *GetClosestZonePoint(const glm::vec3 &location, uint32 to, Client *client, float max_distance = 40000.0f);
-	ZonePoint *GetClosestZonePointWithoutZone(float x, float y, float z, Client *client, float max_distance = 40000.0f);
+	ZonePoint *GetClosestZonePointWithoutZone(float x, float y, float z, float max_distance = 40000.0f);
 
 	Timer GetInitgridsTimer();
 	uint32 GetInstanceTimeRemaining() const;

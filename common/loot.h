@@ -4,6 +4,7 @@
 #include <list>
 #include <string>
 #include "../common/types.h"
+#include "../common/item_guid.h"
 
 struct LootItem {
 	uint32      item_id;
@@ -26,6 +27,8 @@ struct LootItem {
 	uint16      npc_min_level;
 	uint16      npc_max_level;
 	uint32      lootdrop_id; // required for zone state referencing
+	ItemGUID    guid{};             // set for a player corpse's items, which keep their rows
+	ItemGUID    augment_guids[6]{};
 };
 
 typedef std::list<LootItem*> LootItems;
