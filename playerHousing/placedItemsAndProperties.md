@@ -64,7 +64,7 @@ Case `0x5b26fa` (inline).
 | Offset | Type | Meaning | Evidence |
 |---|---|---|---|
 | +0x00 | u32 | **spawn id**; the message is ignored if the spawn isn't known | `GetSpawnByID` `0x5996e0` |
-| +0x04 | char[16] + NUL | **placed item GUID**, 16 hex characters; the client validates it by round-tripping through hex decode and encode | copied to spawn `+0x378` by `0x80c920` |
+| +0x04 | char[16] + NUL | **placed item GUID**, 16 characters over the alphabet `0-9A-Za-z+-` (six bits each, the item's 12 bytes); the client keeps it only if it survives decode (`0x80c6a0`) and encode (`0x80c520`) unchanged | copied to spawn `+0x378` by `0x80c920` |
 | +0x18 | u32 | **property id** of the item; copied to spawn `+0x198` | verified: the world right-click builds the `0x21ec` request from spawn `+0x198`/`+0x420` (`0x537d30`) |
 | +0x1c | u32 | **record id** of the item; copied to spawn `+0x420` | as above |
 
@@ -174,7 +174,7 @@ Verified as a context menu from the client's own menu code: `[0x15d391c]` is the
 
 | Offset | Type | Use | Evidence |
 |---|---|---|---|
-| +0x00 | char[18] | **item GUID** (16 hex characters + NUL, padded), copied into window `+0x370` | `0x80c920` at `0x737cf4` |
+| +0x00 | char[18] | **item GUID** (16 characters over the alphabet `0-9A-Za-z+-` + NUL, padded), copied into window `+0x370` | `0x80c920` at `0x737cf4` |
 | +0x12..+0x1f | — | not read | |
 | +0x20 | u32 | **property id** of the item (window `+0x384`; also passed to `0x736a00`) | the client's request sets it from the list row (`0x542a90`) |
 | +0x24 | u32 | **record id** of the item (window `+0x388`; also passed to `0x736a00`) | as above |

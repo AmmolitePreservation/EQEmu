@@ -75,7 +75,7 @@ Wire order (the stream cursor is the usual `{buffer, length, position}`):
 | 2 | u8 | `+0x2c` | **NPC item** (drawn as a spawn) |
 | 3 | u32 (float) | `+0xbc` | **NPC size** |
 | 4 | u32 | `+0x0c` | not used by the client |
-| 5 | cstring (≤15 characters), validated as the **item GUID** (16 hex characters, `0x505a50` → `0x80c920`) | `+0x10` | the commit `0x711a` sends this GUID |
+| 5 | cstring (≤15 characters), validated as the **item GUID** (16 characters over the alphabet `0-9A-Za-z+-`, `0x505a50` → `0x80c920`) | `+0x10` | the commit `0x711a` sends this GUID |
 | 6 | u32 | `+0x24` | **property id** the item belongs to (sent in `0x711a`; rewritten by `0x1097` via `0x556e10`) |
 | 7 | u32 | `+0x28` | **record id** of the placed-item entry (same) |
 | 8 | u32 × 7 (floats) | `+0x7c`–`+0x94` | **transform: scale (`+0x7c`), heading (`+0x80`), pitch (`+0x84`), roll (`+0x88`), then position (`+0x8c`–`+0x94`)** (verified from the world-object body build, `worldLayer.md`). `0x711a` sends these in another order: heading, pitch, roll, scale, then the position (`0x5b1f90` pushes `+0x80`, `+0x84`, `+0x88`, `+0x7c`; the position adjusted when anchored to a spawn). End reads the position from `+0x8c`–`+0x94`. **Note the order differs from the placed-item entry and layouts (heading first).** |

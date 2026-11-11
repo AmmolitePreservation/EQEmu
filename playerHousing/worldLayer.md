@@ -16,7 +16,7 @@ How placed items exist, render and are interacted with in the world. **Status: d
 | Method | Size | Role | Callers |
 |---|---|---|---|
 | `0x506030` | 9 | insert | `0x1045` handler (`0x4d0940`) |
-| `0x5060c0` | 38 | find by GUID (16 hex chars; all "0" = none) | `0x1045` handler; placement (`0x5571d0`, `0x558bb0`); Items window (`0x730de0`) |
+| `0x5060c0` | 38 | find by GUID (16 characters over the alphabet `0-9A-Za-z+-`; all "0" = none) | `0x1045` handler; placement (`0x5571d0`, `0x558bb0`); Items window (`0x730de0`) |
 | `0x5061a0` | 62 | remove by GUID (destroys the object, `0x504530`) | `0x2a9e` handler (`0x4d09de`) |
 | `0x506120` | 23 | **find by (property id, record id)** | `0x2a9e` handler; `0x65d740` (from `0x53e4d0`) |
 | `0x506160` | 12 | *inferred:* pick (ray test over the list) | world click `0x537d30` |
@@ -45,7 +45,7 @@ The distinctive spawn field **`+0x1e54`** is read by: `0x504b60` (the anchor fun
 | 2 | u8 | `+0x2c` | **NPC item** (the item is drawn as a spawn) | `0x504b60`; `0x4b3940` |
 | 3 | f32 (read as u32) | `+0xbc` | **the NPC's size** (0 = default) | `0x5a4ec0` on the NPC item's spawn |
 | 4 | u32 | `+0x0c` | **not used by the client**: only read (`0x505400`) and copied (`0x504fd0`, `0x5056b0`); a server-defined value | |
-| 5 | GUID (16 hex) | `+0x10` | the item's GUID: the server's one per placed row, derived from the row id and the same in every message about the item (world objects, item lists, the begin placement, the spawn binding, menus), since the client matches by it | |
+| 5 | GUID (16 characters over the alphabet `0-9A-Za-z+-`) | `+0x10` | the item's own GUID: the one it had in inventory and keeps when it's picked up, the same in every message about the item (world objects, item lists, the begin placement, the spawn binding, menus), since the client matches by it | |
 | 6, 7 | u32, u32 | `+0x24`, `+0x28` | property id, record id | |
 | 8 | f32 ×7 | `+0x7c`–`+0x94` | **scale, heading, pitch, roll, then position (three coordinates)** | scale: `0x504830(+0x7c)` (resize); rotation: actor `+0x74`(`+0x80`, `+0x84`, `+0x88`); heading `+0x80` also sets an NPC item's spawn heading (`0x5024b0`) |
 | 9 | u8 ×3 | `+0x98`, `+0x99`, `+0x9a` | `+0x98`: set for NPC items (the actor's flags get `|= 5`); `+0x99`/`+0x9a`: allowed placement sub-modes (`placementMode.md`) | `0x504b60`; `0x5ae160` |

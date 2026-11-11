@@ -50,7 +50,24 @@ World's updater (`./bin/world database:updates --skip-backup`) took the database
 
 Housing's own tables are untouched, in their old shape: the plot 100525 with its house (100760) and crate (100761), four real_estate_items rows (three on the plot, one in the crate) and the 79 real estate doors. `~/runSQLFile.sh <file>` on the host runs a SQL file against `peq` as root (the password goes from `.env` into the environment and is never printed).
 
-Next is the rework, then a fresh database from Peridot's copy with the updater run from the start (worklist.md PRC-13), since housing's custom migrations are edited in place.
+The rework is written and has not been built here. Next is its first build, then a fresh database from Peridot's copy with the updater run from the start (worklist.md PRC-13), since housing's custom migrations are edited in place.
+
+### The pre-build tools
+
+The tools of serverPlan.md's "Proven before the build" that need a MariaDB run on the host against a scratch server, a container of the stack's own image with an empty `peq`:
+
+```
+sudo docker rm -f housingTest
+sudo docker run -d --name housingTest -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 -e MARIADB_DATABASE=peq akk-stack-mariadb:latest
+```
+
+It answers after about 15 seconds (MariaDB 10.11.19). The tools call `mariadb`, so `~/bin/mariadb` is a wrapper (`exec sudo docker exec -i housingTest mariadb "$@"`) put first in `PATH`. The tools and the files they read go to `~/housingToolsTest` in the repo's own layout, Live's dump tables to `~/housingToolsTest/live/master` (`definitions.tsv`, `costs.tsv`, `properties.tsv` from everquest-live-dumps):
+
+```
+cd ~/housingToolsTest
+PATH=~/bin:$PATH python3 playerHousing/tools/testHousingSchema.py
+PATH=~/bin:$PATH python3 playerHousing/tools/testHousingCatalog.py --live ~/housingToolsTest/live
+```
 
 ## The client
 
@@ -60,5 +77,5 @@ Claude's account there is `claudehousing`, its password in OpenBao at `services/
 
 ## Open
 
-- Zone does not build until the GUID rework lands (worklist.md REC-16 to REC-19, MNU-12); the server is stopped.
+- The GUID rework (worklist.md REC-16 to REC-19, MNU-12) is written and not yet built here; the server is stopped.
 - The fresh database and the fresh shakeout pass (worklist.md PRC-13).
