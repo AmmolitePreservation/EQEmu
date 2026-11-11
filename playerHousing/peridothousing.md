@@ -65,21 +65,25 @@ Housing's custom migrations are edited in place, so only a database that never r
 
 ### The rework in game, from 2026-11-10
 
-The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12.
+The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12. Done after it: REC-4 (the GUIDs across zoning) and REC-14 (the client reads the items the lists carry), which filed REC-22.
 
 **State:** Claudehousing owns one plot, 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone), and stands on it. The plot holds five records: placed darts (3470, 70) and a placed shield (1748), and in storage two dart stacks (100 and 10) and a chair (61418). It carries chairs (61419), 20 darts and a sword (5506) whose commit is refused (ITM-11). The account has status 250, so the tests summon what they place.
 
-How the tests drive the client, through claudelink's command, evaluate, hover, click and screenshot:
+How the tests drive the client, through claudelink's command, evaluate, hover, click, menu, nudge and screenshot:
 
 | Step | How |
 |---|---|
 | Summon | `#summonitem <id> [count]` puts the item on the cursor; `/itemnotify pack<N> leftmouseup` drops it in bag slot N (pack1 is slot 23). The Items window must be closed for the drop (`/windowstate RealEstateItemsWnd close`, then `open`). |
 | Select a carried item | with the Items window open, `/itemnotify pack<N> leftmouseup` |
 | Select a record | `/notify RealEstateItemsWnd REIW_ItemList listselect <row>` |
-| Place | `/notify RealEstateItemsWnd REIW_Place_Button leftmouseup`, two seconds, then a hover and a left click on a point of the world (960, 800 at 1920x1080). `/click left` clicks where the mouse is, which may be a window. A refused commit leaves the client in placement mode; `/keypress esc` leaves it. |
+| Place | `/notify RealEstateItemsWnd REIW_Place_Button leftmouseup`, two seconds, then a hover and a left click on a point of the world (960, 800 at 1920x1080) to commit. A new preview starts 10 units ahead on the camera's center line; a placed item's starts where the item stands. It moves only by `nudge <sideways> <away> <height>` (500 sideways is 6 units), which answers with the point and the client's verdict. `/click left` clicks where the mouse is, which may be a window. A refused commit leaves the client in placement mode; `/keypress esc` leaves it. |
 | Store, pick up | `REIW_Move_Shed_Button`, `REIW_Move_Inventory_Button` |
 | A count of a stack | the quantity window opens: `/notify QuantityWnd QTYW_slider newvalue <n>`, then `/notify QuantityWnd QTYW_Accept_Button leftmouseup` |
 | Read the list | `${Window[RealEstateItemsWnd].Child[REIW_ItemList].Items}` and `.List[<row>,<column>]`: 2 name, 4 quantity, 5 location, 6 status, 7 owner |
+| A placed item's menu | a right click on the item in the world (`click <x> <y> right`; `screenPoint` gives the point), then `menu` lists the open menu and `menu "<row text>"` picks a row |
+| A list row's menu | select the row, then `/notify RealEstateItemsWnd REIW_ItemList rightmouse <row>`; the menu is the selected row's |
+| Inspect | pick Inspect in either menu; `${Window[ItemDisplayWindow].Open}` and `.Text` give the window and its title, the item's name (the title stays after the window closes); `/windowstate ItemDisplayWindow close` |
+| Zone out and back | `#zone guildlobby`, then `#zoneinstance 101 260 -290 3.75`, about 20 seconds each; `/windowstate RealEstateItemsWnd open` afterwards |
 | Screenshots | `#time 14` for daylight (`#time 12` is midnight) |
 
 After each step the server's side is read with `~/items117.sh` and `~/zoneLog.sh neighborhood`.
@@ -109,6 +113,6 @@ Claude's account there is `claudehousing`, its password in OpenBao at `services/
 
 ## Open
 
-- The rework's remaining tests in game (worklist.md REC-4, REC-14, STT-19, RCL-5, MNU-13) and the fresh shakeout pass from "Chunk 8 in game".
+- The rework's remaining tests in game (worklist.md STT-19, RCL-5, MNU-13) and the fresh shakeout pass from "Chunk 8 in game".
 - The fixes PLC-24 found (worklist.md PLC-26, ITM-11), after the Live reads of REC-20.
 - The pre-build tools still to rerun (worklist.md PRC-3, DOR-20).

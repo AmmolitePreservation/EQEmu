@@ -73,7 +73,7 @@ Total length is 32 bytes (`+0x14`–`+0x17` is padding after the terminator). If
 ## `0x58c7` — Inspect item (both directions)
 
 - **Server → client** (case `0x5b2c7a`): the payload **is** a standard serialized item, with no leading type. The client hands it to the item display manager (`[0xf73a28]`, method `0x6ae610`), which opens an item display window. The same manager serves merchant previews and Krono displays.
-- **Client → server:** sent by the Items window (site `0x73ece8`). Request layout still to be decoded.
+- **Client → server:** 8 bytes, the property id and the record id. The Items window sends it when a menu's Inspect entry (type 7) finds no item for the record in the client's own item lists (`0x73ec25`, send site `0x73ece8`). With the item in a list, Inspect shows it without asking the server.
 
 *Not* a list of placed items.
 
@@ -168,7 +168,7 @@ Total size is 0xbc (188) bytes. **Five opcodes carry this struct**:
 
 ## `0x21ec` — Placed-item interaction menu (server → client)
 
-Handled by the Items window (`[0xd1fcb8]->0x7375f0`). This is a **raw fixed-size struct** (at least 0x300 bytes): the handler indexes the buffer directly. It builds and **pops up a context menu of interaction actions for one placed item**. The client also sends `0x21ec` (Items window); that request hasn't been decoded.
+Handled by the Items window (`[0xd1fcb8]->0x7375f0`). This is a **raw fixed-size struct** (at least 0x300 bytes): the handler indexes the buffer directly. It builds and **pops up a context menu of interaction actions for one placed item**. The client's request is the same struct with the property id and the record id set, sent on a right click on a list row or on a placed item in the world. Peridot's reply is the request with the GUID, the title, the entries and the NPC's spawn id filled in; the rest goes back as sent. The filter flag is the client's own: in game a list row's menu comes filtered and a world click's whole (worklist.md REC-14).
 
 Verified as a context menu from the client's own menu code: `[0x15d391c]` is the context-menu manager; `0x85b590`, instantiated for each new submenu, uses the menu-template strings "Item", "SubMenu", and "Check"; `0x85b7b0` (233 callers) adds a menu item; and `0x862220` pops up the menu with the window's menu (window `+0x358`) at a point.
 
@@ -209,7 +209,7 @@ Menu command ids are `0x65 + entryIndex`. The Items window notification handler 
 | 3 | **store**: send **`0x3424`** (48 bytes: the header with the menu's ids + destination **`0x5b5660(property id)`**, the property's own storage; quantity 0) | `0x73e903` |
 | 4 | **pick up**: send **`0x2036`** (44 bytes: the header with the menu's ids, constructor `0x542470`) | `0x73ea10` |
 | 5 | send **`0x7ad1`**, 148 bytes `{u32 property id, u32 record id, 140 zero bytes}`; the zero tail is unused (the client never receives `0x7ad1`), so the action is whatever the server's menu entry says | `0x73eae8` |
-| 7 | local: look up the placed entry (`0x5b01c0`) and show its item in an item display window | `0x73ec25` |
+| 7 | **inspect**: look up the record's list entry (`0x5b01c0`) and show its item in an item display window (`0x6ae610`); with no entry, or none holding an item, send **`0x58c7`** | `0x73ec25` |
 | 8 | send **`0x050c`** | `0x73ebbf` |
 | 9 | send **`0x51e3`** | `0x73ed1d` |
 | `0x13` | send **`0x64a3`** | `0x73ed5e` |
