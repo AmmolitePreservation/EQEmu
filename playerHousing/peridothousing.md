@@ -65,9 +65,9 @@ Housing's custom migrations are edited in place, so only a database that never r
 
 ### The rework in game, from 2026-11-10
 
-The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12. Done after it: REC-4 (the GUIDs across zoning) and REC-14 (the client reads the items the lists carry), which filed REC-22. Then MNU-13 (a container's contents through a combine, a stopped zone and a pick-up by another character), which filed MNU-14 to MNU-16 and ZIN-13.
+The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12. Done after it: REC-4 (the GUIDs across zoning) and REC-14 (the client reads the items the lists carry), which filed REC-22. Then MNU-13 (a container's contents through a combine, a stopped zone and a pick-up by another character), which filed MNU-14 to MNU-16 and ZIN-13. Then STT-19 (a sale and a crate's delivery without inventory room, and a reclaim's crate), which found nothing new.
 
-**State:** Claudehousing (character 117) owns one plot, 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone), and stands on it. Its account has status 250, so the tests summon what they place. Claudevisitor (character 118, status 0) stands there too as a Trustee of the plot. It is a copy of Claudehousing made with `#copycharacter`, and its items have GUIDs of their own. The plot holds six records: placed darts (3470, 70), a placed shield (1748) and a placed Brewing Barrel (54249), and in storage two dart stacks (100 and 10) and a chair (61418). Claudehousing carries a chair (61419), 20 darts, Metal Bits (2), a Water Flask and a sword (5506) whose commit is refused (ITM-11); a Forge - Floor (54253) that Claudevisitor mailed to it waits as a parcel. The `neighborhood` zone row's `min_status` is 0 by hand since 2026-11-11 (`#reload zone_data` after the update); it goes back to 80 before ZIN-13's file is proven.
+**State:** nobody owns a plot. 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone) is vacant since STT-19's sales and reclaim. Claudehousing (character 117) and Claudevisitor (character 118) stand at `260 -290 3.75` in the neighborhood's instance 101, each with a full inventory. Claudehousing's account has status 250, so the tests summon what they place. Claudevisitor has status 0. It is a copy of Claudehousing made with `#copycharacter`, and its items have GUIDs of their own. Claudehousing carries a Small Storage Crate (62586) that carries property 100760 with six records: three dart stacks (3470; 70, 100 and 10), a shield (1748), a Brewing Barrel (54249) and a chair (61418). It also carries a chair (61419), 20 darts, Metal Bits (2), a Water Flask, a sword (5506) whose commit is refused (ITM-11) and five Cloth Caps (1001) that fill its slots; a Forge - Floor (54253) that Claudevisitor mailed to it waits as a parcel. Claudevisitor carries a Crate of Eviction (52147) that carries property 100762 with one chair (61419), an empty Small Storage Crate, darts, Metal Bits, a Water Flask, a sword and five Cloth Caps. The `neighborhood` zone row's `min_status` is 0 by hand since 2026-11-11 (`#reload zone_data` after the update); it goes back to 80 before ZIN-13's file is proven.
 
 How the tests drive the client, through claudelink's command, evaluate, hover, click, menu, nudge and screenshot:
 
@@ -88,7 +88,14 @@ How the tests drive the client, through claudelink's command, evaluate, hover, c
 | A second character | every claudelink call names its client by process id. `#summon <name>` from the status 250 character brings the other into its zone and instance. With both at `260 -290 3.75`, `/face fast heading 0` and `/look 0`, an item placed at (261.9, -277.85, 5.45) takes a right click at 800, 330 on either client. |
 | What the client printed | a `command` call returns the chat lines the command caused |
 | Zone out and back | `#zone guildlobby`, then `#zoneinstance 101 260 -290 3.75`, about 20 seconds each; `/windowstate RealEstateItemsWnd open` afterwards |
-| Screenshots | `#time 14` for daylight (`#time 12` is midnight) |
+| Buy a plot | at the plot's border stone, `/doortarget id <door>` and `/click left door` open the purchase window (`${Window[RealEstatePurchaseWnd].Open}`); `/notify RealEstatePurchaseWnd REPW_Purchase_Button leftmouseup` buys, with no confirmation. In `neighborhood`, door 1 is 108 Brimming Way's stone (property 100077), by `322 -229 3.75`. |
+| Sell a plot | stand on the plot (`322 -229 3.75` is on 100077) and open the window from the stone. The confirmation closes by itself within about four seconds, so one command presses Sell and answers it: `/multiline ; /notify RealEstatePurchaseWnd REPW_Sell_Button leftmouseup ; /timed 5 /notify ConfirmationDialogBox CD_Yes_Button leftmouseup`. A sale that went through shows nothing. |
+| The property lists | `${PeridotEmu.Value[character.ownedRealEstates]}` gives the count and `...ownedRealEstates.0]` the first id; likewise `ownedItemRealEstates` (list B) and `archivedRealEstates` (list C). An archived crate is in the first and the third. |
+| Move the status 0 character | from the status 250 character, `#goto <x> <y> <z>` and then `#summon Claudevisitor`; a summon from another zone zones it, in about 24 seconds |
+| Give the status 0 character an item | target it, then `#giveitem <id>`: the item is on its cursor, and `/autoinventory` on its client stows it |
+| Fill an inventory | Cloth Caps (1001), one for each free slot and one more for an empty head slot; `${Me.FreeInventory}` counts the free slots. To free one, `/itemnotify pack<N> leftmouseup` with the Items window closed, then `/destroy`. |
+| Force a reclaim | `UPDATE real_estate_properties SET upkeep_expired_time = UNIX_TIMESTAMP() - 91*86400, next_upkeep_at = NOW() - INTERVAL 1 MINUTE WHERE id = <plot>`; world's next pass, every 10 seconds, reclaims it |
+| Screenshots | `#time 14` for daylight (`#time 12` is midnight); `screenshot "<path>" 0` keeps the windows in the picture |
 
 After each step the server's side is read with `~/items117.sh` (`~/itemsBoth.sh` for both characters: their items in play with holder, slot and parent, the side rows and the parcels) and `~/zoneLog.sh neighborhood`.
 
@@ -119,6 +126,6 @@ A second account, `claudeeq1` (game account 85, status 0), holds Claudevisitor f
 
 ## Open
 
-- The rework's remaining tests in game (worklist.md STT-19, RCL-5) and the fresh shakeout pass from "Chunk 8 in game".
+- The rework's remaining tests in game (worklist.md RCL-5, and MNU-10's last check) and the fresh shakeout pass from "Chunk 8 in game".
 - The fixes the tests found (worklist.md PLC-26, ITM-11, MNU-14, MNU-15, ZIN-13), after the Live reads of REC-20.
 - The pre-build tools still to rerun (worklist.md PRC-3, DOR-20).

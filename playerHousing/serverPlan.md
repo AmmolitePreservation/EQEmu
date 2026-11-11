@@ -362,7 +362,7 @@ Every housing message, **77 opcode values** (the register's sections 2 and 3, `s
 
 **The zone-in sequence (F5, from `Client::CompleteConnect`, T4)**, in dependency order; **steps 1-4 go out before `OP_WorldObjectsSent`**, so the client's zone-entry line names the property as Live's does ("You have entered Dogwood Bridge Estates, 103 Market Street, Three Room House."), and the rest after it. **In a zone with no catalog or under a dormant X3 root, a RoF2 client gets only step 6's empty `0x49df`**, which clears the regions it remembers from an earlier zone, as Live's zones do:
 1. the catalog;
-2. **pending crates**: an archived crate the character owns and no item carries (an eviction, or a sale without room) becomes a crate item in a free inventory slot, and so moves from list C to list B; without room it stays archived and the character is told;
+2. **pending crates**: an archived crate the character owns and no item carries (an eviction, or a sale without room) becomes a crate item in a free inventory slot, and so moves from list C to list B; without room it stays archived for a later zone-in, with no line shown until Live's is known (worklist.md STT-12);
 3. property records (`0x63fd`) for **the properties hosted here** (this zone and instance), **the character's properties** (lists A and B) and, for each, **its ancestors and descendants** (the context lookup and the personal trophy walk need the trees);
 4. the current property (`0x6fd0`): the host's root (a neighborhood, or an X3 zone's root) where properties are hosted; **the house or hall inside its interior's copy**;
 5. the character's lists A, B and C;
