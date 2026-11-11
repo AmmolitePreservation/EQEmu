@@ -65,9 +65,9 @@ Housing's custom migrations are edited in place, so only a database that never r
 
 ### The rework in game, from 2026-11-10
 
-The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12. Done after it: REC-4 (the GUIDs across zoning) and REC-14 (the client reads the items the lists carry), which filed REC-22.
+The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12. Done after it: REC-4 (the GUIDs across zoning) and REC-14 (the client reads the items the lists carry), which filed REC-22. Then MNU-13 (a container's contents through a combine, a stopped zone and a pick-up by another character), which filed MNU-14 to MNU-16 and ZIN-13.
 
-**State:** Claudehousing owns one plot, 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone), and stands on it. The plot holds five records: placed darts (3470, 70) and a placed shield (1748), and in storage two dart stacks (100 and 10) and a chair (61418). It carries chairs (61419), 20 darts and a sword (5506) whose commit is refused (ITM-11). The account has status 250, so the tests summon what they place.
+**State:** Claudehousing (character 117) owns one plot, 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone), and stands on it. Its account has status 250, so the tests summon what they place. Claudevisitor (character 118, status 0) stands there too as a Trustee of the plot. It is a copy of Claudehousing made with `#copycharacter`, and its items have GUIDs of their own. The plot holds six records: placed darts (3470, 70), a placed shield (1748) and a placed Brewing Barrel (54249), and in storage two dart stacks (100 and 10) and a chair (61418). Claudehousing carries a chair (61419), 20 darts, Metal Bits (2), a Water Flask and a sword (5506) whose commit is refused (ITM-11); a Forge - Floor (54253) that Claudevisitor mailed to it waits as a parcel. The `neighborhood` zone row's `min_status` is 0 by hand since 2026-11-11 (`#reload zone_data` after the update); it goes back to 80 before ZIN-13's file is proven.
 
 How the tests drive the client, through claudelink's command, evaluate, hover, click, menu, nudge and screenshot:
 
@@ -83,10 +83,14 @@ How the tests drive the client, through claudelink's command, evaluate, hover, c
 | A placed item's menu | a right click on the item in the world (`click <x> <y> right`; `screenPoint` gives the point), then `menu` lists the open menu and `menu "<row text>"` picks a row |
 | A list row's menu | select the row, then `/notify RealEstateItemsWnd REIW_ItemList rightmouse <row>`; the menu is the selected row's |
 | Inspect | pick Inspect in either menu; `${Window[ItemDisplayWindow].Open}` and `.Text` give the window and its title, the item's name (the title stays after the window closes); `/windowstate ItemDisplayWindow close` |
+| Use a container | pick Use in the placed item's menu or its row's menu: the Tradeskill window opens. `/notify TradeskillWnd ExperimentButton leftmouseup` opens the container's window; `${Window[ContainerWindow].Text}` is then the container's name (`.Open` alone is also true for a bag). With the Items window closed, `/itemnotify pack<N> leftmouseup` then `/itemnotify enviro<M> leftmouseup` puts an item in, and `${InvSlot[enviro<M>].Item.ID}` reads a slot. `/notify ContainerWindow Container_Combine leftmouseup` combines (one item in each slot), `/notify ContainerWindow CombineDoneButton leftmouseup` closes. Beyond 20 units from the container the client closes it at once. |
+| Give access | `/realestate manage`, `/notify RealEstateManageWnd REMW_Subwindows tabselect 2`, `${Window[RealEstateManageWnd].Child[REMW_Name_EditBox].SetText[<name>]}`, `/notify RealEstateManageWnd REMW_Access_Combobox listselect <n>` (1 Visitor to 5 Co-Owner), `/notify RealEstateManageWnd REMW_Add_Btn leftmouseup`; `REMW_Name_List` shows the result |
+| A second character | every claudelink call names its client by process id. `#summon <name>` from the status 250 character brings the other into its zone and instance. With both at `260 -290 3.75`, `/face fast heading 0` and `/look 0`, an item placed at (261.9, -277.85, 5.45) takes a right click at 800, 330 on either client. |
+| What the client printed | a `command` call returns the chat lines the command caused |
 | Zone out and back | `#zone guildlobby`, then `#zoneinstance 101 260 -290 3.75`, about 20 seconds each; `/windowstate RealEstateItemsWnd open` afterwards |
 | Screenshots | `#time 14` for daylight (`#time 12` is midnight) |
 
-After each step the server's side is read with `~/items117.sh` and `~/zoneLog.sh neighborhood`.
+After each step the server's side is read with `~/items117.sh` (`~/itemsBoth.sh` for both characters: their items in play with holder, slot and parent, the side rows and the parcels) and `~/zoneLog.sh neighborhood`.
 
 ### The pre-build tools
 
@@ -111,8 +115,10 @@ PATH=~/bin:$PATH python3 playerHousing/tools/testHousingCatalog.py --live ~/hous
 
 Claude's account there is `claudehousing`, its password in OpenBao at `services/peridothousing/eqLogin`; the clone's login server creates accounts at their first login (`login.json` `auto_create_accounts`), and the first launch on 2026-10-24 made login account 85 and game account 86 at status 0. Before a character enters the world: the game account's status raised for the GM commands the validation uses, and the per-character MacroQuest config `Peridot_<character>.cfg` in mqPeridot's config folder (MQ2EQBC and mq2netbots unloaded, MQClaudeLink loaded, each with `noauto`), as claudeperidot's character has, so the client never joins the owner's EQBCS.
 
+A second account, `claudeeq1` (game account 85, status 0), holds Claudevisitor for the tests that need a player without GM status or a second character. Its login is Peridot's own (`services/peridot/eqLogin` in OpenBao), in step with the clone's login server since 2026-11-11.
+
 ## Open
 
-- The rework's remaining tests in game (worklist.md STT-19, RCL-5, MNU-13) and the fresh shakeout pass from "Chunk 8 in game".
-- The fixes PLC-24 found (worklist.md PLC-26, ITM-11), after the Live reads of REC-20.
+- The rework's remaining tests in game (worklist.md STT-19, RCL-5) and the fresh shakeout pass from "Chunk 8 in game".
+- The fixes the tests found (worklist.md PLC-26, ITM-11, MNU-14, MNU-15, ZIN-13), after the Live reads of REC-20.
 - The pre-build tools still to rerun (worklist.md PRC-3, DOR-20).
