@@ -767,7 +767,23 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 		if (m_inst && m_inst->IsType(EQ::item::ItemClassBag)) {
 			//Clear out no-drop and no-rent items first if different player opens it
 			if (user != last_user) {
+				std::vector<std::pair<uint8, ItemGUID>> held;
+				for (uint8 i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
+					if (const auto *content = m_inst->GetItem(i)) {
+						held.emplace_back(i, content->GetGUID());
+					}
+				}
+
 				m_inst->ClearByFlags(byFlagSet, byFlagSet);
+
+				// What the clearing took out of the container leaves play with it.
+				DBcore::Transaction cleared(database);
+				for (const auto &[index, guid] : held) {
+					if (!m_inst->GetItem(index)) {
+						ItemLayer::RetireWhere(database, ItemLayer::GUIDFilter(guid), ItemRetirement::Decayed);
+					}
+				}
+				cleared.Commit();
 			}
 
 			auto outapp = new EQApplicationPacket(OP_ClientReady, 0);

@@ -1787,6 +1787,9 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 			uint8 world_idx = EQ::InventoryProfile::CalcBagIdx(dst_slot_id);
 			EQ::ItemInstance* world_inst = m_tradeskill_object->PopItem(world_idx);
 
+			// The container's row and the source slot's row change in one act.
+			DBcore::Transaction exchange(database);
+
 			// Case 1: No item in container, unidirectional "Put"
 			if (world_inst == nullptr) {
 				m_tradeskill_object->PutItem(world_idx, src_inst);
@@ -1826,6 +1829,8 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 					else {
 						// Case 3: Swap the item on user with item in world container
 						// World containers don't follow normal rules for swapping
+						// The displaced item's row leaves the slot first: two rows cannot hold one slot.
+						ItemLayer::MoveRow(database, world_inst->GetGUID(), ItemLocation::InTransit(CharacterID()));
 						EQ::ItemInstance* inv_inst = m_inv.PopItem(src_slot_id);
 						m_tradeskill_object->PutItem(world_idx, inv_inst);
 						m_inv.PutItem(src_slot_id, *world_inst);
@@ -1847,6 +1852,7 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 			{
 				database.SaveInventory(this, src_slot_id);
 			}
+			exchange.Commit();
 			return true;
 		}
 	}
