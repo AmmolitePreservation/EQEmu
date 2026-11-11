@@ -38,7 +38,7 @@ The shakeout stopped here on 2026-10-25 for the GUID work (worklist.md's owner d
 
 Git runs in the container, since the host's `sudo git` stops at "dubious ownership": `sudo docker exec -u eqemu akk-stack-eqemu-server-1 bash -c 'cd ~/code && git ...'`. Three scripts in the container's `/tmp` do the routine steps, each run as `sudo docker exec -u eqemu akk-stack-eqemu-server-1 bash /tmp/<script>`: `stopServer.sh` (the launcher stop and the `pkill`), `buildMerged.sh` (fast-forward to `origin/housing`, build, the log in `/tmp/buildMerged.log`) and `startServer.sh`.
 
-On the host, three helpers reach `peq` as root, the password going from `.env` into the environment and never printed: `~/runSQLFile.sh <file>` (a SQL file, table output), `~/q.sh -e '<query>'` (bare rows; it reads its standard input, so a loop gives it `</dev/null`) and `~/dumpAsRoot.sh <mysqldump arguments>`.
+On the host, three helpers reach `peq` as root, the password going from `.env` into the environment and never printed: `~/runSQLFile.sh <file>` (a SQL file, table output), `~/q.sh -e '<query>'` (bare rows; it reads its standard input, so a loop gives it `</dev/null`) and `~/dumpAsRoot.sh <mysqldump arguments>`. Two more read a test's state: `~/items117.sh` (Claudehousing's `item_instances` rows, every item a property or a parcel holds, every retired item, and the `real_estate_items` rows, the GUID words in hex) and `~/zoneLog.sh <log name prefix> [lines]` (the Housing, Error, Warning and Crash lines of the newest zone log whose name starts with the prefix).
 
 ### The fresh database, 2026-11-10
 
@@ -48,7 +48,7 @@ Housing's custom migrations are edited in place, so only a database that never r
 2. `./bin/world database:updates --skip-backup`: 9325 to 9330, then custom 1 to 12, every step ok. The custom manifest runs after the main one, so housing's holder statement finds 9328's `item_instances`.
 3. The shape checks, `~/housingCheck/shapeChecks.sql` through `~/runSQLFile.sh` (the table below).
 4. The content as on 2026-10-24: `./bin/import_client_files eqstr`, deployHousingContent.py (all 11 files in one pass), the lobby SQL, `./bin/export_client_files`. Both exported files match the client's copies, so the client needed none.
-5. Claudehousing: the dump has the account and not the character. `~/housingCheck/claudehousingCharacter.sql` holds its rows of the seven base character tables (character_data, character_bind, character_currency, character_exp_modifiers, character_languages, character_skills, character_stats_record) as the old database had them, with no item; it stands at the Plane of Knowledge's safe point.
+5. Claudehousing: the dump has the account and not the character. `~/housingCheck/claudehousingCharacter.sql` holds its rows of the seven base character tables (character_data, character_bind, character_currency, character_exp_modifiers, character_languages, character_skills, character_stats_record) as the old database had them, with no item; it stands at the Plane of Knowledge's safe point. The dump holds its game account at status 0, so the status is set to 250 again before the character enters the world.
 6. The `Housing`, `Warning` and `Error` log categories set to console and file.
 7. The server started, and world made the neighborhoods.
 
@@ -63,7 +63,26 @@ Housing's custom migrations are edited in place, so only a database that never r
 | real_estate_items | GUID words, unique index, foreign key to `item_instances`, no item column |
 | properties made by world | 760: 710 plots, 10 neighborhoods, 40 guild plots |
 
-**State:** the server runs the rework. Claudehousing owns no property and carries nothing; its account has status 250, so the tests summon what they place.
+### The rework in game, from 2026-11-10
+
+The tests are worklist.md's items; their results are written there. Done: PLC-24 (placing, storing and picking up on real GUIDs), with PLC-20 and REC-11. What it found is filed as PLC-26 to PLC-28, ITM-11 and ITM-12.
+
+**State:** Claudehousing owns one plot, 108 Brimming Way in Cedar Circle Hollows (property 100077, in the `neighborhood` zone), and stands on it. The plot holds five records: placed darts (3470, 70) and a placed shield (1748), and in storage two dart stacks (100 and 10) and a chair (61418). It carries chairs (61419), 20 darts and a sword (5506) whose commit is refused (ITM-11). The account has status 250, so the tests summon what they place.
+
+How the tests drive the client, through claudelink's command, evaluate, hover, click and screenshot:
+
+| Step | How |
+|---|---|
+| Summon | `#summonitem <id> [count]` puts the item on the cursor; `/itemnotify pack<N> leftmouseup` drops it in bag slot N (pack1 is slot 23). The Items window must be closed for the drop (`/windowstate RealEstateItemsWnd close`, then `open`). |
+| Select a carried item | with the Items window open, `/itemnotify pack<N> leftmouseup` |
+| Select a record | `/notify RealEstateItemsWnd REIW_ItemList listselect <row>` |
+| Place | `/notify RealEstateItemsWnd REIW_Place_Button leftmouseup`, two seconds, then a hover and a left click on a point of the world (960, 800 at 1920x1080). `/click left` clicks where the mouse is, which may be a window. A refused commit leaves the client in placement mode; `/keypress esc` leaves it. |
+| Store, pick up | `REIW_Move_Shed_Button`, `REIW_Move_Inventory_Button` |
+| A count of a stack | the quantity window opens: `/notify QuantityWnd QTYW_slider newvalue <n>`, then `/notify QuantityWnd QTYW_Accept_Button leftmouseup` |
+| Read the list | `${Window[RealEstateItemsWnd].Child[REIW_ItemList].Items}` and `.List[<row>,<column>]`: 2 name, 4 quantity, 5 location, 6 status, 7 owner |
+| Screenshots | `#time 14` for daylight (`#time 12` is midnight) |
+
+After each step the server's side is read with `~/items117.sh` and `~/zoneLog.sh neighborhood`.
 
 ### The pre-build tools
 
@@ -90,5 +109,6 @@ Claude's account there is `claudehousing`, its password in OpenBao at `services/
 
 ## Open
 
-- The rework's tests in game (worklist.md PLC-24, REC-4, REC-14, STT-19, RCL-5, MNU-13) and the fresh shakeout pass from "Chunk 8 in game".
+- The rework's remaining tests in game (worklist.md REC-4, REC-14, STT-19, RCL-5, MNU-13) and the fresh shakeout pass from "Chunk 8 in game".
+- The fixes PLC-24 found (worklist.md PLC-26, ITM-11), after the Live reads of REC-20.
 - The pre-build tools still to rerun (worklist.md PRC-3, DOR-20).
