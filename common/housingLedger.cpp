@@ -2,7 +2,7 @@
 
 #include "database.h"
 #include "housingCopies.h"
-#include "housingPropertyItem.h"
+#include "item_layer.h"
 #include "repositories/criteria/content_filter_criteria.h"
 #include "rulesys.h"
 #include "strings.h"
@@ -11,19 +11,13 @@
 #include <stdexcept>
 
 namespace housing {
-  Transaction::Transaction(Database &database) : database(database) {
-    query(database, "START TRANSACTION");
-  }
-
-  Transaction::~Transaction() {
-    if (open) {
-      database.QueryDatabase("ROLLBACK");
-    }
+  Transaction::Transaction(Database &database) : scope(database) {
   }
 
   void Transaction::commit() {
-    query(database, "COMMIT");
-    open = false;
+    if (!scope.Commit()) {
+      throw std::runtime_error("housing transaction did not commit");
+    }
   }
 
   MySQLRequestResult query(Database &database, const std::string &statement) {
@@ -68,6 +62,42 @@ namespace housing {
       throw std::runtime_error(fmt::format("property [{}] does not exist", propertyId));
     }
     return rows.front();
+  }
+
+  std::set<uint32> carriedPropertyIds(Database &database, uint32 characterId) {
+    std::set<uint32> ids;
+    for (auto row : query(database, fmt::format(
+      "SELECT p.id FROM real_estate_properties p "
+      "JOIN item_instances i ON i.guid_first = p.container_guid_first AND i.guid_second = p.container_guid_second AND i.guid_third = p.container_guid_third "
+      "LEFT JOIN item_instances b ON b.guid_first = i.parent_guid_first AND b.guid_second = i.parent_guid_second AND b.guid_third = i.parent_guid_third "
+      "WHERE i.retirement_state IS NULL AND b.retirement_state IS NULL "
+      "AND COALESCE(i.holder_type, b.holder_type) IN ('inventory', 'cursor', 'bank') AND COALESCE(i.holder_id, b.holder_id) = {}",
+      characterId
+    ))) {
+      ids.insert(Strings::ToUnsignedInt(row[0]));
+    }
+    return ids;
+  }
+
+  bool isCarried(Database &database, uint32 propertyId) {
+    auto rows = query(database, fmt::format(
+      "SELECT COUNT(*) FROM real_estate_properties p "
+      "JOIN item_instances i ON i.guid_first = p.container_guid_first AND i.guid_second = p.container_guid_second AND i.guid_third = p.container_guid_third "
+      "WHERE p.id = {} AND NOT (i.holder_type <=> 'real_estate')",
+      propertyId
+    ));
+    return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
+  }
+
+  bool holdsContents(Database &database, uint32 propertyId) {
+    auto rows = query(database, fmt::format(
+      "SELECT (SELECT COUNT(*) FROM real_estate_items r "
+      "JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third "
+      "WHERE i.holder_type = 'real_estate' AND i.holder_id = {0} AND i.retirement_state IS NULL) "
+      "+ (SELECT COUNT(*) FROM real_estate_properties WHERE parent_id = {0})",
+      propertyId
+    ));
+    return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
   }
 
   void bumpRevision(Database &database, uint32 propertyId) {
@@ -166,7 +196,7 @@ namespace housing {
     PlotContents contents;
     std::set<uint32> holders{plot.id};
     for (auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {} AND placed = 1 ORDER BY id", plot.id))) {
-      const uint32 carried = carriedPropertyId(row.custom_data);
+      const uint32 carried = row.carried_property_id;
       contents.placedItems.push_back(row);
       if (carried) {
         holders.insert(carried);
@@ -334,16 +364,20 @@ namespace housing {
     return countOfType(database, content, fmt::format("guild_id = {}", guildId), guildPlotType);
   }
 
-  // Everything on the plot goes into the crate: its item rows stored there, its houses and other crates under it with their contents.
+  // Everything on the plot goes into the crate: its items stored there, its houses and other crates under it with their contents.
   void packPlotInto(Database &database, uint32 plotId, uint32 crateId) {
     std::set<uint32> moved;
     for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {}", plotId))) {
-      if (carriedPropertyId(row.custom_data) != crateId) {
-        moved.insert(row.id);
+      if (row.carried_property_id == crateId) {
+        continue;
       }
+      if (!ItemLayer::MoveRow(database, row.guid, ItemLocation::InRealEstate(crateId))) {
+        throw std::runtime_error(fmt::format("record [{}] could not be moved from plot [{}] into crate [{}]", row.id, plotId, crateId));
+      }
+      moved.insert(row.id);
     }
     if (!moved.empty()) {
-      query(database, fmt::format("UPDATE real_estate_items SET property_id = {}, placed = 0 WHERE id IN ({})", crateId, idList(moved)));
+      query(database, fmt::format("UPDATE real_estate_items SET placed = 0 WHERE id IN ({})", idList(moved)));
     }
     query(database, fmt::format("UPDATE real_estate_properties SET parent_id = {} WHERE parent_id = {} AND id <> {}", crateId, plotId, crateId));
   }

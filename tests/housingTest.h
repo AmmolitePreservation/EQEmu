@@ -77,7 +77,7 @@ public:
     TEST_ADD(HousingTest::ballotFollowsTheVoteWindowsClick);
     TEST_ADD(HousingTest::pollResultsRankTiesTogether);
     TEST_ADD(HousingTest::houseSwapNeedsRoomForThePlacedHousesItems);
-    TEST_ADD(HousingTest::itemListPayloadIsSixteenBytesARecordAndRefusesATornOne);
+    TEST_ADD(HousingTest::itemListPayloadIsTwentyEightBytesARecordAndRefusesATornOne);
   }
 
 private:
@@ -815,22 +815,24 @@ private:
       static_cast<uint32>(housing::ItemResult::swapPlacedCrate) == 59);
   }
 
-  void itemListPayloadIsSixteenBytesARecordAndRefusesATornOne() {
-    const std::vector<housing::ItemListChangedRecord> records{{501, 77, 35120, 1}, {502, 77, 3000123, 0}};
+  void itemListPayloadIsTwentyEightBytesARecordAndRefusesATornOne() {
+    const std::vector<housing::ItemListChangedRecord> records{{501, 77, 35120, 1, {7, 3, 900001}}, {502, 77, 3000123, 0, {7, 3, 900002}}};
     const std::string payload = housing::itemListChangedPayload(records);
-    TEST_ASSERT_EQUALS(payload.size(), 32u);
+    TEST_ASSERT_EQUALS(payload.size(), 56u);
     const auto decoded = housing::itemListChangedRecords(reinterpret_cast<const uint8 *>(payload.data()), static_cast<uint32>(payload.size()));
     TEST_ASSERT_EQUALS(decoded.size(), 2u);
     TEST_ASSERT_EQUALS(decoded[0].recordId, 501u);
     TEST_ASSERT_EQUALS(decoded[0].placed, 1u);
+    TEST_ASSERT(decoded[0].guid == (ItemGUID{7, 3, 900001}));
     TEST_ASSERT_EQUALS(decoded[1].recordId, 502u);
     TEST_ASSERT_EQUALS(decoded[1].propertyId, 77u);
     TEST_ASSERT_EQUALS(decoded[1].itemId, 3000123u);
     TEST_ASSERT_EQUALS(decoded[1].placed, 0u);
+    TEST_ASSERT(decoded[1].guid == (ItemGUID{7, 3, 900002}));
     TEST_ASSERT(housing::itemListChangedRecords(nullptr, 0).empty());
     bool refused = false;
     try {
-      housing::itemListChangedRecords(reinterpret_cast<const uint8 *>(payload.data()), 31);
+      housing::itemListChangedRecords(reinterpret_cast<const uint8 *>(payload.data()), 55);
     }
     catch (const std::invalid_argument &) {
       refused = true;

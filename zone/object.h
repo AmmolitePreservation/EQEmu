@@ -173,6 +173,7 @@ public:
 	void PutItem(uint8 index, const EQ::ItemInstance* inst);
 	void DeleteItem(uint8 index); // Item inside container
 	EQ::ItemInstance* PopItem(uint8 index); // Pop item out of container
+	void ConsumeContents(); // A combine used up everything inside
 
 	// Override base class implementations
 	virtual bool IsObject()	const { return true; }
@@ -183,9 +184,8 @@ public:
 	void ClearUser() { user = nullptr; }
 	void SetUser(Client* in_user) { user = in_user; }
 
-	// a player housing container exists only while it's open and is never saved
+	// a player housing container exists only while it's open; its contents are kept as the placed item's own contents
 	void SetTransient(bool in_transient) { m_transient = in_transient; }
-	bool IsTransient() const { return m_transient; }
 
 	uint32 GetDBID();
 	uint32 GetType();

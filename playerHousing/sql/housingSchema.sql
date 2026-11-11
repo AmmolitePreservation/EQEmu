@@ -164,6 +164,8 @@ CREATE TABLE IF NOT EXISTS `real_estate_auras` (
 -- option key is derived from it when sent, since option positions move as the expansion enables options. Upkeep runs on a
 -- clock per property: a charge at next_upkeep_at takes the daily cost prorated over the seconds since upkeep_settled_at;
 -- upkeep_expired_time is the second a charge found the escrow empty (0 while paid). Ids start above every region id.
+-- container_guid is the item a house or a crate is, whether it stands placed or is carried; null on a property no item is
+-- (a zone, a neighborhood, a plot) and on an evicted plot's crate, whose item is made when its owner takes delivery.
 CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `parent_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -171,7 +173,9 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   `guild_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `owner_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `name` VARCHAR(64) NOT NULL DEFAULT '',
-  `contained_in_item` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+  `container_guid_first` INT(10) UNSIGNED NULL DEFAULT NULL,
+  `container_guid_second` INT(10) UNSIGNED NULL DEFAULT NULL,
+  `container_guid_third` INT(10) UNSIGNED NULL DEFAULT NULL,
   `upkeep_currency` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_expired_time` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_settled_at` DATETIME NULL DEFAULT NULL,
@@ -183,7 +187,10 @@ CREATE TABLE IF NOT EXISTS `real_estate_properties` (
   KEY `parent_id` (`parent_id`),
   KEY `owner_character_id` (`owner_character_id`),
   KEY `guild_id` (`guild_id`),
-  KEY `next_upkeep_at` (`next_upkeep_at`)
+  KEY `next_upkeep_at` (`next_upkeep_at`),
+  UNIQUE KEY `container_guid` (`container_guid_first`, `container_guid_second`, `container_guid_third`),
+  CONSTRAINT `real_estate_property_container` FOREIGN KEY (`container_guid_first`, `container_guid_second`, `container_guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`),
+  CONSTRAINT `real_estate_property_container_whole` CHECK ((`container_guid_first` IS NULL) = (`container_guid_second` IS NULL) AND (`container_guid_first` IS NULL) = (`container_guid_third` IS NULL))
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4;
 
 -- A running copy of a property's template zone (an interior or a neighborhood): one per property, removed with its instance
@@ -212,11 +219,15 @@ CREATE TABLE IF NOT EXISTS `real_estate_property_balances` (
   PRIMARY KEY (`property_id`, `currency`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- An item stored without ever being placed has Live's all-zero transform, so scale has no default. upkeep_expired_at is the
--- second an empty escrow stamped the item.
+-- What housing keeps about an item a property holds. The item itself is its item_instances row, held by the property
+-- (holder real_estate, the property's id), so the property, the item id, charges and augments are read there. An item stored
+-- without ever being placed has Live's all-zero transform, so scale has no default. upkeep_expired_at is the second an empty
+-- escrow stamped the item.
 CREATE TABLE IF NOT EXISTS `real_estate_items` (
   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `property_id` INT(10) UNSIGNED NOT NULL,
+  `guid_first` INT(10) UNSIGNED NOT NULL,
+  `guid_second` INT(10) UNSIGNED NOT NULL,
+  `guid_third` INT(10) UNSIGNED NOT NULL,
   `owner_character_id` INT(10) UNSIGNED NOT NULL DEFAULT 0,
   `placed` TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
   `upkeep_expired_at` INT(10) UNSIGNED NOT NULL DEFAULT 0,
@@ -227,23 +238,10 @@ CREATE TABLE IF NOT EXISTS `real_estate_items` (
   `x` FLOAT NOT NULL DEFAULT 0,
   `y` FLOAT NOT NULL DEFAULT 0,
   `z` FLOAT NOT NULL DEFAULT 0,
-  `item_id` INT(11) UNSIGNED NOT NULL,
-  `charges` SMALLINT(3) UNSIGNED NOT NULL DEFAULT 0,
-  `color` INT(11) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_one` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_two` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_three` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_four` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_five` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `augment_six` MEDIUMINT(7) UNSIGNED NOT NULL DEFAULT 0,
-  `instnodrop` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
-  `custom_data` TEXT NULL,
-  `ornament_icon` INT(11) UNSIGNED NOT NULL DEFAULT 0,
-  `ornament_idfile` INT(11) UNSIGNED NOT NULL DEFAULT 0,
-  `ornament_hero_model` INT(11) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `property_id` (`property_id`),
-  KEY `owner_character_id` (`owner_character_id`)
+  UNIQUE KEY `item_guid` (`guid_first`, `guid_second`, `guid_third`),
+  KEY `owner_character_id` (`owner_character_id`),
+  CONSTRAINT `real_estate_item_instance` FOREIGN KEY (`guid_first`, `guid_second`, `guid_third`) REFERENCES `item_instances` (`guid_first`, `guid_second`, `guid_third`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- The look the Augmentater gave one placed copy of an NPC item, kept until RESET or until the item is picked up (Live drops

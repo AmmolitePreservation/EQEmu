@@ -57,18 +57,15 @@ namespace housing {
       };
     }
 
-    // A house stored in its yard's shed or swapped out stands in no yard, so it can't be entered and its occupants leave
+    // A house stored in its yard's shed or carried away stands in no yard, so it can't be entered and its occupants leave
     // (INT-25); a definition's fixed house (an apartment's) has no item carrying it.
     std::optional<Property> yardOf(const Property &house, const std::map<uint32, Property> &chain) {
-      if (house.contained_in_item) {
-        return std::nullopt;
-      }
       const Property *plot = ancestorOfType(house, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookupIn(chain));
       if (!plot) {
         return std::nullopt;
       }
       for (const auto &row : itemsOf({house.parent_id})) {
-        if (carriedPropertyId(row.custom_data) == house.id && !row.placed) {
+        if (row.carried_property_id == house.id && !row.placed) {
           return std::nullopt;
         }
       }

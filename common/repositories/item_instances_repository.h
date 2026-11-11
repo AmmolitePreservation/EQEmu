@@ -26,6 +26,7 @@ public:
 		ItemLocation                  location;
 		std::optional<ItemRetirement> retirement_state;
 		std::optional<time_t>         retired_at;
+		uint32_t                      real_estate_id;
 	};
 
 	static constexpr size_t key_column_count       = 3;
@@ -62,10 +63,19 @@ public:
 		};
 	}
 
-	static std::vector<std::string> SelectColumns()
+	// The last column is derived, never stored: the housing property the item carries, which names the item as its
+	// container in real_estate_properties.
+	static std::vector<std::string> SelectColumns(const std::string &source)
 	{
 		auto columns = Columns();
 		columns.back() = "UNIX_TIMESTAMP(retired_at)";
+		columns.push_back(
+			fmt::format(
+				"(SELECT p.id FROM real_estate_properties AS p WHERE p.container_guid_first = {0}.guid_first "
+				"AND p.container_guid_second = {0}.guid_second AND p.container_guid_third = {0}.guid_third)",
+				source
+			)
+		);
 		return columns;
 	}
 
@@ -73,7 +83,7 @@ public:
 	{
 		return fmt::format(
 			"SELECT {} FROM {}",
-			Strings::Implode(", ", SelectColumns()),
+			Strings::Implode(", ", SelectColumns(TableName())),
 			TableName()
 		);
 	}
@@ -119,7 +129,7 @@ public:
 	// augments of bag contents), parents before children.
 	static std::vector<ItemInstances> GetHeld(Database &db, const std::string &holder_filter)
 	{
-		const auto select_columns = Strings::Implode(", ", SelectColumns());
+		const auto select_columns = Strings::Implode(", ", SelectColumns("held"));
 		const auto plain_columns  = Strings::Implode(", ", Columns());
 
 		return Collect(
@@ -147,7 +157,7 @@ public:
 	// contents, augments), oldest retirement first and parents before children.
 	static std::vector<ItemInstances> GetRecoverable(Database &db, uint32 character_id, const std::string &state_list, const std::string &row_filter)
 	{
-		const auto select_columns = Strings::Implode(", ", SelectColumns());
+		const auto select_columns = Strings::Implode(", ", SelectColumns("listed"));
 		const auto plain_columns  = Strings::Implode(", ", Columns());
 		return Collect(
 			db.QueryDatabase(
@@ -411,6 +421,10 @@ private:
 
 		if (row[19]) {
 			e.retired_at = static_cast<time_t>(strtoll(row[19], nullptr, 10));
+		}
+
+		if (row[20]) {
+			e.real_estate_id = static_cast<uint32_t>(strtoul(row[20], nullptr, 10));
 		}
 
 		return e;

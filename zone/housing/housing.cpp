@@ -46,23 +46,6 @@ namespace housing {
       return std::find(types.begin(), types.end(), type) != types.end();
     }
 
-    std::set<uint32> carriedPropertyIds(uint32 characterId) {
-      std::set<uint32> ids;
-      auto rows = database.QueryDatabase(fmt::format(
-        "SELECT custom_data FROM inventory WHERE character_id = {} AND custom_data LIKE '%{}^%'", characterId, propertyItemKey
-      ));
-      if (!rows.Success()) {
-        throw std::runtime_error(fmt::format("the carried properties of character [{}] could not be read: {}", characterId, rows.ErrorMessage()));
-      }
-      for (auto row : rows) {
-        const uint32 propertyId = carriedPropertyId(row[0]);
-        if (propertyId) {
-          ids.insert(propertyId);
-        }
-      }
-      return ids;
-    }
-
     void addTrees(std::map<uint32, Property> &properties, std::vector<std::string> &problems) {
       std::set<uint32> requested;
       while (true) {
@@ -233,7 +216,7 @@ namespace housing {
       try {
         const auto hosted = hostedProperties();
         const auto owned = propertiesOwnedBy(client->CharacterID());
-        const auto carried = propertiesById(carriedPropertyIds(client->CharacterID()));
+        const auto carried = propertiesById(carriedPropertyIds(database, client->CharacterID()));
         for (const auto &property : hosted) {
           state.hostedIds.insert(property.id);
           state.properties[property.id] = property;
@@ -243,10 +226,6 @@ namespace housing {
           state.properties[property.id] = property;
         }
         for (const auto &property : carried) {
-          if (!property.contained_in_item) {
-            problems.push_back(fmt::format("an item the character carries names property [{}], which is not in an item", property.id));
-            continue;
-          }
           state.carriedIds.push_back(property.id);
           state.properties[property.id] = property;
         }
@@ -315,13 +294,14 @@ namespace housing {
 
     void sendItemLists(Client *client, const std::set<uint32> &holders) {
       const auto items = itemsOf(holders);
+      const auto instances = itemInstancesOf(holders);
       std::set<uint32> itemOwners;
       for (const auto &item : items) {
         itemOwners.insert(item.owner_character_id);
       }
       const auto itemOwnerIdentities = characterIdentities(itemOwners);
       for (uint32 id : holders) {
-        sendMessage(client, OP_RealEstateItemList, itemList(id, items, itemOwnerIdentities));
+        sendMessage(client, OP_RealEstateItemList, itemList(id, items, instances, itemOwnerIdentities));
       }
     }
 

@@ -444,6 +444,8 @@ void Object::PutItem(uint8 index, const EQ::ItemInstance* inst)
 
 		if (!m_transient) {
 			database.SaveWorldContainer(zone->GetZoneID(),m_id,m_inst);
+		} else if (inst) {
+			ItemLayer::Update(database, *m_inst->GetItem(index), ItemLocation::InParent(m_inst->GetGUID(), index));
 		}
 		// This is _highly_ inefficient, but for now it will work: Save entire object to database
 		Save();
@@ -507,6 +509,21 @@ EQ::ItemInstance* Object::PopItem(uint8 index)
 	}
 
 	return inst;
+}
+
+void Object::ConsumeContents()
+{
+	if (!m_transient) {
+		database.DeleteWorldContainer(m_id, zone->GetZoneID());
+		return;
+	}
+
+	const ItemGUID guid = m_inst->GetGUID();
+	ItemLayer::RetireWhere(
+		database,
+		fmt::format("parent_guid_first = {} AND parent_guid_second = {} AND parent_guid_third = {}", guid.first, guid.second, guid.third),
+		ItemRetirement::Consumed
+	);
 }
 
 void Object::CreateSpawnPacket(EQApplicationPacket* app)

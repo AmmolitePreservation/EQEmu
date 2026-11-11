@@ -143,6 +143,8 @@ foreach my $table_to_generate (@tables) {
         "guild_bank",
         "inventory_versions",
         "item_instances",
+        "real_estate_items",
+        "real_estate_properties",
         "raid_leaders",
         "trader_audit",
         "eqtime",

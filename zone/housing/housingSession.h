@@ -18,7 +18,7 @@ class Client;
 
 namespace housing {
   // The client's item location: u32 type, then three u16 indexes (RoF2's InventorySlot_Struct); all -1 for a placed item.
-  struct ItemLocation {
+  struct WireItemLocation {
     uint32 type = 0xFFFFFFFF;
     int16 slot = -1;
     int16 subIndex = -1;
@@ -30,7 +30,7 @@ namespace housing {
   // side of it, set only between the begin and the commit.
   struct Placement {
     bool editing = false;
-    ItemLocation location;
+    WireItemLocation location;
     int16 inventorySlot = -1;
     uint32 sourcePropertyId = 0;
     uint32 sourceRecordId = 0;

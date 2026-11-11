@@ -141,7 +141,7 @@ namespace housing {
     return shown;
   }
 
-  WireWriter itemReference(const std::string &guid, const ItemLocation &location, uint32 propertyId, uint32 recordId) {
+  WireWriter itemReference(const std::string &guid, const WireItemLocation &location, uint32 propertyId, uint32 recordId) {
     WireWriter message;
     message.fixedString(guid, referenceGuidLength)
       .u32(location.type)
@@ -163,17 +163,18 @@ namespace housing {
       }
     }
     size_t sent = 0;
+    const auto instances = itemInstancesOf(shown);
     for (const auto &row : itemsOf(shown)) {
       if (!row.placed || isNpcItemId(row.item_id)) {
         continue;
       }
-      auto instance = itemInstance(row);
-      if (!instance) {
-        LogError("Housing: property [{}] record [{}] holds item [{}], which does not exist; no world object", row.property_id, row.id, row.item_id);
+      auto instance = instances.find(ItemGUIDText(row.guid));
+      if (instance == instances.end()) {
+        LogError("Housing: property [{}] record [{}] holds item [{}], which did not load; no world object", row.property_id, row.id, row.item_id);
         continue;
       }
       WireWriter message;
-      writePlacementObject(message, placementObject(*instance, itemGuid(row), row.property_id, row.id, rowTransform(row)));
+      writePlacementObject(message, placementObject(*instance->second, ItemGUIDText(row.guid), row.property_id, row.id, rowTransform(row)));
       sendMessage(client, OP_RealEstateWorldObject, message);
       sent++;
     }
@@ -183,18 +184,18 @@ namespace housing {
   void broadcastWorldObject(const PlacedItem &row) {
     auto instance = itemInstance(row);
     if (!instance) {
-      throw std::runtime_error(fmt::format("record [{}] holds item [{}], which does not exist", row.id, row.item_id));
+      throw std::runtime_error(fmt::format("record [{}] holds item [{}], which did not load", row.id, row.item_id));
     }
     WireWriter message;
-    writePlacementObject(message, placementObject(*instance, itemGuid(row), row.property_id, row.id, rowTransform(row)));
+    writePlacementObject(message, placementObject(*instance, ItemGUIDText(row.guid), row.property_id, row.id, rowTransform(row)));
     sendToZone(OP_RealEstateWorldObject, message);
   }
 
   void broadcastWorldObjectRemove(const PlacedItem &row) {
-    sendToZone(OP_RealEstateWorldObjectRemove, itemReference(itemGuid(row), ItemLocation{}, row.property_id, row.id));
+    sendToZone(OP_RealEstateWorldObjectRemove, itemReference(ItemGUIDText(row.guid), WireItemLocation{}, row.property_id, row.id));
   }
 
-  void sendPlacedItemMoved(Client *client, const PlacedItem &row, const ItemLocation &location) {
-    sendMessage(client, OP_RealEstateWorldObjectMoved, itemReference(itemGuid(row), location, row.property_id, row.id));
+  void sendPlacedItemMoved(Client *client, const PlacedItem &row, const WireItemLocation &location) {
+    sendMessage(client, OP_RealEstateWorldObjectMoved, itemReference(ItemGUIDText(row.guid), location, row.property_id, row.id));
   }
 }

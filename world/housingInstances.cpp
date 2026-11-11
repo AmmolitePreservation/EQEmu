@@ -149,7 +149,7 @@ namespace housing {
     }
     const uint32 propertyId = Strings::ToUnsignedInt(rows.begin()[0]);
     auto properties = RealEstatePropertiesRepository::GetWhere(database, fmt::format("id = {}", propertyId));
-    if (properties.size() != 1 || properties.front().contained_in_item) {
+    if (properties.size() != 1 || isCarried(database, propertyId)) {
       LogHousing("Character [{}] was in a copy of property [{}], which is gone or picked up; EQEmu's safe return applies", characterId, propertyId);
       return false;
     }

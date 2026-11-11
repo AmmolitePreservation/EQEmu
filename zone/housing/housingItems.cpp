@@ -3,12 +3,41 @@
 #include "housingStore.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/item_layer.h"
 #include "../../common/patches/rof2.h"
 #include "../zonedb.h"
 
-#include <limits>
-
 namespace housing {
+  namespace {
+    bool writeItemEntry(WireWriter &message, const PlacedItem &row, const EQ::ItemInstance &instance, const std::map<uint32, CharacterIdentity> &owners) {
+      const CharacterIdentity *owner = nullptr;
+      if (row.owner_character_id) {
+        auto found = owners.find(row.owner_character_id);
+        if (found == owners.end()) {
+          LogError("Housing: property [{}] record [{}] was placed by character [{}], which does not exist; not sent", row.property_id, row.id, row.owner_character_id);
+          return false;
+        }
+        owner = &found->second;
+      }
+      message.u32(row.property_id)
+        .u32(row.id)
+        .u8(row.placed)
+        .u32(row.upkeep_expired_at)
+        .f32(row.heading)
+        .f32(row.pitch)
+        .f32(row.roll)
+        .f32(row.scale)
+        .f32(row.y)
+        .f32(row.x)
+        .f32(row.z)
+        .lengthString(owner ? owner->name : "")
+        .lengthString(owner ? std::to_string(owner->accountId) : "");
+      const std::string serialized = RoF2::SerializeItemForHousing(&instance, EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
+      message.bytes(serialized.data(), serialized.size());
+      return true;
+    }
+  }
+
   std::vector<PlacedItem> itemsOf(const std::set<uint32> &propertyIds) {
     if (propertyIds.empty()) {
       return {};
@@ -16,95 +45,34 @@ namespace housing {
     return RealEstateItemsRepository::GetWhere(database, fmt::format("property_id IN ({}) ORDER BY property_id, id", idList(propertyIds)));
   }
 
-  // EQEmu serials are 16 decimal digits, so a leading hex letter keeps a row's GUID apart from every serial.
-  std::string itemGuid(const PlacedItem &row) {
-    return fmt::format("a{:015x}", row.id);
+  HeldInstances itemInstancesOf(const std::set<uint32> &propertyIds) {
+    HeldInstances instances;
+    if (propertyIds.empty()) {
+      return instances;
+    }
+    for (const auto &held : ItemLayer::Load(database, database, fmt::format("holder_type = 'real_estate' AND holder_id IN ({})", idList(propertyIds)))) {
+      instances[ItemGUIDText(held.inst->GetGUID())].reset(held.inst);
+    }
+    return instances;
   }
 
   std::unique_ptr<EQ::ItemInstance> itemInstance(const PlacedItem &row) {
-    const EQ::ItemData *item = database.GetItem(row.item_id);
-    if (!item) {
-      return nullptr;
-    }
-    std::unique_ptr<EQ::ItemInstance> instance(database.CreateBaseItem(item, row.charges));
-    if (!instance) {
-      return nullptr;
-    }
-    if (!row.custom_data.empty()) {
-      instance->SetCustomDataString(row.custom_data);
-    }
-    instance->SetOrnamentIcon(row.ornament_icon);
-    instance->SetOrnamentationIDFile(row.ornament_idfile);
-    instance->SetOrnamentHeroModel(item->HerosForgeModel);
-    if (row.instnodrop) {
-      instance->SetAttuned(true);
-    }
-    if (row.color > 0) {
-      instance->SetColor(row.color);
-    }
-    if (row.charges == std::numeric_limits<int16>::max()) {
-      instance->SetCharges(-1);
-    }
-    else if (row.charges == 0 && instance->IsStackable()) {
-      instance->SetCharges(1);
-    }
-    else {
-      instance->SetCharges(row.charges);
-    }
-    if (item->IsClassCommon()) {
-      const uint32 augments[EQ::invaug::SOCKET_COUNT] = {
-        row.augment_one, row.augment_two, row.augment_three, row.augment_four, row.augment_five, row.augment_six
-      };
-      for (int socket = EQ::invaug::SOCKET_BEGIN; socket <= EQ::invaug::SOCKET_END; socket++) {
-        if (augments[socket]) {
-          instance->PutAugment(&database, socket, augments[socket]);
-        }
-      }
-    }
-    return instance;
+    return std::unique_ptr<EQ::ItemInstance>(ItemLayer::LoadOne(database, database, row.guid));
   }
 
-  bool writeItemEntry(WireWriter &message, const PlacedItem &row, const std::map<uint32, CharacterIdentity> &owners) {
-    auto instance = itemInstance(row);
-    if (!instance) {
-      LogError("Housing: property [{}] record [{}] holds item [{}], which does not exist; not sent", row.property_id, row.id, row.item_id);
-      return false;
-    }
-    const CharacterIdentity *owner = nullptr;
-    if (row.owner_character_id) {
-      auto found = owners.find(row.owner_character_id);
-      if (found == owners.end()) {
-        LogError("Housing: property [{}] record [{}] was placed by character [{}], which does not exist; not sent", row.property_id, row.id, row.owner_character_id);
-        return false;
-      }
-      owner = &found->second;
-    }
-    message.u32(row.property_id)
-      .u32(row.id)
-      .u8(row.placed)
-      .u32(row.upkeep_expired_at)
-      .f32(row.heading)
-      .f32(row.pitch)
-      .f32(row.roll)
-      .f32(row.scale)
-      .f32(row.y)
-      .f32(row.x)
-      .f32(row.z)
-      .lengthString(owner ? owner->name : "")
-      .lengthString(owner ? std::to_string(owner->accountId) : "");
-    const std::string serialized = RoF2::SerializeItemForHousing(instance.get(), itemGuid(row), EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
-    message.bytes(serialized.data(), serialized.size());
-    return true;
-  }
-
-  WireWriter itemList(uint32 propertyId, const std::vector<PlacedItem> &rows, const std::map<uint32, CharacterIdentity> &owners) {
+  WireWriter itemList(uint32 propertyId, const std::vector<PlacedItem> &rows, const HeldInstances &instances, const std::map<uint32, CharacterIdentity> &owners) {
     WireWriter entries;
     uint32 count = 0;
     for (const auto &row : rows) {
       if (row.property_id != propertyId) {
         continue;
       }
-      if (writeItemEntry(entries, row, owners)) {
+      auto instance = instances.find(ItemGUIDText(row.guid));
+      if (instance == instances.end()) {
+        LogError("Housing: property [{}] record [{}] holds item [{}], which did not load; not sent", row.property_id, row.id, row.item_id);
+        continue;
+      }
+      if (writeItemEntry(entries, row, *instance->second, owners)) {
         count++;
       }
     }
@@ -119,35 +87,5 @@ namespace housing {
       return std::nullopt;
     }
     return rows.front();
-  }
-
-  // The inverse of itemInstance's charges: inventory keeps unlimited charges as the int16 maximum.
-  int16 storedCharges(const EQ::ItemInstance &instance) {
-    return instance.GetCharges() < 0 ? std::numeric_limits<int16>::max() : instance.GetCharges();
-  }
-
-  PlacedItem rowFromInstance(const EQ::ItemInstance &instance, uint32 propertyId, uint32 ownerCharacterId) {
-    PlacedItem row = RealEstateItemsRepository::NewEntity();
-    row.property_id = propertyId;
-    row.owner_character_id = ownerCharacterId;
-    row.item_id = instance.GetID();
-    row.charges = static_cast<uint16>(storedCharges(instance));
-    row.color = instance.GetColor();
-    const uint32 augments[EQ::invaug::SOCKET_COUNT] = {
-      instance.GetAugmentItemID(0), instance.GetAugmentItemID(1), instance.GetAugmentItemID(2),
-      instance.GetAugmentItemID(3), instance.GetAugmentItemID(4), instance.GetAugmentItemID(5)
-    };
-    row.augment_one = augments[0];
-    row.augment_two = augments[1];
-    row.augment_three = augments[2];
-    row.augment_four = augments[3];
-    row.augment_five = augments[4];
-    row.augment_six = augments[5];
-    row.instnodrop = instance.IsAttuned() ? 1 : 0;
-    row.custom_data = instance.GetCustomDataString();
-    row.ornament_icon = instance.GetOrnamentationIcon();
-    row.ornament_idfile = instance.GetOrnamentationIDFile();
-    row.ornament_hero_model = static_cast<int32_t>(instance.GetOrnamentHeroModel());
-    return row;
   }
 }

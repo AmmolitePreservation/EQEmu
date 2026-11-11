@@ -7,7 +7,6 @@
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingLedger.h"
-#include "../../common/housingPropertyItem.h"
 #include "../../common/housingTransferOffers.h"
 #include "../../common/rulesys.h"
 #include "../client.h"
@@ -60,10 +59,10 @@ namespace housing {
 
     void checkPlotContents(uint32 plotId) {
       for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {}", plotId))) {
-        if (!carriedPropertyId(row.custom_data)) {
+        if (!row.carried_property_id) {
           continue;
         }
-        if (row.instnodrop || noTradeItem(row.item_id)) {
+        if (row.attuned || noTradeItem(row.item_id)) {
           throw TransferRefusal("the plot holds a NO TRADE house or crate", noTradeContents);
         }
       }

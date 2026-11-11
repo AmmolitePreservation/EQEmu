@@ -11,7 +11,7 @@
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingLedger.h"
-#include "../../common/housingPropertyItem.h"
+#include "../../common/item_layer.h"
 #include "../../common/patches/rof2.h"
 #include "../../common/strings.h"
 #include "../client.h"
@@ -145,7 +145,7 @@ namespace housing {
 
     void describeCarrier(Candidate &candidate) {
       candidate.tail = itemHousingTail(candidate.item->ID);
-      const uint32 carriedId = carriedPropertyId(candidate.instance->GetCustomDataString());
+      const uint32 carriedId = candidate.instance->GetRealEstateID();
       if (carriedId) {
         auto carried = propertiesById({carriedId});
         if (carried.size() != 1) {
@@ -172,7 +172,7 @@ namespace housing {
         throw ItemRefusal(ItemResult::notFound, fmt::format("location [{}, {}, {}] names no slot", request.location.slot, request.location.subIndex, request.location.augIndex));
       }
       const EQ::ItemInstance *held = client->GetInv().GetItem(static_cast<int16>(slot));
-      if (!held || fmt::format("{:016}", held->GetSerialNumber()) != request.guid) {
+      if (!held || !held->HasGUID() || ItemGUIDText(held->GetGUID()) != request.guid) {
         throw ItemRefusal(ItemResult::notFound, fmt::format("slot [{}] does not hold item [{}]", slot, request.guid));
       }
       Candidate candidate;
@@ -190,7 +190,7 @@ namespace housing {
         throw ItemRefusal(ItemResult::notFound, fmt::format("property [{}] is not one this zone sent", request.propertyId));
       }
       auto row = placedItem(request.propertyId, request.recordId);
-      if (!row || itemGuid(*row) != request.guid) {
+      if (!row || ItemGUIDText(row->guid) != request.guid) {
         throw ItemRefusal(ItemResult::notFound, fmt::format("record [{}] of property [{}] is not item [{}]", request.recordId, request.propertyId, request.guid));
       }
       Candidate candidate;
@@ -226,7 +226,7 @@ namespace housing {
           continue;
         }
         for (const auto &row : view.rowsOf(propertyId)) {
-          if (row.placed && carriedPropertyId(row.custom_data) == child->id) {
+          if (row.placed && row.carried_property_id == child->id) {
             return child;
           }
         }
@@ -242,7 +242,7 @@ namespace housing {
         if (row.placed || row.item_id != candidate.item->ID || row.owner_character_id != ownerId || (candidate.row && row.id == candidate.row->id)) {
           continue;
         }
-        if (row.charges + quantity <= static_cast<uint32>(candidate.item->StackSize)) {
+        if (static_cast<uint32>(row.charges) + quantity <= static_cast<uint32>(candidate.item->StackSize)) {
           return &row;
         }
       }
@@ -391,32 +391,86 @@ namespace housing {
       const uint32 owner = ownerFor(destination, lookup);
       if (candidate.carried) {
         query(database, fmt::format(
-          "UPDATE real_estate_properties SET parent_id = {}, owner_character_id = {}, contained_in_item = 0, archived = 0, revision = revision + 1 WHERE id = {}",
+          "UPDATE real_estate_properties SET parent_id = {}, owner_character_id = {}, archived = 0, revision = revision + 1 WHERE id = {}",
           destination.id, owner, candidate.carried->id
         ));
         changed.insert(candidate.carried->id);
         return;
       }
       auto created = query(database, fmt::format(
-        "INSERT INTO real_estate_properties (parent_id, definition_id, owner_character_id) VALUES ({}, {}, {})",
-        destination.id, candidate.tail->realEstateDefinitionId, owner
+        "INSERT INTO real_estate_properties (parent_id, definition_id, owner_character_id, container_guid_first, container_guid_second, container_guid_third) "
+        "VALUES ({}, {}, {}, {}, {}, {})",
+        destination.id, candidate.tail->realEstateDefinitionId, owner, row.guid.first, row.guid.second, row.guid.third
       ));
       const uint32 propertyId = static_cast<uint32>(created.LastInsertedID());
-      candidate.instance->SetCustomData(propertyItemKey, std::to_string(propertyId));
-      row.custom_data = candidate.instance->GetCustomDataString();
       // A property-carrying item is No Trade per instance for as long as it carries one (STT-6).
-      row.instnodrop = 1;
+      candidate.instance->SetAttuned(true);
+      candidate.instance->SetRealEstateID(propertyId);
+      if (!ItemLayer::Update(database, *candidate.instance, ItemLocation::InRealEstate(destination.id))) {
+        throw std::runtime_error(fmt::format("item [{}] could not be bound to its new property [{}]", candidate.item->ID, propertyId));
+      }
+      row.attuned = 1;
+      row.carried_property_id = propertyId;
       changed.insert(propertyId);
     }
 
-    // An update in place keeps the row's id, so its GUID and any look stored for it survive (NPC-19).
+    // An update in place keeps the row's id, so any look stored for it survives (NPC-19).
     void updateRow(const PlacedItem &row) {
+      if (!ItemLayer::MoveRow(database, row.guid, ItemLocation::InRealEstate(row.property_id))) {
+        throw std::runtime_error(fmt::format("record [{}] could not move to property [{}]", row.id, row.property_id));
+      }
       query(database, fmt::format(
-        "UPDATE real_estate_items SET property_id = {}, placed = {}, heading = {}, pitch = {}, roll = {}, scale = {}, x = {}, y = {}, z = {}, "
-        "charges = {}, instnodrop = {}, custom_data = '{}' WHERE id = {}",
-        row.property_id, row.placed, row.heading, row.pitch, row.roll, row.scale, row.x, row.y, row.z, row.charges, row.instnodrop,
-        Strings::Escape(row.custom_data), row.id
+        "UPDATE real_estate_items SET placed = {}, heading = {}, pitch = {}, roll = {}, scale = {}, x = {}, y = {}, z = {} WHERE id = {}",
+        row.placed, row.heading, row.pitch, row.roll, row.scale, row.x, row.y, row.z, row.id
       ));
+    }
+
+    // The housing side of an item its property already holds, before the row is inserted. Never placed, it has Live's
+    // all-zero transform (REC-11).
+    PlacedItem rowFor(const EQ::ItemInstance &item, uint32 propertyId, uint32 placerId) {
+      PlacedItem row{};
+      row.guid = item.GetGUID();
+      row.owner_character_id = placerId;
+      row.property_id = propertyId;
+      row.item_id = item.GetID();
+      row.charges = item.GetCharges();
+      row.attuned = item.IsAttuned();
+      row.carried_property_id = item.GetRealEstateID();
+      return row;
+    }
+
+    bool movesWhole(const Candidate &candidate, uint32 quantity) {
+      return !candidate.instance->IsStackable() || quantity >= static_cast<uint32>(std::max<int16>(candidate.instance->GetCharges(), 1));
+    }
+
+    // Moves the candidate's item into the property's holder, or issues a new item there for part of its stack and lowers
+    // the stack by that part. Either way the candidate's instance is the item the property holds afterwards.
+    void holdIn(Client *client, Candidate &candidate, uint32 propertyId, bool whole, uint32 quantity) {
+      const ItemLocation held = ItemLocation::InRealEstate(propertyId);
+      if (whole) {
+        if (!ItemLayer::Update(database, *candidate.instance, held)) {
+          throw std::runtime_error(fmt::format("item [{}] could not move to property [{}]", candidate.item->ID, propertyId));
+        }
+        return;
+      }
+      const ItemGUID source = candidate.instance->GetGUID();
+      const int16 remaining = static_cast<int16>(candidate.instance->GetCharges() - quantity);
+      ItemLayer::ClearGUID(*candidate.instance);
+      candidate.instance->SetCharges(static_cast<int16>(quantity));
+      if (!ItemLayer::Save(database, *candidate.instance, held, client->ItemOwner()) || !ItemLayer::SetCharges(database, source, remaining)) {
+        throw std::runtime_error(fmt::format("[{}] of item [{}] could not be split off into property [{}]", quantity, candidate.item->ID, propertyId));
+      }
+    }
+
+    // The inventory's side of a committed move: the transaction already moved the item's row or lowered its stack.
+    void takeFromInventory(Client *client, int16 slot, bool whole, uint32 quantity) {
+      if (whole) {
+        client->RemoveItemFromInventory(slot, true);
+        return;
+      }
+      EQ::ItemInstance *held = client->GetInv().GetItem(slot);
+      held->SetCharges(static_cast<int16>(held->GetCharges() - quantity));
+      client->SendSlotChange(slot, held, false, static_cast<int16>(quantity), true);
     }
 
     void sendRemoved(const PlacedItem &row) {
@@ -476,6 +530,7 @@ namespace housing {
       if (candidate.carried) {
         focus.insert(candidate.carried->id);
       }
+      const bool wholeSource = movesWhole(candidate, quantity);
       PlacedItem placed;
       {
         Transaction transaction(database);
@@ -486,7 +541,10 @@ namespace housing {
         if (result != ItemResult::success) {
           throw ItemRefusal(result, fmt::format("the item may not be placed in property [{}]", destinationId));
         }
-        placed = candidate.row ? *candidate.row : rowFromInstance(*candidate.instance, destinationId, client->CharacterID());
+        if (!candidate.row) {
+          holdIn(client, candidate, destinationId, wholeSource, quantity);
+        }
+        placed = candidate.row ? *candidate.row : rowFor(*candidate.instance, destinationId, client->CharacterID());
         placed.property_id = destinationId;
         placed.placed = 1;
         placed.heading = transform.heading;
@@ -511,18 +569,14 @@ namespace housing {
           applied.itemLists.insert(candidate.row->property_id);
         }
         else {
-          placed.charges = static_cast<uint16>(candidate.instance->IsStackable() ? quantity : placed.charges);
-          placed = RealEstateItemsRepository::InsertOne(database, placed);
-          if (!placed.id) {
-            throw std::runtime_error(fmt::format("item [{}] could not be added to property [{}]", candidate.item->ID, destinationId));
-          }
+          placed.id = RealEstateItemsRepository::InsertOne(database, placed);
         }
         bumpRevision(database, destinationId);
         applied.itemLists.insert(destinationId);
         transaction.commit();
       }
       if (!candidate.row) {
-        client->DeleteItemInInventory(candidate.inventorySlot, candidate.instance->IsStackable() ? static_cast<int16>(quantity) : 0, true);
+        takeFromInventory(client, candidate.inventorySlot, wholeSource, quantity);
       }
       applied.shown.push_back(placed);
       applied.count++;
@@ -531,7 +585,7 @@ namespace housing {
 
     // A move into a property's storage, its rules and changes; the destination is the resolved closet, shed or crate.
     PlacedItem storeInto(Client *client, const Session &state, Candidate &candidate, std::set<uint32> focus, uint32 destinationId, uint32 quantity, Applied &applied) {
-      const bool wholeSource = !candidate.instance->IsStackable() || quantity >= static_cast<uint32>(std::max<int16>(candidate.instance->GetCharges(), 1));
+      const bool wholeSource = movesWhole(candidate, quantity);
       PlacedItem stored;
       {
         Transaction transaction(database);
@@ -547,8 +601,17 @@ namespace housing {
         const PlacedItem *merge = mergeTarget(fresh, candidate, destination.id, client->CharacterID(), quantity);
         if (merge) {
           stored = *merge;
-          query(database, fmt::format("UPDATE real_estate_items SET charges = charges + {} WHERE id = {}", quantity, merge->id));
-          stored.charges = static_cast<uint16>(stored.charges + quantity);
+          stored.charges = static_cast<int16>(stored.charges + quantity);
+          const ItemGUID source = candidate.instance->GetGUID();
+          const bool absorbed = ItemLayer::SetCharges(database, stored.guid, stored.charges) && (wholeSource
+            ? ItemLayer::RetireRow(database, source, ItemRetirement::Stacked)
+            : ItemLayer::SetCharges(database, source, static_cast<int16>(candidate.instance->GetCharges() - quantity)));
+          if (!absorbed) {
+            throw std::runtime_error(fmt::format("[{}] of item [{}] could not stack onto record [{}]", quantity, candidate.item->ID, stored.id));
+          }
+          if (candidate.row && wholeSource) {
+            query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", candidate.row->id));
+          }
         }
         else if (candidate.row && wholeSource) {
           stored = *candidate.row;
@@ -564,9 +627,8 @@ namespace housing {
           updateRow(stored);
         }
         else {
-          // REC-11: an item stored without ever being placed has Live's all-zero transform.
-          stored = rowFromInstance(*candidate.instance, destination.id, candidate.row ? candidate.row->owner_character_id : client->CharacterID());
-          stored.charges = static_cast<uint16>(candidate.instance->IsStackable() ? quantity : stored.charges);
+          holdIn(client, candidate, destination.id, wholeSource, quantity);
+          stored = rowFor(*candidate.instance, destination.id, candidate.row ? candidate.row->owner_character_id : client->CharacterID());
           if (!candidate.row) {
             std::set<uint32> carriedChanged;
             attachCarried(candidate, stored, destination, fresh.lookup(), carriedChanged);
@@ -574,20 +636,9 @@ namespace housing {
               changedProperties[id] = PropertyChangedPayload{candidate.carried ? candidate.carried->owner_character_id : 0, ownerFor(destination, fresh.lookup()), 0, 0};
             }
           }
-          stored = RealEstateItemsRepository::InsertOne(database, stored);
-          if (!stored.id) {
-            throw std::runtime_error(fmt::format("item [{}] could not be stored in property [{}]", candidate.item->ID, destination.id));
-          }
+          stored.id = RealEstateItemsRepository::InsertOne(database, stored);
         }
         if (candidate.row) {
-          if (merge || !wholeSource) {
-            if (wholeSource) {
-              query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", candidate.row->id));
-            }
-            else {
-              query(database, fmt::format("UPDATE real_estate_items SET charges = charges - {} WHERE id = {}", quantity, candidate.row->id));
-            }
-          }
           if (wholeSource && candidate.row->placed) {
             applied.withdrawn.push_back(*candidate.row);
             if (candidate.carried && isHouseKind(candidate.kind)) {
@@ -609,7 +660,7 @@ namespace housing {
         transaction.commit();
       }
       if (!candidate.row) {
-        client->DeleteItemInInventory(candidate.inventorySlot, candidate.instance->IsStackable() ? static_cast<int16>(quantity) : 0, true);
+        takeFromInventory(client, candidate.inventorySlot, wholeSource, quantity);
       }
       applied.count++;
       return stored;
@@ -648,10 +699,10 @@ namespace housing {
       }
       std::map<uint32, std::vector<ItemListChangedRecord>> changes;
       for (const PlacedItem &row : applied.withdrawn) {
-        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0});
+        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0, row.guid});
       }
       for (const PlacedItem &row : applied.shown) {
-        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 1});
+        changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 1, row.guid});
       }
       std::set<uint32> lists = applied.itemLists;
       for (const auto &[propertyId, records] : changes) {
@@ -687,7 +738,7 @@ namespace housing {
       }
       candidate.item = candidate.instance->GetItem();
       candidate.row = row;
-      candidate.guid = itemGuid(row);
+      candidate.guid = ItemGUIDText(row.guid);
       describeCarrier(candidate);
       return candidate;
     }
@@ -701,7 +752,7 @@ namespace housing {
       view.properties[destination.id] = destination;
       const std::vector<PlacedItem> rows = view.rowsOf(sourceId);
       for (const PlacedItem &row : rows) {
-        if ((placedOnly && !row.placed) || carriedPropertyId(row.custom_data) == destinationId) {
+        if ((placedOnly && !row.placed) || row.carried_property_id == destinationId) {
           continue;
         }
         Candidate candidate = bulkCandidate(row);
@@ -716,12 +767,15 @@ namespace housing {
         sourceRows.erase(std::remove_if(sourceRows.begin(), sourceRows.end(), [&](const PlacedItem &entry) { return entry.id == row.id; }), sourceRows.end());
         const PlacedItem *merge = mergeTarget(view, candidate, destinationId, row.owner_character_id, quantity);
         if (merge) {
-          const uint32 mergeId = merge->id;
-          query(database, fmt::format("UPDATE real_estate_items SET charges = charges + {} WHERE id = {}", quantity, mergeId));
+          const PlacedItem target = *merge;
+          const int16 merged = static_cast<int16>(target.charges + quantity);
+          if (!ItemLayer::SetCharges(database, target.guid, merged) || !ItemLayer::RetireRow(database, row.guid, ItemRetirement::Stacked)) {
+            throw std::runtime_error(fmt::format("record [{}] could not stack onto record [{}]", row.id, target.id));
+          }
           query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", row.id));
           for (auto &entry : view.rows[destinationId]) {
-            if (entry.id == mergeId) {
-              entry.charges = static_cast<uint16>(entry.charges + quantity);
+            if (entry.id == target.id) {
+              entry.charges = merged;
             }
           }
         }
@@ -733,7 +787,7 @@ namespace housing {
             std::set<uint32> carriedChanged;
             attachCarried(candidate, stored, destination, view.lookup(), carriedChanged);
             for (uint32 id : carriedChanged) {
-              result.changedProperties[id] = PropertyChangedPayload{candidate.carried->owner_character_id, ownerFor(destination, view.lookup()), 0, 0};
+              result.changedProperties[id] = PropertyChangedPayload{candidate.carried ? candidate.carried->owner_character_id : 0, ownerFor(destination, view.lookup()), 0, 0};
             }
           }
           updateRow(stored);
@@ -774,6 +828,47 @@ namespace housing {
       const bool yardOrHouse = type == DefinitionType::plot || type == DefinitionType::guildPlot || type == DefinitionType::playerHouse || type == DefinitionType::guildHall;
       return yardOrHouse ? location : 0;
     }
+
+    // The pick-up rules on fresh rows: throws the refusal, or tells whether the item carries real estate that holds contents.
+    bool checkPickUp(Client *client, const Session &state, const Candidate &candidate, int16 slot) {
+      const PlacedItem &taken = *candidate.row;
+      std::set<uint32> focus{taken.property_id};
+      if (candidate.carried) {
+        focus.insert(candidate.carried->id);
+      }
+      const View view = viewOf(state, focus);
+      const Property &holder = view.at(taken.property_id);
+      const auto lookup = view.lookup();
+      const auto listOf = view.listOf();
+      const Property *plot = ancestorOfType(holder, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, lookup);
+      const bool carriesItems = candidate.carried && view.holdsContents(candidate.carried->id);
+      bool takerCarriesSameKind = false;
+      if (carriesItems) {
+        for (uint32 carriedId : state.carriedIds) {
+          auto carried = view.properties.find(carriedId);
+          if (carried != view.properties.end() && kindOf(static_cast<uint8>(typeOf(carried->second))) == candidate.kind && carriedId != candidate.carried->id) {
+            takerCarriesSameKind = takerCarriesSameKind || propertiesChildOf({carriedId}).size() + itemsOf({carriedId}).size() > 0;
+          }
+        }
+      }
+      PickUpFacts facts;
+      facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
+      facts.crate = candidate.kind == CarriedKind::crate;
+      facts.mayRemoveCrate = permitted(client, Permission::removeCrate, holder, lookup, listOf);
+      facts.ownerOrPlacer = accessGroup(client, holder, lookup, listOf) == ownerGroup || taken.owner_character_id == client->CharacterID();
+      facts.noDrop = !candidate.item->NoDrop || candidate.instance->IsAttuned();
+      // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
+      facts.placedByTaker = taken.owner_character_id ? taken.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
+      facts.loreHeld = candidate.item->LoreFlag && client->CheckLoreConflict(candidate.item);
+      facts.carriesItems = carriesItems;
+      facts.takerCarriesSameKindWithItems = takerCarriesSameKind;
+      facts.inventoryRoom = slot != INVALID_INDEX;
+      const ItemResult result = pickUpResult(facts);
+      if (result != ItemResult::success) {
+        throw ItemRefusal(result, fmt::format("record [{}] may not be taken", taken.id));
+      }
+      return carriesItems;
+    }
   }
 
   bool readItemRequest(WireReader &reader, ItemRequest &request) {
@@ -808,6 +903,19 @@ namespace housing {
     LogHousing("Cancelled [{}]'s placement: {}", client->GetCleanName(), reason);
   }
 
+  void giveAndCommit(Client *client, Transaction &transaction, int16 slot, const EQ::ItemInstance &item) {
+    try {
+      if (!client->PutItemInInventory(slot, item, true)) {
+        throw std::runtime_error(fmt::format("item [{}] could not be saved in [{}]'s slot [{}]", item.GetID(), client->GetCleanName(), slot));
+      }
+      transaction.commit();
+    }
+    catch (...) {
+      client->RemoveItemFromInventory(slot, true);
+      throw;
+    }
+  }
+
   void withdrawRow(const PlacedItem &row) {
     closeContainersOf(row.id);
     if (row.placed) {
@@ -832,6 +940,7 @@ namespace housing {
         row.id = record.recordId;
         row.property_id = record.propertyId;
         row.item_id = record.itemId;
+        row.guid = record.guid;
         row.placed = 1;
         hideRow(row, "another zone");
         continue;
@@ -999,67 +1108,37 @@ namespace housing {
       return;
     }
     PlacedItem taken;
-    std::unique_ptr<EQ::ItemInstance> given;
-    int16 slot = INVALID_INDEX;
     std::map<uint32, PropertyChangedPayload> changedProperties;
     bool wholeRow = true;
     try {
       Candidate candidate = rowCandidate(*state, request);
-      taken = *candidate.row;
-      const uint32 quantity = movingQuantity(candidate, request);
-      wholeRow = !candidate.instance->IsStackable() || quantity >= static_cast<uint32>(std::max<int16>(candidate.instance->GetCharges(), 1));
+      const int16 slot = client->GetInv().FindFirstFreeSlotThatFitsItem(candidate.item);
+      checkPickUp(client, *state, candidate, slot);
+      // A container gives its contents back to whoever has it open before its item is read for the taker.
+      closeContainersOf(candidate.row->id);
       Transaction transaction(database);
-      const Property holder = lockedProperty(database, taken.property_id);
-      std::set<uint32> focus{holder.id};
-      if (candidate.carried) {
-        focus.insert(candidate.carried->id);
-      }
-      View view = viewOf(*state, focus);
-      const auto lookup = view.lookup();
-      const auto listOf = view.listOf();
-      const Property *plot = ancestorOfType(holder, typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, lookup);
-      const bool carriesItems = candidate.carried && view.holdsContents(candidate.carried->id);
-      bool takerCarriesSameKind = false;
-      if (carriesItems) {
-        for (uint32 carriedId : state->carriedIds) {
-          auto carried = view.properties.find(carriedId);
-          if (carried != view.properties.end() && kindOf(static_cast<uint8>(typeOf(carried->second))) == candidate.kind && carriedId != candidate.carried->id) {
-            takerCarriesSameKind = takerCarriesSameKind || propertiesChildOf({carriedId}).size() + itemsOf({carriedId}).size() > 0;
-          }
-        }
-      }
-      given = std::move(candidate.instance);
-      if (!wholeRow) {
-        given->SetCharges(static_cast<int16>(quantity));
-      }
-      slot = client->GetInv().FindFirstFreeSlotThatFitsItem(given->GetItem());
-      PickUpFacts facts;
-      facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
-      facts.crate = candidate.kind == CarriedKind::crate;
-      facts.mayRemoveCrate = permitted(client, Permission::removeCrate, holder, lookup, listOf);
-      facts.ownerOrPlacer = accessGroup(client, holder, lookup, listOf) == ownerGroup || taken.owner_character_id == client->CharacterID();
-      facts.noDrop = !given->GetItem()->NoDrop || given->IsAttuned();
-      // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
-      facts.placedByTaker = taken.owner_character_id ? taken.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
-      facts.loreHeld = given->GetItem()->LoreFlag && client->CheckLoreConflict(given->GetItem());
-      facts.carriesItems = carriesItems;
-      facts.takerCarriesSameKindWithItems = takerCarriesSameKind;
-      facts.inventoryRoom = slot != INVALID_INDEX;
-      const ItemResult result = pickUpResult(facts);
-      if (result != ItemResult::success) {
-        throw ItemRefusal(result, fmt::format("record [{}] may not be taken", taken.id));
-      }
+      const Property holder = lockedProperty(database, candidate.row->property_id);
+      candidate = rowCandidate(*state, request);
+      taken = *candidate.row;
+      const bool carriesItems = checkPickUp(client, *state, candidate, slot);
+      const uint32 quantity = movingQuantity(candidate, request);
+      wholeRow = movesWhole(candidate, quantity);
+      EQ::ItemInstance &given = *candidate.instance;
       if (wholeRow) {
         query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", taken.id));
       }
       else {
-        query(database, fmt::format("UPDATE real_estate_items SET charges = charges - {} WHERE id = {}", quantity, taken.id));
+        if (!ItemLayer::SetCharges(database, taken.guid, static_cast<int16>(taken.charges - quantity))) {
+          throw std::runtime_error(fmt::format("record [{}]'s stack could not give [{}]", taken.id, quantity));
+        }
+        ItemLayer::ClearGUID(given);
+        given.SetCharges(static_cast<int16>(quantity));
       }
       if (candidate.carried) {
         if (carriesItems) {
           query(database, fmt::format(
-            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, contained_in_item = 1, "
-            "archived = 0, revision = revision + 1 WHERE id = {}", client->CharacterID(), candidate.carried->id
+            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, archived = 0, revision = revision + 1 WHERE id = {}",
+            client->CharacterID(), candidate.carried->id
           ));
           changedProperties[candidate.carried->id] = PropertyChangedPayload{candidate.carried->owner_character_id, client->CharacterID(), 0, 0};
         }
@@ -1069,14 +1148,14 @@ namespace housing {
             query(database, fmt::format("DELETE FROM {} WHERE property_id = {}", table, candidate.carried->id));
           }
           query(database, fmt::format("DELETE FROM real_estate_properties WHERE id = {}", candidate.carried->id));
-          given->DeleteCustomData(propertyItemKey);
-          given->SetAttuned(false);
+          given.SetRealEstateID(0);
+          given.SetAttuned(false);
           changedProperties[candidate.carried->id] = PropertyChangedPayload{candidate.carried->owner_character_id, 0, 0, 0};
         }
         changedProperties[holder.id] = PropertyChangedPayload{holder.owner_character_id, holder.owner_character_id, holder.guild_id, holder.guild_id};
       }
       bumpRevision(database, holder.id);
-      transaction.commit();
+      giveAndCommit(client, transaction, slot, given);
     }
     catch (const ItemRefusal &refusal) {
       refuse(client, refusal, "move to inventory");
@@ -1095,9 +1174,6 @@ namespace housing {
       if (taken.placed) {
         applied.withdrawn.push_back(taken);
       }
-    }
-    if (!client->PutItemInInventory(slot, *given, true)) {
-      LogError("Housing: [{}] could not be given record [{}] (item [{}]) in slot [{}]; the item is lost from the property", client->GetCleanName(), taken.id, taken.item_id, slot);
     }
     sendItemResult(client, ItemResult::success);
     announce(applied);
@@ -1292,7 +1368,7 @@ namespace housing {
         attachCarried(candidate, incoming, yard, view.lookup(), carriedChanged);
       }
       updateRow(incoming);
-      const uint32 incomingHouseId = carriedPropertyId(incoming.custom_data);
+      const uint32 incomingHouseId = incoming.carried_property_id;
       PlacedItem outgoingStored = *outgoingRow;
       outgoingStored.placed = 0;
       updateRow(outgoingStored);
@@ -1301,7 +1377,7 @@ namespace housing {
         moved.property_id = incomingHouseId;
         moved.placed = 0;
         updateRow(moved);
-        if (const uint32 carriedId = carriedPropertyId(row.custom_data)) {
+        if (const uint32 carriedId = row.carried_property_id) {
           query(database, fmt::format("UPDATE real_estate_properties SET parent_id = {}, revision = revision + 1 WHERE id = {}", incomingHouseId, carriedId));
           applied.changedProperties[carriedId] = PropertyChangedPayload{0, 0, 0, 0};
         }
@@ -1409,7 +1485,7 @@ namespace housing {
           if (!row) {
             throw ItemRefusal(ItemResult::notFound, fmt::format("record [{}] of property [{}] does not exist", record.request.recordId, record.request.propertyId));
           }
-          record.request.guid = itemGuid(*row);
+          record.request.guid = ItemGUIDText(row->guid);
           Candidate candidate = rowCandidate(*state, record.request);
           std::set<uint32> focus{row->property_id};
           if (candidate.carried) {

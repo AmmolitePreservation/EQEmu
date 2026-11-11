@@ -27,17 +27,14 @@ namespace housing {
   constexpr uint8 movingCrateType = 7;
   constexpr uint8 guildPlotType = 8;
 
+  // A DBcore scope whose commit throws; raw START TRANSACTION here would commit under the item layer's own scopes.
   class Transaction {
   public:
     explicit Transaction(Database &database);
-    ~Transaction();
     void commit();
-    Transaction(const Transaction &) = delete;
-    Transaction &operator=(const Transaction &) = delete;
 
   private:
-    Database &database;
-    bool open = true;
+    DBcore::Transaction scope;
   };
 
   MySQLRequestResult query(Database &database, const std::string &statement);
@@ -46,6 +43,13 @@ namespace housing {
   std::vector<uint32> definitionList(const std::string &text, const char *ruleName);
 
   PropertyRow lockedProperty(Database &database, uint32 propertyId);
+  // The properties whose own item a character holds: in the inventory, on the cursor or in the bank, loose or inside a bag.
+  std::set<uint32> carriedPropertyIds(Database &database, uint32 characterId);
+  // Whether the property's own item is anywhere but on a property.
+  bool isCarried(Database &database, uint32 propertyId);
+  // Whether items are stored or placed in the property or properties stand under it. A crate waiting for room in its
+  // owner's inventory holds its own item with no real_estate_items row, and that item is not contents.
+  bool holdsContents(Database &database, uint32 propertyId);
   void bumpRevision(Database &database, uint32 propertyId);
   std::map<uint32, uint8> definitionTypes(Database &content, const std::set<uint32> &definitionIds);
   std::map<uint32, double> readBalances(Database &database, uint32 propertyId);

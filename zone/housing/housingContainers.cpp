@@ -68,8 +68,8 @@ namespace housing {
     return item && item->IsClassBag() && !isStorageBag(item->BagType);
   }
 
-  // A transient Object holds the container item while it is open, so combines run through EQEmu's own code and nothing in it
-  // persists (serverPlan.md, housing tradeskill containers).
+  // A transient Object holds the container item while it is open, so combines run through EQEmu's own code. What is put in is
+  // saved as the placed item's contents, so a crash leaves it there for the next open (serverPlan.md, housing tradeskill containers).
   void openContainer(Client *client, const PlacedItem &row) {
     auto found = open.find(client);
     if (found != open.end()) {
@@ -107,6 +107,11 @@ namespace housing {
     EQApplicationPacket packet(OP_ClickObjectAction, sizeof(housing));
     memcpy(packet.pBuffer, &housing, sizeof(housing));
     client->QueuePacket(&packet);
+    for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; index++) {
+      if (const EQ::ItemInstance *content = object->GetItem(index)) {
+        client->SendItemPacket(index, content, ItemPacketWorldContainer);
+      }
+    }
 
     open[client] = OpenContainer{std::move(object), row.id};
     LogHousing("[{}] opened housing container record [{}] (item [{}])", client->GetCleanName(), row.id, row.item_id);

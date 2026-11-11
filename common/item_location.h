@@ -6,7 +6,8 @@
 #include <optional>
 #include <string_view>
 
-// The holders of item_instances.holder_type, in the ENUM's order. A slot is numbered within its holder; the ground has none.
+// The holders of item_instances.holder_type, in the ENUM's order. A slot is numbered within its holder; the ground and a
+// housing property have none.
 enum class ItemHolderType : uint8 {
 	Inventory,
 	Cursor,
@@ -22,9 +23,10 @@ enum class ItemHolderType : uint8 {
 	Ground,
 	Trade,
 	WorldContainer,
+	RealEstate,
 };
 
-constexpr std::array<std::string_view, 14> item_holder_type_names = {
+constexpr std::array<std::string_view, 15> item_holder_type_names = {
 	"inventory",
 	"cursor",
 	"bank",
@@ -39,8 +41,9 @@ constexpr std::array<std::string_view, 14> item_holder_type_names = {
 	"ground",
 	"trade",
 	"world_container",
+	"real_estate",
 };
-static_assert(item_holder_type_names.size() == static_cast<size_t>(ItemHolderType::WorldContainer) + 1);
+static_assert(item_holder_type_names.size() == static_cast<size_t>(ItemHolderType::RealEstate) + 1);
 
 // The reasons of item_instances.retirement_state, in the ENUM's order.
 enum class ItemRetirement : uint8 {
@@ -110,8 +113,8 @@ inline std::optional<ItemRetirement> ItemRetirementFromName(std::string_view nam
 	return std::nullopt;
 }
 
-// Where an item instance is: a top-level item has a holder and, except on the ground, a slot; a bag's content or an
-// augment has its parent's GUID and the bag slot or socket instead.
+// Where an item instance is: a top-level item has a holder and, except on the ground or a housing property, a
+// slot; a bag's content or an augment has its parent's GUID and the bag slot or socket instead.
 struct ItemLocation {
 	static constexpr uint16 in_transit_slot = 65535;
 
@@ -135,6 +138,14 @@ struct ItemLocation {
 		ItemLocation l;
 		l.holder_type = ItemHolderType::Ground;
 		l.holder_id   = zone_id;
+		return l;
+	}
+
+	static ItemLocation InRealEstate(uint32 property_id)
+	{
+		ItemLocation l;
+		l.holder_type = ItemHolderType::RealEstate;
+		l.holder_id   = property_id;
 		return l;
 	}
 

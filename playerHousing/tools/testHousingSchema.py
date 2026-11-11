@@ -1,11 +1,15 @@
-"""Tests sql/housingSchema.sql against a local MariaDB: creation (twice), a realistic hierarchy, the queries the housing
-module depends on, and the constraints that refuse bad rows.
+"""Tests sql/housingSchema.sql against a local MariaDB: creation (twice) over the item_instances table of the code's migration
+and its real_estate holder (sql/realEstateHolder.sql, applied twice), a realistic hierarchy with its items, the queries the
+housing module depends on, and the constraints that refuse bad rows.
 
 Usage: python testHousingSchema.py   (a local MariaDB with a `peq` database, root without a password)
 """
-import os, subprocess
+import os, subprocess, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, here)
+import itemInstancesTable  # noqa: E402
+
 schema = open(os.path.join(here, '..', 'sql', 'housingSchema.sql')).read()
 
 
@@ -24,6 +28,9 @@ def check(label, query, expected):
 
 tables = [l.split('`')[1] for l in schema.splitlines() if l.startswith('CREATE TABLE')]
 sql("SET FOREIGN_KEY_CHECKS = 0;" + "".join(f"DROP TABLE IF EXISTS `{t}`;" for t in tables))
+sql(itemInstancesTable.createSql())
+sql(itemInstancesTable.holderSql); sql(itemInstancesTable.holderSql)
+print('item_instances takes the real_estate holder; re-running it is safe')
 sql(schema); sql(schema)
 print(f'created {len(tables)} tables; re-running the schema is safe')
 
@@ -36,7 +43,8 @@ INSERT INTO real_estate_definitions (id, name, type, area_id, cost_definition_id
          (902, 'guild plot 1', 8, 0, 1, 2, 200, 150, -1, '200 Guild Way', 712, 2035, -2940, 6, 0),
          (903, 'player plot 2', 4, 0, 1, 2, 200, 0, 4, '101 Terminus Heights', 712, 2035, -2940, 6, 0);
 INSERT INTO real_estate_definitions (id, name, name_segment, type, dz_id, max_items) VALUES (5, 'House, Stucco interior', 'Three Room House', 3, 23000, 100),
-  (31, 'Crate of Eviction', 'Crate of Eviction', 7, 0, 500), (192, 'Scalebreaker''s crate', 'Scalebreaker''s Storage Crate', 7, 0, 100);
+  (31, 'Crate of Eviction', 'Crate of Eviction', 7, 0, 500), (192, 'Scalebreaker''s crate', 'Scalebreaker''s Storage Crate', 7, 0, 100),
+  (174, 'Small crate', 'Small Storage Crate', 7, 0, 50);
 INSERT INTO real_estate_definition_children VALUES (900, 901), (900, 902), (900, 903), (901, 5), (901, 31), (5, 192);
 INSERT INTO real_estate_zone_templates VALUES (23000, 714, 0, 0, -12, 5, 0), (20504, 712, 0, 2035, -2940, 6, 0);
 INSERT INTO real_estate_costs (id, name) VALUES (1, 'plot price'), (2, 'plot upkeep'), (3, 'upkeep reduction');
@@ -46,15 +54,19 @@ INSERT INTO real_estate_cost_items VALUES (1, 0, 0, 0, 5000000), (1, 1, 10, 1, 6
 INSERT INTO real_estate_properties (parent_id, definition_id, name) VALUES (0, 900, 'Bridge Hills');
 INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, upkeep_settled_at, next_upkeep_at, name)
   VALUES (100001, 100000, 901, 7, '2026-10-14 12:00:00', NOW() - INTERVAL 1 HOUR, ''), (100002, 100000, 902, 0, NULL, NULL, '');
-INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id) VALUES (100003, 100001, 5, 7);
-INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, contained_in_item, archived) VALUES (100004, 0, 31, 7, 1, 1);
+INSERT INTO item_instances (guid_first, guid_second, guid_third, item_id, holder_type, holder_id, slot) VALUES
+  (7, 3, 1, 61410, 'real_estate', 100001, NULL), (7, 3, 2, 61441, 'real_estate', 100003, NULL), (7, 3, 3, 66641, 'real_estate', 100003, NULL),
+  (7, 3, 4, 61823, 'real_estate', 100001, NULL), (7, 3, 5, 62586, 'inventory', 7, 23), (7, 3, 6, 61410, 'real_estate', 100004, NULL);
+INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, container_guid_first, container_guid_second, container_guid_third)
+  VALUES (100003, 100001, 5, 7, 7, 3, 4), (100009, 0, 174, 7, 7, 3, 5);
+INSERT INTO real_estate_properties (id, parent_id, definition_id, owner_character_id, archived) VALUES (100004, 0, 31, 7, 1);
 INSERT INTO real_estate_properties (id, parent_id, definition_id, name) VALUES (100005, 0, 900, 'Prophetic Alliance Village II'),
   (100006, 100005, 903, ''), (100007, 100006, 5, ''), (100008, 100007, 192, '');
 INSERT INTO real_estate_instances VALUES (1001, 100000), (1002, 100005), (1003, 100003);
 INSERT INTO real_estate_instance_counter VALUES (1, 1004);
 INSERT INTO real_estate_property_balances VALUES (100001, 0, 10000), (100001, 9, 3);
-INSERT INTO real_estate_items (property_id, owner_character_id, placed, scale, x, y, z, item_id) VALUES (100001, 7, 1, 1, 101, 201, 0, 61410), (100003, 7, 0, 0, 0, 0, 0, 61441),
-  (100003, 7, 1, 1.5, 3, 4, 0, 66641);
+INSERT INTO real_estate_items (guid_first, guid_second, guid_third, owner_character_id, placed, scale, x, y, z) VALUES (7, 3, 1, 7, 1, 1, 101, 201, 0), (7, 3, 2, 7, 0, 0, 0, 0, 0),
+  (7, 3, 3, 7, 1, 1.5, 3, 4, 0), (7, 3, 4, 7, 1, 1, 110, 210, 0), (7, 3, 6, 7, 0, 1, 120, 220, 0);
 INSERT INTO real_estate_item_looks VALUES (3, 4, 0, 0, 0, 255, 0, 2, 4278222848);
 INSERT INTO real_estate_access_groups VALUES (100001, 0, 255), (100001, 1, 3);
 INSERT INTO real_estate_access_names VALUES (100001, 'Friendly', 1);
@@ -92,10 +104,23 @@ check("leaving a house goes to its plot's exit point", """
   SELECT CONCAT_WS(' ', d.exit_zone_id, d.exit_zone_version, d.exit_x, d.exit_y, ROUND(d.exit_z, 2), d.exit_heading) FROM real_estate_properties h
   JOIN real_estate_properties p ON p.id = h.parent_id JOIN real_estate_definitions d ON d.id = p.definition_id WHERE h.id = 100003""", '712 0 1931.75 -2461.25 2.95 2.25')
 check('children, derived from parent_id', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE parent_id = 100000", '100001,100002')
-check('list A (owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7", '100001,100003,100004')
+check('list A (owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7", '100001,100003,100004,100009')
 check('list C (archived, a subset of owned)', "SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE owner_character_id = 7 AND archived = 1", '100004')
-check('a property inside an item is flagged and has no parent', """
-  SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE contained_in_item = 1 AND parent_id = 0""", '100004')
+check("a property's items are read through their item rows, a house item with the property it is", """
+  SELECT GROUP_CONCAT(CONCAT_WS(':', r.id, i.holder_id, i.item_id, r.placed, COALESCE(c.id, 0)) ORDER BY r.id) FROM real_estate_items r
+  JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third
+    AND i.holder_type = 'real_estate' AND i.retirement_state IS NULL
+  LEFT JOIN real_estate_properties c ON c.container_guid_first = r.guid_first AND c.container_guid_second = r.guid_second AND c.container_guid_third = r.guid_third""",
+      '1:100001:61410:1:0,2:100003:61441:0:0,3:100003:66641:1:0,4:100001:61823:1:100003,5:100004:61410:0:0')
+check('a property holds any number of items, none in a slot', "SELECT COUNT(*) FROM item_instances WHERE holder_type = 'real_estate' AND holder_id = 100001 AND slot IS NULL", '2')
+check('the properties a character carries are those whose item they hold', """
+  SELECT GROUP_CONCAT(p.id ORDER BY p.id) FROM real_estate_properties p
+  JOIN item_instances i ON i.guid_first = p.container_guid_first AND i.guid_second = p.container_guid_second AND i.guid_third = p.container_guid_third
+  LEFT JOIN item_instances b ON b.guid_first = i.parent_guid_first AND b.guid_second = i.parent_guid_second AND b.guid_third = i.parent_guid_third
+  WHERE i.retirement_state IS NULL AND b.retirement_state IS NULL
+    AND COALESCE(i.holder_type, b.holder_type) IN ('inventory', 'cursor', 'bank') AND COALESCE(i.holder_id, b.holder_id) = 7""", '100009')
+check("an evicted plot's crate waiting for its owner is no item yet and has no parent", """
+  SELECT GROUP_CONCAT(id ORDER BY id) FROM real_estate_properties WHERE archived = 1 AND parent_id = 0 AND container_guid_first IS NULL""", '100004')
 check('neighborhood row: player plots, used, guild plots, used', """
   SELECT CONCAT_WS(',', SUM(d.type = 4), SUM(d.type = 4 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)),
                         SUM(d.type = 8), SUM(d.type = 8 AND (p.owner_character_id <> 0 OR p.guild_id <> 0)))
@@ -158,7 +183,14 @@ for label, bad, reason in [('definition type out of range', "INSERT INTO real_es
                    ('poll closing before it opens', "INSERT INTO real_estate_polls (kind, selection_type, opens_at, closes_at) VALUES (2, 2, NOW(), NOW() - INTERVAL 1 DAY)", 'real_estate_poll_dates'),
                    ('region without volume', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (2, 0, 1, 1)", 'real_estate_region_size'),
                    ('region id at the property id floor', "INSERT INTO real_estate_regions (id, size_x, size_y, size_z) VALUES (100000, 1, 1, 1)", 'real_estate_region_below_property_ids'),
-                   ('an item without a scale', "INSERT INTO real_estate_items (property_id, item_id) VALUES (100001, 61410)", "Field 'scale' doesn't have a default value"),
+                   ('an item without a scale', "INSERT INTO real_estate_items (guid_first, guid_second, guid_third) VALUES (7, 3, 5)", "Field 'scale' doesn't have a default value"),
+                   ('a second row for one item', "INSERT INTO real_estate_items (guid_first, guid_second, guid_third, scale) VALUES (7, 3, 1, 1)", "for key 'item_guid'"),
+                   ('a row for no item', "INSERT INTO real_estate_items (guid_first, guid_second, guid_third, scale) VALUES (7, 3, 999, 1)", '`real_estate_item_instance` FOREIGN KEY'),
+                   ('a property that is no item', "UPDATE real_estate_properties SET container_guid_first = 7, container_guid_second = 3, container_guid_third = 999 WHERE id = 100004", '`real_estate_property_container` FOREIGN KEY'),
+                   ('two properties that are one item', "UPDATE real_estate_properties SET container_guid_first = 7, container_guid_second = 3, container_guid_third = 4 WHERE id = 100004", "for key 'container_guid'"),
+                   ('part of an item GUID on a property', "UPDATE real_estate_properties SET container_guid_first = 7 WHERE id = 100004", 'real_estate_property_container_whole'),
+                   ('a slot on an item a property holds', "INSERT INTO item_instances (guid_first, guid_second, guid_third, item_id, holder_type, holder_id, slot) VALUES (7, 3, 50, 61410, 'real_estate', 100001, 0)", 'item_instances_location'),
+                   ('an inventory item without a slot', "INSERT INTO item_instances (guid_first, guid_second, guid_third, item_id, holder_type, holder_id) VALUES (7, 3, 50, 61410, 'inventory', 7)", 'item_instances_location'),
                    ('a look for no placed item', "INSERT INTO real_estate_item_looks VALUES (999, 4, 0, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_item'),
                    ('a look with gender 3', "INSERT INTO real_estate_item_looks VALUES (1, 4, 3, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_gender'),
                    ('a look with race 0', "INSERT INTO real_estate_item_looks VALUES (1, 0, 0, 0, 0, 0, 0, 0, 0)", 'real_estate_item_look_race'),

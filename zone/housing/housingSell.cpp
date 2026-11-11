@@ -10,7 +10,7 @@
 #include "../../common/eqemu_logsys.h"
 #include "../../common/guilds.h"
 #include "../../common/housingLedger.h"
-#include "../../common/housingPropertyItem.h"
+#include "../../common/item_layer.h"
 #include "../../common/rulesys.h"
 #include "../client.h"
 #include "../guild_mgr.h"
@@ -49,24 +49,9 @@ namespace housing {
       sendMessage(client, OP_RealEstateSellResult, message);
     }
 
-    bool hasContents(uint32 propertyId) {
-      auto rows = query(database, fmt::format(
-        "SELECT (SELECT COUNT(*) FROM real_estate_items WHERE property_id = {0}) + (SELECT COUNT(*) FROM real_estate_properties WHERE parent_id = {0})",
-        propertyId
-      ));
-      return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
-    }
-
     std::set<uint32> carriedCrateIds(uint32 characterId) {
-      std::set<uint32> carried;
-      for (auto row : query(database, fmt::format("SELECT custom_data FROM inventory WHERE character_id = {} AND custom_data LIKE '%{}^%'", characterId, propertyItemKey))) {
-        const uint32 id = carriedPropertyId(row[0]);
-        if (id) {
-          carried.insert(id);
-        }
-      }
       std::set<uint32> crates;
-      for (const auto &property : propertiesById(carried)) {
+      for (const auto &property : propertiesById(carriedPropertyIds(database, characterId))) {
         if (typeOf(property) == DefinitionType::movingCrate) {
           crates.insert(property.id);
         }
@@ -92,7 +77,7 @@ namespace housing {
       if (!instance) {
         throw std::runtime_error(fmt::format("item [{}] could not be created", itemId));
       }
-      instance->SetCustomData(propertyItemKey, std::to_string(propertyId));
+      instance->SetRealEstateID(propertyId);
       instance->SetAttuned(true);
       return instance;
     }
@@ -119,26 +104,37 @@ namespace housing {
 
   void deliverPendingCrates(Client *client) {
     const auto archived = RealEstatePropertiesRepository::GetWhere(database, fmt::format(
-      "owner_character_id = {} AND archived = 1 AND contained_in_item = 0", client->CharacterID()
+      "owner_character_id = {} AND archived = 1", client->CharacterID()
     ));
     for (const auto &crate : archived) {
       if (typeOf(crate) != DefinitionType::movingCrate) {
         continue;
       }
-      auto instance = carrierInstance(itemOfDefinition(crate.definition_id), crate.id);
+      // An evicted plot's crate has no item until its owner has room for one.
+      std::unique_ptr<EQ::ItemInstance> instance = crate.container_guid
+        ? std::unique_ptr<EQ::ItemInstance>(ItemLayer::LoadOne(database, database, *crate.container_guid))
+        : carrierInstance(itemOfDefinition(crate.definition_id), crate.id);
+      if (!instance) {
+        throw std::runtime_error(fmt::format("archived crate [{}]'s item did not load", crate.id));
+      }
       const int16 slot = client->GetInv().FindFirstFreeSlotThatFitsItem(instance->GetItem());
       if (slot == INVALID_INDEX) {
         LogHousing("[{}] has no room for archived crate [{}]; it waits for a later zone-in", client->GetCleanName(), crate.id);
         continue;
       }
-      {
-        Transaction transaction(database);
-        query(database, fmt::format("UPDATE real_estate_properties SET archived = 0, contained_in_item = 1, revision = revision + 1 WHERE id = {}", crate.id));
-        transaction.commit();
+      Transaction transaction(database);
+      query(database, fmt::format("UPDATE real_estate_properties SET archived = 0, revision = revision + 1 WHERE id = {}", crate.id));
+      if (!crate.container_guid) {
+        if (!ItemLayer::Save(database, *instance, ItemLocation::InRealEstate(crate.id), client->ItemOwner())) {
+          throw std::runtime_error(fmt::format("archived crate [{}]'s item could not be issued", crate.id));
+        }
+        const ItemGUID guid = instance->GetGUID();
+        query(database, fmt::format(
+          "UPDATE real_estate_properties SET container_guid_first = {}, container_guid_second = {}, container_guid_third = {} WHERE id = {}",
+          guid.first, guid.second, guid.third, crate.id
+        ));
       }
-      if (!client->PutItemInInventory(slot, *instance, true)) {
-        throw std::runtime_error(fmt::format("crate [{}] could not be put in [{}]'s slot [{}]", crate.id, client->GetCleanName(), slot));
-      }
+      giveAndCommit(client, transaction, slot, *instance);
       LogHousing("Delivered archived crate [{}] to [{}] in slot [{}]", crate.id, client->GetCleanName(), slot);
     }
   }
@@ -214,9 +210,8 @@ namespace housing {
       const auto rows = RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {} ORDER BY id", plotId));
       std::map<uint32, PlacedItem> rowCarrying;
       for (const auto &row : rows) {
-        const uint32 carried = carriedPropertyId(row.custom_data);
-        if (carried) {
-          rowCarrying[carried] = row;
+        if (row.carried_property_id) {
+          rowCarrying[row.carried_property_id] = row;
         }
       }
       const PlacedItem *crateRow = nullptr;
@@ -232,9 +227,9 @@ namespace housing {
       }
       const size_t movedRows = rows.size() - (crateRow ? 1 : 0);
       // The seller may carry one non-empty crate, so only a sale that hands over another is refused, as the client's gate (0x57ef90 with the plot) lets an empty plot go.
-      if (movedRows > 0 || (crateRow && hasContents(crate.id))) {
+      if (movedRows > 0 || (crateRow && holdsContents(database, crate.id))) {
         for (uint32 carried : carriedCrateIds(client->CharacterID())) {
-          if (hasContents(carried)) {
+          if (holdsContents(database, carried)) {
             throw SellRefusal("the seller already carries a non-empty crate", holdsFullCrate);
           }
         }
@@ -250,7 +245,7 @@ namespace housing {
         uint32 fullHouses = 0;
         for (const auto &child : propertiesChildOf({plotId, crate.id})) {
           const DefinitionType childType = typeOf(child);
-          if ((childType == DefinitionType::playerHouse || childType == DefinitionType::guildHall) && hasContents(child.id)) {
+          if ((childType == DefinitionType::playerHouse || childType == DefinitionType::guildHall) && holdsContents(database, child.id)) {
             fullHouses++;
           }
         }
@@ -285,31 +280,46 @@ namespace housing {
       if (crateRow) {
         crateId = crate.id;
         packPlotInto(database, plotId, crate.id);
-        crateCarriesProperty = hasContents(crate.id);
-        auto instance = itemInstance(*crateRow);
-        if (!instance) {
-          throw std::runtime_error(fmt::format("crate row [{}] holds item [{}], which does not exist", crateRow->id, crateRow->item_id));
+        crateCarriesProperty = holdsContents(database, crate.id);
+        crateItem = itemInstance(*crateRow);
+        if (!crateItem) {
+          throw std::runtime_error(fmt::format("crate row [{}] holds item [{}], which did not load", crateRow->id, crateRow->item_id));
         }
         query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", crateRow->id));
+        crateSlot = client->GetInv().FindFirstFreeSlotThatFitsItem(crateItem->GetItem());
         if (crateCarriesProperty) {
-          instance->SetAttuned(true);
-          crateSlot = client->GetInv().FindFirstFreeSlotThatFitsItem(instance->GetItem());
+          crateItem->SetAttuned(true);
           query(database, fmt::format(
-            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, contained_in_item = {}, archived = {}, revision = revision + 1 WHERE id = {}",
-            client->CharacterID(), crateSlot == INVALID_INDEX ? 0 : 1, crateSlot == INVALID_INDEX ? 1 : 0, crate.id
+            "UPDATE real_estate_properties SET parent_id = 0, owner_character_id = {}, archived = {}, revision = revision + 1 WHERE id = {}",
+            client->CharacterID(), crateSlot == INVALID_INDEX ? 1 : 0, crate.id
           ));
         }
         else {
-          instance->DeleteCustomData(propertyItemKey);
+          crateItem->SetAttuned(false);
+          crateItem->SetRealEstateID(0);
           query(database, fmt::format("DELETE FROM real_estate_access_groups WHERE property_id = {}", crate.id));
           query(database, fmt::format("DELETE FROM real_estate_access_names WHERE property_id = {}", crate.id));
           query(database, fmt::format("DELETE FROM real_estate_properties WHERE id = {}", crate.id));
         }
-        crateItem = std::move(instance);
+        if (crateSlot == INVALID_INDEX) {
+          // Without a free slot a crate that carries its property waits on that property for a zone-in with room, and
+          // an empty one goes to the cursor: saved there first, so the push after the commit changes memory only.
+          const ItemLocation waiting = crateCarriesProperty
+            ? ItemLocation::InRealEstate(crate.id)
+            : ItemLocation::InHolder(ItemHolderType::Cursor, client->CharacterID(), static_cast<uint16>(client->GetInv().CursorSize()));
+          if (!ItemLayer::Update(database, *crateItem, waiting)) {
+            throw std::runtime_error(fmt::format("crate row [{}] could not leave property [{}]", crateRow->id, plotId));
+          }
+        }
       }
       releasePlot(database, plotId);
-      transaction.commit();
       leaving = rows;
+      if (crateItem && crateSlot != INVALID_INDEX) {
+        giveAndCommit(client, transaction, crateSlot, *crateItem);
+      }
+      else {
+        transaction.commit();
+      }
     }
     catch (const SellRefusal &refusal) {
       LogHousing("Refused [{}]'s sale of property [{}]: {}", client->GetCleanName(), plotId, refusal.what());
@@ -322,19 +332,12 @@ namespace housing {
       return;
     }
 
-    if (crateItem) {
-      if (!crateCarriesProperty) {
-        if (!client->PutItemInInventoryWithStacking(crateItem.get()) && !client->PushItemOnCursor(*crateItem, true)) {
-          throw std::runtime_error(fmt::format("the empty crate from property [{}] could not be given to [{}]", plotId, client->GetCleanName()));
-        }
-      }
-      else if (crateSlot != INVALID_INDEX) {
-        if (!client->PutItemInInventory(crateSlot, *crateItem, true)) {
-          throw std::runtime_error(fmt::format("crate [{}] could not be put in [{}]'s slot [{}]", crateId, client->GetCleanName(), crateSlot));
-        }
-      }
-      else {
+    if (crateItem && crateSlot == INVALID_INDEX) {
+      if (crateCarriesProperty) {
         LogHousing("[{}] has no room for crate [{}]; it is archived until a zone-in with room", client->GetCleanName(), crateId);
+      }
+      else if (!client->PushItemOnCursor(*crateItem, true)) {
+        LogError("Housing: the empty crate from property [{}] is on [{}]'s cursor, and the cursor did not save again", plotId, client->GetCleanName());
       }
     }
     if (payout.copper) {
@@ -351,7 +354,7 @@ namespace housing {
     for (const PlacedItem &row : leaving) {
       withdrawRow(row);
       if (row.placed) {
-        withdrawn.push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0});
+        withdrawn.push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0, row.guid});
       }
     }
     sendPropertyChanged(plotId, PropertyChangedPayload{plot.owner_character_id, 0, plot.guild_id, 0});

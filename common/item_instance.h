@@ -235,6 +235,10 @@ namespace EQ
 		// The item's GUID, zero until the item layer issues one when the item first lands with a character.
 		inline const ItemGUID& GetGUID() const { return m_guid; }
 		inline bool HasGUID() const { return !m_guid.IsZero(); }
+		// The housing property this item carries (a house or a crate), zero for any other item. The item layer derives it
+		// on load from real_estate_properties; it is never stored with the item.
+		inline uint32 GetRealEstateID() const { return m_real_estate_id; }
+		inline void SetRealEstateID(uint32 property_id) { m_real_estate_id = property_id; }
 		inline void SetSerialNumber(int32 id) { m_SerialNumber = id; }
 
 		std::map<std::string, ::Timer>& GetTimers() const { return m_timers; }
@@ -357,6 +361,7 @@ namespace EQ
 		int32            m_merchantcount{1};//number avaliable on the merchant, -1=unlimited
 		int32            m_SerialNumber{0}; // Unique identifier for this instance of an item. Needed for Bazaar.
 		ItemGUID         m_guid{};
+		uint32           m_real_estate_id{0};
 		uint32           m_exp{0};
 		int8             m_evolveLvl{0};
 		ItemData *       m_scaledItem{nullptr};

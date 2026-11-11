@@ -57,8 +57,8 @@ namespace housing {
   void sendWorldObjects(Client *client, const Session &state);
   void broadcastWorldObject(const PlacedItem &row);
   void broadcastWorldObjectRemove(const PlacedItem &row);
-  void sendPlacedItemMoved(Client *client, const PlacedItem &row, const ItemLocation &location);
-  WireWriter itemReference(const std::string &guid, const ItemLocation &location, uint32 propertyId, uint32 recordId);
+  void sendPlacedItemMoved(Client *client, const PlacedItem &row, const WireItemLocation &location);
+  WireWriter itemReference(const std::string &guid, const WireItemLocation &location, uint32 propertyId, uint32 recordId);
 }
 
 #endif

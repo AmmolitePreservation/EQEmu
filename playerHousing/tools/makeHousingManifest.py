@@ -1,11 +1,12 @@
 """Generates the housing entries of common/database/database_update_manifest_custom.cpp from the tested SQL files.
 
-Version 1 is the item tail (sql/itemHousingTail.sql, content database); version 2 the catalog tables and version 3 the state
-tables of sql/housingSchema.sql; version 4 Live's item housing values (sql/itemHousingAdoption.sql, content database); each
+Version 1 is the item tail (sql/itemHousingTail.sql, content database); version 2 the catalog tables of sql/housingSchema.sql;
+version 3 the real_estate holder of item_instances (sql/realEstateHolder.sql) and then the schema's state tables, which refer
+to item_instances; version 4 Live's item housing values (sql/itemHousingAdoption.sql, content database); each
 version after them adds columns to one EQEmu table (columnFiles: the zone header fields RoF2 reads, the doors' RealEstateDoorID,
 the safe return's property, the trophy tribute columns) and runs while the table lacks the first column it adds. Each statement becomes its own raw string
 literal (MSVC limits one literal to about 16 KB). A schema migration checks for the last table it creates, so one stopped part
-way runs again (every table is IF NOT EXISTS); version 4 runs whenever it is pending, every statement in it repeatable.
+way runs again (every table is IF NOT EXISTS, and the holder's statements repeat safely); version 4 runs whenever it is pending, every statement in it repeatable.
 
 Usage: python makeHousingManifest.py   (prints the entries)
 """
@@ -64,13 +65,14 @@ tableFiles = [
 
 itemTail = statements(open(os.path.join(here, '..', 'sql', 'itemHousingTail.sql')).read())
 itemAdoption = statements(open(os.path.join(here, '..', 'sql', 'itemHousingAdoption.sql')).read())
+realEstateHolder = statements(open(os.path.join(here, '..', 'sql', 'realEstateHolder.sql')).read())
 schema = tableStatements(open(os.path.join(here, '..', 'sql', 'housingSchema.sql')).read())
 stateTables = [t for t in schema if t not in catalogTables]
 if set(catalogTables) - set(schema):
   raise ValueError(f'catalog tables missing from the schema: {set(catalogTables) - set(schema)}')
 print(entry(1, '2026_09_26_items_housing_tail', "SHOW COLUMNS FROM `items` LIKE 'UNK224'", 'not_empty', itemTail, 'true')
       + entry(2, '2026_09_26_real_estate_catalog', f"SHOW TABLES LIKE '{catalogTables[-1]}'", 'empty', [schema[t] for t in catalogTables], 'true')
-      + entry(3, '2026_09_26_real_estate_state', f"SHOW TABLES LIKE '{stateTables[-1]}'", 'empty', [schema[t] for t in stateTables], 'false')
+      + entry(3, '2026_09_26_real_estate_state', f"SHOW TABLES LIKE '{stateTables[-1]}'", 'empty', realEstateHolder + [schema[t] for t in stateTables], 'false')
       + entry(4, '2026_10_19_items_housing_live_values', "SHOW TABLES LIKE 'items'", 'not_empty', itemAdoption, 'true')
       + ''.join(entry(version, description, f"SHOW COLUMNS FROM `{table}` LIKE '{column}'", 'empty',
                       statements(open(os.path.join(here, '..', 'sql', file)).read()), content)

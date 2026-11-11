@@ -1,6 +1,7 @@
 #ifndef EQEMU_COMMON_HOUSING_EVENT_TYPES_H
 #define EQEMU_COMMON_HOUSING_EVENT_TYPES_H
 
+#include "item_guid.h"
 #include "types.h"
 
 #include <cstring>
@@ -42,6 +43,7 @@ namespace housing {
     uint32 propertyId;
     uint32 itemId;
     uint32 placed;
+    ItemGUID guid;
   };
 
   inline std::string itemListChangedPayload(const std::vector<ItemListChangedRecord> &records) {

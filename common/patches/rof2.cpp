@@ -30,7 +30,6 @@
 #include "../misc_functions.h"
 #include "../strings.h"
 #include "../inventory_profile.h"
-#include "../housingPropertyItem.h"
 #include "../itemHousingTail.h"
 #include "rof2_structs.h"
 #include "../rulesys.h"
@@ -6444,17 +6443,14 @@ namespace RoF2
 		return NextItemInstSerialNumber;
 	}
 
-	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, const std::string& guid, int16 slot_id, ItemPacketType packet_type)
+	std::string SerializeItemForHousing(const EQ::ItemInstance* inst, int16 slot_id, ItemPacketType packet_type)
 	{
-		static_assert(offsetof(structs::ItemSerializationHeader, guid) == 0, "the item GUID leads the serialized item");
-		if (guid.size() != sizeof(structs::ItemSerializationHeader::guid) - 1) {
-			throw std::invalid_argument(fmt::format("housing item GUID [{}] is not {} characters", guid, sizeof(structs::ItemSerializationHeader::guid) - 1));
+		if (!inst->HasGUID()) {
+			throw std::invalid_argument(fmt::format("housing item [{}] has no GUID", inst->GetID()));
 		}
 		EQ::OutBuffer ob;
 		SerializeItem(ob, inst, slot_id, 0, packet_type);
-		std::string serialized = ob.str();
-		serialized.replace(0, guid.size(), guid);
-		return serialized;
+		return ob.str();
 	}
 
 	uint32 HousingItemLocationToServerSlot(uint32 location_type, int16 slot, int16 sub_index, int16 aug_index)
@@ -6572,8 +6568,7 @@ namespace RoF2
 		hdrf.ornamentHeroModel = hero_model;
 		hdrf.unknown063 = 0;
 		hdrf.Copied = 0;
-		const uint32 carried_property_id = housing::carriedPropertyId(inst->GetCustomDataString());
-		hdrf.real_estate_id = carried_property_id ? static_cast<int32>(carried_property_id) : -1;
+		hdrf.real_estate_id = inst->GetRealEstateID() ? static_cast<int32>(inst->GetRealEstateID()) : -1;
 		hdrf.unknowna5 = 0;
 		hdrf.ItemClass = item->ItemClass;
 

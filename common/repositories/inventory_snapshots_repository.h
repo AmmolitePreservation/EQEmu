@@ -95,7 +95,7 @@ public:
 		return ItemInstancesRepository::Collect(
 			db.QueryDatabase(
 				fmt::format(
-					"SELECT {}, NULL, NULL FROM {} WHERE charid = {} AND time_index = {}",
+					"SELECT {}, NULL, NULL, NULL FROM {} WHERE charid = {} AND time_index = {}",
 					Strings::Implode(", ", ItemColumns()),
 					TableName(),
 					character_id,

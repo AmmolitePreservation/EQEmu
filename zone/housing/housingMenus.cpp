@@ -12,7 +12,7 @@
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingLedger.h"
-#include "../../common/housingPropertyItem.h"
+#include "../../common/item_layer.h"
 #include "../../common/patches/rof2.h"
 #include "../../common/repositories/character_parcels_repository.h"
 #include "../../common/rulesys.h"
@@ -86,7 +86,7 @@ namespace housing {
         return std::nullopt;
       }
       Located located{rows.front(), &holder->second, std::nullopt, nullptr};
-      const uint32 carriedId = carriedPropertyId(located.item.custom_data);
+      const uint32 carriedId = located.item.carried_property_id;
       if (carriedId) {
         auto carried = propertiesById({carriedId});
         if (carried.size() != 1) {
@@ -106,18 +106,10 @@ namespace housing {
       return type == DefinitionType::playerHouse || type == DefinitionType::guildHall;
     }
 
-    bool holdsContents(uint32 propertyId) {
-      auto rows = query(database, fmt::format(
-        "SELECT (SELECT COUNT(*) FROM real_estate_items WHERE property_id = {0}) + (SELECT COUNT(*) FROM real_estate_properties WHERE parent_id = {0})",
-        propertyId
-      ));
-      return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
-    }
-
     // RoF2 finds the yard's placed house itself (0x5b3170) and swaps it for the stored one the menu is for (0x21ba).
     bool yardHasPlacedHouse(const Session &state, const Property &yard, uint32 exceptRecordId) {
       for (const auto &row : itemsOf({yard.id})) {
-        auto carried = state.properties.find(carriedPropertyId(row.custom_data));
+        auto carried = state.properties.find(row.carried_property_id);
         if (row.placed && row.id != exceptRecordId && carried != state.properties.end() && isHouse(&carried->second)) {
           return true;
         }
@@ -203,7 +195,7 @@ namespace housing {
       if (mayMove) {
         menu.entries.push_back(placeEntry);
       }
-      if (mayMove && !(house && holdsContents(carried->id))) {
+      if (mayMove && !(house && holdsContents(database, carried->id))) {
         menu.entries.push_back(moveToStorageEntry);
       }
       const bool owner = accessGroup(client, *located.holder, lookup, listOf) == ownerGroup;
@@ -257,7 +249,7 @@ namespace housing {
       }
       const MenuInteractions menu = buildMenu(client, *state, *located);
       std::string reply(request);
-      const std::string guid = itemGuid(located->item);
+      const std::string guid = ItemGUIDText(located->item.guid);
       std::string guidField(guidFieldLength, '\0');
       guidField.replace(0, guid.size(), guid);
       reply.replace(guidOffset, guidFieldLength, guidField);
@@ -343,7 +335,7 @@ namespace housing {
       if (!instance) {
         throw std::runtime_error(fmt::format("record [{}] holds item [{}], which does not exist", recordId, located->item.item_id));
       }
-      const std::string serialized = RoF2::SerializeItemForHousing(instance.get(), itemGuid(located->item), EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
+      const std::string serialized = RoF2::SerializeItemForHousing(instance.get(), EQ::invslot::SLOT_INVALID, ItemPacketViewLink);
       WireWriter message;
       message.bytes(serialized.data(), serialized.size());
       sendMessage(client, OP_RealEstateInspect, message);
@@ -484,6 +476,7 @@ namespace housing {
       }
       ownerName = owners.at(mailed.owner_character_id).name;
       const std::string note = propertyName(propertyId);
+      closeContainersOf(recordId);
       Transaction transaction(database);
       lockedProperty(database, propertyId);
       parcelSlot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, mailed.owner_character_id, RuleI(Parcel, ParcelMaxItems));
@@ -492,17 +485,13 @@ namespace housing {
         sendItemResult(client, ItemResult::failed);
         return;
       }
+      if (!ItemLayer::MoveRow(database, mailed.guid, ItemLocation::InHolder(ItemHolderType::Parcel, mailed.owner_character_id, static_cast<uint16>(parcelSlot)))) {
+        throw std::runtime_error(fmt::format("record [{}] could not be moved to [{}]'s parcels", recordId, ownerName));
+      }
       auto parcel = CharacterParcelsRepository::NewEntity();
       parcel.char_id = mailed.owner_character_id;
-      parcel.item_id = mailed.item_id;
-      parcel.aug_slot_1 = mailed.augment_one;
-      parcel.aug_slot_2 = mailed.augment_two;
-      parcel.aug_slot_3 = mailed.augment_three;
-      parcel.aug_slot_4 = mailed.augment_four;
-      parcel.aug_slot_5 = mailed.augment_five;
-      parcel.aug_slot_6 = mailed.augment_six;
+      CharacterParcelsRepository::SetGUID(parcel, mailed.guid);
       parcel.slot_id = static_cast<uint32>(parcelSlot);
-      parcel.quantity = std::max<uint32>(mailed.charges, 1);
       parcel.from_name = client->GetCleanName();
       parcel.note = note;
       parcel.sent_date = std::time(nullptr);
@@ -527,7 +516,7 @@ namespace housing {
     sendItemResult(client, ItemResult::success);
     std::vector<ItemListChangedRecord> withdrawn;
     if (mailed.placed) {
-      withdrawn.push_back(ItemListChangedRecord{mailed.id, mailed.property_id, mailed.item_id, 0});
+      withdrawn.push_back(ItemListChangedRecord{mailed.id, mailed.property_id, mailed.item_id, 0, mailed.guid});
     }
     sendItemListChanged(propertyId, withdrawn);
     LogHousing("[{}] mailed record [{}] (item [{}]) to its owner [{}]", client->GetCleanName(), recordId, mailed.item_id, ownerName);

@@ -2,7 +2,6 @@
 #define EQEMU_ZONE_HOUSING_HOUSING_STORE_H
 
 #include "../../common/housingLedger.h"
-#include "../../common/housingPropertyItem.h"
 #include "../../common/repositories/real_estate_properties_repository.h"
 
 #include <map>
@@ -11,8 +10,6 @@
 #include <vector>
 
 namespace housing {
-  // an item carrying a property (a packed crate, a picked-up house) names it in its custom data; inventory guids change at every load
-
   using Property = PropertyRow;
 
   struct CharacterIdentity {

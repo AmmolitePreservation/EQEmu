@@ -1,7 +1,8 @@
 """Tests sql/housingCatalog.sql against a local MariaDB (a `catalogTest` database, root without a password): loaded into the
-tested schema; the counts; the zone loader's rules; every definition the item export names; values against their sources;
-names composed from the catalog against Live's; zone templates and exit points; the plot regions under the client's own
-containment rule; regeneration; a refused second run; and a failure part way leaving the catalog empty.
+tested schema, over the item_instances table its state tables refer to; the counts; the zone loader's rules; every definition
+the item export names; values against their sources; names composed from the catalog against Live's; zone templates and exit
+points; the plot regions under the client's own containment rule; regeneration; a refused second run; and a failure part way
+leaving the catalog empty.
 
 Usage: python testHousingCatalog.py --live <livedumps clone>
 """
@@ -9,6 +10,7 @@ import argparse, csv, json, math, os, subprocess, sys
 
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
+import itemInstancesTable
 from regionMatrix import boxToMatrix, clientContains
 
 catalogPath = os.path.join(here, '..', 'sql', 'housingCatalog.sql')
@@ -33,6 +35,7 @@ def check(label, query, expected):
 
 def freshDatabase():
   subprocess.run(['mariadb', '-uroot', '-e', 'DROP DATABASE IF EXISTS catalogTest; CREATE DATABASE catalogTest'], check=True)
+  sql(itemInstancesTable.createSql() + itemInstancesTable.holderSql)
   sql(open(os.path.join(here, '..', 'sql', 'housingSchema.sql')).read())
 
 
@@ -117,7 +120,7 @@ for row in liveProperties.values():
   compared += 1
   if composed != row['dynamicName']:
     mismatches.append((row['id'], composed, row['dynamicName']))
-if mismatches or compared != 212:
+if mismatches or compared != 216:
   raise AssertionError(f'{compared} Live names compared; composed from the catalog differ: {mismatches[:5]}')
 print(f"Live's property names: all {compared} whose definitions the catalog holds compose from the catalog exactly")
 check('crates: Small, Estate, All Hallows Eve, the Crate of Eviction', "SELECT GROUP_CONCAT(CONCAT_WS(':', id, max_items, max_non_real_estate_items, max_npc_items) ORDER BY id) FROM real_estate_definitions WHERE id IN (31, 174, 183, 184)",

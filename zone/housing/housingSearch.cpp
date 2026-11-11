@@ -97,8 +97,8 @@ namespace housing {
 
     std::set<uint32> plotsHoldingItemsOf(uint32 characterId) {
       std::set<uint32> holders;
-      for (auto row : query(database, fmt::format("SELECT DISTINCT property_id FROM real_estate_items WHERE owner_character_id = {}", characterId))) {
-        holders.insert(Strings::ToUnsignedInt(row[0]));
+      for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("owner_character_id = {}", characterId))) {
+        holders.insert(row.property_id);
       }
       std::map<uint32, Property> known;
       for (auto &property : propertiesById(holders)) {

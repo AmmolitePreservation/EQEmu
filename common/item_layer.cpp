@@ -673,6 +673,7 @@ static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemD
 	inst->SetOrnamentationIDFile(row.ornament_idfile);
 	inst->SetOrnamentHeroModel(row.ornament_hero_model);
 	inst->SetAttuned(row.attuned);
+	inst->SetRealEstateID(row.real_estate_id);
 	if (row.color > 0) {
 		inst->SetColor(row.color);
 	}

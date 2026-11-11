@@ -82,7 +82,7 @@ namespace housing {
       if (looked) {
         npc->GiveNPCTypeData(looked.release());
       }
-      npc->SetHousingBinding(row.property_id, row.id, itemGuid(row));
+      npc->SetHousingBinding(row.property_id, row.id, ItemGUIDText(row.guid));
       entity_list.AddNPC(npc, true, true);
       return npc->GetID();
     }
@@ -101,7 +101,7 @@ namespace housing {
           return;
         }
         WireWriter message;
-        message.u32(spawnId).fixedString(itemGuid(row), bindingGuidLength).u32(row.property_id).u32(row.id);
+        message.u32(spawnId).fixedString(ItemGUIDText(row.guid), bindingGuidLength).u32(row.property_id).u32(row.id);
         sendMessage(client, OP_RealEstateNpcItemBinding, message);
       });
     }

@@ -146,6 +146,7 @@ EQ::ItemInstance::ItemInstance(const ItemInstance& copy)
 
 	m_SerialNumber = copy.m_SerialNumber;
 	m_guid         = copy.m_guid;
+	m_real_estate_id = copy.m_real_estate_id;
 	m_custom_data  = copy.m_custom_data;
 	m_timers       = copy.m_timers;
 

@@ -9,6 +9,7 @@
 #include "../common/housingEventTypes.h"
 #include "../common/housingCopies.h"
 #include "../common/housingLedger.h"
+#include "../common/item_layer.h"
 #include "../common/random.h"
 #include "../common/rulesys.h"
 #include "../common/servertalk.h"
@@ -153,12 +154,26 @@ namespace housing {
       return found;
     }
 
-    void deleteProperties(const std::set<uint32> &ids) {
-      if (ids.empty()) {
+    // A deleted owner's items are lost (Live, RCL-3): everything the plot and the properties under it hold leaves retired,
+    // and the houses and crates under it go with their items.
+    void loseContents(const PropertyRow &plot) {
+      const std::set<uint32> under = descendants(plot.id);
+      std::set<uint32> holders = under;
+      holders.insert(plot.id);
+      const std::string held = idList(holders);
+      query(database, fmt::format(
+        "DELETE r FROM real_estate_items r "
+        "JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third "
+        "WHERE i.holder_type = 'real_estate' AND i.holder_id IN ({})",
+        held
+      ));
+      if (ItemLayer::RetireWhere(database, fmt::format("holder_type = 'real_estate' AND holder_id IN ({})", held), ItemRetirement::CharacterDeleted) < 0) {
+        throw std::runtime_error(fmt::format("the items of plot [{}] and of the properties under it could not be retired", plot.id));
+      }
+      if (under.empty()) {
         return;
       }
-      const std::string list = idList(ids);
-      query(database, fmt::format("DELETE FROM real_estate_items WHERE property_id IN ({})", list));
+      const std::string list = idList(under);
       query(database, fmt::format("DELETE FROM real_estate_property_balances WHERE property_id IN ({})", list));
       query(database, fmt::format("DELETE FROM real_estate_access_groups WHERE property_id IN ({})", list));
       query(database, fmt::format("DELETE FROM real_estate_access_names WHERE property_id IN ({})", list));
@@ -166,12 +181,11 @@ namespace housing {
     }
 
     // Reclaim (D7, RCL-1): everything on the plot goes into a Crate of Eviction archived for the owner, filled whatever its caps;
-    // a deleted owner's items are lost (Live, RCL-3).
+    // a deleted owner gets none.
     uint32 reclaim(const PropertyRow &plot, bool itemsLost) {
       uint32 crateId = 0;
       if (itemsLost) {
-        deleteProperties(descendants(plot.id));
-        query(database, fmt::format("DELETE FROM real_estate_items WHERE property_id = {}", plot.id));
+        loseContents(plot);
       }
       else {
         if (definitionTypes(content_db, {crateOfEvictionDefinition}).at(crateOfEvictionDefinition) != movingCrateType) {

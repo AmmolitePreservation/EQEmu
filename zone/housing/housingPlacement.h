@@ -17,7 +17,7 @@ namespace housing {
   // The common header of the item requests (0x626e, 0x711a, 0x2036, 0x3424; windows/RealEstateItemsWnd.md, Request structs).
   struct ItemRequest {
     std::string guid;
-    ItemLocation location;
+    WireItemLocation location;
     uint32 propertyId;
     uint32 recordId;
     uint32 quantity;
@@ -39,6 +39,9 @@ namespace housing {
   // The plot whose region holds the player, else the current property (the client's +0x94).
   uint32 standingProperty(Client *client, const Session &state);
   void cancelPlacement(Client *client, const std::string &reason);
+  // Puts an item in a free inventory slot as the last step of a transaction and commits it. A failed save or commit
+  // takes the item back out of the inventory, so neither side keeps half a hand-over.
+  void giveAndCommit(Client *client, Transaction &transaction, int16 slot, const EQ::ItemInstance &item);
   // A placed or stored row leaves its place: its world object or spawn goes, an open container closes, editors stop editing it.
   void withdrawRow(const PlacedItem &row);
   // Records another zone placed or withdrew (an item list event): where their property is shown here, a withdrawn record's
