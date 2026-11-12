@@ -10926,7 +10926,7 @@ std::vector<std::pair<int16, uint32>> Client::BarterUnits(uint32 item_id, uint32
 	uint32                                found = 0;
 
 	auto take = [&](int16 slot_id) {
-		const auto *item = GetInv().GetItem(slot_id);
+		auto *item = GetInv().GetItem(slot_id);
 		if (found == quantity || !item || item->GetID() != item_id || !item->HasGUID() || item->IsAugmented() || !item->IsDroppable()) {
 			return;
 		}
