@@ -1,0 +1,3 @@
+*.sh text eol=lf
+confirmPress.txt text eol=lf
+placeRow.txt text eol=lf
