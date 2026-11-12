@@ -1889,6 +1889,18 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 				return;
 			}
 
+			// The sold item reaches a buyer in another zone as a parcel.
+			if (CharacterParcelsRepository::GetNextFreeParcelSlot(database, sell_line.buyer_id, RuleI(Parcel, ParcelMaxItems)) == INVALID_INDEX) {
+				Message(Chat::Red, "The buyer has no room for another parcel.");
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_Failure
+				);
+				return;
+			}
+
 			BuyerRepository::UpdateTransactionDate(database, sell_line.buyer_id, time(nullptr));
 
 			auto server_packet = std::make_unique<ServerPacket>(

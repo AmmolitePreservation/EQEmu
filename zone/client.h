@@ -1167,6 +1167,7 @@ public:
 	uint32 GetItemCooldown(uint32 item_id);
 	void RemoveItem(uint32 item_id, uint32 quantity = 1);
 	bool HandItemsTo(Client *to, uint32 item_id, uint32 quantity);
+	bool ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quantity, std::vector<int32> &parcel_slots);
 	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason);
 	int16 SlotOfSerialNumber(uint32 serial_number);
 	bool SwapItem(MoveItem_Struct* move_in);

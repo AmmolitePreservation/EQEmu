@@ -1715,11 +1715,34 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 
 					break;
 				}
-				case Barter_FailedTransaction:
+				case Barter_FailedTransaction: {
+					// Each side's zone hears of a failure: the seller's for its message, the buyer's for the coin
+					// it gave.
+					auto seller = ClientList::Instance()->FindCharacter(in->seller_name);
+					auto buyer  = ClientList::Instance()->FindCharacter(in->buyer_name);
+					if (seller) {
+						ZSList::Instance()->SendPacket(seller->zone(), seller->instance(), pack);
+					}
+
+					if (buyer && (!seller || buyer->zone() != seller->zone() || buyer->instance() != seller->instance())) {
+						ZSList::Instance()->SendPacket(buyer->zone(), buyer->instance(), pack);
+					}
+
+					break;
+				}
 				case Barter_BuyerTransactionComplete: {
 					auto seller = ClientList::Instance()->FindCharacter(in->seller_name);
 					if (seller) {
 						ZSList::Instance()->SendPacket(seller->zone(), seller->instance(), pack);
+						break;
+					}
+
+					// The seller left after the buyer paid: the buyer's zone gives the coin back.
+					in->action     = Barter_FailedTransaction;
+					in->sub_action = Barter_SellerCouldNotBeFound;
+					auto buyer     = ClientList::Instance()->FindCharacter(in->buyer_name);
+					if (buyer) {
+						ZSList::Instance()->SendPacket(buyer->zone(), buyer->instance(), pack);
 					}
 
 					break;
@@ -1727,6 +1750,8 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 				default:
 					return;
 			}
+
+			break;
 		}
 		default: {
 			LogInfo("Unknown ServerOPcode from zone {:#04x}, size [{}]", pack->opcode, pack->size);

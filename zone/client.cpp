@@ -10960,6 +10960,75 @@ bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
 	return handed == quantity;
 }
 
+// Hands a quantity of an item to a character in another zone, by parcel. A whole item or stack goes as it is, its row
+// moving to the parcel with all it holds; a part of a stack is split off, issued from this character's counter. The
+// caller's transaction holds the rows; parcel_slots are the parcels made, to announce once it has committed.
+bool Client::ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quantity, std::vector<int32> &parcel_slots)
+{
+	uint32 handed = 0;
+
+	for (const int16 &slot_id : GetInventorySlots()) {
+		if (handed == quantity) {
+			break;
+		}
+
+		const auto *item = GetInv().GetItem(slot_id);
+		if (!item || item->GetID() != item_id || !item->HasGUID()) {
+			continue;
+		}
+
+		const int32 parcel_slot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, to_character_id, RuleI(Parcel, ParcelMaxItems));
+		if (parcel_slot == INVALID_INDEX) {
+			return false;
+		}
+
+		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
+		const uint32 part = std::min(held, quantity - handed);
+
+		CharacterParcelsRepository::CharacterParcels parcel{};
+		parcel.char_id   = to_character_id;
+		parcel.from_name = GetCleanName();
+		parcel.note      = "Delivered from a Barter Sale";
+		parcel.sent_date = time(nullptr);
+		parcel.slot_id   = parcel_slot;
+
+		const auto location = ItemLocation::InHolder(ItemHolderType::Parcel, to_character_id, static_cast<uint16>(parcel_slot));
+		if (part < held) {
+			std::unique_ptr<EQ::ItemInstance> piece(item->Clone());
+			ItemLayer::ClearGUID(*piece);
+			piece->SetCharges(static_cast<int16>(part));
+			if (!ItemLayer::Save(database, *piece, location, ItemOwner())) {
+				return false;
+			}
+
+			CharacterParcelsRepository::SetGUID(parcel, piece->GetGUID());
+		}
+		else {
+			if (!ItemLayer::MoveRow(database, item->GetGUID(), location)) {
+				return false;
+			}
+
+			CharacterParcelsRepository::SetGUID(parcel, item->GetGUID());
+		}
+
+		if (!CharacterParcelsRepository::InsertOne(database, parcel).id) {
+			return false;
+		}
+
+		if (part < held) {
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		}
+		else {
+			RemoveItemFromInventory(slot_id, true);
+		}
+
+		parcel_slots.push_back(parcel_slot);
+		handed += part;
+	}
+
+	return handed == quantity;
+}
+
 void Client::SetGMStatus(int new_status) {
 	if (Admin() != new_status) {
 		database.UpdateGMStatus(AccountID(), new_status);

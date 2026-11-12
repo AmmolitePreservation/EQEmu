@@ -3862,10 +3862,14 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
 
 					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(in->buy_item_id, in->seller_quantity));
+
+					// The buyer's zone took the coin before the seller's zone was asked for the item, so a failure on
+					// the seller's side gives it back; a failure on the buyer's side came before any coin moved.
+					const bool buyer_paid = in->sub_action == Barter_FailedSellerChecks || in->sub_action == Barter_SellerCouldNotBeFound;
 
 					switch (in->sub_action) {
 						case Barter_FailedBuyerChecks:
+						case Barter_SellerCouldNotBeFound:
 						case Barter_FailedSellerChecks: {
 							if (seller) {
 								LogTradingDetail("Significant barter transaction failure.");
@@ -3898,13 +3902,14 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 							}
 
 							if (buyer) {
-								LogError("Significant barter transaction failure.  Replacing {} and {} {} to {}",
-										 buyer->DetermineMoneyString(total_cost),
-										 sell_line.seller_quantity,
-										 sell_line.item_name,
-										 buyer->GetCleanName());
-								buyer->AddMoneyToPP(total_cost, true);
-								buyer->RemoveItem(sell_line.item_id, sell_line.seller_quantity);
+								if (buyer_paid) {
+									LogError("Significant barter transaction failure.  Returning {} for {} {} to {}",
+											 buyer->DetermineMoneyString(total_cost),
+											 sell_line.seller_quantity,
+											 sell_line.item_name,
+											 buyer->GetCleanName());
+									buyer->AddMoneyToPP(total_cost, true);
+								}
 
 								buyer->Message(
 									Chat::Red,
@@ -4002,33 +4007,9 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					blis.buyer_entity_id = in->buyer_entity_id;
 					strn0cpy(blis.item_name, in->item_name, sizeof(blis.item_name));
 
+					// The buyer pays here; the seller's zone then sends the seller's own item by parcel, or the coin
+					// comes back with a failed transaction.
 					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(in->buy_item_id, in->seller_quantity));
-
-					if (inst->IsStackable()) {
-						if (!buyer->PutItemInInventoryWithStacking(inst.get())) {
-							buyer->Message(Chat::Red, "Error putting item in your inventory.");
-							buyer->AddMoneyToPP(total_cost, true);
-							in->action     = Barter_FailedTransaction;
-							in->sub_action = Barter_FailedBuyerChecks;
-							worldserver.SendPacket(pack);
-							break;
-						}
-					}
-					else {
-						for (int i = 1; i <= sell_line.seller_quantity; i++) {
-							inst->SetCharges(1);
-							if (!buyer->PutItemInInventoryWithStacking(inst.get())) {
-								buyer->Message(Chat::Red, "Error putting item in your inventory.");
-								buyer->AddMoneyToPP(total_cost, true);
-								in->action     = Barter_FailedTransaction;
-								in->sub_action = Barter_FailedBuyerChecks;
-								worldserver.SendPacket(pack);
-								goto exit_loop;
-							}
-						}
-					}
-
 					if (!buyer->TakeMoneyFromPP(total_cost, false)) {
 						in->action     = Barter_FailedTransaction;
 						in->sub_action = Barter_FailedBuyerChecks;
@@ -4063,7 +4044,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					in->action = Barter_BuyerTransactionComplete;
 					worldserver.SendPacket(pack);
 
-					exit_loop:
 					break;
 				}
 				case Barter_BuyerTransactionComplete: {
@@ -4086,15 +4066,49 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
 
 					if (!seller->DoBarterSellerChecks(sell_line)) {
-						in->action = Barter_FailedTransaction;
-						in->action = Barter_FailedSellerChecks;
+						in->action     = Barter_FailedTransaction;
+						in->sub_action = Barter_FailedSellerChecks;
 						worldserver.SendPacket(pack);
 						return;
 					}
 
+					// The seller's own item goes to the buyer's parcels and the coin to the seller as one exchange.
 					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					seller->RemoveItem(in->buy_item_id, in->seller_quantity);
-					seller->AddMoneyToPP(total_cost, false);
+					std::vector<int32> parcel_slots;
+					{
+						DBcore::Transaction transaction(database);
+						const bool parceled = seller->ParcelItemsTo(in->buyer_id, in->buy_item_id, in->seller_quantity, parcel_slots);
+						if (parceled) {
+							seller->AddMoneyToPP(total_cost, false);
+						}
+
+						if (!parceled || !transaction.Commit()) {
+							transaction.Rollback();
+							LogError(
+								"Barter sale of [{}] x [{}] from [{}] to [{}] was not saved; the buyer's coin goes back",
+								in->buy_item_id,
+								in->seller_quantity,
+								in->seller_name,
+								in->buyer_name
+							);
+							if (!parcel_slots.empty()) {
+								seller->Kick("A barter sale was not saved");
+							}
+
+							in->action     = Barter_FailedTransaction;
+							in->sub_action = Barter_FailedSellerChecks;
+							worldserver.SendPacket(pack);
+							return;
+						}
+					}
+
+					for (const auto parcel_slot : parcel_slots) {
+						Parcel_Struct ps{};
+						ps.item_slot = parcel_slot;
+						strn0cpy(ps.send_to, in->buyer_name, sizeof(ps.send_to));
+						seller->SendParcelDeliveryToWorld(ps);
+					}
+
 					seller->SendBarterBuyerClientMessage(
 						sell_line,
 						Barter_SellerTransactionComplete,
@@ -4121,6 +4135,8 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					break;
 				}
 			}
+
+			break;
 		}
 		default: {
 			LogInfo("Unknown ZS Opcode [{}] size [{}]", (int) pack->opcode, pack->size);
