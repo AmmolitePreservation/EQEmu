@@ -1,0 +1,12 @@
+command|/notify RealEstateItemsWnd REIW_ItemList listselect @ROW@
+sleep|0.4
+evaluate|sel=${Window[RealEstateItemsWnd].Child[REIW_ItemList].GetCurSel} name=${Window[RealEstateItemsWnd].Child[REIW_ItemList].List[@ROW@,2]} place=${Window[RealEstateItemsWnd].Child[REIW_Place_Button].Enabled}
+command|/notify RealEstateItemsWnd REIW_Place_Button leftmouseup
+sleep|2
+nudge|@NY@|@NX@|@NZ@
+sleep|0.4
+hover|960|800
+sleep|0.3
+click|960|800|left
+sleep|1.5
+evaluate|yard=${Window[RealEstateItemsWnd].Child[REIW_YardItemsCount].Text} rows=${Window[RealEstateItemsWnd].Child[REIW_ItemList].Items} cursor=${Cursor.Name}

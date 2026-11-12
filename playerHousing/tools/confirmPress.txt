@@ -1,0 +1,6 @@
+command|/notify @W@ @B@ leftmouseup
+sleep|0.5
+evaluate|open=${Window[ConfirmationDialogBox].Open} text=${Window[ConfirmationDialogBox].Child[CD_TextOutput].Text}
+command|/notify ConfirmationDialogBox CD_Yes_Button leftmouseup
+sleep|1.5
+evaluate|open=${Window[ConfirmationDialogBox].Open} yard=${Window[RealEstateItemsWnd].Child[REIW_YardItemsCount].Text} house=${Window[RealEstateItemsWnd].Child[REIW_HouseItemsCount].Text} crate=${Window[RealEstateItemsWnd].Child[REIW_MovingCrateItemsCount].Text} pack=${Window[RealEstateItemsWnd].Child[REIW_Pack_Moving_Crate_Button].Enabled} unpack=${Window[RealEstateItemsWnd].Child[REIW_Unpack_Moving_Crate_Button].Enabled} storeAll=${Window[RealEstateItemsWnd].Child[REIW_Stow_Placed_Button].Enabled} rows=${Window[RealEstateItemsWnd].Child[REIW_ItemList].Items}
