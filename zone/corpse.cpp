@@ -1445,6 +1445,12 @@ void Corpse::MakeLootRequestPackets(Client *c, const EQApplicationPacket *app)
 			continue;
 		}
 
+		// The window's item carries its GUID, so an evolving item shows its record's progress.
+		ItemLayer::AssignLootGUIDs(*inst, *i);
+		if (inst->IsEvolving()) {
+			EvolvingItemsManager::Instance()->FindRecord(database, *inst);
+		}
+
 		if (item->RecastDelay) {
 			if (item->RecastType != RECAST_TYPE_UNLINKED_ITEM) {
 				inst->SetRecastTimestamp(timestamps.count(item->RecastType) ? timestamps.at(item->RecastType) : 0);
