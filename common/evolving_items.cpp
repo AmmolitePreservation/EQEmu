@@ -52,31 +52,32 @@ double EvolvingItemsManager::CalculateProgression(const uint64 current_amount, c
 		: 0;
 }
 
-void EvolvingItemsManager::DoLootChecks(const uint32 char_id, const uint16 slot_id, const EQ::ItemInstance &inst) const
+uint64 EvolvingItemsManager::AmountPastRequirement(const uint64 current_amount, const uint32 item_id)
 {
-	if (!inst) {
-		return;
+	const auto &cache = EvolvingItemsManager::Instance()->GetEvolvingItemsCache();
+	if (!cache.contains(item_id)) {
+		return 0;
 	}
 
-	inst.SetEvolveEquipped(false);
-	if (inst.IsEvolving() && slot_id <= EQ::invslot::EQUIPMENT_END && slot_id >= EQ::invslot::EQUIPMENT_BEGIN) {
-		inst.SetEvolveEquipped(true);
-	}
+	const auto required = cache.at(item_id).required_amount;
 
-	if (!inst.IsEvolving()) {
-		return;
-	}
-
-	const bool equipped = inst.GetEvolveEquipped();
-	if (!inst.HasEvolveRecord() && !LoadRecord(*m_db, inst)) {
-		return;
-	}
-	inst.SetEvolveEquipped(equipped);
-	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetGUID(), equipped);
+	return required > 0 && current_amount > static_cast<uint64>(required) ? current_amount - required : 0;
 }
 
-// An item landing from a holder that does not carry evolving state (a corpse, a parcel, the guild bank) already has its
-// record if it ever landed before; only a first landing makes one.
+void EvolvingItemsManager::DoLootChecks(const uint16 slot_id, const EQ::ItemInstance &inst) const
+{
+	if (!inst || !inst.IsEvolving()) {
+		return;
+	}
+
+	inst.SetEvolveEquipped(slot_id <= EQ::invslot::EQUIPMENT_END && slot_id >= EQ::invslot::EQUIPMENT_BEGIN);
+	if (!inst.HasEvolveRecord()) {
+		LoadRecord(*m_db, inst);
+	}
+}
+
+// An item's record is made at its first landing and found by its GUID ever after, wherever the item has been since
+// (a corpse, a parcel, the guild bank and a vendor carry no evolving state of their own).
 bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst) const
 {
 	if (!inst.HasGUID()) {
@@ -88,8 +89,6 @@ bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst
 	if (!e.id) {
 		e = CharacterEvolvingItemsRepository::NewEntity();
 		CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
-		e.equipped      = inst.GetEvolveEquipped();
-		e.final_item_id = GetFinalItemID(inst);
 
 		e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
 		if (!e.id) {
@@ -99,12 +98,9 @@ bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst
 		}
 	}
 
-	CharacterEvolvingItemsRepository::SetGUID(inst.GetEvolvingDetails(), inst.GetGUID());
-	inst.SetEvolveActivated(e.activated);
-	inst.SetEvolveEquipped(e.equipped);
-	inst.SetEvolveCurrentAmount(e.current_amount);
+	inst.GetEvolvingDetails() = e;
 	inst.CalculateEvolveProgression();
-	inst.SetEvolveFinalItemID(e.final_item_id);
+	inst.SetEvolveFinalItemID(GetFinalItemID(inst));
 
 	return true;
 }

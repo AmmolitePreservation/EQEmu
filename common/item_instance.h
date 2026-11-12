@@ -318,20 +318,20 @@ namespace EQ
 		bool             IsEvolving() const { if (GetItem()) { return GetItem()->EvolvingItem; } return false; }
 		int8             GetMaxEvolveLvl() const { if (GetItem()) { return GetItem()->EvolvingMax; } return false; }
 		bool             GetEvolveActivated() const { return m_evolving_details.activated ? true : false; }
-		bool             GetEvolveEquipped() const { return m_evolving_details.equipped ? true : false; }
-		double           GetEvolveProgression() const { return m_evolving_details.progression; }
+		bool             GetEvolveEquipped() const { return m_evolve_equipped; }
+		double           GetEvolveProgression() const { return m_evolve_progression; }
 		// A record was loaded for this item (the record copy names the item's GUID).
 		bool             HasEvolveRecord() const { return !CharacterEvolvingItemsRepository::GUIDOf(m_evolving_details).IsZero(); }
 		uint32           GetEvolveLoreID() const { if (GetItem()) { return GetItem()->EvolvingID; } return false; }
 		uint64           GetEvolveCurrentAmount() const { return m_evolving_details.current_amount; }
-		uint32           GetEvolveFinalItemID() const { return m_evolving_details.final_item_id; }
+		uint32           GetEvolveFinalItemID() const { return m_evolve_final_item_id; }
 		void             SetEvolveEquipped(const bool in) const;
 		void             SetEvolveActivated(const bool in) const { m_evolving_details.activated = in; }
-		void             SetEvolveProgression(const double in) const { m_evolving_details.progression = in; }
+		void             SetEvolveProgression(const double in) const { m_evolve_progression = in; }
 		void             SetEvolveCurrentAmount(const uint64 in) const { m_evolving_details.current_amount = in; }
 		void             SetEvolveAddToCurrentAmount(const uint64 in) const { m_evolving_details.current_amount += in; }
-		void             SetEvolveFinalItemID(const uint32 in) const { m_evolving_details.final_item_id = in; }
-		void             CalculateEvolveProgression() const { m_evolving_details.progression = EvolvingItemsManager::Instance()->CalculateProgression(GetEvolveCurrentAmount(), GetID()); }
+		void             SetEvolveFinalItemID(const uint32 in) const { m_evolve_final_item_id = in; }
+		void             CalculateEvolveProgression() const { m_evolve_progression = EvolvingItemsManager::Instance()->CalculateProgression(GetEvolveCurrentAmount(), GetID()); }
 
 	protected:
 		//////////////////////////
@@ -367,6 +367,10 @@ namespace EQ
 		uint32           m_recast_timestamp{0};
 		int              m_task_delivered_count{0};
 		mutable CharacterEvolvingItemsRepository::CharacterEvolvingItems  m_evolving_details{};
+		// Derived from the item's slot, its record's amount and its line; the record does not store them.
+		mutable bool   m_evolve_equipped{false};
+		mutable double m_evolve_progression{0};
+		mutable uint32 m_evolve_final_item_id{0};
 
 		// Items inside of this item (augs or contents) {};
 		std::map<uint8, ItemInstance*>         m_contents {}; // Zero-based index: min=0, max=9

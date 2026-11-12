@@ -157,6 +157,9 @@ EQ::ItemInstance::ItemInstance(const ItemInstance& copy)
 	}
 
 	m_evolving_details    = copy.m_evolving_details;
+	m_evolve_equipped     = copy.m_evolve_equipped;
+	m_evolve_progression  = copy.m_evolve_progression;
+	m_evolve_final_item_id = copy.m_evolve_final_item_id;
 	m_scaling             = copy.m_scaling;
 	m_ornamenticon        = copy.m_ornamenticon;
 	m_ornamentidfile      = copy.m_ornamentidfile;
@@ -1947,7 +1950,7 @@ void EQ::ItemInstance::SetEvolveEquipped(const bool in) const
 		return;
 	}
 
-	m_evolving_details.equipped = in;
+	m_evolve_equipped = in;
 	if (in && !GetTimers().contains("evolve")) {
 		SetTimer("evolve", RuleI(EvolvingItems, DelayUponEquipping));
 		return;

@@ -7866,13 +7866,20 @@ ALTER TABLE `character_parcels`
 	DROP COLUMN `aug_slot_6`,
 	DROP COLUMN `quantity`,
 	ADD CONSTRAINT `character_parcels_item_or_money` CHECK ((`guid_first` IS NULL) <> (`money` IS NULL));
+UPDATE `character_evolving_items` SET `activated` = 0 WHERE `activated` IS NULL;
+UPDATE `character_evolving_items` SET `current_amount` = 0 WHERE `current_amount` IS NULL;
 ALTER TABLE `character_evolving_items`
 	DROP COLUMN `character_id`,
 	DROP COLUMN `item_id`,
 	DROP COLUMN `deleted_at`,
+	DROP COLUMN `equipped`,
+	DROP COLUMN `progression`,
+	DROP COLUMN `final_item_id`,
 	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL,
 	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL;
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `activated` TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+	MODIFY COLUMN `current_amount` BIGINT(20) NOT NULL DEFAULT 0;
 DROP TABLE `inventory`;
 DROP TABLE `sharedbank`;
 DROP TABLE `character_corpse_items`;

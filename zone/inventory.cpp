@@ -1081,11 +1081,11 @@ bool Client::PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update)
 	LogInventory("Putting item [{}] ([{}]) on the cursor", inst.GetItem()->Name, inst.GetItem()->ID);
 	m_inv.PushCursor(inst);
 	const bool saved = database.SaveCursor(this);
+	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
+	EvolvingItemsManager::Instance()->DoLootChecks(EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
 	if (client_update) {
 		SendItemPacket(EQ::invslot::slotCursor, LandedItem(EQ::invslot::slotCursor), ItemPacketLimbo);
 	}
-	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
 	return saved;
 }
 
@@ -1101,10 +1101,10 @@ bool Client::PutItemInInventory(int16 slot_id, const EQ::ItemInstance& inst, boo
 	m_inv.PutItem(slot_id, inst);
 	CalcBonuses();
 	const bool saved = database.SaveInventory(this, slot_id);
+	EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetItem(slot_id));
 	if (client_update) {
 		SendItemPacket(slot_id, LandedItem(slot_id), ItemPacketTrade);
 	}
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
 	return saved;
 }
 
@@ -1116,12 +1116,12 @@ void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, Loo
 	if (slot_id == EQ::invslot::slotCursor) {
 		m_inv.PushCursor(inst);
 		database.SaveCursor(this);
-		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetLastCursorItem());
+		EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetLastCursorItem());
 	}
 	else {
 		m_inv.PutItem(slot_id, inst);
 		database.SaveInventory(this, slot_id);
-		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
+		EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetItem(slot_id));
 	}
 
 	// Subordinate items in cursor buffer must be sent via ItemPacketSummonItem or we just overwrite the visible cursor and desync the client

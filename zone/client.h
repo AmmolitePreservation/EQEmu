@@ -1939,10 +1939,13 @@ public:
 
 	// Evolving Item Info
 	void ProcessEvolvingItem(const uint64 exp, const Mob* mob);
-	void SendEvolvingPacket(int8 action, const EQ::ItemInstance &inst, const CharacterEvolvingItemsRepository::CharacterEvolvingItems &item);
+	void SendEvolvingPacket(int8 action, const EQ::ItemInstance &inst);
 	void DoEvolveItemToggle(const EQApplicationPacket* app);
 	void DoEvolveItemDisplayFinalResult(const EQApplicationPacket* app);
-	bool DoEvolveCheckProgression(EQ::ItemInstance &inst);
+	bool DoEvolveCheckProgression(int16 slot_id);
+	bool EvolveItemInPlace(int16 slot_id, uint32 new_item_id, uint64 new_amount, std::vector<CharacterParcelsRepository::CharacterParcels> &parcels);
+	void UndoEvolveInPlace(int16 slot_id, const EQ::ItemInstance &old_inst, const std::vector<CharacterParcelsRepository::CharacterParcels> &parcels);
+	void SendEvolvedItem(int16 slot_id);
 	void SendEvolveXPWindowDetails(const EQApplicationPacket* app);
 	void DoEvolveTransferXP(const EQApplicationPacket* app);
 	void SendEvolveXPTransferWindow();
