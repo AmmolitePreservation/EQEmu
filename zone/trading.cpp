@@ -3477,8 +3477,10 @@ bool Client::DoBarterBuyerChecks(BuyerLineSellItem_Struct &sell_line)
 		return false;
 	}
 
+	// The seller's view of the buy lines is checked against the buyer's last change. From the buyer's own zone (a sale
+	// from another zone, which the seller's zone checked before it asked) there is no seller's view to compare.
 	auto buyer_time = BuyerRepository::GetTransactionDate(database, buyer->CharacterID());
-	if (buyer_time > GetBarterTime()) {
+	if (buyer != this && buyer_time > GetBarterTime()) {
 		if (sell_line.purchase_method == BarterByVendor) {
 			SendBarterBuyerClientMessage(
 				sell_line,

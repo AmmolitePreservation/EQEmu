@@ -10918,27 +10918,55 @@ void Client::RemoveItem(uint32 item_id, uint32 quantity)
 	}
 }
 
+// What barter may hand over of an item: its instances in the general slots and their bags that hold no augment and
+// may be traded, in slot order, as slot and units to take. Empty when they do not add up to the quantity.
+std::vector<std::pair<int16, uint32>> Client::BarterUnits(uint32 item_id, uint32 quantity)
+{
+	std::vector<std::pair<int16, uint32>> units;
+	uint32                                found = 0;
+
+	auto take = [&](int16 slot_id) {
+		const auto *item = GetInv().GetItem(slot_id);
+		if (found == quantity || !item || item->GetID() != item_id || !item->HasGUID() || item->IsAugmented() || !item->IsDroppable()) {
+			return;
+		}
+
+		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
+		const uint32 part = std::min(held, quantity - found);
+		units.emplace_back(slot_id, part);
+		found += part;
+	};
+
+	for (int16 slot_id = EQ::invslot::GENERAL_BEGIN; slot_id <= EQ::invslot::GENERAL_END; ++slot_id) {
+		take(slot_id);
+	}
+
+	for (int16 slot_id = EQ::invbag::GENERAL_BAGS_BEGIN; slot_id <= EQ::invbag::GENERAL_BAGS_END; ++slot_id) {
+		take(slot_id);
+	}
+
+	if (found != quantity) {
+		units.clear();
+	}
+
+	return units;
+}
+
 // Hands a quantity of an item to another client. A whole item or stack goes as it is, its row and all it holds landing
 // through the receiver's funnel; a part of a stack lands there as a new item and the stack is saved smaller.
 bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
 {
-	uint32 handed = 0;
+	const auto units = BarterUnits(item_id, quantity);
+	if (units.empty()) {
+		return false;
+	}
 
-	for (const int16 &slot_id : GetInventorySlots()) {
-		if (handed == quantity) {
-			break;
-		}
-
-		const auto *item = GetInv().GetItem(slot_id);
-		if (!item || item->GetID() != item_id) {
-			continue;
-		}
-
-		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
-		const uint32 part = std::min(held, quantity - handed);
+	for (const auto &[slot_id, part] : units) {
+		const auto  *item  = GetInv().GetItem(slot_id);
+		const bool   whole = !item->IsStackable() || part >= static_cast<uint32>(item->GetCharges());
 
 		std::unique_ptr<EQ::ItemInstance> landing(item->Clone());
-		if (part < held) {
+		if (!whole) {
 			ItemLayer::ClearGUID(*landing);
 			landing->SetCharges(static_cast<int16>(part));
 		}
@@ -10947,17 +10975,15 @@ bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
 			return false;
 		}
 
-		if (part < held) {
-			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
-		}
-		else {
+		if (whole) {
 			RemoveItemFromInventory(slot_id, true);
 		}
-
-		handed += part;
+		else {
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		}
 	}
 
-	return handed == quantity;
+	return true;
 }
 
 // Hands a quantity of an item to a character in another zone, by parcel. A whole item or stack goes as it is, its row
@@ -10965,25 +10991,19 @@ bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
 // caller's transaction holds the rows; parcel_slots are the parcels made, to announce once it has committed.
 bool Client::ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quantity, std::vector<int32> &parcel_slots)
 {
-	uint32 handed = 0;
+	const auto units = BarterUnits(item_id, quantity);
+	if (units.empty()) {
+		return false;
+	}
 
-	for (const int16 &slot_id : GetInventorySlots()) {
-		if (handed == quantity) {
-			break;
-		}
-
-		const auto *item = GetInv().GetItem(slot_id);
-		if (!item || item->GetID() != item_id || !item->HasGUID()) {
-			continue;
-		}
+	for (const auto &[slot_id, part] : units) {
+		const auto  *item  = GetInv().GetItem(slot_id);
+		const bool   whole = !item->IsStackable() || part >= static_cast<uint32>(item->GetCharges());
 
 		const int32 parcel_slot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, to_character_id, RuleI(Parcel, ParcelMaxItems));
 		if (parcel_slot == INVALID_INDEX) {
 			return false;
 		}
-
-		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
-		const uint32 part = std::min(held, quantity - handed);
 
 		CharacterParcelsRepository::CharacterParcels parcel{};
 		parcel.char_id   = to_character_id;
@@ -10993,7 +11013,14 @@ bool Client::ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quanti
 		parcel.slot_id   = parcel_slot;
 
 		const auto location = ItemLocation::InHolder(ItemHolderType::Parcel, to_character_id, static_cast<uint16>(parcel_slot));
-		if (part < held) {
+		if (whole) {
+			if (!ItemLayer::MoveRow(database, item->GetGUID(), location)) {
+				return false;
+			}
+
+			CharacterParcelsRepository::SetGUID(parcel, item->GetGUID());
+		}
+		else {
 			std::unique_ptr<EQ::ItemInstance> piece(item->Clone());
 			ItemLayer::ClearGUID(*piece);
 			piece->SetCharges(static_cast<int16>(part));
@@ -11003,30 +11030,22 @@ bool Client::ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quanti
 
 			CharacterParcelsRepository::SetGUID(parcel, piece->GetGUID());
 		}
-		else {
-			if (!ItemLayer::MoveRow(database, item->GetGUID(), location)) {
-				return false;
-			}
-
-			CharacterParcelsRepository::SetGUID(parcel, item->GetGUID());
-		}
 
 		if (!CharacterParcelsRepository::InsertOne(database, parcel).id) {
 			return false;
 		}
 
-		if (part < held) {
-			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		if (whole) {
+			RemoveItemFromInventory(slot_id, true);
 		}
 		else {
-			RemoveItemFromInventory(slot_id, true);
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
 		}
 
 		parcel_slots.push_back(parcel_slot);
-		handed += part;
 	}
 
-	return handed == quantity;
+	return true;
 }
 
 void Client::SetGMStatus(int new_status) {

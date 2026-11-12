@@ -1166,6 +1166,7 @@ public:
 	void SetItemCooldown(uint32 item_id, bool use_saved_timer = false, uint32 in_seconds = 1);
 	uint32 GetItemCooldown(uint32 item_id);
 	void RemoveItem(uint32 item_id, uint32 quantity = 1);
+	std::vector<std::pair<int16, uint32>> BarterUnits(uint32 item_id, uint32 quantity);
 	bool HandItemsTo(Client *to, uint32 item_id, uint32 quantity);
 	bool ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quantity, std::vector<int32> &parcel_slots);
 	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason);
