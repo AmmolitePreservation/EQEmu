@@ -7,7 +7,7 @@
     "password": "eqemu"
   },
   "account": {
-    "auto_create_accounts": true
+    "auto_create_accounts": false
   },
   "worldservers": {
     "unregistered_allowed": true,
