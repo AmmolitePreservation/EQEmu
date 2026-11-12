@@ -133,6 +133,7 @@ namespace EQ
 		uint8 GetTotalItemCount() const;
 		bool IsNoneEmptyContainer();
 		std::map<uint8, ItemInstance*>* GetContents() { return &m_contents; }
+		const std::map<uint8, ItemInstance*>* GetContents() const { return &m_contents; }
 
 		//
 		// Augments

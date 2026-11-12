@@ -43,6 +43,7 @@ public:
 	void LoadEvolvingItems() const;
 	void DoLootChecks(uint16 slot_id, const EQ::ItemInstance &inst) const;
 	bool LoadRecord(Database &db, const EQ::ItemInstance &inst) const;
+	void LoadRecords(Database &db, const EQ::ItemInstance &inst) const;
 	uint32 GetFinalItemID(const EQ::ItemInstance &inst) const;
 	uint32 GetNextEvolveItemID(const EQ::ItemInstance &inst) const;
 	uint32 GetFirstItemInLoreGroup(uint32 lore_id);

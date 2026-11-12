@@ -66,13 +66,25 @@ uint64 EvolvingItemsManager::AmountPastRequirement(const uint64 current_amount, 
 
 void EvolvingItemsManager::DoLootChecks(const uint16 slot_id, const EQ::ItemInstance &inst) const
 {
-	if (!inst || !inst.IsEvolving()) {
+	if (!inst) {
 		return;
 	}
 
 	inst.SetEvolveEquipped(slot_id <= EQ::invslot::EQUIPMENT_END && slot_id >= EQ::invslot::EQUIPMENT_BEGIN);
-	if (!inst.HasEvolveRecord()) {
-		LoadRecord(*m_db, inst);
+	LoadRecords(*m_db, inst);
+}
+
+// The record of the item and of every evolving item it holds: what is in a bag comes and goes with the bag.
+void EvolvingItemsManager::LoadRecords(Database &db, const EQ::ItemInstance &inst) const
+{
+	if (inst.IsEvolving() && !inst.HasEvolveRecord()) {
+		LoadRecord(db, inst);
+	}
+
+	for (const auto &[index, content] : *inst.GetContents()) {
+		if (content) {
+			LoadRecords(db, *content);
+		}
 	}
 }
 

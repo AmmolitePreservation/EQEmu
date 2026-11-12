@@ -494,13 +494,11 @@ bool SharedDatabase::GetInventory(Client *c)
 			}
 		}
 
-		if (item->EvolvingItem) {
-			if (slot_id >= EQ::invslot::EQUIPMENT_BEGIN && slot_id <= EQ::invslot::EQUIPMENT_END) {
-				inst->SetEvolveEquipped(true);
-			}
-
-			EvolvingItemsManager::Instance()->LoadRecord(*this, *inst);
+		if (item->EvolvingItem && slot_id >= EQ::invslot::EQUIPMENT_BEGIN && slot_id <= EQ::invslot::EQUIPMENT_END) {
+			inst->SetEvolveEquipped(true);
 		}
+
+		EvolvingItemsManager::Instance()->LoadRecords(*this, *inst);
 
 		if (slot_id == EQ::invslot::slotCursor) {
 			cursor.push_back(h);
