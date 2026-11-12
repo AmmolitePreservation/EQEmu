@@ -411,6 +411,17 @@ void Object::Delete(bool reset_state)
 	}
 }
 
+// Shows a client what the container holds. The RoF2 encoder gives the world container's location only to its own slot
+// range; a bare index would go out as one of the character's equipment slots.
+void Object::SendContents(Client* client)
+{
+	for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; index++) {
+		if (const auto *inst = GetItem(index)) {
+			client->SendItemPacket(EQ::invslot::WORLD_BEGIN + index, inst, ItemPacketWorldContainer);
+		}
+	}
+}
+
 const EQ::ItemInstance* Object::GetItem(uint8 index) {
 	if (index < EQ::invtype::WORLD_SIZE) {
 		return m_inst->GetItem(index);
@@ -792,12 +803,7 @@ bool Object::HandleClick(Client* sender, const ClickObject_Struct* click_object)
 
 			safe_delete(outapp);
 
-			for (uint8 i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
-				auto inst = m_inst->GetItem(i);
-				if (inst) {
-					sender->SendItemPacket(i, inst, ItemPacketWorldContainer);
-				}
-			}
+			SendContents(sender);
 		}
 	}
 
