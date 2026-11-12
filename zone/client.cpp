@@ -10918,6 +10918,48 @@ void Client::RemoveItem(uint32 item_id, uint32 quantity)
 	}
 }
 
+// Hands a quantity of an item to another client. A whole item or stack goes as it is, its row and all it holds landing
+// through the receiver's funnel; a part of a stack lands there as a new item and the stack is saved smaller.
+bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
+{
+	uint32 handed = 0;
+
+	for (const int16 &slot_id : GetInventorySlots()) {
+		if (handed == quantity) {
+			break;
+		}
+
+		const auto *item = GetInv().GetItem(slot_id);
+		if (!item || item->GetID() != item_id) {
+			continue;
+		}
+
+		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
+		const uint32 part = std::min(held, quantity - handed);
+
+		std::unique_ptr<EQ::ItemInstance> landing(item->Clone());
+		if (part < held) {
+			ItemLayer::ClearGUID(*landing);
+			landing->SetCharges(static_cast<int16>(part));
+		}
+
+		if (!to->PutItemInInventoryWithStacking(landing.get())) {
+			return false;
+		}
+
+		if (part < held) {
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		}
+		else {
+			RemoveItemFromInventory(slot_id, true);
+		}
+
+		handed += part;
+	}
+
+	return handed == quantity;
+}
+
 void Client::SetGMStatus(int new_status) {
 	if (Admin() != new_status) {
 		database.UpdateGMStatus(AccountID(), new_status);

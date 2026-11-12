@@ -1166,6 +1166,7 @@ public:
 	void SetItemCooldown(uint32 item_id, bool use_saved_timer = false, uint32 in_seconds = 1);
 	uint32 GetItemCooldown(uint32 item_id);
 	void RemoveItem(uint32 item_id, uint32 quantity = 1);
+	bool HandItemsTo(Client *to, uint32 item_id, uint32 quantity);
 	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity, ItemRetirement reason);
 	int16 SlotOfSerialNumber(uint32 serial_number);
 	bool SwapItem(MoveItem_Struct* move_in);

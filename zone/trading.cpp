@@ -1778,45 +1778,11 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 			}
 
 			// The buyer's trade items, the seller's item and the coin both ways are one exchange; a landing that
-			// fails keeps what was done, as before.
+			// fails keeps what was done, as before. Each side's own items change hands, rows and all.
 			DBcore::Transaction transaction(database);
 			for (auto const &ti: sell_line.trade_items) {
-				std::unique_ptr<EQ::ItemInstance> inst(
-					database.CreateItem(
-						ti.item_id,
-						ti.item_quantity *
-						sell_line.seller_quantity
-					)
-				);
-
-				if (inst.get()->GetItem()) {
-					buyer->RemoveItem(ti.item_id, ti.item_quantity * sell_line.seller_quantity);
-					if (!PutItemInInventoryWithStacking(inst.get())) {
-						Message(Chat::Red, "Error putting item in your inventory.");
-						buyer->PutItemInInventoryWithStacking(inst.get());
-						SendBarterBuyerClientMessage(
-							sell_line,
-							Barter_SellerTransactionComplete,
-							Barter_Failure,
-							Barter_Failure
-						);
-						transaction.Commit();
-						return;
-					}
-				}
-			}
-
-			std::unique_ptr<EQ::ItemInstance> buy_inst(
-				database.CreateItem(
-					sell_line.item_id,
-					sell_line.seller_quantity
-				)
-			);
-			RemoveItem(sell_line.item_id, sell_line.seller_quantity);
-			if (buy_inst->IsStackable()) {
-				if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
-					buyer->Message(Chat::Red, "Error putting item in your inventory.");
-					PutItemInInventoryWithStacking(buy_inst.get());
+				if (!buyer->HandItemsTo(this, ti.item_id, ti.item_quantity * sell_line.seller_quantity)) {
+					Message(Chat::Red, "Error putting item in your inventory.");
 					SendBarterBuyerClientMessage(
 						sell_line,
 						Barter_SellerTransactionComplete,
@@ -1827,22 +1793,17 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 					return;
 				}
 			}
-			else {
-				for (int i = 1; i <= sell_line.seller_quantity; i++) {
-					buy_inst->SetCharges(1);
-					if (!buyer->PutItemInInventoryWithStacking(buy_inst.get())) {
-						buyer->Message(Chat::Red, "Error putting item in your inventory.");
-						PutItemInInventoryWithStacking(buy_inst.get());
-						SendBarterBuyerClientMessage(
-						sell_line,
-							Barter_SellerTransactionComplete,
-							Barter_Failure,
-							Barter_Failure
-						);
-						transaction.Commit();
-						return;
-					}
-				}
+
+			if (!HandItemsTo(buyer, sell_line.item_id, sell_line.seller_quantity)) {
+				buyer->Message(Chat::Red, "Error putting item in your inventory.");
+				SendBarterBuyerClientMessage(
+					sell_line,
+					Barter_SellerTransactionComplete,
+					Barter_Failure,
+					Barter_Failure
+				);
+				transaction.Commit();
+				return;
 			}
 
 			uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
