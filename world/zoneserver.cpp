@@ -1730,6 +1730,14 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 
 					break;
 				}
+				case Barter_SellerTransactionComplete: {
+					auto buyer = ClientList::Instance()->FindCharacter(in->buyer_name);
+					if (buyer) {
+						ZSList::Instance()->SendPacket(buyer->zone(), buyer->instance(), pack);
+					}
+
+					break;
+				}
 				case Barter_BuyerTransactionComplete: {
 					auto seller = ClientList::Instance()->FindCharacter(in->seller_name);
 					if (seller) {

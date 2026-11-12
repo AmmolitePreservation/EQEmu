@@ -3995,6 +3995,39 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 						break;
 					}
 
+					// The buyer pays here; the seller's zone then sends the seller's own item by parcel and answers, or
+					// the coin comes back with a failed transaction. The buy line changes when the seller's zone answers.
+					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
+					if (!buyer->TakeMoneyFromPP(total_cost, false)) {
+						in->action     = Barter_FailedTransaction;
+						in->sub_action = Barter_FailedBuyerChecks;
+						worldserver.SendPacket(pack);
+						break;
+					}
+
+					in->action = Barter_BuyerTransactionComplete;
+					worldserver.SendPacket(pack);
+
+					break;
+				}
+				case Barter_SellerTransactionComplete: {
+					// The seller's zone has sent the item and paid the seller: the buyer's buy line and windows follow.
+					auto buyer = entity_list.GetClientByID(in->buyer_entity_id);
+					if (!buyer) {
+						break;
+					}
+
+					BuyerLineSellItem_Struct sell_line{};
+					sell_line.item_id         = in->buy_item_id;
+					sell_line.item_quantity   = in->buy_item_qty;
+					sell_line.item_cost       = in->buy_item_cost;
+					sell_line.seller_name     = in->seller_name;
+					sell_line.buyer_name      = in->buyer_name;
+					sell_line.buyer_entity_id = in->buyer_entity_id;
+					sell_line.seller_quantity = in->seller_quantity;
+					sell_line.slot            = in->slot;
+					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
+
 					BuyerLineSellItem_Struct blis{};
 					blis.enabled         = 1;
 					blis.item_toggle     = 1;
@@ -4006,16 +4039,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					blis.seller_quantity = in->seller_quantity;
 					blis.buyer_entity_id = in->buyer_entity_id;
 					strn0cpy(blis.item_name, in->item_name, sizeof(blis.item_name));
-
-					// The buyer pays here; the seller's zone then sends the seller's own item by parcel, or the coin
-					// comes back with a failed transaction.
-					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					if (!buyer->TakeMoneyFromPP(total_cost, false)) {
-						in->action     = Barter_FailedTransaction;
-						in->sub_action = Barter_FailedBuyerChecks;
-						worldserver.SendPacket(pack);
-						break;
-					}
 
 					buyer->SendWindowUpdatesToSellerAndBuyer(blis);
 					buyer->SendBarterBuyerClientMessage(
@@ -4040,9 +4063,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 						e.seller_name = sell_line.seller_name;
 						RecordPlayerEventLogWithClient(buyer, PlayerEvent::BARTER_TRANSACTION, e);
 					}
-
-					in->action = Barter_BuyerTransactionComplete;
-					worldserver.SendPacket(pack);
 
 					break;
 				}
@@ -4108,6 +4128,9 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 						strn0cpy(ps.send_to, in->buyer_name, sizeof(ps.send_to));
 						seller->SendParcelDeliveryToWorld(ps);
 					}
+
+					in->action = Barter_SellerTransactionComplete;
+					worldserver.SendPacket(pack);
 
 					seller->SendBarterBuyerClientMessage(
 						sell_line,

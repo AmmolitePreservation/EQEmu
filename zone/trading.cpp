@@ -1889,6 +1889,10 @@ void Client::SellToBuyer(const EQApplicationPacket *app)
 				return;
 			}
 
+			if (!DoBarterSellerChecks(sell_line)) {
+				return;
+			}
+
 			// The sold item reaches a buyer in another zone as a parcel.
 			if (CharacterParcelsRepository::GetNextFreeParcelSlot(database, sell_line.buyer_id, RuleI(Parcel, ParcelMaxItems)) == INVALID_INDEX) {
 				Message(Chat::Red, "The buyer has no room for another parcel.");
@@ -3590,20 +3594,13 @@ bool Client::DoBarterSellerChecks(BuyerLineSellItem_Struct &sell_line)
 		);
 	}
 
-	if (sell_item && sell_item->IsAugmentable() && sell_item->IsAugmented()) {
+	// What is handed over comes from the general slots and their bags, free of augments and tradeable.
+	if (sell_item && BarterUnits(sell_line.item_id, sell_line.seller_quantity).empty()) {
 		seller_error = true;
-		LogTradingDetail("Seller item <red>[{}] is augmented therefore cannot be sold.",
+		LogTradingDetail("Seller has too few of item <red>[{}] that are unaugmented and tradeable.",
 						 sell_line.item_name
 		);
-		Message(Chat::Red, "The item that you are trying to sell is augmented. Please remove augments first");
-	}
-
-	if (sell_item && !sell_item->IsDroppable()) {
-		seller_error = true;
-		LogTradingDetail("Seller item <red>[{}] is non-tradeable therefore cannot be sold.",
-						 sell_line.item_name
-		);
-		Message(Chat::Red, "The item that you are trying to sell is non-tradeable and therefore cannot be sold.");
+		Message(Chat::Red, "You do not carry that many of that item free of augments and tradeable. Please remove augments first.");
 	}
 
 	if (seller_error) {
