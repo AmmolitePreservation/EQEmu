@@ -205,8 +205,6 @@ Found by listing every `0x71eb20` call in real-estate code. Texts are from the o
 | Purchase, Manage | `0x65` | Are you sure you wish to transfer your plot to %1?… (`0x1dd3`) | send **`0x507f`** (188-byte struct) |
 | game (`[0xe67ccc]+8` → `0x52d540`) | `0x89` | Do you wish to accept %1 from %2? (`0x1dd4`), opened by server `0x5a63` | send **`0x5a63`** back: the same 188 bytes with `+0xb9` = 1 to accept, 0 to decline; decline also prints `0x1dd6`, "The real estate transfer has been declined." |
 
-**`0x613d` never writes its payload byte.** Both the pack and unpack answers send opcode `0x613d` with total length 3 (one payload byte), but neither code path writes that byte, so it contains whatever the previous send left in the shared send buffer at `0xdd00e2`. The server can't use it to tell pack from unpack.
-
 **Completeness correction:** `0x5a63` is also a **client → server** real-estate opcode. It is sent from the game-wide dialog handler `0x52d540`, which the earlier scan missed because it's outside the real-estate address ranges and too far from real-estate code in the call graph. I checked every send in that handler: the other unnamed ones (`0x3aa4`, `0x7d89`, `0x7bb1`, `0x499a`, `0x6718`, `0x53d3`, and one computed) belong to dialogs opened by non-real-estate code.
 
 ## Receive side: two dispatcher switches
