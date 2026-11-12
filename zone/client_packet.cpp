@@ -10809,12 +10809,24 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 	// Items get rearranged to fill the 'top' of the bag first
 	} else {
 		struct MoveInfo {
-			EQ::ItemInstance* item;
+			uint16 from_slot;
 			uint16 to_slot;
 		};
 
-		std::vector<MoveInfo> items;
-    		items.reserve(multi_move->count);
+		auto bag_location = [&](const uint16 slot_id) -> std::optional<ItemLocation> {
+			const int16 parent_slot_id = EQ::InventoryProfile::CalcSlotId(slot_id);
+			const auto *parent        = parent_slot_id != INVALID_INDEX ? m_inv.GetItem(parent_slot_id) : nullptr;
+			if (!parent || !parent->HasGUID()) {
+				return std::nullopt;
+			}
+
+			return ItemLocation::InParent(parent->GetGUID(), EQ::InventoryProfile::CalcBagIdx(slot_id));
+		};
+
+		std::vector<MoveInfo>           slots;
+		std::vector<ItemLayer::RowMove> rows;
+		slots.reserve(multi_move->count);
+		rows.reserve(multi_move->count);
 
 		for (int i = 0; i < multi_move->count; i++) {
 			// These are always bags, so we don't need to worry about raw items in slotCursor
@@ -10832,25 +10844,41 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 				to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
 			}
 
-			// I wasn't able to produce any error states on purpose.
-			MoveInfo move{
-				.item = m_inv.PopItem(from_slot), // Don't delete the instance here
-				.to_slot = to_slot
-			};
-
-			if (move.item) {
-				items.push_back(move);
-			} else {
+			const auto *item = m_inv.GetItem(from_slot);
+			const auto  from = bag_location(from_slot);
+			const auto  to   = bag_location(to_slot);
+			if (!item || !item->HasGUID() || !from || !to) {
 				LinkDead();
 				return; // Prevent inventory desync here. Forcing a resync would be better, but we don't have a MoveItem struct to work with.
 			}
+
+			slots.push_back(MoveInfo{from_slot, to_slot});
+			rows.push_back(ItemLayer::RowMove{item->GetGUID(), *from, *to});
 		}
 
+		// The contents of two bags trade places, so their rows move first and together: a put alone would meet the row
+		// still in its slot. Each put then saves its item where the row already is.
 		DBcore::Transaction transaction(database);
-		for (const MoveInfo& move : items) {
-			PutItemInInventory(move.to_slot, *move.item); // This saves inventory too
+		if (!ItemLayer::MoveRows(database, CharacterID(), rows)) {
+			LinkDead();
+			return;
 		}
-		transaction.Commit();
+
+		std::vector<std::unique_ptr<EQ::ItemInstance>> items;
+		items.reserve(slots.size());
+		for (const auto &slot : slots) {
+			items.emplace_back(m_inv.PopItem(slot.from_slot));
+		}
+
+		bool put = true;
+		for (size_t i = 0; i < slots.size(); i++) {
+			put = PutItemInInventory(slots[i].to_slot, *items[i]) && put; // This saves inventory too
+		}
+
+		if (!put || !transaction.Commit()) {
+			LogError("Swap of bag contents for character [{}] was not saved", CharacterID());
+			LinkDead();
+		}
 	}
 
 }

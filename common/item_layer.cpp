@@ -472,6 +472,51 @@ bool ItemLayer::MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &
 	return true;
 }
 
+bool ItemLayer::MoveRows(Database &db, uint32 character_id, std::vector<RowMove> moves)
+{
+	std::set<std::string> occupied;
+	for (const auto &move : moves) {
+		occupied.insert(PlaceOf(move.from));
+	}
+
+	const auto transit = ItemLocation::InTransit(character_id);
+	while (!moves.empty()) {
+		bool placed = false;
+		for (auto move = moves.begin(); move != moves.end();) {
+			const auto target = PlaceOf(move->to);
+			if (PlaceOf(move->from) != target && occupied.contains(target)) {
+				++move;
+				continue;
+			}
+
+			if (!MoveRow(db, move->guid, move->to)) {
+				return false;
+			}
+
+			occupied.erase(PlaceOf(move->from));
+			occupied.insert(target);
+			move   = moves.erase(move);
+			placed = true;
+		}
+
+		if (placed) {
+			continue;
+		}
+
+		auto aside = std::ranges::find_if(moves, [&](const RowMove &move) { return PlaceOf(move.from) != PlaceOf(transit); });
+		if (aside == moves.end() || occupied.contains(PlaceOf(transit)) || !MoveRow(db, aside->guid, transit)) {
+			LogError("Could not move [{}] rows of character [{}] that wait on each other", moves.size(), character_id);
+			return false;
+		}
+
+		occupied.erase(PlaceOf(aside->from));
+		occupied.insert(PlaceOf(transit));
+		aside->from = transit;
+	}
+
+	return true;
+}
+
 bool ItemLayer::Retire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason)
 {
 	if (!inst.HasGUID()) {

@@ -55,6 +55,16 @@ public:
 	// Moves a row whose instance is not in memory.
 	static bool MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &location);
 
+	struct RowMove {
+		ItemGUID     guid;
+		ItemLocation from;
+		ItemLocation to;
+	};
+
+	// Moves a character's rows that may trade places (the contents of two bags swapped): a row waits while another of
+	// them is still where it goes, and when none can move one steps aside to the in-transit slot.
+	static bool MoveRows(Database &db, uint32 character_id, std::vector<RowMove> moves);
+
 	// Retires an item and everything inside it; the row keeps its last location.
 	static bool Retire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason);
 	static bool RetireRow(Database &db, const ItemGUID &guid, ItemRetirement reason);
