@@ -14200,6 +14200,11 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 			) > 0) {
 			EQ::ItemInstance *inst2 = inst->Clone();
 			ItemLayer::AssignGUID(*inst2, zone->GetTempMerchantGUID(vendor->GetNPCTypeID(), freeslot));
+			if (inst2->IsEvolving()) {
+				// The row shows what a buyer gets: a new item at the start of its level.
+				inst2->SetEvolveCurrentAmount(0);
+				inst2->CalculateEvolveProgression();
+			}
 
 			while (true) {
 				if (!inst2) {

@@ -97,17 +97,38 @@ bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst
 		return false;
 	}
 
-	auto e = CharacterEvolvingItemsRepository::FindByGUID(db, inst.GetGUID());
-	if (!e.id) {
-		e = CharacterEvolvingItemsRepository::NewEntity();
-		CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
+	if (FindRecord(db, inst)) {
+		return true;
+	}
 
-		e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
-		if (!e.id) {
-			const auto guid = inst.GetGUID();
-			LogError("Evolving item [{}] guid [{} {} {}]: its record could not be made", inst.GetID(), guid.first, guid.second, guid.third);
-			return false;
-		}
+	auto e = CharacterEvolvingItemsRepository::NewEntity();
+	CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
+
+	e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
+	if (!e.id) {
+		const auto guid = inst.GetGUID();
+		LogError("Evolving item [{}] guid [{} {} {}]: its record could not be made", inst.GetID(), guid.first, guid.second, guid.third);
+		return false;
+	}
+
+	inst.GetEvolvingDetails() = e;
+	inst.CalculateEvolveProgression();
+	inst.SetEvolveFinalItemID(GetFinalItemID(inst));
+
+	return true;
+}
+
+// The record an item already has, for every load of it (a listing, a parcel, a corpse show its progress too); none is
+// made here.
+bool EvolvingItemsManager::FindRecord(Database &db, const EQ::ItemInstance &inst) const
+{
+	if (!inst.HasGUID()) {
+		return false;
+	}
+
+	const auto e = CharacterEvolvingItemsRepository::FindByGUID(db, inst.GetGUID());
+	if (!e.id) {
+		return false;
 	}
 
 	inst.GetEvolvingDetails() = e;

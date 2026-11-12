@@ -641,14 +641,25 @@ void Client::DoParcelRetrieve(const ParcelRetrieve_Struct &parcel_in)
 					return;
 				}
 
-				MessageString(
-					Chat::Yellow,
-					PARCEL_DELIVERED_2,
-					merchant->GetCleanName(),
-					std::to_string(inst->GetCharges()).c_str(),
-					inst->GetItem()->Name,
-					p->second.from_name.c_str()
-				);
+				if (inst->IsStackable()) {
+					MessageString(
+						Chat::Yellow,
+						PARCEL_DELIVERED_2,
+						merchant->GetCleanName(),
+						std::to_string(inst->GetCharges()).c_str(),
+						inst->GetItem()->Name,
+						p->second.from_name.c_str()
+					);
+				}
+				else {
+					MessageString(
+						Chat::Yellow,
+						PARCEL_DELIVERED,
+						merchant->GetCleanName(),
+						inst->GetItem()->Name,
+						p->second.from_name.c_str()
+					);
+				}
 				if (PlayerEventLogs::Instance()->IsEventEnabled(PlayerEvent::PARCEL_RETRIEVE)) {
 					PlayerEvent::ParcelRetrieve e{};
 					e.from_player_name = p->second.from_name;

@@ -1,5 +1,6 @@
 #include "item_layer.h"
 #include "eqemu_logsys.h"
+#include "evolving_items.h"
 #include "misc_functions.h"
 #include "repositories/character_data_repository.h"
 #include "repositories/inventory_snapshots_repository.h"
@@ -658,7 +659,7 @@ bool Holds(uint32 parent_class, uint32 parent_bag_slots, uint32 child_type, uint
 
 // A row whose item number content does not have retires missingItemRow, a row its parent cannot hold (past a bag's last
 // slot, or under a non-bag without being an augment in a socket) retires unplaceable, and so do the rows under either.
-static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemData *item, const ItemInstancesRepository::ItemInstances &row)
+static EQ::ItemInstance *Instantiate(Database &db, SharedDatabase &content_db, const EQ::ItemData *item, const ItemInstancesRepository::ItemInstances &row)
 {
 	auto *inst = content_db.CreateBaseItem(item, row.charges);
 	if (!inst) {
@@ -666,6 +667,9 @@ static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemD
 	}
 
 	ItemLayer::AssignGUID(*inst, row.guid);
+	if (item->EvolvingItem) {
+		EvolvingItemsManager::Instance()->FindRecord(db, *inst);
+	}
 	if (!row.custom_data.empty()) {
 		inst->SetCustomDataString(row.custom_data);
 	}
@@ -756,7 +760,7 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 			}
 		}
 
-		auto *inst = Instantiate(content_db, item, row);
+		auto *inst = Instantiate(db, content_db, item, row);
 		if (!inst) {
 			continue;
 		}
@@ -809,7 +813,7 @@ std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, Sha
 			continue;
 		}
 
-		auto *inst = Instantiate(content_db, item, row);
+		auto *inst = Instantiate(db, content_db, item, row);
 		if (!inst) {
 			left_out.insert(key);
 			continue;
