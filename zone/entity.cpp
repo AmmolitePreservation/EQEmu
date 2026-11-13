@@ -1862,18 +1862,6 @@ Client *EntityList::GetClientByWID(uint32 iWID)
 	return nullptr;
 }
 
-Client *EntityList::GetClientByLSID(uint32 iLSID)
-{
-	auto it = client_list.begin();
-	while (it != client_list.end()) {
-		if (it->second->LSAccountID() == iLSID) {
-			return it->second;
-		}
-		++it;
-	}
-	return nullptr;
-}
-
 Bot* EntityList::GetRandomBot(const glm::vec3& location, float distance, Bot* exclude_bot)
 {
 	auto is_whole_zone = false;

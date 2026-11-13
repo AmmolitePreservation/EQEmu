@@ -774,10 +774,11 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			}
 
 			auto wtz = (WorldToZone_Struct*) pack->pBuffer;
-			auto client = ClientList::Instance()->FindByAccountID(wtz->account_id);
+			auto client = ClientList::Instance()->FindByCLEID(wtz->cle_id);
 			if (client) {
 				client->Clearance(wtz->response);
 			}
+			break;
 		}
 		case ServerOP_ZoneToZoneRequest: {
 			// ZoneChange is received by the zone the player is in, then the

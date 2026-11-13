@@ -1265,6 +1265,20 @@ Client* ClientList::FindByAccountID(uint32 account_id) {
 	return 0;
 }
 
+Client* ClientList::FindByCLEID(uint32 cle_id) {
+	LinkedListIterator<Client*> iterator(list);
+
+	iterator.Reset();
+	while(iterator.MoreElements()) {
+		Client* candidate = iterator.GetData();
+		if (candidate->GetCLE() && candidate->GetCLE()->GetID() == cle_id) {
+			return candidate;
+		}
+		iterator.Advance();
+	}
+	return nullptr;
+}
+
 Client* ClientList::Get(uint32 ip, uint16 port) {
 	LinkedListIterator<Client*> iterator(list);
 

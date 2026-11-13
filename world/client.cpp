@@ -189,13 +189,15 @@ bool Client::CanTradeFVNoDropItem()
 	return false;
 }
 
-void Client::SendEnterWorld(std::string name)
+void Client::SendEnterWorld(const std::string &zoning_character)
 {
 	std::string live_name {};
 
 	if (is_player_zoning) {
-		live_name = database.GetLiveChar(GetAccountID());
-		if (database.GetAccountIDByChar(live_name) != GetAccountID()) {
+		// The session's own character, not the account's last one: an account may have several in the world at once.
+		live_name = zoning_character;
+		if (live_name.empty() || database.GetAccountIDByChar(live_name) != GetAccountID()) {
+			LogError("Zoning session of account [{}] names character [{}], not one of its own; closed", GetAccountID(), live_name);
 			eqs->Close();
 			return;
 		}
@@ -257,9 +259,7 @@ void Client::SendMaxCharCreate() {
 	auto outapp = new EQApplicationPacket(OP_SendMaxCharacters, sizeof(MaxCharacters_Struct));
 	MaxCharacters_Struct* mc = (MaxCharacters_Struct*)outapp->pBuffer;
 
-	mc->max_chars = EQ::constants::StaticLookup(m_ClientVersion)->CharacterCreationLimit;
-	if (mc->max_chars > EQ::constants::CHARACTER_CREATION_LIMIT)
-		mc->max_chars = EQ::constants::CHARACTER_CREATION_LIMIT;
+	mc->max_chars = RuleI(World, CharactersPerAccount);
 
 	QueuePacket(outapp);
 	safe_delete(outapp);
@@ -470,6 +470,8 @@ bool Client::HandleSendLoginInfoPacket(const EQApplicationPacket *app)
 	LogClientLogin("Checking authentication id [{}]", id);
 
 	if ((cle = ClientList::Instance()->CheckAuth(id, password))) {
+		// Read before SetOnline, which clears the entry's character.
+		const std::string zoning_character = cle->name();
 		LoadDataBucketsCache();
 
 		LogClientLogin("Checking authentication id [{}] passed", id);
@@ -518,7 +520,7 @@ bool Client::HandleSendLoginInfoPacket(const EQApplicationPacket *app)
 
 		SendLogServer();
 		SendApproveWorld();
-		SendEnterWorld(cle->name());
+		SendEnterWorld(zoning_character);
 		SendPostEnterWorld();
 		if (!is_player_zoning) {
 			bool skip_char_info = false;
@@ -742,6 +744,24 @@ bool Client::HandleCharacterCreatePacket(const EQApplicationPacket *app) {
 		return true;
 	}
 
+	const auto held = CharacterDataRepository::Count(
+		database,
+		fmt::format("`account_id` = {} AND `deleted_at` IS NULL", GetAccountID())
+	);
+	if (held >= RuleI(World, CharactersPerAccount)) {
+		LogInfo(
+			"Account [{}] holds [{}] characters, World:CharactersPerAccount allows [{}]; creation refused",
+			GetAccountID(),
+			held,
+			RuleI(World, CharactersPerAccount)
+		);
+		auto outapp = new EQApplicationPacket(OP_ApproveName, 1);
+		outapp->pBuffer[0] = 0;
+		QueuePacket(outapp);
+		safe_delete(outapp);
+		return true;
+	}
+
 	CharCreate_Struct *cc = (CharCreate_Struct*)app->pBuffer;
 	if(OPCharCreate(char_name, cc) == false) {
 		database.DeleteCharacter(char_name);
@@ -829,10 +849,7 @@ bool Client::HandleEnterWorldPacket(const EQApplicationPacket *app) {
 	// This can probably be moved outside and have another method return requested info (don't forget to remove the #include "../common/shareddb.h" above)
 	// (This is a literal translation of the original process..I don't see why it can't be changed to a single-target query over account iteration)
 	if (!is_player_zoning) {
-		size_t character_limit = EQ::constants::StaticLookup(eqs->ClientVersion())->CharacterCreationLimit;
-		if (character_limit > EQ::constants::CHARACTER_CREATION_LIMIT) {
-			character_limit = EQ::constants::CHARACTER_CREATION_LIMIT;
-		}
+		const size_t character_limit = RuleI(World, CharactersPerAccount);
 
 
 		auto query = fmt::format(
@@ -1360,8 +1377,8 @@ void Client::EnterWorld(bool TryBootup) {
 	const char *zone_name = ZoneName(zone_id, true);
 	if (zone_server) {
 		if (false == enter_world_triggered) {
-			//Drop any clients we own in other zones.
-			ZSList::Instance()->DropClient(GetLSID(), zone_server);
+			// The character is in one zone at a time: drop it wherever else it is.
+			ZSList::Instance()->DropClient(charid, zone_server);
 
 			// warn the zone we're coming
 			zone_server->IncomingClient(this);
@@ -1420,7 +1437,7 @@ void Client::EnterWorld(bool TryBootup) {
 		pack->pBuffer = new uchar[pack->size];
 		memset(pack->pBuffer, 0, pack->size);
 		WorldToZone_Struct* wtz = (WorldToZone_Struct*) pack->pBuffer;
-		wtz->account_id = GetAccountID();
+		wtz->cle_id = cle->GetID();
 		wtz->response = 0;
 		zone_server->SendPacket(pack);
 		delete pack;

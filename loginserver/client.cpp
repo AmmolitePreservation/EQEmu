@@ -6,8 +6,13 @@
 
 extern LoginServer server;
 
+namespace {
+	uint32 next_session_id = 1;
+}
+
 Client::Client(std::shared_ptr<EQStreamInterface> c, LSClientVersion v)
 {
+	m_session_id = next_session_id++;
 	m_connection              = c;
 	m_client_version          = v;
 	m_client_status           = cs_not_sent_session_ready;
@@ -309,7 +314,7 @@ void Client::SendPlayToWorld(const char *data)
 	m_selected_play_server_id = (unsigned int) play->server_number;
 	m_play_sequence_id        = sequence_in;
 	m_selected_play_server_id = server_id_in;
-	server.server_manager->SendUserLoginToWorldRequest(server_id_in, m_account_id, m_loginserver_name);
+	server.server_manager->SendUserLoginToWorldRequest(server_id_in, m_account_id, m_loginserver_name, m_session_id);
 }
 
 void Client::SendServerListPacket(uint32 seq)
@@ -479,8 +484,6 @@ void Client::DoSuccessfulLogin(LoginAccountsRepository::LoginAccounts &a)
 		a.account_name,
 		a.source_loginserver
 	);
-
-	server.client_manager->RemoveExistingClient(a.id, a.source_loginserver);
 
 	in_addr in{};
 	in.s_addr = m_connection->GetRemoteIP();

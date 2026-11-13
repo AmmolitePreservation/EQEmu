@@ -49,7 +49,13 @@ public:
 	 */
 	void HandleSiteCheckedLogin(const std::string &username, const std::string &password);
 
+	/**
+	 * This login session's own number, which a play request carries to world and world's answer brings back.
+	 */
+	uint32 GetSessionID() const { return m_session_id; }
+
 private:
+	uint32 m_session_id;
 	EQ::Random                                          m_random;
 	std::shared_ptr<EQStreamInterface>                  m_connection;
 	LSClientVersion                                     m_client_version;

@@ -1471,14 +1471,14 @@ void Zone::RemoveAuth(const char* iCharName, const char* iLSKey)
 	}
 }
 
-void Zone::RemoveAuth(uint32 lsid)
+void Zone::RemoveAuthForCharacter(uint32 character_id)
 {
 	LinkedListIterator<ZoneClientAuth_Struct*> iterator(client_auth_list);
 
 	iterator.Reset();
 	while (iterator.MoreElements()) {
 		ZoneClientAuth_Struct* zca = iterator.GetData();
-		if (zca->lsid == lsid) {
+		if (zca->charid == character_id) {
 			iterator.RemoveCurrent();
 			continue;
 		}

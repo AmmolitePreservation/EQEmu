@@ -1093,13 +1093,6 @@ bool Database::UpdateLiveChar(const std::string& name, uint32 account_id)
 	return AccountRepository::UpdateOne(*this, e);
 }
 
-const std::string Database::GetLiveChar(uint32 account_id)
-{
-	auto e = AccountRepository::FindOne(*this, account_id);
-
-	return e.id ? e.charname : std::string();
-}
-
 void Database::SetLFP(uint32 character_id, bool is_lfp)
 {
 	auto e = CharacterDataRepository::FindOne(*this, character_id);

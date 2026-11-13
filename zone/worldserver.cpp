@@ -638,13 +638,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 			SetZoneData(zone->GetZoneID(), zone->GetInstanceID());
 
 			if (szic->zoneid == zone->GetZoneID()) {
-				auto client = entity_list.GetClientByLSID(szic->lsid);
+				// The character is entering again: one already here is a ghost of it. Other characters of the
+				// account stay.
+				auto client = entity_list.GetClientByCharID(szic->charid);
 				if (client) {
 					client->Kick("Dropped by world CLE subsystem");
 					client->Save();
 				}
 
-				zone->RemoveAuth(szic->lsid);
+				zone->RemoveAuthForCharacter(szic->charid);
 				zone->AddAuth(szic);
 			}
 		}
@@ -662,9 +664,9 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 
 		ServerZoneDropClient_Struct* drop = (ServerZoneDropClient_Struct*)pack->pBuffer;
 		if (zone) {
-			zone->RemoveAuth(drop->lsid);
+			zone->RemoveAuthForCharacter(drop->character_id);
 
-			auto client = entity_list.GetClientByLSID(drop->lsid);
+			auto client = entity_list.GetClientByCharID(drop->character_id);
 			if (client) {
 				client->Kick("Dropped by world CLE subsystem");
 				client->Save();

@@ -264,7 +264,6 @@ namespace EQ
 	} // namespace invaug
 
 	namespace constants {
-		using RoF2::constants::CHARACTER_CREATION_LIMIT;
 
 		const size_t SAY_LINK_OPENER_SIZE = 1;
 		using RoF2::constants::SAY_LINK_BODY_SIZE;

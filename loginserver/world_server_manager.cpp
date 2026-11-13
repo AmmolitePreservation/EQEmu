@@ -142,7 +142,8 @@ std::unique_ptr<EQApplicationPacket> WorldServerManager::CreateServerListPacket(
 void WorldServerManager::SendUserLoginToWorldRequest(
 	unsigned int server_id,
 	unsigned int client_account_id,
-	const std::string &client_loginserver
+	const std::string &client_loginserver,
+	uint32 session_id
 )
 {
 	auto iter = std::find_if(
@@ -159,6 +160,7 @@ void WorldServerManager::SendUserLoginToWorldRequest(
 		auto *r = reinterpret_cast<UsertoWorldRequest *>(outapp.Data());
 		r->worldid     = server_id;
 		r->lsaccountid = client_account_id;
+		r->FromID      = session_id;
 		strncpy(r->login, client_loginserver.c_str(), 64);
 
 		(*iter)->GetConnection()->Send(ServerOP_UsertoWorldReq, outapp);

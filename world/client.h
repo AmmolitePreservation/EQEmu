@@ -46,7 +46,7 @@ public:
 	void	QueuePacket(const EQApplicationPacket* app, bool ack_req = true);
 	void	Clearance(int8 response);
 	void	SendGuildList();
-	void	SendEnterWorld(std::string name);
+	void	SendEnterWorld(const std::string &zoning_character);
 	void	SendExpansionInfo();
 	void	SendLogServer();
 	void	SendApproveWorld();

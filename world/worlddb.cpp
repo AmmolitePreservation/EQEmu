@@ -41,11 +41,7 @@ extern std::vector<RaceClassCombos> character_create_race_class_combos;
 
 void WorldDatabase::GetCharSelectInfo(uint32 account_id, EQApplicationPacket **out_app, EQ::versions::ClientVersion client_version)
 {
-	size_t character_limit = EQ::constants::StaticLookup(client_version)->CharacterCreationLimit;
-
-	if (character_limit > EQ::constants::CHARACTER_CREATION_LIMIT) {
-		character_limit = EQ::constants::CHARACTER_CREATION_LIMIT;
-	}
+	const size_t character_limit = RuleI(World, CharactersPerAccount);
 
 	auto characters = CharacterDataRepository::GetWhere(
 		database,

@@ -32,17 +32,14 @@ namespace EQ
 
 	namespace constants {
 		struct LookupEntry {
-			int16 CharacterCreationLimit;
 			size_t SayLinkBodySize;
 			uint32 BazaarTraderLimit;
 
 			LookupEntry(const LookupEntry *lookup_entry) { }
 			LookupEntry(
-				int16 CharacterCreationLimit,
 				size_t SayLinkBodySize,
 				uint32 BazaarTraderLimit
 			) :
-				CharacterCreationLimit(CharacterCreationLimit),
 				SayLinkBodySize(SayLinkBodySize),
 				BazaarTraderLimit(BazaarTraderLimit)
 			{ }

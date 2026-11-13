@@ -17,6 +17,17 @@ This branch removes every client but Rain of Fear 2 (the May 10 2013 build) from
 - **Era tests that hid behind client tests** move to the era. The stat cap past level 70 (330 before Secrets of Faydwer, unbounded from it) follows `Expansion:CurrentExpansion`. A drink's intoxication, which upstream computed twice with the pre-SoD and SoD Alcohol Tolerance caps written in, is one formula on the cap the server serves at its maximum level.
 - **Quest scripts** that tested the client version did so for the client's own capabilities. ProjectEQ's Halloween event scripts in Toxxulia (both layouts), Rivervale and Kithicor refused or warned Titanium clients, and two account-credit plugins printed the client's name; with one client the guards and the line go, and the plugin that named the client with them. The edits are a patch against ProjectEQ's quest repository (`rof2/peridotQuests.patch`), applied on peridotguids and to be applied to Peridot's checkout with the build.
 
+## Many sessions per account
+
+One account holds all of a player's characters and logs in many of them at once; what is exclusive is the character, not the account.
+
+- **How many characters:** the rule `World:CharactersPerAccount` (default 12, RoF2's own creation limit). Character select lists that many, the client is told it may create up to it, and world refuses a creation past it. RoF2's character list scrolls past 12; the RoF2 creation limit constant and the encoder's cap at 12 go.
+- **The login server** keeps every login session of an account (it no longer drops the older one) and routes world's answer to a play request by the session that asked: the request carries the session's number and world's answer brings it back.
+- **World** hands a zone's acceptance to the session that asked (by its client list entry, not the account's first), a zoning client re-enters as its own session's character (not `account.charname`, the account's last), and a character entering the world drops that character wherever else it is, not every character of the account.
+- **Zone** kicks and drops authorisation by character when the character enters again; the account's other characters stay.
+
+The account-wide state the sessions share (shared bank, `account` row, account data buckets and flags) is the worklist's RC-11 and RC-12.
+
 ## What stays, and why
 
 - **The era and zone version axes.** Content is still filtered by the server's current expansion and content flags when a zone loads, zoning still checks a zone's expansion, and a zone's layouts still live in `version` rows.
@@ -44,6 +55,7 @@ Peridot runs the same data peridotguids was tested on, so the steps are the ones
 5. The login server's `login.json` loses nothing it needs: the Titanium port and opcode keys are ignored if left, and `login_opcodes.conf` can go.
 6. The login server makes no accounts: `account.auto_create_accounts` is `false` in `login.json` (so in `loginserver/login_util/login.json` here; the server takes a missing key as `true`, so the key has to be there). Accounts are made by the Ammolite site through the login server's API, and a name typed at the login screen that has no account is refused rather than made into one. Peridot already runs with it off; its previous `login.json` is kept beside it as `login.json.beforeNoAutoCreate.20261112`.
 7. Ammolite's check of logins, when a world switches to it: `site_login_check` in `login.json` holds `check_url` (Ammolite's `https://ammolite.unseencolor.com:1996/api/v1/loginServer/check`) and `token` (the token Ammolite issues for the world's login server, `POST /api/v1/admin/servers/<world>/loginServer`, shown once). Both or neither; without them the login server checks its own accounts as before. With them, a password login asks Ammolite about the name and password typed (the player's Ammolite name and password, or a login key from Ankh's Play) and the player's own address, logs in the login account Ammolite names, which Ammolite makes at the player's first good login, and reads no password hash of its own; an account's old password no longer works. The login server needs OpenSSL 1.1.1 or later for it and refuses to start with the section set otherwise. Peridot does not run it yet: its players' accounts first move into the accounts named after them.
+8. Many sessions per account (README's "Many sessions per account"): set `World:CharactersPerAccount` to the characters one account may hold (peridotguids ran it at 100). Not before the worklist's RC-11 and RC-12: until then two sessions of one account share the shared bank and the `account` row unguarded. `World:EnforceCharacterLimitAtLogin` stays off, since it refuses an account already in the game.
 
 Peridot's client package already carries what the era-bounded rows can send a Planes of Power player to, except classic Highpass, which the RoF2 client cannot load at all; East Karana's Highpass line sends players there at era 4 and the client stops at "Unable to load World". Either keep the era rule where it is and accept that line as dead, or move the client's Highpass files to the id the client knows; the database side is right either way.
 

@@ -471,7 +471,7 @@ struct ServerZoneIncomingClient_Struct {
 
 struct ServerZoneDropClient_Struct
 {
-	uint32 lsid;
+	uint32 character_id;
 };
 
 struct ServerChangeWID_Struct {
@@ -828,7 +828,8 @@ struct ZoneToZone_Struct {
 };
 
 struct WorldToZone_Struct {
-	uint32	account_id;
+	// The world session's client list entry, so the zone's answer reaches the session that asked.
+	uint32	cle_id;
 	int8	response;
 };
 struct WorldShutDown_Struct {

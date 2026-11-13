@@ -30,6 +30,8 @@ public:
 	void	Add(Client* client);
 	Client*	Get(uint32 ip, uint16 port);
 	Client* FindByAccountID(uint32 account_id);
+	// The world session whose client list entry this is.
+	Client* FindByCLEID(uint32 cle_id);
 
 	void	ZoneBootup(ZoneServer* zs);
 	void	RemoveCLEReferances(ClientListEntry* cle);

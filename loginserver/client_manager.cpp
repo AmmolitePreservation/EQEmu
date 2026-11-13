@@ -176,20 +176,16 @@ void ClientManager::ProcessDisconnect()
 	}
 }
 
-void ClientManager::RemoveExistingClient(unsigned int account_id, const std::string &loginserver)
+Client *ClientManager::GetClientBySession(uint32 session_id)
 {
-	auto it = m_clients.begin();
-	while (it != m_clients.end()) {
-		Client *c = *it;
-		if (c->GetAccountID() == account_id && c->GetLoginServerName() == loginserver) {
-			LogInfo("Client attempting to log in existing client already logged in, removing existing client");
-			delete c;
-			it = m_clients.erase(it);
+	auto iter = std::find_if(
+		m_clients.begin(), m_clients.end(),
+		[&](Client *c) {
+			return c->GetSessionID() == session_id;
 		}
-		else {
-			++it;
-		}
-	}
+	);
+
+	return (iter != m_clients.end()) ? *iter : nullptr;
 }
 
 Client *ClientManager::GetClient(unsigned int account_id, const std::string &loginserver)

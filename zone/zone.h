@@ -323,7 +323,7 @@ public:
 	void LoadZoneDoors();
 	void ReloadStaticData();
 	void RemoveAuth(const char *iCharName, const char *iLSKey);
-	void RemoveAuth(uint32 lsid);
+	void RemoveAuthForCharacter(uint32 character_id);
 	void Repop(bool is_forced = false);
 	void RequestUCSServerStatus();
 	void ResetAuth();

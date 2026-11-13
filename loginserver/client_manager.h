@@ -12,8 +12,12 @@ public:
 	ClientManager();
 	~ClientManager();
 	void Process();
-	void RemoveExistingClient(unsigned int c, const std::string &loginserver);
 	Client *GetClient(unsigned int c, const std::string &loginserver);
+
+	/**
+	 * The login session the world's answer to a play request is for: one account may have many sessions at once.
+	 */
+	Client *GetClientBySession(uint32 session_id);
 private:
 	void ProcessDisconnect();
 
