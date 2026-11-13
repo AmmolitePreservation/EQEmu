@@ -103,8 +103,22 @@ public:
 	bool UpdateSharedBankSlot(uint32 char_id, const EQ::ItemInstance *inst, int16 slot_id);
 	bool VerifyInventory(uint32 account_id, int16 slot_id, const EQ::ItemInstance *inst);
 	bool GetSharedBank(uint32 id, EQ::InventoryProfile *inv, bool is_charid);
+
+	/**
+	 * Several sessions of one account may be in the world at once; one of them at a time holds the account's
+	 * shared bank, for one shared bank action, and only the holder writes it. The hold is a named lock on this
+	 * process's database connection, so it ends if the process dies, and a map within this process, since
+	 * sessions in one process share the connection. Taking again while holding nests.
+	 */
+	bool TakeSharedBank(uint32 account_id, uint32 character_id);
+	void ReleaseSharedBank(uint32 account_id, uint32 character_id);
+	bool IsSharedBankHolder(uint32 account_id, uint32 character_id);
+
 	int32 GetSharedPlatinum(uint32 account_id);
-	bool SetSharedPlatinum(uint32 account_id, int32 amount_to_add);
+	/**
+	 * Adds to the account's shared platinum; a negative amount succeeds only if the account holds at least that much.
+	 */
+	bool AddSharedPlatinum(uint32 account_id, int64 amount);
 	bool GetInventory(Client* c);
 	bool GetInventory(uint32 account_id, char *name, EQ::InventoryProfile *inv); // deprecated
 	std::map<uint32, uint32> GetItemRecastTimestamps(uint32 char_id);
@@ -203,6 +217,14 @@ public:
 protected:
 	uint32 m_shared_items_count = 0;
 	uint32 m_shared_spells_count = 0;
+
+private:
+	struct SharedBankHold {
+		uint32 character_id;
+		uint32 depth;
+	};
+	// By account.
+	std::map<uint32, SharedBankHold> m_shared_bank_holds;
 };
 
 #endif /*SHAREDDB_H_*/

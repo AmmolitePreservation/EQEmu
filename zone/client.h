@@ -1152,6 +1152,11 @@ public:
 	void RemoveItemBySerialNumber(uint32 serial_number, uint32 quantity = 1);
 	bool SwapItem(MoveItem_Struct* move_in);
 	void SwapItemResync(MoveItem_Struct* move_slots);
+	// While holding the shared bank: true when another session changed it, after this session's copy (and, with
+	// client_update, the client's) were replaced from the database.
+	bool RefreshSharedBank(bool client_update);
+	// Sends the client this session's shared bank, bags with their contents, and clears its empty slots.
+	void ResendSharedBankSlots();
 	void PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data = 0);
 	bool AutoPutLootInInventory(EQ::ItemInstance& inst, bool try_worn = false, bool try_cursor = true, LootItem** bag_item_data = 0);
 	bool SummonItem(uint32 item_id, int16 charges = -1, uint32 aug1 = 0, uint32 aug2 = 0, uint32 aug3 = 0, uint32 aug4 = 0, uint32 aug5 = 0, uint32 aug6 = 0, bool attuned = false, uint16 to_slot = EQ::invslot::slotCursor, uint32 ornament_icon = 0, uint32 ornament_idfile = 0, uint32 ornament_hero_model = 0);
@@ -2430,6 +2435,27 @@ public:
 	bool IsFilteredAFKPacket(const EQApplicationPacket *p);
 	void CheckAutoIdleAFK(PlayerPositionUpdateClient_Struct *p);
 	void SyncWorldPositionsToClient(bool ignore_idle = false);
+};
+
+/**
+ * One shared bank action's hold on the account's shared bank: taken, then the session's copy checked against the
+ * database; released when it goes out of scope. Ready() when held and the copy was current, so the action may go on.
+ * With client_update the player is told why when it is not.
+ */
+class SharedBankHold {
+public:
+	SharedBankHold(Client *client, bool client_update);
+	~SharedBankHold();
+	SharedBankHold(const SharedBankHold &) = delete;
+	SharedBankHold &operator=(const SharedBankHold &) = delete;
+
+	bool Held() const { return m_held; }
+	bool Ready() const { return m_held && !m_refreshed; }
+
+private:
+	Client *m_client;
+	bool    m_held;
+	bool    m_refreshed;
 };
 
 #endif

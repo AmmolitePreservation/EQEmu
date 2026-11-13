@@ -1261,6 +1261,12 @@ bool EQ::InventoryProfile::SupportsContainers(int16 slot_id)
 	return false;
 }
 
+bool EQ::InventoryProfile::IsSharedBankSlot(int16 slot_id)
+{
+	return EQ::ValueWithin(slot_id, invslot::SHARED_BANK_BEGIN, invslot::SHARED_BANK_END) ||
+		EQ::ValueWithin(slot_id, invbag::SHARED_BANK_BAGS_BEGIN, invbag::SHARED_BANK_BAGS_END);
+}
+
 int EQ::InventoryProfile::GetSlotByItemInst(ItemInstance *inst) {
 	if (!inst)
 		return INVALID_INDEX;

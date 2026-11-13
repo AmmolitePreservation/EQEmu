@@ -1529,6 +1529,14 @@ void Client::OPMoveCoin(const EQApplicationPacket* app)
 		return;
 	}
 
+	const bool moves_shared_platinum = RuleB(Character, SharedBankPlat) &&
+		(from_bucket == (int32 *) &m_pp.platinum_shared || to_bucket == (int32 *) &m_pp.platinum_shared);
+
+	// Other sessions of the account move shared platinum too: the database's balance is the one to move from.
+	if (moves_shared_platinum) {
+		m_pp.platinum_shared = database.GetSharedPlatinum(AccountID());
+	}
+
 	// don't allow them to go into negatives (from our point of view)
 	amount_to_take = *from_bucket < mc->amount ? *from_bucket : mc->amount;
 
@@ -1545,6 +1553,23 @@ void Client::OPMoveCoin(const EQApplicationPacket* app)
 	// now we should have a from_bucket, a to_bucket, an amount_to_take
 	// and an amount_to_add
 
+	if (moves_shared_platinum) {
+		const int64 shared_change =
+			(to_bucket == (int32 *) &m_pp.platinum_shared ? static_cast<int64>(amount_to_add) : 0) -
+			(from_bucket == (int32 *) &m_pp.platinum_shared ? static_cast<int64>(amount_to_take) : 0);
+
+		if (!database.AddSharedPlatinum(AccountID(), shared_change)) {
+			LogWarning(
+				"Shared platinum of account [{}] did not change by [{}] for character [{}]; coin move refused",
+				AccountID(),
+				shared_change,
+				CharacterID()
+			);
+			Message(Chat::Red, "Your shared platinum was changed by another of your characters; the coin was not moved.");
+			return;
+		}
+	}
+
 	// now we actually take it from the from bucket. if there's an error
 	// with the destination slot, they lose their money
 	*from_bucket -= amount_to_take;
@@ -1556,18 +1581,8 @@ void Client::OPMoveCoin(const EQApplicationPacket* app)
 		if(*to_bucket + amount_to_add > *to_bucket)	// overflow check
 			*to_bucket += amount_to_add;
 
-		//shared bank plat
-		if (RuleB(Character, SharedBankPlat))
+		if (!RuleB(Character, SharedBankPlat))
 		{
-			if (to_bucket == &m_pp.platinum_shared || from_bucket == &m_pp.platinum_shared)
-			{
-				if (from_bucket == &m_pp.platinum_shared)
-					amount_to_add = 0 - amount_to_take;
-
-				database.SetSharedPlatinum(AccountID(),amount_to_add);
-			}
-		}
-		else{
 			if (to_bucket == &m_pp.platinum_shared || from_bucket == &m_pp.platinum_shared){
 				SendPopupToClient(
 					"Shared Bank Warning",

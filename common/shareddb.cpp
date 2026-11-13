@@ -263,10 +263,18 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const EQ::ItemInstance* inst,
 		return true;
 	}
 
-	if (
-		EQ::ValueWithin(slot_id, EQ::invslot::SHARED_BANK_BEGIN, EQ::invslot::SHARED_BANK_END) ||
-		EQ::ValueWithin(slot_id, EQ::invbag::SHARED_BANK_BAGS_BEGIN, EQ::invbag::SHARED_BANK_BAGS_END)
-	) {
+	if (EQ::InventoryProfile::IsSharedBankSlot(slot_id)) {
+		const uint32 account_id = GetAccountIDByChar(char_id);
+		if (!IsSharedBankHolder(account_id, char_id)) {
+			LogError(
+				"Character [{}] wrote shared bank slot [{}] of account [{}] without holding the shared bank; refused",
+				char_id,
+				slot_id,
+				account_id
+			);
+			return false;
+		}
+
 		if (!inst) {
 			return DeleteSharedBankSlot(char_id, slot_id);
 		} else {
@@ -470,10 +478,104 @@ int32 SharedDatabase::GetSharedPlatinum(uint32 account_id)
 	return Strings::ToInt(row[0]);
 }
 
-bool SharedDatabase::SetSharedPlatinum(uint32 account_id, int32 amount_to_add) {
-	const std::string query = StringFormat("UPDATE account SET sharedplat = sharedplat + %i WHERE id = %i", amount_to_add, account_id);
+bool SharedDatabase::AddSharedPlatinum(uint32 account_id, int64 amount)
+{
+	if (amount == 0) {
+		return true;
+	}
+
+	const auto query = amount < 0 ?
+		fmt::format(
+			"UPDATE account SET sharedplat = sharedplat - {} WHERE id = {} AND sharedplat >= {}",
+			-amount,
+			account_id,
+			-amount
+		) :
+		fmt::format("UPDATE account SET sharedplat = sharedplat + {} WHERE id = {}", amount, account_id);
+
 	const auto results = QueryDatabase(query);
-	if (!results.Success()) {
+
+	return results.Success() && results.RowsAffected() == 1;
+}
+
+namespace {
+	// Named locks are per database server, so the name carries the database's.
+	std::string SharedBankLockName(uint32 account_id)
+	{
+		return fmt::format("CONCAT(DATABASE(), '.shared_bank.', {})", account_id);
+	}
+}
+
+bool SharedDatabase::TakeSharedBank(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold != m_shared_bank_holds.end()) {
+		if (hold->second.character_id != character_id) {
+			return false;
+		}
+
+		++hold->second.depth;
+		return true;
+	}
+
+	auto results = QueryDatabase(fmt::format("SELECT GET_LOCK({}, 0)", SharedBankLockName(account_id)));
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0]) {
+		LogError("The shared bank lock of account [{}] could not be asked for", account_id);
+		return false;
+	}
+
+	if (Strings::ToInt(results.begin()[0]) != 1) {
+		return false;
+	}
+
+	m_shared_bank_holds[account_id] = SharedBankHold{character_id, 1};
+	LogInfo("Shared bank of account [{}] taken by character [{}]", account_id, character_id);
+
+	return true;
+}
+
+void SharedDatabase::ReleaseSharedBank(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold == m_shared_bank_holds.end() || hold->second.character_id != character_id) {
+		LogError("Character [{}] released the shared bank of account [{}] without holding it", character_id, account_id);
+		return;
+	}
+
+	if (--hold->second.depth > 0) {
+		return;
+	}
+
+	m_shared_bank_holds.erase(hold);
+
+	auto results = QueryDatabase(fmt::format("SELECT RELEASE_LOCK({})", SharedBankLockName(account_id)));
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0] || Strings::ToInt(results.begin()[0]) != 1) {
+		LogError(
+			"The shared bank lock of account [{}] was not this connection's when character [{}] released it",
+			account_id,
+			character_id
+		);
+		return;
+	}
+
+	LogInfo("Shared bank of account [{}] released by character [{}]", account_id, character_id);
+}
+
+bool SharedDatabase::IsSharedBankHolder(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold == m_shared_bank_holds.end() || hold->second.character_id != character_id) {
+		return false;
+	}
+
+	// A reconnect of this process's database connection would have dropped the lock.
+	auto results = QueryDatabase(fmt::format("SELECT IS_USED_LOCK({}) = CONNECTION_ID()", SharedBankLockName(account_id)));
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0] || Strings::ToInt(results.begin()[0]) != 1) {
+		LogError(
+			"Character [{}] holds the shared bank of account [{}] here, but this connection no longer has its lock",
+			character_id,
+			account_id
+		);
 		return false;
 	}
 
@@ -652,8 +754,9 @@ bool SharedDatabase::GetSharedBank(uint32 id, EQ::InventoryProfile *inv, bool is
 			e.slot_id
 		);
 
-		if (is_charid) {
+		if (is_charid && TakeSharedBank(account_id, id)) {
 			SaveInventory(id, nullptr, e.slot_id);
+			ReleaseSharedBank(account_id, id);
 		}
 	}
 
@@ -675,11 +778,6 @@ bool SharedDatabase::GetInventory(Client *c)
 	auto e_results = CharacterEvolvingItemsRepository::GetWhere(
 		*this, fmt::format("`character_id` = '{}' AND `deleted_at` IS NULL", char_id)
 	);
-
-	if (results.empty()) {
-		LogError("Error loading inventory for char_id {} from the database.", char_id);
-		return false;
-	}
 
 	for (auto const& row: results) {
 		if (row.guid != 0) {
