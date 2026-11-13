@@ -43,6 +43,12 @@ public:
 	bool VerifyAndUpdateLoginHash(LoginAccountContext c, const LoginAccountsRepository::LoginAccounts& a);
 	void DoSuccessfulLogin(LoginAccountsRepository::LoginAccounts& a);
 
+	/**
+	 * A password login the ammolite site checks: the site's verdict on what the player typed, then the login account
+	 * the site names, which the site made at the player's first good login.
+	 */
+	void HandleSiteCheckedLogin(const std::string &username, const std::string &password);
+
 private:
 	EQ::Random                                          m_random;
 	std::shared_ptr<EQStreamInterface>                  m_connection;

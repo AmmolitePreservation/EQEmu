@@ -8,6 +8,7 @@ SET(eqlogin_sources
 	loginserver_command_handler.cpp
 	loginserver_webserver.cpp
 	main.cpp
+	site_login_check.cpp
 	world_server_manager.cpp
 	world_server.cpp
 )
@@ -22,6 +23,7 @@ SET(eqlogin_headers
 	login_server.h
 	login_types.h
 	options.h
+	site_login_check.h
 	world_server_manager.h
 	world_server.h
 )

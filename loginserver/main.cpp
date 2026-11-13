@@ -17,6 +17,7 @@
 #include "../common/zone_store.h"
 #include <time.h>
 #include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <sstream>
 #include <thread>
@@ -124,6 +125,24 @@ void LoadServerConfig()
 #endif
 
 	server.options.AllowTokenLogin(server.config.GetVariableBool("security", "allow_token_login", false));
+
+	const std::string site_check_url   = server.config.GetVariableString("site_login_check", "check_url", "");
+	const std::string site_check_token = server.config.GetVariableString("site_login_check", "token", "");
+	if (site_check_url.empty() != site_check_token.empty()) {
+		LogError("[Config] site_login_check needs both check_url and token, or neither");
+		std::exit(1);
+	}
+	if (!site_check_url.empty() && site_check_url.rfind("https://", 0) != 0) {
+		LogError("[Config] site_login_check.check_url must be an https address");
+		std::exit(1);
+	}
+#ifndef CPPHTTPLIB_OPENSSL_SUPPORT
+	if (!site_check_url.empty()) {
+		LogError("[Config] site_login_check needs https, and this login server was built without OpenSSL 1.1.1 or later");
+		std::exit(1);
+	}
+#endif
+	server.options.SiteLoginCheck(site_check_url, site_check_token);
 }
 
 void start_web_server()
@@ -220,6 +239,10 @@ int main(int argc, char **argv)
 	}
 
 	LogInfo("[Config] [Account] CanAutoCreateAccounts [{}]", server.options.CanAutoCreateAccounts());
+	LogInfo(
+		"[Config] [Account] SiteLoginCheck [{}]",
+		server.options.IsSiteLoginCheckEnabled() ? server.options.GetSiteLoginCheckURL() : "off"
+	);
 	LogInfo("[Config] [ClientConfiguration] DisplayExpansions [{}]", server.options.IsDisplayExpansions());
 	LogInfo("[Config] [ClientConfiguration] MaxExpansions [{}]", server.options.GetMaxExpansions());
 

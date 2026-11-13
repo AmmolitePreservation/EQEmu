@@ -9,6 +9,10 @@
   "account": {
     "auto_create_accounts": false
   },
+  "site_login_check": {
+    "check_url": "",
+    "token": ""
+  },
   "worldservers": {
     "unregistered_allowed": true,
     "show_player_count": false,
