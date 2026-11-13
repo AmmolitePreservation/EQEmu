@@ -36,12 +36,8 @@ void command_suspendmulti(Client *c, const Seperator *sep)
 		return;
 	}
 
-	for (auto a : l) {
-		a.status         = -1;
-		a.suspendeduntil = std::time(nullptr) + (days * 86400);
-		a.suspend_reason = reason;
-
-		if (!AccountRepository::UpdateOne(database, a)) {
+	for (const auto &a : l) {
+		if (!AccountRepository::SetSuspension(database, a.id, -1, std::time(nullptr) + (days * 86400), reason)) {
 			c->Message(
 				Chat::White,
 				fmt::format(
@@ -71,13 +67,7 @@ void command_suspendmulti(Client *c, const Seperator *sep)
 			).c_str()
 		);
 
-		auto *b = entity_list.GetClientByAccID(a.id);
-
-		if (b) {
-			b->WorldKick();
-			return;
-		}
-
+		// Through world: it reaches every zone, so every session of the account, this zone's included.
 		auto pack = new ServerPacket(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
 		auto *k = (ServerKickPlayer_Struct *) pack->pBuffer;
 

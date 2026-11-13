@@ -1000,8 +1000,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			break;
 		}
 		case ServerOP_FlagUpdate: {
-			auto cle = ClientList::Instance()->FindCLEByAccountID(*((uint32*) pack->pBuffer));
-			if (cle) {
+			for (auto cle : ClientList::Instance()->GetCLEsByAccountID(*((uint32*) pack->pBuffer))) {
 				cle->SetAdmin(*((int16*)&pack->pBuffer[4]));
 			}
 
@@ -1214,12 +1213,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			break;
 		}
 		case ServerOP_Revoke: {
-			auto rev = (RevokeStruct*) pack->pBuffer;
-			auto cle = ClientList::Instance()->FindCharacter(rev->name);
-			if (cle && cle->Server()) {
-				cle->Server()->SendPacket(pack);
-			}
-
+			ZSList::Instance()->SendPacket(pack);
 			break;
 		}
 		case ServerOP_SpawnPlayerCorpse: {

@@ -79,13 +79,7 @@ SharedDatabase::~SharedDatabase() = default;
 
 bool SharedDatabase::SetHideMe(uint32 account_id, uint8 hideme)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.hideme = hideme ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"hideme", hideme ? "1" : "0"}});
 }
 
 uint8 SharedDatabase::GetGMSpeed(uint32 account_id)
@@ -100,35 +94,17 @@ uint8 SharedDatabase::GetGMSpeed(uint32 account_id)
 
 bool SharedDatabase::SetGMSpeed(uint32 account_id, uint8 gmspeed)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.gmspeed = gmspeed ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"gmspeed", gmspeed ? "1" : "0"}});
 }
 
 bool SharedDatabase::SetGMInvul(uint32 account_id, bool gminvul)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.invulnerable = gminvul ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"invulnerable", gminvul ? "1" : "0"}});
 }
 
 bool SharedDatabase::SetGMFlymode(uint32 account_id, uint8 flymode)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.flymode = flymode;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"flymode", std::to_string(flymode)}});
 }
 
 uint32 SharedDatabase::GetTotalTimeEntitledOnAccount(uint32 AccountID) {

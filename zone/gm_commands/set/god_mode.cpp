@@ -17,14 +17,6 @@ void SetGodMode(Client *c, const Seperator *sep)
 	const bool   god_mode   = Strings::ToBool(sep->arg[2]);
 	const uint32 account_id = c->AccountID();
 
-	auto a = AccountRepository::FindOne(database, c->AccountID());
-	if (a.id) {
-		a.flymode      = god_mode ? 1 : 0;
-		a.gmspeed      = god_mode ? 1 : 0;
-		a.invulnerable = god_mode ? 1 : 0;
-		a.hideme       = god_mode ? 1 : 0;
-	}
-
 	c->SetInvul(god_mode);
 	c->SendAppearancePacket(AppearanceType::FlyMode, god_mode);
 	c->SetHideMe(god_mode);
@@ -38,5 +30,10 @@ void SetGodMode(Client *c, const Seperator *sep)
 		).c_str()
 	);
 
-	AccountRepository::UpdateOne(database, a);
+	const std::string value = god_mode ? "1" : "0";
+	AccountRepository::SetColumns(
+		database,
+		c->AccountID(),
+		{{"flymode", value}, {"gmspeed", value}, {"invulnerable", value}, {"hideme", value}}
+	);
 }

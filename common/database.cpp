@@ -215,11 +215,8 @@ int16 Database::GetAccountStatus(uint32 account_id)
 	auto e = AccountRepository::FindOne(*this, account_id);
 
 	if (e.suspendeduntil > 0 && e.suspendeduntil < std::time(nullptr)) {
-		e.status         = 0;
-		e.suspendeduntil = 0;
-		e.suspend_reason = "";
-
-		AccountRepository::UpdateOne(*this, e);
+		e.status = 0;
+		AccountRepository::SetSuspension(*this, account_id, e.status, 0, "");
 	}
 
 	return e.status;
@@ -277,11 +274,7 @@ bool Database::SetAccountStatus(const std::string& account_name, int16 status)
 		return false;
 	}
 
-	auto& e = l.front();
-
-	e.status = status;
-
-	return AccountRepository::UpdateOne(*this, e);
+	return AccountRepository::SetColumns(*this, l.front().id, {{"status", std::to_string(status)}});
 }
 
 bool Database::ReserveName(uint32 account_id, const std::string& name)
@@ -831,17 +824,13 @@ bool Database::SetVariable(const std::string& name, const std::string& value)
 
 void Database::SetAccountCRCField(uint32 account_id, const std::string& field_name, uint64 checksum)
 {
-	auto e = AccountRepository::FindOne(*this, account_id);
-
-	if (Strings::EqualFold(field_name, "crc_basedata")) {
-		e.crc_basedata = checksum;
-	} else if (Strings::EqualFold(field_name, "crc_eqgame")) {
-		e.crc_eqgame = checksum;
-	} else if (Strings::EqualFold(field_name, "crc_skillcaps")) {
-		e.crc_skillcaps = checksum;
+	const std::string column = Strings::ToLower(field_name);
+	if (column != "crc_basedata" && column != "crc_eqgame" && column != "crc_skillcaps") {
+		LogError("Account [{}] has no checksum field [{}]", account_id, field_name);
+		return;
 	}
 
-	AccountRepository::UpdateOne(*this, e);
+	AccountRepository::SetColumns(*this, account_id, {{column, std::to_string(checksum)}});
 }
 
 uint8 Database::GetPEQZone(uint32 zone_id, uint32 version)
@@ -1082,15 +1071,7 @@ bool Database::MoveCharacterToZone(const std::string& name, uint32 zone_id)
 
 bool Database::UpdateLiveChar(const std::string& name, uint32 account_id)
 {
-	auto e = AccountRepository::FindOne(*this, account_id);
-
-	if (!e.id) {
-		return false;
-	}
-
-	e.charname = name;
-
-	return AccountRepository::UpdateOne(*this, e);
+	return AccountRepository::SetColumns(*this, account_id, {{"charname", name}});
 }
 
 void Database::SetLFP(uint32 character_id, bool is_lfp)
@@ -1354,11 +1335,7 @@ uint8 Database::GetAgreementFlag(uint32 account_id)
 
 void Database::SetAgreementFlag(uint32 account_id)
 {
-	auto e = AccountRepository::FindOne(*this, account_id);
-
-	e.rulesflag = 1;
-
-	AccountRepository::UpdateOne(*this, e);
+	AccountRepository::SetColumns(*this, account_id, {{"rulesflag", "1"}});
 }
 
 void Database::ClearRaid(uint32 raid_id)

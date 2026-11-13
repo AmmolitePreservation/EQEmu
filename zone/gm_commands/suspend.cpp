@@ -46,11 +46,15 @@ void command_suspend(Client *c, const Seperator *sep)
 
 	const std::string reason = sep->arg[3] ? sep->argplus[3] : "";
 
-	a.status         = is_suspend ? -1 : 0;
-	a.suspendeduntil = is_suspend ? std::time(nullptr) + (days * 86400) : 0;
-	a.suspend_reason = is_suspend ? reason : "";
-
-	if (!AccountRepository::UpdateOne(database, a)) {
+	if (
+		!AccountRepository::SetSuspension(
+			database,
+			a.id,
+			is_suspend ? -1 : 0,
+			is_suspend ? std::time(nullptr) + (days * 86400) : 0,
+			is_suspend ? reason : ""
+		)
+	) {
 		c->Message(
 			Chat::White,
 			fmt::format(
@@ -82,18 +86,12 @@ void command_suspend(Client *c, const Seperator *sep)
 	);
 
 	if (is_suspend) { // Only kick if we're suspending, otherwise there's no reason to kick someone who is already suspended
-		Client* b = entity_list.GetClientByName(character_name.c_str());
-
-		if (b) {
-			b->WorldKick();
-			return;
-		}
-
+		// The account is suspended, so every session of it goes; world sends the kick to every zone, this one too.
 		auto pack = new ServerPacket(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
 		auto* k = (ServerKickPlayer_Struct*) pack->pBuffer;
 
 		strn0cpy(k->adminname, c->GetName(), sizeof(k->adminname));
-		strn0cpy(k->name, character_name.c_str(), sizeof(k->name));
+		k->account_id = a.id;
 		k->adminrank = c->Admin();
 
 		worldserver.SendPacket(pack);

@@ -715,7 +715,6 @@ Client::~Client() {
 
 	mMovementManager->RemoveClient(this);
 
-	DataBucket::DeleteCachedBuckets(DataBucketLoadType::Account, AccountID());
 	DataBucket::DeleteCachedBuckets(DataBucketLoadType::Client, CharacterID());
 
 	if (RuleB(Bots, Enabled)) {
@@ -8393,20 +8392,6 @@ void Client::SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 faction_
 	} //New Live faction message (14261)
 }
 
-void Client::LoadAccountFlags()
-{
-	accountflags.clear();
-
-	const auto& l = AccountFlagsRepository::GetWhere(database, fmt::format("p_accid = {}", account_id));
-	if (l.empty()) {
-		return;
-	}
-
-	for (const auto& e : l) {
-		accountflags[e.p_flag] = e.p_value;
-	}
-}
-
 void Client::ClearAccountFlag(const std::string& flag)
 {
 	auto e = AccountFlagsRepository::NewEntity();
@@ -8426,26 +8411,27 @@ void Client::SetAccountFlag(const std::string& flag, const std::string& value)
 	e.p_value = value;
 
 	AccountFlagsRepository::ReplaceFlag(database, e);
-
-	accountflags[flag] = value;
 }
 
+// Account flags are read from the database, not kept per session: the account's other sessions set them too.
 std::string Client::GetAccountFlag(const std::string& flag)
 {
-	return accountflags[flag];
+	const auto& l = AccountFlagsRepository::GetWhere(
+		database,
+		fmt::format("p_accid = {} AND p_flag = '{}' LIMIT 1", account_id, Strings::Escape(flag))
+	);
+
+	return l.empty() ? std::string() : l.front().p_value;
 }
 
 std::vector<std::string> Client::GetAccountFlags()
 {
-	std::vector<std::string> l;
-
-	l.reserve(accountflags.size());
-
-	for (const auto& e : accountflags) {
-		l.emplace_back(e.first);
+	std::vector<std::string> flags;
+	for (const auto& e : AccountFlagsRepository::GetWhere(database, fmt::format("p_accid = {}", account_id))) {
+		flags.emplace_back(e.p_flag);
 	}
 
-	return l;
+	return flags;
 }
 
 void Client::ItemTimerCheck()

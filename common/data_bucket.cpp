@@ -621,9 +621,6 @@ void DataBucket::BulkLoadEntitiesToCache(DataBucketLoadType::Type t, std::vector
 			if (t == DataBucketLoadType::Bot) {
 				has_cache = e.bot_id == ids[0];
 			}
-			else if (t == DataBucketLoadType::Account) {
-				has_cache = e.account_id == ids[0];
-			}
 			else if (t == DataBucketLoadType::Client) {
 				has_cache = e.character_id == ids[0];
 			}
@@ -643,9 +640,6 @@ void DataBucket::BulkLoadEntitiesToCache(DataBucketLoadType::Type t, std::vector
 			break;
 		case DataBucketLoadType::Client:
 			column = "character_id";
-			break;
-		case DataBucketLoadType::Account:
-			column = "account_id";
 			break;
 		default:
 			LogError("Incorrect LoadType [{}]", static_cast<int>(t));
@@ -705,7 +699,6 @@ void DataBucket::DeleteCachedBuckets(DataBucketLoadType::Type type, uint32 id, u
 			[&](DataBucketsRepository::DataBuckets &e) {
 				return (
 					(type == DataBucketLoadType::Bot && e.bot_id == id) ||
-					(type == DataBucketLoadType::Account && e.account_id == id) ||
 					(type == DataBucketLoadType::Client && e.character_id == id) ||
 					(type == DataBucketLoadType::Zone && e.zone_id == id && e.instance_id == secondary_id)
 				);
@@ -784,8 +777,6 @@ void DataBucket::DeleteFromCache(uint64 id, DataBucketLoadType::Type type)
 						return e.bot_id == id;
 					case DataBucketLoadType::Client:
 						return e.character_id == id;
-					case DataBucketLoadType::Account:
-						return e.account_id == id;
 					default:
 						return false;
 				}
@@ -836,9 +827,14 @@ void DataBucket::DeleteZoneFromCache(uint16 zone_id, uint16 instance_id, DataBuc
 // characters are only in one zone at a time so we can cache locally to the zone
 // bots (not implemented) are only in one zone at a time so we can cache locally to the zone
 // npcs (ids) can be in multiple zones so we can't cache locally to the zone
+// accounts can have sessions in several zones at once, so neither can their buckets
 bool DataBucket::CanCache(const DataBucketKey &key)
 {
-	if (key.character_id > 0 || key.account_id > 0 || key.bot_id > 0 || key.zone_id > 0) {
+	if (key.account_id > 0) {
+		return false;
+	}
+
+	if (key.character_id > 0 || key.bot_id > 0 || key.zone_id > 0) {
 		return true;
 	}
 

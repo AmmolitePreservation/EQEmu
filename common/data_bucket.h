@@ -21,7 +21,6 @@ struct DataBucketKey {
 namespace DataBucketLoadType {
 	enum Type : uint8 {
 		Bot,
-		Account,
 		Client,
 		Zone,
 		MaxType
@@ -29,7 +28,6 @@ namespace DataBucketLoadType {
 
 	static const std::string Name[Type::MaxType] = {
 		"Bot",
-		"Account",
 		"Client",
 		"Zone"
 	};

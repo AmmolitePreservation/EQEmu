@@ -268,6 +268,22 @@ ClientListEntry* ClientList::FindCLEByAccountID(uint32 iAccID) {
 	return nullptr;
 }
 
+std::vector<ClientListEntry *> ClientList::GetCLEsByAccountID(uint32 account_id)
+{
+	std::vector<ClientListEntry *> entries;
+
+	LinkedListIterator<ClientListEntry *> iterator(clientlist);
+	iterator.Reset();
+	while (iterator.MoreElements()) {
+		if (iterator.GetData()->AccountID() == account_id) {
+			entries.push_back(iterator.GetData());
+		}
+		iterator.Advance();
+	}
+
+	return entries;
+}
+
 ClientListEntry* ClientList::FindCLEByCharacterID(uint32 iCharID) {
 	LinkedListIterator<ClientListEntry*> iterator(clientlist);
 

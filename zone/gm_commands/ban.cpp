@@ -58,17 +58,12 @@ void command_ban(Client *c, const Seperator *sep)
 	sfus->admin = -2;
 	worldserver.SendPacket(&flagUpdatePack);
 
-	auto client = entity_list.GetClientByName(character_name.c_str());
-	if (client) {
-		client->WorldKick();
-		return;
-	}
-
+	// The account is banned, so every session of it goes; world sends the kick to every zone, this one too.
 	ServerPacket kickPlayerPack(ServerOP_KickPlayer, sizeof(ServerKickPlayer_Struct));
 	auto skp = (ServerKickPlayer_Struct *) kickPlayerPack.pBuffer;
-	strcpy(skp->adminname, c->GetName());
-	strcpy(skp->name, character_name.c_str());
-	skp->adminrank = c->Admin();
+	strn0cpy(skp->adminname, c->GetName(), sizeof(skp->adminname));
+	skp->account_id = account_id;
+	skp->adminrank  = c->Admin();
 	worldserver.SendPacket(&kickPlayerPack);
 }
 

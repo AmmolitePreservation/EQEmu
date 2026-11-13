@@ -647,7 +647,6 @@ public:
 		* REALLY HAS NO BETTER SECTION
 	*/
 	uint32	GetKarma(uint32 account_id);
-	void	UpdateKarma(uint32 account_id, uint32 amount);
 
 	// bot database add-on to eliminate the need for a second database connection
 	BotDatabase botdb;

@@ -56,6 +56,8 @@ public:
 	ClientListEntry* CheckAuth(uint32 loginserver_account_id, const char* key);
 	ClientListEntry* FindCharacter(const char* name);
 	ClientListEntry* FindCLEByAccountID(uint32 iAccID);
+	// Every session's entry of the account: one account may have several characters in the world at once.
+	std::vector<ClientListEntry *> GetCLEsByAccountID(uint32 account_id);
 	ClientListEntry* FindCLEByCharacterID(uint32 iCharID);
 	void	GetCLEIP(uint32 in_ip);
 	void	DisconnectByIP(uint32 in_ip);

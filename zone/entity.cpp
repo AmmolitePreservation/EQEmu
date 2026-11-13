@@ -2265,6 +2265,18 @@ Client *EntityList::GetClientByAccID(uint32 accid)
 	return nullptr;
 }
 
+std::vector<Client *> EntityList::GetClientsByAccountID(uint32 account_id)
+{
+	std::vector<Client *> clients;
+	for (const auto &e : client_list) {
+		if (e.second->AccountID() == account_id) {
+			clients.push_back(e.second);
+		}
+	}
+
+	return clients;
+}
+
 void EntityList::ChannelMessageFromWorld(const char *from, const char *to,
 		uint8 chan_num, uint32 guild_id, uint8 language, uint8 lang_skill, const char *message)
 {

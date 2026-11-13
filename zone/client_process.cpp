@@ -51,6 +51,7 @@
 #include "zone.h"
 #include "zonedb.h"
 #include "../common/events/player_event_logs.h"
+#include "../common/repositories/account_repository.h"
 #include "water_map.h"
 
 extern QueryServ* QServ;
@@ -265,7 +266,9 @@ bool Client::Process() {
 		if (KarmaUpdateTimer) {
 			if (KarmaUpdateTimer->Check(false)) {
 				KarmaUpdateTimer->Start(RuleI(Chat, KarmaUpdateIntervalMS));
-				database.UpdateKarma(AccountID(), ++TotalKarma);
+				// The account's other sessions add karma too: add to the stored total and read it back.
+				AccountRepository::AddKarma(database, AccountID(), 1);
+				TotalKarma = database.GetKarma(AccountID());
 			}
 		}
 

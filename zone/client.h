@@ -1828,7 +1828,6 @@ public:
 	int32 GetActINT() { return( std::min(GetMaxINT(), GetINT()) ); }
 	int32 GetActWIS() { return( std::min(GetMaxWIS(), GetWIS()) ); }
 	int32 GetActCHA() { return( std::min(GetMaxCHA(), GetCHA()) ); }
-	void LoadAccountFlags();
 	void ClearAccountFlag(const std::string& flag);
 	void SetAccountFlag(const std::string& flag, const std::string& value);
 	std::string GetAccountFlag(const std::string& flag);
@@ -2338,7 +2337,6 @@ private:
 	AggroMeter m_aggrometer;
 
 	Timer ItemQuestTimer;
-	std::map<std::string,std::string> accountflags;
 
 	uint8 initial_respawn_selection;
 

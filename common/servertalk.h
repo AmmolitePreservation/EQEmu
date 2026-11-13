@@ -904,6 +904,8 @@ struct ServerLockZone_Struct {
 struct RevokeStruct {
 	char adminname[64];
 	char name[64];
+	// Revoking is the account's: every session of it, in every zone.
+	uint32 account_id;
 	bool toggle; //0 off 1 on
 };
 

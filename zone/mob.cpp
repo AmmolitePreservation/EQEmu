@@ -8778,8 +8778,6 @@ bool Mob::LoadDataBucketsCache()
 		DataBucket::BulkLoadEntitiesToCache(DataBucketLoadType::Bot, {id});
 	}
 	else if (IsClient()) {
-		uint32 account_id = CastToClient()->AccountID();
-		DataBucket::BulkLoadEntitiesToCache(DataBucketLoadType::Account, {account_id});
 		DataBucket::BulkLoadEntitiesToCache(DataBucketLoadType::Client, {id});
 	}
 

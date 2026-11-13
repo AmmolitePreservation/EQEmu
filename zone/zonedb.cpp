@@ -2691,18 +2691,6 @@ uint32 ZoneDatabase::GetKarma(uint32 account_id)
 	return !e.id ? 0 : e.karma;
 }
 
-void ZoneDatabase::UpdateKarma(uint32 account_id, uint32 amount)
-{
-	auto e = AccountRepository::FindOne(*this, account_id);
-	if (!e.id) {
-		return;
-	}
-
-	e.karma = amount;
-
-	AccountRepository::UpdateOne(*this, e);
-}
-
 void ZoneDatabase::ListAllInstances(Client* client, uint32 character_id)
 {
 	if (!client) {
@@ -4065,14 +4053,7 @@ bool ZoneDatabase::DeleteCharacterCorpse(uint32 corpse_id)
 
 void ZoneDatabase::UpdateGMStatus(uint32 account_id, int new_status)
 {
-	auto e = AccountRepository::FindOne(*this, account_id);
-	if (!e.id) {
-		return;
-	}
-
-	e.status = new_status;
-
-	AccountRepository::UpdateOne(*this, e);
+	AccountRepository::SetColumns(*this, account_id, {{"status", std::to_string(new_status)}});
 }
 
 void ZoneDatabase::SaveCharacterBinds(Client *c)

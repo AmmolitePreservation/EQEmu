@@ -176,6 +176,8 @@ public:
 	}
 	Client *GetClientByName(const char* name);
 	Client *GetClientByAccID(uint32 accid);
+	// Every session of the account in this zone: one account may have several characters in the world at once.
+	std::vector<Client *> GetClientsByAccountID(uint32 account_id);
 	inline Client *GetClientByID(uint16 id)
 	{
 		auto it = client_list.find(id);

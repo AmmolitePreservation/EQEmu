@@ -542,7 +542,6 @@ void Client::CompleteConnect()
 	EnteringMessages(this);
 	LoadPEQZoneFlags();
 	LoadZoneFlags();
-	LoadAccountFlags();
 
 	/* Sets GM flag if needed & Sends Petition Queue */
 	UpdateAdmin(false);
