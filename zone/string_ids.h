@@ -395,8 +395,6 @@
 #define ALREADY_IN_GRP_RAID			5088	//% 1 rejects your invite because they are in a raid and you are not in theirs, or they are a raid group leader
 #define DUNGEON_SEALED				5141	//The gateway to the dungeon is sealed off to you.  Perhaps you would be able to enter if you needed to adventure there.
 #define ADVENTURE_COMPLETE			5147	//You received %1 points for successfully completing the adventure.
-#define PARCEL_STATUS_2				5433	//You currently have % 1 parcels in your mail and are % 2 parcels over the limit of % 3!If you do not retrieve at least % 2 parcels before you logout, they will be lost!
-#define PARCEL_STATUS_1				5434	//You currently have % 1 parcels in your mail and are 1 parcel over the limit of % 2!If you do not retrieve at least 1 parcel before you logout, it will be lost!
 #define SUCCOR_FAIL					5169	//The portal collapes before you can escape!
 #define NO_PROPER_ACCESS			5410    //You don't have the proper access rights.
 #define AUGMENT_RESTRICTED			5480	//The item does not satisfy the augment's restrictions.

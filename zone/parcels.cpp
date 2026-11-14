@@ -239,21 +239,18 @@ void Client::SendParcelStatus()
 				).c_str()
 			);
 		}
-		else if (num_over_limit == 1) {
-			MessageString(
+		else if (num_over_limit > 0) {
+			// The client's own strings for this say the parcels over the limit are lost at logout; this server keeps them.
+			Message(
 				Chat::Red,
-				PARCEL_STATUS_1,
-				std::to_string(num_of_parcels).c_str(),
-				std::to_string(RuleI(Parcel, ParcelMaxItems)).c_str()
-			);
-		}
-		else if (num_over_limit > 1) {
-			MessageString(
-				Chat::Red,
-				PARCEL_STATUS_2,
-				std::to_string(num_of_parcels).c_str(),
-				std::to_string(num_over_limit).c_str(),
-				std::to_string(RuleI(Parcel, ParcelMaxItems)).c_str()
+				fmt::format(
+					"You currently have {} parcels in your mail, {} over the limit of {}. They wait for you until you retrieve them, "
+					"and no parcel can be sent to you until fewer than {} are waiting.",
+					num_of_parcels,
+					num_over_limit,
+					RuleI(Parcel, ParcelMaxItems),
+					RuleI(Parcel, ParcelMaxItems)
+				).c_str()
 			);
 		}
 		else {
