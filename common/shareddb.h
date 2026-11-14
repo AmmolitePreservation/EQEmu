@@ -111,7 +111,8 @@ public:
 	 * sessions in one process share the connection. Taking again while holding nests.
 	 */
 	bool TakeSharedBank(uint32 account_id, uint32 character_id);
-	void ReleaseSharedBank(uint32 account_id, uint32 character_id);
+	// True when this release ends the hold and the shared bank was written during it.
+	bool ReleaseSharedBank(uint32 account_id, uint32 character_id);
 	bool IsSharedBankHolder(uint32 account_id, uint32 character_id);
 
 	int32 GetSharedPlatinum(uint32 account_id);
@@ -222,6 +223,7 @@ private:
 	struct SharedBankHold {
 		uint32 character_id;
 		uint32 depth;
+		bool   changed;
 	};
 	// By account.
 	std::map<uint32, SharedBankHold> m_shared_bank_holds;

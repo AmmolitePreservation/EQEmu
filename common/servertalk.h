@@ -86,6 +86,7 @@
 #define ServerOP_SpawnStatusChange	0x0040
 #define ServerOP_DropClient         0x0041	// DropClient
 #define ServerOP_IsOwnerOnline		0x0042
+#define ServerOP_SharedBankChanged	0x0043
 #define ServerOP_DepopAllPlayersCorpses	0x0060
 #define ServerOP_QGlobalUpdate		0x0061
 #define ServerOP_QGlobalDelete		0x0062
@@ -899,6 +900,12 @@ struct ServerLockZone_Struct {
 	uint8	op;
 	char	adminname[64];
 	uint16	zoneID;
+};
+
+// A session wrote its account's shared bank; every other session of the account reloads it.
+struct SharedBankChanged_Struct {
+	uint32 account_id;
+	uint32 character_id;
 };
 
 struct RevokeStruct {

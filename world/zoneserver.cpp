@@ -1212,7 +1212,8 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 
 			break;
 		}
-		case ServerOP_Revoke: {
+		case ServerOP_Revoke:
+		case ServerOP_SharedBankChanged: {
 			ZSList::Instance()->SendPacket(pack);
 			break;
 		}

@@ -251,6 +251,8 @@ bool SharedDatabase::SaveInventory(uint32 char_id, const EQ::ItemInstance* inst,
 			return false;
 		}
 
+		m_shared_bank_holds[account_id].changed = true;
+
 		if (!inst) {
 			return DeleteSharedBankSlot(char_id, slot_id);
 		} else {
@@ -475,6 +477,9 @@ bool SharedDatabase::AddSharedPlatinum(uint32 account_id, int64 amount)
 }
 
 namespace {
+	// Another process holds the lock for one action, a few milliseconds, so waiting lets both actions go through.
+	const int shared_bank_wait_seconds = 2;
+
 	// Named locks are per database server, so the name carries the database's.
 	std::string SharedBankLockName(uint32 account_id)
 	{
@@ -494,7 +499,9 @@ bool SharedDatabase::TakeSharedBank(uint32 account_id, uint32 character_id)
 		return true;
 	}
 
-	auto results = QueryDatabase(fmt::format("SELECT GET_LOCK({}, 0)", SharedBankLockName(account_id)));
+	auto results = QueryDatabase(
+		fmt::format("SELECT GET_LOCK({}, {})", SharedBankLockName(account_id), shared_bank_wait_seconds)
+	);
 	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0]) {
 		LogError("The shared bank lock of account [{}] could not be asked for", account_id);
 		return false;
@@ -504,24 +511,25 @@ bool SharedDatabase::TakeSharedBank(uint32 account_id, uint32 character_id)
 		return false;
 	}
 
-	m_shared_bank_holds[account_id] = SharedBankHold{character_id, 1};
+	m_shared_bank_holds[account_id] = SharedBankHold{character_id, 1, false};
 	LogInfo("Shared bank of account [{}] taken by character [{}]", account_id, character_id);
 
 	return true;
 }
 
-void SharedDatabase::ReleaseSharedBank(uint32 account_id, uint32 character_id)
+bool SharedDatabase::ReleaseSharedBank(uint32 account_id, uint32 character_id)
 {
 	auto hold = m_shared_bank_holds.find(account_id);
 	if (hold == m_shared_bank_holds.end() || hold->second.character_id != character_id) {
 		LogError("Character [{}] released the shared bank of account [{}] without holding it", character_id, account_id);
-		return;
+		return false;
 	}
 
 	if (--hold->second.depth > 0) {
-		return;
+		return false;
 	}
 
+	const bool changed = hold->second.changed;
 	m_shared_bank_holds.erase(hold);
 
 	auto results = QueryDatabase(fmt::format("SELECT RELEASE_LOCK({})", SharedBankLockName(account_id)));
@@ -531,10 +539,12 @@ void SharedDatabase::ReleaseSharedBank(uint32 account_id, uint32 character_id)
 			account_id,
 			character_id
 		);
-		return;
+		return changed;
 	}
 
 	LogInfo("Shared bank of account [{}] released by character [{}]", account_id, character_id);
+
+	return changed;
 }
 
 bool SharedDatabase::IsSharedBankHolder(uint32 account_id, uint32 character_id)

@@ -10695,25 +10695,28 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 
 	// Held past the commit below, so no other session reads the shared bank between this move's writes and its commit.
 	std::optional<SharedBankHold> shared_bank_hold;
+	const std::vector<int16> moved_slots = {static_cast<int16>(mi->from_slot), static_cast<int16>(mi->to_slot)};
 	if (
-		EQ::InventoryProfile::IsSharedBankSlot(static_cast<int16>(mi->from_slot)) ||
-		EQ::InventoryProfile::IsSharedBankSlot(static_cast<int16>(mi->to_slot))
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[0]) ||
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[1])
 	) {
 		shared_bank_hold.emplace(this, true);
-		if (!shared_bank_hold->Ready()) {
-			if (shared_bank_hold->Held()) {
-				LogWarning(
-					"Item move of character [{}] from slot [{}] to [{}] refused: another session changed the shared bank of account [{}]",
-					CharacterID(),
-					mi->from_slot,
-					mi->to_slot,
-					AccountID()
-				);
-			}
-			SwapItemResync(mi);
-			if (!shared_bank_hold->Held()) {
-				ResendSharedBankSlots();
-			}
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				mi->from_slot,
+				mi->to_slot,
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
 			return;
 		}
 	}
@@ -10773,35 +10776,40 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 
 	std::optional<SharedBankHold> shared_bank_hold;
 	if (touches_shared_bank) {
-		shared_bank_hold.emplace(this, true);
-		if (!shared_bank_hold->Ready()) {
-			const auto parent_slot = [](const auto &slot) {
-				switch (slot.Type) {
-					case EQ::invtype::typeBank:
-						return static_cast<uint32>(slot.Slot + EQ::invslot::BANK_BEGIN);
-					case EQ::invtype::typeSharedBank:
-						return static_cast<uint32>(slot.Slot + EQ::invslot::SHARED_BANK_BEGIN);
-					default:
-						return static_cast<uint32>(slot.Slot);
-				}
-			};
+		const auto parent_slot = [](const auto &slot) {
+			switch (slot.Type) {
+				case EQ::invtype::typeBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::BANK_BEGIN);
+				case EQ::invtype::typeSharedBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::SHARED_BANK_BEGIN);
+				default:
+					return static_cast<int16>(slot.Slot);
+			}
+		};
 
-			MoveItem_Struct parents{};
-			parents.from_slot = parent_slot(multi_move->moves[0].from_slot);
-			parents.to_slot   = parent_slot(multi_move->moves[0].to_slot);
-			if (shared_bank_hold->Held()) {
-				LogWarning(
-					"Multiple item move of character [{}] from slot [{}] to [{}] refused: another session changed the shared bank of account [{}]",
-					CharacterID(),
-					parents.from_slot,
-					parents.to_slot,
-					AccountID()
-				);
-			}
-			SwapItemResync(&parents);
-			if (!shared_bank_hold->Held()) {
-				ResendSharedBankSlots();
-			}
+		std::vector<int16> moved_slots;
+		for (int i = 0; i < multi_move->count; i++) {
+			moved_slots.push_back(parent_slot(multi_move->moves[i].from_slot));
+			moved_slots.push_back(parent_slot(multi_move->moves[i].to_slot));
+		}
+
+		shared_bank_hold.emplace(this, true);
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Multiple item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				moved_slots[0],
+				moved_slots[1],
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
 			return;
 		}
 	}

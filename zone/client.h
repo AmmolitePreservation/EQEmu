@@ -1157,6 +1157,15 @@ public:
 	bool RefreshSharedBank(bool client_update);
 	// Sends the client this session's shared bank, bags with their contents, and clears its empty slots.
 	void ResendSharedBankSlots();
+	// Another session of the account wrote the shared bank: this session and its client take it up.
+	void ReloadSharedBank();
+	void AnnounceSharedBankChange();
+	// True when a move names a shared bank slot whose contents were just sent to the client, so the move may
+	// have been made on what the client showed before.
+	bool IsSharedBankMoveStale(const std::vector<int16> &slot_ids) const;
+	// Puts a refused shared bank move's slots back on the client as this session holds them.
+	void ResyncSharedBankMove(const std::vector<int16> &slot_ids);
+	void ResendInventorySlot(int16 slot_id);
 	void PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data = 0);
 	bool AutoPutLootInInventory(EQ::ItemInstance& inst, bool try_worn = false, bool try_cursor = true, LootItem** bag_item_data = 0);
 	bool SummonItem(uint32 item_id, int16 charges = -1, uint32 aug1 = 0, uint32 aug2 = 0, uint32 aug3 = 0, uint32 aug4 = 0, uint32 aug5 = 0, uint32 aug6 = 0, bool attuned = false, uint16 to_slot = EQ::invslot::slotCursor, uint32 ornament_icon = 0, uint32 ornament_idfile = 0, uint32 ornament_hero_model = 0);
@@ -2149,6 +2158,8 @@ private:
 	PlayerProfile_Struct m_pp;
 	ExtendedProfile_Struct m_epp;
 	EQ::InventoryProfile m_inv;
+	// By shared bank slot (bags by their slot): when the client was last sent changed contents.
+	std::map<int16, uint32> m_shared_bank_sent_at;
 	Object* m_tradeskill_object;
 	PetInfo m_petinfo; // current pet data, used while loading from and saving to DB
 	PetInfo m_suspendedminion; // pet data for our suspended minion.

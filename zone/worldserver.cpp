@@ -1058,6 +1058,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 		}
 		break;
 	}
+	case ServerOP_SharedBankChanged: {
+		auto changed = (SharedBankChanged_Struct *) pack->pBuffer;
+		for (auto client : entity_list.GetClientsByAccountID(changed->account_id)) {
+			if (client->CharacterID() != changed->character_id) {
+				client->ReloadSharedBank();
+			}
+		}
+		break;
+	}
 	case ServerOP_GroupIDReply: {
 		ServerGroupIDReply_Struct* ids = (ServerGroupIDReply_Struct*)pack->pBuffer;
 		cur_groupid = ids->start;
