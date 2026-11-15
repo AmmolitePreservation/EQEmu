@@ -502,7 +502,7 @@ void WorldServer::SendClientAuthToWorld(Client *c)
 
 	a.loginserver_account_id = c->GetAccountID();
 
-	strncpy(a.account_name, c->GetAccountName().c_str(), 30);
+	strncpy(a.account_name, c->GetAccountName().c_str(), sizeof(a.account_name) - 1);
 	strncpy(a.key, c->GetLoginKey().c_str(), 30);
 
 	a.lsadmin        = 0;

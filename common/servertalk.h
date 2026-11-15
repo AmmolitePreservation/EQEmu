@@ -541,7 +541,7 @@ struct ServerClientList_Struct {
 	uint32	charid;
 	char	name[64];
 	uint32	AccountID;
-	char	AccountName[30];
+	char	AccountName[64];
 	uint32	LSAccountID;
 	char	lskey[30];
 	uint16	race;
@@ -632,7 +632,7 @@ struct LoginserverAccountUpdate {            // for updating info on login serve
 	char   world_account[31];            // account name for the worldserver
 	char   world_password[31];            // password for the name
 	uint32 user_account_id; // player account ID
-	char   user_account_name[31];            // player account name
+	char   user_account_name[64];            // player account name
 	char   user_account_password[51];            // player account password
 	char   user_email[101]; // player account email address
 };
@@ -683,7 +683,7 @@ struct ServerLSPlayerZoneChange_Struct {
 struct ClientAuth {
 	uint32 loginserver_account_id; // ID# in login server's db
 	char   loginserver_name[64];
-	char   account_name[30]; // username in login server's db
+	char   account_name[64]; // username in login server's db
 	char   key[30]; // the key the client will present
 	uint8  lsadmin; // login server admin level
 	int16  is_world_admin; // login's suggested worldadmin level setting for this user, up to the world if they want to obey it
@@ -708,7 +708,7 @@ struct ClientAuth {
 
 struct ClientAuthLegacy {
 	uint32 loginserver_account_id; // ID# in login server's db
-	char   loginserver_account_name[30]; // username in login server's db
+	char   loginserver_account_name[64]; // username in login server's db
 	char   key[30]; // the key the client will present
 	uint8  loginserver_admin_level; // login server admin level
 	int16  is_world_admin; // login's suggested worldadmin level setting for this user, up to the world if they want to obey it

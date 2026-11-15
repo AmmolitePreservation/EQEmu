@@ -2066,7 +2066,7 @@ private:
 	uint32 character_id;
 	uint32 WID;
 	uint32 account_id;
-	char account_name[30];
+	char account_name[64];
 	char loginserver[64];
 	uint32 lsaccountid;
 	char lskey[30];

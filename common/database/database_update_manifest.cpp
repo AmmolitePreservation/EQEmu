@@ -7181,6 +7181,19 @@ ALTER TABLE `bug_reports` DROP COLUMN `client_version_id`, DROP COLUMN `client_v
 		)",
 		.content_schema_update = true
 	},
+	// 9328 to 9330 are the guids branch's; this branch is merged into it.
+	ManifestEntry{
+		.version = 9331,
+		.description = "2026_11_15_account_names_of_64.sql",
+		.check = "SHOW COLUMNS FROM `account` LIKE 'name'",
+		.condition = "contains",
+		.match = "varchar(30)",
+		.sql = R"(
+ALTER TABLE `account` MODIFY COLUMN `name` varchar(64) NOT NULL DEFAULT '';
+ALTER TABLE `petitions` MODIFY COLUMN `accountname` varchar(64) NOT NULL DEFAULT '';
+		)",
+		.content_schema_update = false
+	},
 	// Used for testing
 //	ManifestEntry{
 //		.version = 9229,
