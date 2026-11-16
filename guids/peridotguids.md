@@ -21,6 +21,8 @@ Changed from Peridot's copy while its network link was still down (`link_down=1`
 | `pristine` | The clone set up, the `guids` build running, the database at 9325 / bots 0 / custom 0 with no migration applied; RAM included |
 | `ready` | `pristine` plus the claudelink login and character below, camped; RAM included |
 | `preGuids` | `ready` plus the full pre-migration seed set below, every character camped; RAM included. **The state TST-3 and TST-6 run from** |
+| `guidsEvolved` | `preGuids` taken by the updater from 9325 to 9334 on e6f14e1c1 (`rof2` merged, ISS-19, ISS-18), the chat host, quest patch and log categories redone; items 85612 to 85614 with lore group 0; Claudeguids level 11 wearing the Cloak of the Spirit Stalker 117-0-37 with the Tracker 117-0-36 and its augment in the Backpack; RAM included |
+| `pluginsState20261116` | the plugins session's state when it handed the machine back on 2026-11-16 (its `rof2RC*` snapshots hold its pure `rof2` test states); RAM included |
 
 `qm rollback 145 preGuids` (or `ready`, or `pristine`) returns to that running state. A plain reboot also brings the server back by itself: Docker restarts the stack's containers and Spire starts the launcher (`spire.launcher_start` in eqemu_config.json). The containers carried over from Peridot first had to be recreated, since their ports were pinned to Peridot's address (PRC-4).
 
