@@ -53,12 +53,12 @@ settings = open(os.path.join(sqlFolder, 'housingZoneSettings.sql'), encoding='ut
 sql(createTable('zone'))
 sql(open(os.path.join(sqlFolder, 'zoneHeaderColumns.sql'), encoding='utf-8').read())
 # Peridot's rows: the template and the gate rows, then the 24 housing rows as PEQ ships them (its own safe points, an hour's delay).
-sql("INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, ztype, canbind, shutdowndelay, bypass_expansion_check) VALUES (345, 'guildhall', 0, 'Guild Hall', -1, -1, 9, 0, 1, 3, 1, 0, 3600000, 1);")
-sql("INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, ztype, canbind, shutdowndelay, bypass_expansion_check) VALUES (712, 'neighborhood', 0, 'Sunrise Hills', -1, -1, 17, -1800, -1900, 6, 0, 0, 3600000, 1);")
+sql("INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, ztype, canbind, shutdowndelay, bypass_expansion_check, min_status, min_level, max_level, flag_needed) VALUES (345, 'guildhall', 0, 'Guild Hall', -1, -1, 9, 0, 1, 3, 1, 0, 3600000, 1, 80, 5, 60, 'hallFlag');")
+sql("INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, ztype, canbind, shutdowndelay, bypass_expansion_check, min_status, min_level, max_level, flag_needed) VALUES (712, 'neighborhood', 0, 'Sunrise Hills', -1, -1, 17, -1800, -1900, 6, 0, 0, 3600000, 1, 80, 5, 60, 'neighborhoodFlag');")
 existing = [(zoneId, version, shortName, title) for zoneId, version, shortName, title, *_ in housingZones if (zoneId, version) != (345, 2)]
 assert len(existing) == 24, len(existing)
-sql('INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, shutdowndelay, bypass_expansion_check) VALUES '
-    + ', '.join(f"({zoneId}, '{shortName}', {version}, '{title.replace(chr(39), chr(39) * 2)}', -1, -1, 17, -7, 6.2, 3, 3600000, 1)" for zoneId, version, shortName, title in existing) + ';')
+sql('INSERT INTO zone (zoneidnumber, short_name, version, long_name, min_expansion, max_expansion, expansion, safe_x, safe_y, safe_z, shutdowndelay, bypass_expansion_check, min_status, min_level, max_level, flag_needed) VALUES '
+    + ', '.join(f"({zoneId}, '{shortName}', {version}, '{title.replace(chr(39), chr(39) * 2)}', -1, -1, 17, -7, 6.2, 3, 3600000, 1, 80, 5, 60, 'interiorFlag')" for zoneId, version, shortName, title in existing) + ';')
 print('zone table made and seeded as Peridot: the classic guild hall, the neighborhood and the 24 housing rows')
 
 sql(zones)
@@ -87,7 +87,10 @@ check("the houses are Live's zone type 1, the Standard Guild Hall's interior Liv
 check("phinterior3a1 gets Live's safe point and floor", "SELECT safe_x, safe_y, safe_z, safe_heading, underworld, ceiling FROM zone WHERE short_name = 'phinterior3a1'", '0\t-12\t5\t128\t-60\t100')
 check("a zone Live never sent keeps its derived safe point", "SELECT safe_x, safe_y, safe_z FROM zone WHERE short_name = 'plhogrinteriors1a1'", '-1.6\t2.9\t-1.4')
 check("the neighborhood gets Live's header values, its safe point among them, and the bypass", "SELECT safe_x, safe_y, bypass_expansion_check, canbind FROM zone WHERE short_name = 'neighborhood'", '2035\t-2940\t1\t0')
-check('the classic guild hall itself is untouched', "SELECT shutdowndelay FROM zone WHERE short_name = 'guildhall' AND version = 0", '3600000')
+check('every housing row and the neighborhood admit every player: no minimum status or level, no cap, no flag',
+      "SELECT COUNT(*) FROM zone WHERE min_status = 0 AND min_level = 0 AND max_level = 255 AND flag_needed = '' AND "
+      "(zoneidnumber BETWEEN 714 AND 766 OR (zoneidnumber = 345 AND version = 2) OR short_name = 'neighborhood')", '26')
+check('the classic guild hall itself is untouched', "SELECT shutdowndelay, min_status, min_level, max_level, flag_needed FROM zone WHERE short_name = 'guildhall' AND version = 0", '3600000\t80\t5\t60\thallFlag')
 sql("DELETE FROM zone WHERE zoneidnumber = 766;")
 error = sql(settings, expectError=True)
 assert 'not every housing interior and hall zone row is present' in error, f'a missing row was not refused: {error[:300]}'

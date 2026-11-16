@@ -14,6 +14,8 @@ Header values are Live's, from a livedumps clone's master/fields/zoneHeaders.tsv
 the floor as underworld, the ceiling, the filter id, the mana stone flag, the zone type, clip planes, fog and no binding. A zone Live never sent keeps its safe point derived
 from the client's zone files by housingZoneGeometry.py and an underworld below any floor, and takes the other header values
 of Live's house interiors. Every interior and hall is kept running for Live's discard delay once empty (INT-13, INT-14).
+Every housing row admits every player, as Live does (ZIN-13): no minimum status or level, no level cap, no flag, set here
+rather than kept from what the content database held (ProjectEQ's neighborhood row asks status 80).
 Writes the rows (housingZones.sql) and, for rows already added, the same values with the bypass, and the neighborhood's
 header values and bypass (housingZoneSettings.sql).
 
@@ -57,6 +59,7 @@ houseInteriorHeader = 'phinterior3a1'
 liveDesignIds = {737: 2935, 738: 2936, 345: 2937, 751: 2943}
 uncapturedUnderworld = -2000.0
 discardDelayMilliseconds = 32 * 60 * 1000
+admitsEveryPlayer = dict(min_status='0', min_level='0', max_level='255', flag_needed="''")
 gateColumns = ['min_expansion', 'max_expansion', 'content_flags', 'content_flags_disabled', 'expansion']
 fogColumns = [('FogRed', ['fog_red', 'fog_red2', 'fog_red3', 'fog_red4']), ('FogGreen', ['fog_green', 'fog_green2', 'fog_green3', 'fog_green4']),
               ('FogBlue', ['fog_blue', 'fog_blue2', 'fog_blue3', 'fog_blue4']), ('FogStart', ['fog_minclip', 'fog_minclip2', 'fog_minclip3', 'fog_minclip4']),
@@ -140,8 +143,10 @@ def main():
       raise ValueError(f"{shortName}: Live's {liveZone} header is zone {header['ZoneID']}")
     values = headerValues(header, geometry)
     values['shutdowndelay'] = str(discardDelayMilliseconds)
+    values.update(admitsEveryPlayer)
     rows.append((zoneId, version, shortName, longName, values))
   neighborhoodValues = headerValues(headers['neighborhood'], None)
+  neighborhoodValues.update(admitsEveryPlayer)
 
   rowCondition = lambda zoneId, version, shortName: f"zoneidnumber = {zoneId} AND version = {version} AND short_name = '{shortName}'"
   anyRow = ' OR '.join(f'({rowCondition(zoneId, version, shortName)})' for zoneId, version, shortName, *_ in rows)
