@@ -292,6 +292,7 @@ namespace housing {
           moveInto(client, *check.property, std::nullopt);
           return;
         case EntryState::upkeepExpired:
+          LogHousing("[{}] may not enter property [{}]: its upkeep has expired", client->GetCleanName(), requested.id);
           client->MessageString(Chat::Red, upkeepExpired, propertyName(requested.id).c_str());
           return;
         default:

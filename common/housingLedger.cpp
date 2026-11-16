@@ -364,9 +364,27 @@ namespace housing {
     return countOfType(database, content, fmt::format("guild_id = {}", guildId), guildPlotType);
   }
 
+  std::set<uint32> descendants(Database &database, uint32 rootId) {
+    std::set<uint32> found;
+    std::set<uint32> frontier{rootId};
+    for (int depth = 0; !frontier.empty(); depth++) {
+      if (depth > maximumPropertyDepth) {
+        throw std::runtime_error(fmt::format("property [{}] has descendants deeper than [{}]", rootId, maximumPropertyDepth));
+      }
+      std::set<uint32> next;
+      for (auto row : query(database, fmt::format("SELECT id FROM real_estate_properties WHERE parent_id IN ({})", idList(frontier)))) {
+        next.insert(Strings::ToUnsignedInt(row[0]));
+      }
+      found.insert(next.begin(), next.end());
+      frontier = next;
+    }
+    return found;
+  }
+
   // Everything on the plot goes into the crate: its items stored there, its houses and other crates under it with their contents.
-  void packPlotInto(Database &database, uint32 plotId, uint32 crateId) {
+  std::vector<ItemRow> packPlotInto(Database &database, uint32 plotId, uint32 crateId) {
     std::set<uint32> moved;
+    std::vector<ItemRow> placed;
     for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {}", plotId))) {
       if (row.carried_property_id == crateId) {
         continue;
@@ -375,11 +393,15 @@ namespace housing {
         throw std::runtime_error(fmt::format("record [{}] could not be moved from plot [{}] into crate [{}]", row.id, plotId, crateId));
       }
       moved.insert(row.id);
+      if (row.placed) {
+        placed.push_back(row);
+      }
     }
     if (!moved.empty()) {
       query(database, fmt::format("UPDATE real_estate_items SET placed = 0 WHERE id IN ({})", idList(moved)));
     }
     query(database, fmt::format("UPDATE real_estate_properties SET parent_id = {} WHERE parent_id = {} AND id <> {}", crateId, plotId, crateId));
+    return placed;
   }
 
   void releasePlot(Database &database, uint32 plotId) {

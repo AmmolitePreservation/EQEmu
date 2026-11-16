@@ -26,6 +26,7 @@ namespace housing {
   constexpr uint8 neighborhoodType = 5;
   constexpr uint8 movingCrateType = 7;
   constexpr uint8 guildPlotType = 8;
+  constexpr int maximumPropertyDepth = 10;
 
   // A DBcore scope whose commit throws; raw START TRANSACTION here would commit under the item layer's own scopes.
   class Transaction {
@@ -74,7 +75,10 @@ namespace housing {
 
   uint32 ownedPlotCount(Database &database, Database &content, uint32 characterId);
   uint32 guildPlotCount(Database &database, Database &content, uint32 guildId);
-  void packPlotInto(Database &database, uint32 plotId, uint32 crateId);
+  // The properties under a root, its children and theirs, read before a change moves or deletes them.
+  std::set<uint32> descendants(Database &database, uint32 rootId);
+  // Returns the plot's rows that stood placed, which leave the world.
+  std::vector<ItemRow> packPlotInto(Database &database, uint32 plotId, uint32 crateId);
   void releasePlot(Database &database, uint32 plotId);
   void writeAccessList(Database &database, uint32 propertyId, const std::array<uint32, 7> &masks, const std::vector<std::pair<std::string, uint8>> &names);
   void writeDefaultAccessList(Database &database, uint32 propertyId, bool guildPlot);

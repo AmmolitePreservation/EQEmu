@@ -154,6 +154,7 @@ namespace housing {
     uint32 crateId = 0;
     bool crateCarriesProperty = false;
     std::vector<PlacedItem> leaving;
+    std::set<uint32> under;
     try {
       if (!state || !state->properties.count(plotId)) {
         throw SellRefusal("the plot is not one this zone sent", failed);
@@ -279,6 +280,8 @@ namespace housing {
       }
       if (crateRow) {
         crateId = crate.id;
+        under = descendants(database, plotId);
+        under.erase(crate.id);
         packPlotInto(database, plotId, crate.id);
         crateCarriesProperty = holdsContents(database, crate.id);
         crateItem = itemInstance(*crateRow);
@@ -361,6 +364,10 @@ namespace housing {
     if (crateId) {
       sendPropertyChanged(crateId, PropertyChangedPayload{plot.owner_character_id, crateCarriesProperty ? client->CharacterID() : 0, 0, 0});
       sendItemListChanged(crateId, {});
+    }
+    // A house packed into the crate is no longer in a yard: its interior sends its occupants to the plot's exit (INT-38).
+    for (uint32 id : under) {
+      sendPropertyChanged(id, PropertyChangedPayload{plot.owner_character_id, plot.owner_character_id, 0, 0});
     }
     sendItemListChanged(plotId, withdrawn);
   }

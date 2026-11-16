@@ -27,7 +27,6 @@ namespace housing {
     constexpr uint32 passMilliseconds = 10000;
     constexpr uint32 duePerPass = 500;
     constexpr uint32 crateOfEvictionDefinition = 31;
-    constexpr int maximumDepth = 10;
     constexpr const char *expiryNoticeSubject = "Escrow expired on personal plot - First Notice";
     constexpr const char *reclaimNotice = "Plots will pack up all items, send them to the owner, and become available for purchase again if its escrow has been expired for 90 days.";
 
@@ -58,8 +57,8 @@ namespace housing {
     std::map<uint32, PropertyRow> ancestry(const PropertyRow &property) {
       std::map<uint32, PropertyRow> chain{{property.id, property}};
       for (uint32 id = property.parent_id; id;) {
-        if (chain.size() > maximumDepth) {
-          throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", property.id, maximumDepth));
+        if (chain.size() > maximumPropertyDepth) {
+          throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", property.id, maximumPropertyDepth));
         }
         auto rows = RealEstatePropertiesRepository::GetWhere(database, fmt::format("id = {}", id));
         if (rows.size() != 1) {
@@ -137,30 +136,24 @@ namespace housing {
       return Strings::ToUnsignedInt(rows.begin()[0]) == 0;
     }
 
-    std::set<uint32> descendants(uint32 rootId) {
-      std::set<uint32> found;
-      std::set<uint32> frontier{rootId};
-      for (int depth = 0; !frontier.empty(); depth++) {
-        if (depth > maximumDepth) {
-          throw std::runtime_error(fmt::format("property [{}] has descendants deeper than [{}]", rootId, maximumDepth));
-        }
-        std::set<uint32> next;
-        for (auto row : query(database, fmt::format("SELECT id FROM real_estate_properties WHERE parent_id IN ({})", idList(frontier)))) {
-          next.insert(Strings::ToUnsignedInt(row[0]));
-        }
-        found.insert(next.begin(), next.end());
-        frontier = next;
-      }
-      return found;
+    // The records each property's list loses or changes, sent with its item list event so a zone showing them takes the
+    // withdrawn ones out of the world (INT-30).
+    using ListChanges = std::map<uint32, std::vector<ItemListChangedRecord>>;
+
+    void withdrawRow(ListChanges &changes, const ItemRow &row) {
+      changes[row.property_id].push_back(ItemListChangedRecord{row.id, row.property_id, row.item_id, 0, row.guid});
     }
 
     // A deleted owner's items are lost (Live, RCL-3): everything the plot and the properties under it hold leaves retired,
     // and the houses and crates under it go with their items.
-    void loseContents(const PropertyRow &plot) {
-      const std::set<uint32> under = descendants(plot.id);
+    void loseContents(const PropertyRow &plot, ListChanges &changes) {
+      const std::set<uint32> under = descendants(database, plot.id);
       std::set<uint32> holders = under;
       holders.insert(plot.id);
       const std::string held = idList(holders);
+      for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id IN ({}) AND placed = 1", held))) {
+        withdrawRow(changes, row);
+      }
       query(database, fmt::format(
         "DELETE r FROM real_estate_items r "
         "JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third "
@@ -182,10 +175,11 @@ namespace housing {
 
     // Reclaim (D7, RCL-1): everything on the plot goes into a Crate of Eviction archived for the owner, filled whatever its caps;
     // a deleted owner gets none.
-    uint32 reclaim(const PropertyRow &plot, bool itemsLost) {
+    uint32 reclaim(const PropertyRow &plot, bool itemsLost, ListChanges &changes) {
       uint32 crateId = 0;
+      changes[plot.id];
       if (itemsLost) {
-        loseContents(plot);
+        loseContents(plot, changes);
       }
       else {
         if (definitionTypes(content_db, {crateOfEvictionDefinition}).at(crateOfEvictionDefinition) != movingCrateType) {
@@ -196,15 +190,18 @@ namespace housing {
           crateOfEvictionDefinition, plot.owner_character_id
         ));
         crateId = inserted.LastInsertedID();
-        packPlotInto(database, plot.id, crateId);
+        for (const auto &row : packPlotInto(database, plot.id, crateId)) {
+          withdrawRow(changes, row);
+        }
+        changes[crateId];
       }
       releasePlot(database, plot.id);
       return crateId;
     }
 
     // The charge that finds the escrow empty stamps the plot, its placed houses and every placed item with an upkeep id with its own
-    // second, and stores those items but houses (UPK-2). Returns the properties whose item lists changed.
-    std::set<uint32> stamp(const PropertyRow &plot, int64 now) {
+    // second, and stores those items but houses (UPK-2). Returns the item lists that changed, with the records stored.
+    ListChanges stamp(const PropertyRow &plot, int64 now) {
       const PlotContents contents = placedUnder(database, content_db, plot);
       std::set<uint32> properties{plot.id};
       properties.insert(contents.placedHouseIds.begin(), contents.placedHouseIds.end());
@@ -224,17 +221,18 @@ namespace housing {
       const auto deedTypes = definitionTypes(content_db, deedDefinitions);
       std::set<uint32> stampedRows;
       std::set<uint32> storedRows;
-      std::set<uint32> changedLists;
+      ListChanges changedLists;
       for (const auto &row : contents.placedItems) {
         if (upkeepIds.at(row.item_id) <= 0) {
           continue;
         }
         stampedRows.insert(row.id);
-        changedLists.insert(row.property_id);
+        changedLists[row.property_id];
         const uint32 definitionId = definitionIds.at(row.item_id);
         const uint8 deedType = definitionId ? deedTypes.at(definitionId) : 0;
         if (deedType != guildHallType && deedType != playerHouseType) {
           storedRows.insert(row.id);
+          withdrawRow(changedLists, row);
         }
       }
       if (!stampedRows.empty()) {
@@ -259,10 +257,13 @@ namespace housing {
     struct ChargeOutcome {
       bool changed = false;
       bool reclaimed = false;
+      bool itemsLost = false;
       uint32 crateId = 0;
       std::string noticeLine;
       std::string ownerName;
-      std::set<uint32> itemListsChanged;
+      ListChanges itemListsChanged;
+      // The houses and crates that stood under a reclaimed plot: their interiors learn they are no longer in a yard (INT-38).
+      std::set<uint32> propertiesUnder;
     };
 
     ChargeOutcome chargeProperty(uint32 propertyId, int64 now) {
@@ -292,12 +293,10 @@ namespace housing {
             LogError("Housing: guild plot [{}] has been expired since [{}] and is due for reclaim, but who receives a guild plot's Crate of Eviction is undecided; it is not reclaimed", plot.id, plot.upkeep_expired_time);
           }
           else {
-            outcome.crateId = reclaim(plot, deleted);
+            outcome.propertiesUnder = descendants(database, plot.id);
+            outcome.crateId = reclaim(plot, deleted, outcome.itemListsChanged);
             outcome.reclaimed = true;
-            outcome.itemListsChanged.insert(plot.id);
-            if (outcome.crateId) {
-              outcome.itemListsChanged.insert(outcome.crateId);
-            }
+            outcome.itemsLost = deleted;
             transaction.commit();
             LogHousing("Reclaimed plot [{}] from character [{}]; crate [{}] (0: a deleted owner's items are lost)", plot.id, plot.owner_character_id, outcome.crateId);
             return outcome;
@@ -306,8 +305,7 @@ namespace housing {
       }
       const UpkeepCharge charge = settleUpkeep(database, content_db, plot, now);
       if (charge.escrowFoundEmpty && !plot.upkeep_expired_time) {
-        const auto changedLists = stamp(plot, now);
-        outcome.itemListsChanged.insert(changedLists.begin(), changedLists.end());
+        outcome.itemListsChanged = stamp(plot, now);
         if (!guildPlot) {
           auto owner = query(database, fmt::format("SELECT name FROM character_data WHERE id = {} AND deleted_at IS NULL", plot.owner_character_id));
           if (owner.RowCount() == 1) {
@@ -356,12 +354,16 @@ namespace housing {
           if (outcome.crateId) {
             sendPropertyChanged(outcome.crateId, PropertyChangedPayload{0, before.owner_character_id, 0, 0});
           }
+          const uint32 ownerAfter = outcome.itemsLost ? 0 : before.owner_character_id;
+          for (uint32 under : outcome.propertiesUnder) {
+            sendPropertyChanged(under, PropertyChangedPayload{before.owner_character_id, ownerAfter, 0, 0});
+          }
         }
         else {
           sendPropertyChanged(id, PropertyChangedPayload{before.owner_character_id, before.owner_character_id, before.guild_id, before.guild_id});
         }
-        for (uint32 holder : outcome.itemListsChanged) {
-          sendEvent(EventType::itemListChanged, holder, {});
+        for (const auto &[holder, records] : outcome.itemListsChanged) {
+          sendEvent(EventType::itemListChanged, holder, itemListChangedPayload(records));
         }
       }
       if (ownershipChanged) {
