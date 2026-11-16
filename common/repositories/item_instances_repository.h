@@ -215,7 +215,8 @@ public:
 		return db.QueryDatabase(fmt::format("{} VALUES {}", BaseInsert(), Strings::Implode(",", insert_chunks)));
 	}
 
-	static bool UpdateLocation(Database &db, const ItemGUID &guid, const ItemLocation &location)
+	// Moves one row in play; the rows matched, so a retired or unknown row answers 0.
+	static int UpdateLocation(Database &db, const ItemGUID &guid, const ItemLocation &location)
 	{
 		const auto columns = Columns();
 		const auto values  = LocationValues(location);
@@ -227,10 +228,15 @@ public:
 		}
 
 		auto results = db.QueryDatabase(
-			fmt::format("UPDATE {} SET {} WHERE {}", TableName(), Strings::Implode(", ", v), KeyFilter(guid))
+			fmt::format(
+				"UPDATE {} SET {} WHERE {} AND retirement_state IS NULL",
+				TableName(),
+				Strings::Implode(", ", v),
+				KeyFilter(guid)
+			)
 		);
 
-		return results.Success();
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
 	// Moves every row in play that a holder filter matches to another holder type, keeping holder id and slot.
@@ -282,6 +288,7 @@ public:
 		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
+	// Writes a row whole, its retirement included. Only a snapshot's restore uses it: it puts retired rows back on purpose.
 	static bool UpdateOne(Database &db, const ItemInstances &e)
 	{
 		const auto columns = Columns();
@@ -298,6 +305,46 @@ public:
 		);
 
 		return results.Success();
+	}
+
+	// Writes one row in play whole; the rows matched, so a retired or unknown row answers 0.
+	static int UpdateLive(Database &db, const ItemInstances &e)
+	{
+		const auto columns = Columns();
+		const auto values  = Values(e);
+
+		std::vector<std::string> v;
+
+		for (size_t i = key_column_count; i < columns.size(); ++i) {
+			v.push_back(columns[i] + " = " + values[i]);
+		}
+
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET {} WHERE {} AND retirement_state IS NULL",
+				TableName(),
+				Strings::Implode(", ", v),
+				KeyFilter(e.guid)
+			)
+		);
+
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
+	}
+
+	// Puts one row retired for a reason back in play; the rows matched, so a row in play, retired for another reason or
+	// unknown answers 0.
+	static int Unretire(Database &db, const ItemGUID &guid, ItemRetirement reason)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE {} SET retirement_state = NULL, retired_at = NULL WHERE {} AND retirement_state = '{}'",
+				TableName(),
+				KeyFilter(guid),
+				ItemRetirementName(reason)
+			)
+		);
+
+		return results.Success() ? static_cast<int>(results.RowsAffected()) : -1;
 	}
 
 	static std::vector<ItemInstances> Collect(MySQLRequestResult results)

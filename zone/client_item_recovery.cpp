@@ -80,9 +80,13 @@ void Client::Handle_OP_ShopRecoverItem(const EQApplicationPacket *app)
 		return;
 	}
 
-	// The currency and the item's return are one exchange. Saving the item where it lands writes its rows whole,
-	// so the retirement clears with the location.
+	// The currency and the item's return are one exchange. The rows come back into play before the charge, so a
+	// refusal costs nothing.
 	DBcore::Transaction recovery(database);
+	if (!ItemLayer::Unretire(database, *inst, listed.front().state)) {
+		LogError("Character [{}] could not have [{}] put back in play; nothing changed", CharacterID(), ItemGUIDText(guid));
+		return;
+	}
 	if (!RemoveAlternateCurrencyValue(ItemRecovery::currency, 1)) {
 		LogError("Character [{}] could not pay currency [{}] to recover [{}]; nothing changed", CharacterID(), ItemRecovery::currency, ItemGUIDText(guid));
 		return;

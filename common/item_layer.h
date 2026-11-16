@@ -46,13 +46,15 @@ public:
 	};
 
 	// Saves an item where it now is, with its augments and bag contents under it: an item without a GUID is issued
-	// from the owner's counter, one with a GUID has its row's location and fields updated.
+	// from the owner's counter, one with a GUID has its row's location and fields updated. A retired row is refused:
+	// an item still in memory never brings back a row another process retired.
 	static bool Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocation &location, const std::optional<Owner> &owner);
 
-	// Updates the rows of an item and everything inside it where they now are; every one must already have a GUID.
+	// Updates the rows of an item and everything inside it where they now are; every one must already have a GUID and
+	// be in play.
 	static bool Update(Database &db, const EQ::ItemInstance &inst, const ItemLocation &location);
 
-	// Moves a row whose instance is not in memory.
+	// Moves a row in play whose instance is not in memory.
 	static bool MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &location);
 
 	struct RowMove {
@@ -64,6 +66,11 @@ public:
 	// Moves a character's rows that may trade places (the contents of two bags swapped): a row waits while another of
 	// them is still where it goes, and when none can move one steps aside to the in-transit slot.
 	static bool MoveRows(Database &db, uint32 character_id, std::vector<RowMove> moves);
+
+	// Puts an item retired for a reason, and everything retired inside it, back in play, for the callers that return a
+	// retired item on purpose: a merchant's Recovery, and a reclaimed container's contents going back to the character
+	// using it. A row already in play stays as it is; a row retired for another reason, or unknown, is refused.
+	static bool Unretire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason);
 
 	// Retires an item and everything inside it; the row keeps its last location.
 	static bool Retire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason);
