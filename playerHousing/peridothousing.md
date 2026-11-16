@@ -161,6 +161,6 @@ A second account, `claudeeq1` (game account 85, status 0), holds Claudevisitor f
 
 ## Open
 
-- The rest of the fresh shakeout pass from "Chunk 8 in game": stages 3 and 5 are done (worklist.md UPK-3 and ACC-10), stage 4's placing through PLC-24, MNU-10 and MNU-13, and stage 6's copy lifecycle and crate in part (INT-26, PLC-30); the suites of stages 0 to 2, the rest of stage 6 (the rest of INT-26, layouts, swap, a two-house yard, the guild hall, the anchor spells) and stages 7 to 9 remain.
+- The rest of the fresh shakeout pass from "Chunk 8 in game": stages 3 and 5 are done (worklist.md UPK-3 and ACC-10), stage 4's placing through PLC-24, MNU-10 and MNU-13, and stage 6's copy lifecycle and crate in part (INT-26, PLC-30); the suites of stages 0 to 2 pass on the third fresh database (2026-11-16: probeSelfTest, clientInvariants, baseline, itemTail and neighborhoodZoneIn, 19 passed and clientInvariants' record-count case skipped by its own precondition; neighborhoodZoneIn starts from the street, so `#goto 2042 -2958 3.75` first; MQ2Lua loads per client with `/plugin mq2lua noauto`); the rest of stage 6 (the rest of INT-26, layouts, swap, a two-house yard, the guild hall, the anchor spells) and stages 7 to 9 remain.
 - The fixes the tests found (worklist.md PLC-26, PLC-29, ITM-11, MNU-14, MNU-15, MNU-17, ZIN-13, INT-35, INT-38), after the Live reads of REC-20 and MNU-18.
 - The pre-build tools still to rerun (worklist.md PRC-3, DOR-20).
