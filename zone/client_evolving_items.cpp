@@ -274,9 +274,11 @@ void Client::DoEvolveItemDisplayFinalResult(const EQApplicationPacket *app)
 	SendItemPacket(0, inst.get(), ItemPacketViewLink);
 }
 
-// Makes the evolving item in a slot another item of its line where it is. The row keeps its GUID and its record, whose
-// amount becomes new_amount, and an augment stays unless the new item's socket refuses it. The caller holds the
-// transaction, undoes this with UndoEvolveInPlace when the act fails, and sends the item once it has committed.
+// Makes the evolving item in a slot another item of its line where it is, with new_amount of progress. A change of
+// level makes it a new item, as Live does: the old row retires `evolved`, the new level is issued in the same slot and
+// the record follows it to its new GUID. Without one the row keeps its GUID. An augment stays unless the new item's
+// socket refuses it. The caller holds the transaction, undoes this with UndoEvolveInPlace when the act fails, and
+// sends the item once it has committed.
 bool Client::EvolveItemInPlace(const int16 slot_id, const uint32 new_item_id, const uint64 new_amount, std::vector<CharacterParcelsRepository::CharacterParcels> &parcels)
 {
 	const auto *inst = m_inv.GetItem(slot_id);
@@ -285,11 +287,16 @@ bool Client::EvolveItemInPlace(const int16 slot_id, const uint32 new_item_id, co
 		return false;
 	}
 
-	if (!CharacterEvolvingItemsRepository::SetCurrentAmount(database, inst->GetGUID(), new_amount)) {
-		return false;
+	const ItemGUID old_guid  = inst->GetGUID();
+	const bool     new_level = new_item_id != inst->GetID();
+	if (!new_level) {
+		if (!CharacterEvolvingItemsRepository::SetCurrentAmount(database, old_guid, new_amount)) {
+			return false;
+		}
+
+		ItemLayer::CarryGUID(*inst, *new_inst);
 	}
 
-	ItemLayer::CarryGUID(*inst, *new_inst);
 	new_inst->GetEvolvingDetails() = inst->GetEvolvingDetails();
 	new_inst->SetEvolveCurrentAmount(new_amount);
 	new_inst->CalculateEvolveProgression();
@@ -346,9 +353,16 @@ bool Client::EvolveItemInPlace(const int16 slot_id, const uint32 new_item_id, co
 		m_parcels.emplace(p.slot_id, p);
 	}
 
-	m_inv.PutItem(slot_id, *new_inst);
+	if (new_level && !ItemLayer::RetireRow(database, old_guid, ItemRetirement::Evolved)) {
+		return false;
+	}
 
-	return database.SaveInventory(this, slot_id);
+	m_inv.PutItem(slot_id, *new_inst);
+	if (!database.SaveInventory(this, slot_id)) {
+		return false;
+	}
+
+	return !new_level || CharacterEvolvingItemsRepository::MoveToGUID(database, old_guid, m_inv.GetItem(slot_id)->GetGUID(), new_amount);
 }
 
 // Puts back in memory what EvolveItemInPlace changed there; the caller's transaction undoes the rows.

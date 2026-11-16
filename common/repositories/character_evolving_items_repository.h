@@ -42,6 +42,20 @@ public:
 		).Success();
 	}
 
+	// The record follows its item to the GUID of the item's new level, with the amount the new level starts from.
+	static bool MoveToGUID(Database &db, const ItemGUID &from, const ItemGUID &to, const uint64 amount)
+	{
+		const auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE `{}` SET `guid_first` = {}, `guid_second` = {}, `guid_third` = {}, `current_amount` = {} "
+				"WHERE `guid_first` = {} AND `guid_second` = {} AND `guid_third` = {}",
+				TableName(), to.first, to.second, to.third, amount, from.first, from.second, from.third
+			)
+		);
+
+		return results.Success() && results.RowsAffected() == 1;
+	}
+
 	static bool SetActivated(Database &db, const ItemGUID &guid, const bool activated)
 	{
 		return db.QueryDatabase(
