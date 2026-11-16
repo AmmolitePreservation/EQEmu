@@ -76,8 +76,8 @@ public:
 	static int MoveHolder(Database &db, const std::string &holder_filter, ItemHolderType holder_type);
 
 	// Copies every row in play that a holder filter matches, with everything inside, as new items issued from the
-	// issuer's counter in a fixed order, held by new_holder_id (a copied character, a cloned bot). Runs inside the
-	// caller's transaction. Returns the count, or -1.
+	// issuer's counter in a fixed order, held by new_holder_id (a copied character, a cloned bot), each with its
+	// evolving record and parcel row. Runs inside the caller's transaction. Returns the count of item rows, or -1.
 	static int CopyRows(Database &db, const std::string &holder_filter, const Owner &issuer, uint32 new_holder_id);
 
 	// The items a holder filter matches, each with its augments and bag contents attached and its GUID set; the rows

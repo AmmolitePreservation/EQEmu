@@ -1946,8 +1946,13 @@ bool Database::CopyCharacter(
 		"player_titlesets",
 	};
 
+	// Rows keyed by an item's GUID: the copy's items are new ones (ItemLayer::CopyRows below brings their parcel rows and
+	// evolving records along), and the source's snapshots and Bazaar listings name the source's own items.
 	std::vector<std::string> ignore_tables = {
 		"guilds",
+		"character_parcels",
+		"inventory_snapshots",
+		"trader",
 	};
 
 	size_t total_rows_copied = 0;
@@ -2085,6 +2090,21 @@ bool Database::CopyCharacter(
 		return false;
 	}
 	LogInfo("Copying item rows [{}]", Strings::Commify(copied));
+
+	// A parcel of coin holds no item, so it is copied here; parcels of items came with their items.
+	auto money_parcels = QueryDatabase(
+		fmt::format(
+			"INSERT INTO character_parcels (char_id, money, slot_id, from_name, note, sent_date) "
+			"SELECT {}, money, slot_id, from_name, note, sent_date FROM character_parcels WHERE char_id = {} AND guid_first IS NULL",
+			new_character_id,
+			source_character_id
+		)
+	);
+	if (!money_parcels.Success()) {
+		LogError("Error copying the money parcels of character [{}] [{}]", source_character_id, money_parcels.ErrorMessage());
+		TransactionRollback();
+		return false;
+	}
 
 	auto r = TransactionCommit();
 	if (!r.Success()) {

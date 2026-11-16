@@ -636,6 +636,29 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 			fmt::arg("holder", new_holder_id)
 		),
 	};
+	const size_t item_rows_statement = statements.size() - 1;
+
+	// The rows that follow an item under its GUID come along with it: its evolving record and, for a parcel, its row
+	// in the new holder's mailbox.
+	statements.push_back(
+		fmt::format(
+			"INSERT INTO character_evolving_items (guid_first, guid_second, guid_third, activated, current_amount) "
+			"SELECT {first}, {second}, m.n, e.activated, e.current_amount FROM character_evolving_items e "
+			"JOIN item_copy_map m ON e.guid_first = m.f AND e.guid_second = m.s AND e.guid_third = m.t",
+			fmt::arg("first", issuer.character_id),
+			fmt::arg("second", issuer.origin_world_id)
+		)
+	);
+	statements.push_back(
+		fmt::format(
+			"INSERT INTO character_parcels (char_id, guid_first, guid_second, guid_third, money, slot_id, from_name, note, sent_date) "
+			"SELECT {holder}, {first}, {second}, m.n, p.money, p.slot_id, p.from_name, p.note, p.sent_date FROM character_parcels p "
+			"JOIN item_copy_map m ON p.guid_first = m.f AND p.guid_second = m.s AND p.guid_third = m.t",
+			fmt::arg("first", issuer.character_id),
+			fmt::arg("second", issuer.origin_world_id),
+			fmt::arg("holder", new_holder_id)
+		)
+	);
 
 	int copied = 0;
 	for (size_t i = 0; i < statements.size(); ++i) {
@@ -646,7 +669,7 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 			return -1;
 		}
 
-		if (i == statements.size() - 1) {
+		if (i == item_rows_statement) {
 			copied = static_cast<int>(results.RowsAffected());
 		}
 	}
