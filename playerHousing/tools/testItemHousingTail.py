@@ -1,7 +1,8 @@
 """Tests sql/itemHousingTail.sql against a local MariaDB: the real `items` definition, every exported row, every value
 checked against itemTailDecode.py, the column order, the capture, a re-run after a mid-way failure, and each guard. Then
 sql/itemHousingAdoption.sql on the result: Live's values on every Peridot item Live lists as placeable, in the counts measured
-on Peridot's 117,944 items, the client record over items.txt, nothing else changed, and every run leaving the same table.
+on Peridot's 117,944 items, the client record over items.txt, no placeable item with a scale minimum above its maximum, nothing
+else changed, and every run leaving the same table.
 
 Usage: python testItemHousingTail.py pok-schema-all.json itemTailAll.txt   (a local MariaDB with a `peq` database, root without
 a password)
@@ -12,7 +13,7 @@ Both inputs come from Peridot's `peq`, read-only. pok-schema-all.json is each ta
     UNK231, UNK232, UNK233, UNK234, placeable, UNK236, UNK237, UNK238, UNK239, UNK240, UNK241 FROM items ORDER BY id;' |
     mariadb -B -uroot peq > itemTailAll.txt
 """
-import contextlib, io, json, os, runpy, struct, subprocess, sys, tempfile
+import json, os, runpy, struct, subprocess, sys, tempfile
 
 schemaPath, exportPath = sys.argv[1], sys.argv[2]
 here = os.path.dirname(os.path.abspath(__file__))
@@ -42,11 +43,10 @@ assert exportLines[0].split('\t') == exportColumns, 'the export does not start w
 exported = [line.split('\t') for line in exportLines[1:]]
 with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as placeableExport:
   placeableExport.write('\n'.join([exportLines[0]] + [line for line, p in zip(exportLines[1:], exported) if p[3] != '0']) + '\n')
-with contextlib.redirect_stdout(io.StringIO()):
-  sys.argv = ['itemTailDecode.py', placeableExport.name]
-  decoder = runpy.run_path(os.path.join(here, 'itemTailDecode.py'))
+decoder = runpy.run_path(os.path.join(here, 'itemTailDecode.py'))
+rows = {r['id']: r for r in decoder['readRows'](placeableExport.name)[1]}
 os.unlink(placeableExport.name)
-rows = {r['id']: r for r in decoder['rows']}
+chosen = {i: decoder['decode'](r) for i, r in rows.items()}
 values = [f"({p[0]},'{p[1].replace(chr(39), chr(39) * 2)}',{','.join(p[2:])})" for p in exported]
 loadRows = ''.join(f"INSERT INTO items ({','.join('`' + c + '`' for c in exportColumns)}) VALUES " + ','.join(values[k:k + 10000]) + ';'
                    for k in range(0, len(values), 10000))
@@ -68,7 +68,7 @@ bits = lambda x: struct.unpack('<I', struct.pack('<f', x))[0]
 def expected(i):
   if i not in rows:
     return [0, 0, 0, 0, 0.0, 0.0, 0, -1, '', -1, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0]
-  r, d, f32 = rows[i], decoder['chosen'][i][1], decoder['f32']
+  r, d, f32 = rows[i], chosen[i], decoder['f32']
   return [r['UNK224'], r['UNK225'], r['UNK226'], r['UNK227'], f32(r['UNK228']), f32(r['UNK229']), r['UNK230'], r['UNK231'], '',
           d['trophy'], d['rotation'], d['free'], d['respawn'], d['scale'], d['heading'], d['pitch'], d['roll'], d['interactive']]
 
@@ -101,8 +101,9 @@ for name, extra in [('non_placeable_item_outside_known_patterns', "INSERT INTO i
   print(f'guard {name}: stopped before any change')
 
 adoption = open(os.path.join(here, '..', 'sql', 'itemHousingAdoption.sql')).read()
-adopted = ['placeable', 'placeable_scale_min', 'placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll',
-           'disable_placement_rotation', 'max_per_real_estate', 'housepet_file_name']
+adopted = ['placeable', 'placement_type', 'placeable_ignore_collisions', 'placeable_scale_min', 'placeable_scale_max',
+           'placeable_default_scale', 'placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll',
+           'disable_placement_rotation', 'disable_free_placement', 'max_per_real_estate', 'housepet_file_name']
 selectAll = 'SELECT id, ' + ', '.join(f'CAST(`{c}` AS DOUBLE)' if c in floats else f'`{c}`' for c in newColumns) + ' FROM items ORDER BY id'
 
 
@@ -114,16 +115,29 @@ fresh(); sql(migration); before = snapshot()
 sql('DROP TABLE IF EXISTS items_before; CREATE TABLE items_before AS SELECT * FROM items;')
 sql(adoption); after = snapshot()
 changed = lambda columns: sum(any(before[i][c] != after[i][c] for c in columns) for i in after)
-counts = dict(items=changed(adopted), masks=changed(['placeable']), scaleMinimums=changed(['placeable_scale_min']),
+counts = dict(items=changed(adopted), masks=changed(['placeable']), placementTypes=changed(['placement_type']),
+              ignoreCollisions=changed(['placeable_ignore_collisions']), scaleMinimums=changed(['placeable_scale_min']),
+              scaleMaximums=changed(['placeable_scale_max']), defaultScales=changed(['placeable_default_scale']),
               orientations=changed(['placeable_default_heading', 'placeable_default_pitch', 'placeable_default_roll']),
-              rotationLocks=changed(['disable_placement_rotation']), limits=changed(['max_per_real_estate']),
-              named=sum(after[i]['housepet_file_name'] != '' for i in after),
+              rotationLocks=changed(['disable_placement_rotation']), freePlacementLocks=changed(['disable_free_placement']),
+              limits=changed(['max_per_real_estate']), named=sum(after[i]['housepet_file_name'] != '' for i in after),
               newlyPlaceable=sum(before[i]['placeable'] == '0' and after[i]['placeable'] != '0' for i in after))
-assert counts == dict(items=11095, masks=10846, scaleMinimums=1365, orientations=100, rotationLocks=76, limits=24, named=568,
-                      newlyPlaceable=9119), f'adopted counts differ from those measured: {counts}'
+assert counts == dict(items=11082, masks=10809, placementTypes=8105, ignoreCollisions=1, scaleMinimums=9432, scaleMaximums=9091,
+                      defaultScales=9091, orientations=165, rotationLocks=301, freePlacementLocks=2, limits=43, named=568,
+                      newlyPlaceable=9090), f'adopted counts differ from those measured: {counts}'
 print(f"adoption: {counts['items']} items changed: {counts['masks']} masks ({counts['newlyPlaceable']} newly placeable), "
-      f"{counts['scaleMinimums']} scale minimums, {counts['orientations']} orientations, {counts['rotationLocks']} rotation locks, "
+      f"{counts['placementTypes']} placement types, {counts['ignoreCollisions']} ignore-collisions, {counts['scaleMinimums']} scale "
+      f"minimums, {counts['scaleMaximums']} maximums, {counts['defaultScales']} default scales, {counts['orientations']} "
+      f"orientations, {counts['rotationLocks']} rotation locks, {counts['freePlacementLocks']} free-placement locks, "
       f"{counts['limits']} limits; {counts['named']} NPC items named")
+backwards = [i for i in after if after[i]['placeable'] != '0'
+             and float(after[i]['placeable_scale_min']) > float(after[i]['placeable_scale_max'])]
+assert not backwards, f'{len(backwards)} placeable items hold a scale minimum above their maximum: {backwards[:20]}'
+print('adoption: no placeable item holds a scale minimum above its maximum (ITM-11)')
+scales = lambda i: (int(after[i]['placement_type']),) + tuple(round(float(after[i][c]), 4) for c in ('placeable_scale_min', 'placeable_scale_max', 'placeable_default_scale'))
+assert before[5506]['placeable'] == '0' and scales(5506) == (1, 0.1, 2.5, 1.0), after[5506]
+assert before[1748]['placeable'] == '0' and scales(1748) == (1, 0.1, 2.5, 1.0), after[1748]
+print("adoption: 5506 (a client record) and 1748 (items.txt alone) are type 1, scale 0.1 to 2.5, default 1 (ITM-11, ITM-12)")
 kept = [c['Field'] for c in schema if c['Field'] not in exportColumns[3:]] + [c for c in newColumns if c not in adopted]
 differing = sql('SELECT COUNT(*) FROM items a JOIN items_before b ON b.id = a.id WHERE NOT ('
                 + ' AND '.join(f'a.`{c}` <=> b.`{c}`' for c in kept) + ')').strip()

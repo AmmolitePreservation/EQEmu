@@ -1,10 +1,11 @@
 """Writes sql/itemHousingAdoption.sql, the migration that gives every Peridot item Live lists as placeable Live's housing values (ITM-1).
 
-Sources, from a livedumps clone: master/fields/itemDefinitions.tsv (the Live client's own item records, every housing field)
-and itemsTxt/itemsTxtExtract.tsv (MQ2LinkDB's items.txt: the placeable mask and house-pet name only). For an id in both,
-the client's record wins. Every Live id with a placeable mask is staged; each item in Peridot's table, whatever its own mask,
-takes from a client record the mask, scale minimum, default heading, pitch and roll, rotation lock, per-property limit and
-house-pet name, and from items.txt the mask and house-pet name; no other column changes. Every statement can be repeated.
+Sources, from a livedumps clone: master/fields/itemDefinitions.tsv (the Live client's own item records) and
+itemsTxt/itemsTxtExtract.tsv (MQ2LinkDB's items.txt, its housing fields decoded under the client's names). For an id in both,
+the client's record wins (ITM-11, ITM-12). Every Live id with a placeable mask is staged; each item in Peridot's table,
+whatever its own mask, takes the mask, placement type, ignore-collisions, scale range and default, default heading, pitch and
+roll, rotation and free-placement locks, per-property limit and house-pet name; no other column changes. A record whose scale
+minimum is above its maximum is refused. Every statement can be repeated.
 
 Usage: python makeItemHousingAdoptionSql.py --live <livedumps clone>
 """
@@ -12,14 +13,22 @@ import argparse, csv, math, os
 
 here = os.path.dirname(os.path.abspath(__file__))
 statementLimit = 15000
-capturedFields = [('placeable', 'INT(11) NOT NULL', 'Placeable', int), ('placeable_scale_min', 'FLOAT NOT NULL', 'PlaceableScaleRangeMin', float),
-                  ('placeable_default_heading', 'FLOAT NOT NULL', 'PlaceableDefHeading', float),
-                  ('placeable_default_pitch', 'FLOAT NOT NULL', 'PlaceableDefPitch', float),
-                  ('placeable_default_roll', 'FLOAT NOT NULL', 'PlaceableDefRoll', float),
-                  ('disable_placement_rotation', 'TINYINT(3) UNSIGNED NOT NULL', 'bDisablePlacementRotation', int),
-                  ('max_per_real_estate', 'INT(11) NOT NULL', 'MaxPerRealEstate', int),
-                  ('housepet_file_name', 'VARCHAR(31) NOT NULL', 'HousepetFileName', str)]
-listedFields = [('placeable', 'INT(11) NOT NULL', 'placeablebitfield', int), ('housepet_file_name', 'VARCHAR(31) NOT NULL', 'placeablenpcname', str)]
+# Each adopted column: its definition, the client record's field and the items.txt extract's column.
+adopted = [('placeable', 'INT(11) NOT NULL', 'Placeable', 'placeablebitfield', int),
+           ('placement_type', 'INT(11) NOT NULL', 'PlacementType', 'PlacementType', int),
+           ('placeable_ignore_collisions', 'TINYINT(3) UNSIGNED NOT NULL', 'bPlaceableIgnoreCollisions', 'bPlaceableIgnoreCollisions', int),
+           ('placeable_scale_min', 'FLOAT NOT NULL', 'PlaceableScaleRangeMin', 'PlaceableScaleRangeMin', float),
+           ('placeable_scale_max', 'FLOAT NOT NULL', 'PlaceableScaleRangeMax', 'PlaceableScaleRangeMax', float),
+           ('placeable_default_scale', 'FLOAT NOT NULL', 'PlaceableDefScale', 'PlaceableDefScale', float),
+           ('placeable_default_heading', 'FLOAT NOT NULL', 'PlaceableDefHeading', 'PlaceableDefHeading', float),
+           ('placeable_default_pitch', 'FLOAT NOT NULL', 'PlaceableDefPitch', 'PlaceableDefPitch', float),
+           ('placeable_default_roll', 'FLOAT NOT NULL', 'PlaceableDefRoll', 'PlaceableDefRoll', float),
+           ('disable_placement_rotation', 'TINYINT(3) UNSIGNED NOT NULL', 'bDisablePlacementRotation', 'bDisablePlacementRotation', int),
+           ('disable_free_placement', 'TINYINT(3) UNSIGNED NOT NULL', 'bDisableFreePlacement', 'bDisableFreePlacement', int),
+           ('max_per_real_estate', 'INT(11) NOT NULL', 'MaxPerRealEstate', 'MaxPerRealEstate', int),
+           ('housepet_file_name', 'VARCHAR(31) NOT NULL', 'HousepetFileName', 'placeablenpcname', str)]
+capturedFields = [(column, definition, client, kind) for column, definition, client, _, kind in adopted]
+listedFields = [(column, definition, extract, kind) for column, definition, _, extract, kind in adopted]
 
 
 def literal(value, kind, itemId, field):
@@ -38,10 +47,14 @@ def literal(value, kind, itemId, field):
 
 def stagedRows(rows, idColumn, fields):
   staged = []
+  source = {name: field for name, _, field, _ in fields}
   for row in rows:
     itemId = row[idColumn]
     if not itemId.isdigit():
       raise ValueError(f'item id {itemId!r} is not a number')
+    minimum, maximum = float(row[source['placeable_scale_min']]), float(row[source['placeable_scale_max']])
+    if minimum > maximum:
+      raise ValueError(f'item {itemId}: its scale minimum {minimum} is above its maximum {maximum}')
     staged.append(f"({itemId}, {', '.join(literal(row[source], kind, itemId, name) for name, _, source, kind in fields)})")
   return staged
 

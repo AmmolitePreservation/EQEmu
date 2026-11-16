@@ -5,6 +5,7 @@
 #include "../zonedb.h"
 
 #include <unordered_map>
+#include <vector>
 
 namespace housing {
   namespace {
@@ -60,6 +61,18 @@ namespace housing {
       tail.placeableDefaultRoll = Strings::ToFloat(row[17]);
       tail.interactiveObject = static_cast<uint8>(Strings::ToUnsignedInt(row[18]));
       tails[Strings::ToUnsignedInt(row[0])] = tail;
+    }
+    std::vector<uint32> backwards;
+    for (const auto &[id, tail] : tails) {
+      if (tail.placeableScaleMin > tail.placeableScaleMax) {
+        backwards.push_back(id);
+      }
+    }
+    if (!backwards.empty()) {
+      LogError("Housing: [{}] placeable items have a scale minimum above their maximum, so none of them could be placed: [{}]",
+               backwards.size(), Strings::Join(backwards, ", "));
+      tails.clear();
+      return false;
     }
     EQ::setItemHousingTailProvider(itemHousingTail);
     LogHousing("Loaded the housing tail of [{}] placeable items", tails.size());
