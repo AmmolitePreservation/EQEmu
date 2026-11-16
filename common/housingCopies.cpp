@@ -81,6 +81,13 @@ namespace housing {
     if (!instanceId) {
       throw std::runtime_error(fmt::format("every instance id up to [{}] is in use; property [{}] gets no copy", lastInstanceId, propertyId));
     }
+    // An id whose instance is gone can keep rows tied to it (Peridot's instance_list_player held a character on a deleted
+    // instance), and a copy that took the id would take them too. The copy starts as EQEmu's own DeleteInstance leaves an id.
+    auto stale = query(database, fmt::format("SELECT COUNT(*) FROM instance_list_player WHERE id = {}", *instanceId));
+    if (const uint32 staleCount = Strings::ToUnsignedInt(stale.begin()[0])) {
+      LogWarning("Housing: instance id [{}], taken for property [{}]'s copy, held [{}] player rows of an instance that no longer exists; they are cleared", *instanceId, propertyId, staleCount);
+    }
+    database.DeleteInstance(static_cast<uint16>(*instanceId));
     // never_expires with is_global 0: both set would route the zone's instance 0 to this copy (INT-13).
     query(database, fmt::format(
       "INSERT INTO instance_list (id, zone, version, is_global, start_time, duration, expire_at, never_expires, notes) VALUES ({}, {}, {}, 0, {}, 0, 0, 1, '{}')",
