@@ -249,7 +249,7 @@ bool PlaceSnapshot(Database &db, uint32 character_id, const ItemLayer::Owner &ow
 		}
 
 		auto aside = std::ranges::find_if(pending, [&](const SnapshotPlacement &p) { return p.current && PlaceOf(*p.current) != PlaceOf(transit); });
-		if (aside == pending.end() || occupied.contains(PlaceOf(transit)) || !ItemInstancesRepository::UpdateLocation(db, aside->row.guid, transit)) {
+		if (aside == pending.end() || occupied.contains(PlaceOf(transit)) || ItemInstancesRepository::UpdateLocation(db, aside->row.guid, transit) != 1) {
 			LogError("Restoring a snapshot of character [{}] could not place [{}] items", character_id, pending.size());
 			return false;
 		}
@@ -300,6 +300,11 @@ bool ItemLayer::SetCharges(Database &db, const ItemGUID &guid, int16 charges)
 	);
 	if (!results.Success()) {
 		LogError("Failed to set charges [{}] on guid [{} {} {}]", charges, guid.first, guid.second, guid.third);
+		return false;
+	}
+
+	if (results.RowsAffected() != 1) {
+		LogError("Refused to set charges [{}] on guid [{} {} {}]: no row in play has it", charges, guid.first, guid.second, guid.third);
 		return false;
 	}
 
@@ -372,9 +377,12 @@ bool ItemLayer::Save(SharedDatabase &db, EQ::ItemInstance &inst, const ItemLocat
 		if (!Issue(db, inst, location, *owner)) {
 			return false;
 		}
-	} else if (!ItemInstancesRepository::UpdateOne(db, RowFor(inst, location))) {
-		LogError("Failed to update {} at {}", Describe(inst), Describe(location));
-		return false;
+	} else {
+		const int written = ItemInstancesRepository::UpdateLive(db, RowFor(inst, location));
+		if (written != 1) {
+			LogError("{} {} at {}", written < 0 ? "Failed to update" : "Refused to write over a retired or unknown row:", Describe(inst), Describe(location));
+			return false;
+		}
 	}
 
 	if (!SaveChildren(db, inst, owner)) {
@@ -449,8 +457,9 @@ bool ItemLayer::Update(Database &db, const EQ::ItemInstance &inst, const ItemLoc
 		tree.emplace(db);
 	}
 
-	if (!ItemInstancesRepository::UpdateOne(db, RowFor(inst, location))) {
-		LogError("Failed to update {} at {}", Describe(inst), Describe(location));
+	const int written = ItemInstancesRepository::UpdateLive(db, RowFor(inst, location));
+	if (written != 1) {
+		LogError("{} {} at {}", written < 0 ? "Failed to update" : "Refused to write over a retired or unknown row:", Describe(inst), Describe(location));
 		return false;
 	}
 
@@ -464,8 +473,9 @@ bool ItemLayer::Update(Database &db, const EQ::ItemInstance &inst, const ItemLoc
 }
 bool ItemLayer::MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &location)
 {
-	if (!ItemInstancesRepository::UpdateLocation(db, guid, location)) {
-		LogError("Failed to move guid [{} {} {}] to {}", guid.first, guid.second, guid.third, Describe(location));
+	const int moved = ItemInstancesRepository::UpdateLocation(db, guid, location);
+	if (moved != 1) {
+		LogError("{} guid [{} {} {}] to {}", moved < 0 ? "Failed to move" : "Refused to move a retired or unknown row:", guid.first, guid.second, guid.third, Describe(location));
 		return false;
 	}
 
@@ -512,6 +522,41 @@ bool ItemLayer::MoveRows(Database &db, uint32 character_id, std::vector<RowMove>
 		occupied.erase(PlaceOf(aside->from));
 		occupied.insert(PlaceOf(transit));
 		aside->from = transit;
+	}
+
+	return true;
+}
+
+bool ItemLayer::Unretire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason)
+{
+	if (inst.HasGUID()) {
+		const auto &guid     = inst.GetGUID();
+		const int  returned = ItemInstancesRepository::Unretire(db, guid, reason);
+		if (returned < 0) {
+			LogError("Failed to put guid [{} {} {}] back in play", guid.first, guid.second, guid.third);
+			return false;
+		}
+
+		if (returned == 0) {
+			const auto row = ItemInstancesRepository::FindOne(db, guid);
+			if (!row || row->retirement_state) {
+				LogError(
+					"Refused to put guid [{} {} {}] back in play: it is {}, not retired as [{}]",
+					guid.first,
+					guid.second,
+					guid.third,
+					row ? fmt::format("retired as [{}]", ItemRetirementName(*row->retirement_state)) : std::string("unknown"),
+					ItemRetirementName(reason)
+				);
+				return false;
+			}
+		}
+	}
+
+	for (const auto &[index, child] : inst.m_contents) {
+		if (child && !Unretire(db, *child, reason)) {
+			return false;
+		}
 	}
 
 	return true;
