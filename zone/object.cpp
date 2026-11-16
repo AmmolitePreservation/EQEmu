@@ -27,6 +27,7 @@
 #include "quest_parser_collection.h"
 #include "worldserver.h"
 #include "zonedb.h"
+#include "housing/housingContainers.h"
 #include "../common/repositories/criteria/content_filter_criteria.h"
 #include "../common/events/player_event_logs.h"
 #include "../common/repositories/ground_spawns_repository.h"
@@ -472,6 +473,7 @@ void Object::Close() {
 		if (container) {
 			// Every content's return is one act.
 			DBcore::Transaction returns(database);
+			housing::returnReclaimedContents(user, this);
 			for (uint8 i = EQ::invbag::SLOT_BEGIN; i <= EQ::invbag::SLOT_END; i++) {
 				auto inst = container->PopItem(i);
 				if (inst) {

@@ -4,6 +4,8 @@
 
 #include "../../common/eq_packet_structs.h"
 #include "../../common/eqemu_logsys.h"
+#include "../../common/item_layer.h"
+#include "../../common/repositories/item_instances_repository.h"
 #include "../../common/strings.h"
 #include "../client.h"
 #include "../entity.h"
@@ -24,6 +26,7 @@ namespace housing {
     struct OpenContainer {
       std::unique_ptr<Object> object;
       uint32 recordId;
+      ItemGUID guid;
     };
 
     // At most one per player: the client refuses a second world container while one is open (0x4c19a0).
@@ -118,7 +121,7 @@ namespace housing {
     queueOpen(client, row, item);
     object->SendContents(client);
 
-    open[client] = OpenContainer{std::move(object), row.id};
+    open[client] = OpenContainer{std::move(object), row.id, row.guid};
     LogHousing("[{}] opened housing container record [{}] (item [{}])", client->GetCleanName(), row.id, row.item_id);
   }
 
@@ -133,6 +136,31 @@ namespace housing {
       return;
     }
     LogHousing("[{}]'s client opened housing container record [{}]", client->GetCleanName(), found->second.recordId);
+  }
+
+  // A deleted owner's reclaim retires a placed container with what lies in it before this zone hears of it (RCL-6). What
+  // the character using it has in it goes back to them at the close, as at every other close (Q28): put back in play here,
+  // then returned by Object::Close like any content.
+  void returnReclaimedContents(Client *user, Object *object) {
+    auto found = open.find(user);
+    if (found == open.end() || found->second.object.get() != object) {
+      return;
+    }
+    const auto container = ItemInstancesRepository::FindOne(database, found->second.guid);
+    if (!container || container->retirement_state != ItemRetirement::CharacterDeleted) {
+      return;
+    }
+    for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; ++index) {
+      const EQ::ItemInstance *content = object->GetItem(index);
+      if (!content || !content->HasGUID()) {
+        continue;
+      }
+      if (!ItemLayer::Unretire(database, *content, ItemRetirement::CharacterDeleted)) {
+        LogError("Housing: [{}]'s [{}] in housing container record [{}] could not be put back in play; its return is refused", user->GetCleanName(), ItemGUIDText(content->GetGUID()), found->second.recordId);
+        continue;
+      }
+      LogHousing("[{}] gets back [{}] (item [{}]) from housing container record [{}], retired with it by a deleted owner's reclaim", user->GetCleanName(), ItemGUIDText(content->GetGUID()), content->GetID(), found->second.recordId);
+    }
   }
 
   void closeContainersOf(uint32 recordId) {

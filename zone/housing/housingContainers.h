@@ -4,12 +4,14 @@
 #include "housingItems.h"
 
 class Client;
+class Object;
 
 namespace housing {
   bool isTradeskillContainer(uint32 itemId);
   void openContainer(Client *client, const PlacedItem &row);
   void closeContainersOf(uint32 recordId);
   void closeContainerOf(Client *client);
+  void returnReclaimedContents(Client *user, Object *object);
   void processContainers();
 }
 
