@@ -2130,7 +2130,7 @@ WHERE bot_spells_entries.spell_id = spells_new.id);
 		.condition = "not_empty",
 		.match = "",
 		.sql = R"(
--- A bot's equipment, each augment out of its parent's columns, from the bot owner's counter, staged and written as 9328
+-- A bot's equipment, each augment out of its parent's columns, from the bot owner's counter, staged and written as 9332
 -- writes a character's items.
 DROP TABLE IF EXISTS `bot_item_migration`;
 CREATE TABLE `bot_item_migration` (

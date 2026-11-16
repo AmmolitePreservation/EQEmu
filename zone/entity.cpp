@@ -1873,18 +1873,6 @@ Client *EntityList::GetClientByWID(uint32 iWID)
 	return nullptr;
 }
 
-Client *EntityList::GetClientByLSID(uint32 iLSID)
-{
-	auto it = client_list.begin();
-	while (it != client_list.end()) {
-		if (it->second->LSAccountID() == iLSID) {
-			return it->second;
-		}
-		++it;
-	}
-	return nullptr;
-}
-
 Bot* EntityList::GetRandomBot(const glm::vec3& location, float distance, Bot* exclude_bot)
 {
 	auto is_whole_zone = false;
@@ -2286,6 +2274,18 @@ Client *EntityList::GetClientByAccID(uint32 accid)
 		++it;
 	}
 	return nullptr;
+}
+
+std::vector<Client *> EntityList::GetClientsByAccountID(uint32 account_id)
+{
+	std::vector<Client *> clients;
+	for (const auto &e : client_list) {
+		if (e.second->AccountID() == account_id) {
+			clients.push_back(e.second);
+		}
+	}
+
+	return clients;
 }
 
 void EntityList::ChannelMessageFromWorld(const char *from, const char *to,

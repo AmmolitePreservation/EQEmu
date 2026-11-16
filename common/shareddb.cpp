@@ -79,13 +79,7 @@ SharedDatabase::~SharedDatabase() = default;
 
 bool SharedDatabase::SetHideMe(uint32 account_id, uint8 hideme)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.hideme = hideme ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"hideme", hideme ? "1" : "0"}});
 }
 
 uint8 SharedDatabase::GetGMSpeed(uint32 account_id)
@@ -100,35 +94,17 @@ uint8 SharedDatabase::GetGMSpeed(uint32 account_id)
 
 bool SharedDatabase::SetGMSpeed(uint32 account_id, uint8 gmspeed)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.gmspeed = gmspeed ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"gmspeed", gmspeed ? "1" : "0"}});
 }
 
 bool SharedDatabase::SetGMInvul(uint32 account_id, bool gminvul)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.invulnerable = gminvul ? 1 : 0;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"invulnerable", gminvul ? "1" : "0"}});
 }
 
 bool SharedDatabase::SetGMFlymode(uint32 account_id, uint8 flymode)
 {
-	auto a = AccountRepository::FindOne(*this, account_id);
-	if (a.id > 0) {
-		a.flymode = flymode;
-		AccountRepository::UpdateOne(*this, a);
-	}
-
-	return a.id > 0;
+	return AccountRepository::SetColumns(*this, account_id, {{"flymode", std::to_string(flymode)}});
 }
 
 uint32 SharedDatabase::GetTotalTimeEntitledOnAccount(uint32 AccountID) {
@@ -231,6 +207,10 @@ bool SharedDatabase::SaveInventory(Client *c, int16 slot_id)
 		return true;
 	}
 
+	if (EQ::InventoryProfile::IsSharedBankSlot(slot_id) && !ClaimSharedBankWrite(c->AccountID(), c->CharacterID(), slot_id)) {
+		return false;
+	}
+
 	if (slot_id == EQ::invslot::slotCursor) {
 		return SaveCursor(c);
 	}
@@ -327,14 +307,157 @@ int32 SharedDatabase::GetSharedPlatinum(uint32 account_id)
 	return Strings::ToInt(row[0]);
 }
 
-bool SharedDatabase::SetSharedPlatinum(uint32 account_id, int32 amount_to_add) {
-	const std::string query = StringFormat("UPDATE account SET sharedplat = sharedplat + %i WHERE id = %i", amount_to_add, account_id);
+bool SharedDatabase::AddSharedPlatinum(uint32 account_id, int64 amount)
+{
+	if (amount == 0) {
+		return true;
+	}
+
+	const auto query = amount < 0 ?
+		fmt::format(
+			"UPDATE account SET sharedplat = sharedplat - {} WHERE id = {} AND sharedplat >= {}",
+			-amount,
+			account_id,
+			-amount
+		) :
+		fmt::format("UPDATE account SET sharedplat = sharedplat + {} WHERE id = {}", amount, account_id);
+
 	const auto results = QueryDatabase(query);
-	if (!results.Success()) {
+
+	return results.Success() && results.RowsAffected() == 1;
+}
+
+namespace {
+	// Another process holds the lock for one action, a few milliseconds, so waiting lets both actions go through.
+	const int shared_bank_wait_seconds = 2;
+
+	// Named locks are per database server, so the name carries the database's.
+	std::string SharedBankLockName(uint32 account_id)
+	{
+		return fmt::format("CONCAT(DATABASE(), '.shared_bank.', {})", account_id);
+	}
+}
+
+bool SharedDatabase::TakeSharedBank(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold != m_shared_bank_holds.end()) {
+		if (hold->second.character_id != character_id) {
+			return false;
+		}
+
+		++hold->second.depth;
+		return true;
+	}
+
+	auto results = QueryDatabase(
+		fmt::format("SELECT GET_LOCK({}, {})", SharedBankLockName(account_id), shared_bank_wait_seconds)
+	);
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0]) {
+		LogError("The shared bank lock of account [{}] could not be asked for", account_id);
+		return false;
+	}
+
+	if (Strings::ToInt(results.begin()[0]) != 1) {
+		return false;
+	}
+
+	m_shared_bank_holds[account_id] = SharedBankHold{character_id, 1, false};
+	LogInfo("Shared bank of account [{}] taken by character [{}]", account_id, character_id);
+
+	return true;
+}
+
+bool SharedDatabase::ReleaseSharedBank(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold == m_shared_bank_holds.end() || hold->second.character_id != character_id) {
+		LogError("Character [{}] released the shared bank of account [{}] without holding it", character_id, account_id);
+		return false;
+	}
+
+	if (--hold->second.depth > 0) {
+		return false;
+	}
+
+	const bool changed = hold->second.changed;
+	m_shared_bank_holds.erase(hold);
+
+	auto results = QueryDatabase(fmt::format("SELECT RELEASE_LOCK({})", SharedBankLockName(account_id)));
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0] || Strings::ToInt(results.begin()[0]) != 1) {
+		LogError(
+			"The shared bank lock of account [{}] was not this connection's when character [{}] released it",
+			account_id,
+			character_id
+		);
+		return changed;
+	}
+
+	LogInfo("Shared bank of account [{}] released by character [{}]", account_id, character_id);
+
+	return changed;
+}
+
+bool SharedDatabase::IsSharedBankHolder(uint32 account_id, uint32 character_id)
+{
+	auto hold = m_shared_bank_holds.find(account_id);
+	if (hold == m_shared_bank_holds.end() || hold->second.character_id != character_id) {
+		return false;
+	}
+
+	// A reconnect of this process's database connection would have dropped the lock.
+	auto results = QueryDatabase(fmt::format("SELECT IS_USED_LOCK({}) = CONNECTION_ID()", SharedBankLockName(account_id)));
+	if (!results.Success() || results.RowCount() != 1 || !results.begin()[0] || Strings::ToInt(results.begin()[0]) != 1) {
+		LogError(
+			"Character [{}] holds the shared bank of account [{}] here, but this connection no longer has its lock",
+			character_id,
+			account_id
+		);
 		return false;
 	}
 
 	return true;
+}
+
+bool SharedDatabase::ClaimSharedBankWrite(uint32 account_id, uint32 character_id, int16 slot_id)
+{
+	if (!IsSharedBankHolder(account_id, character_id)) {
+		LogError(
+			"Character [{}] wrote shared bank slot [{}] of account [{}] without holding the shared bank; refused",
+			character_id,
+			slot_id,
+			account_id
+		);
+		return false;
+	}
+
+	m_shared_bank_holds[account_id].changed = true;
+	return true;
+}
+
+void SharedDatabase::PrepareLoadedItem(EQ::ItemInstance &inst, int16 slot_id, const std::map<uint32, uint32> &recast_timestamps)
+{
+	const auto *item = inst.GetItem();
+
+	if (item->Attuneable && EQ::ValueWithin(slot_id, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+		inst.SetAttuned(true);
+	}
+
+	if (item->RecastDelay) {
+		if (item->RecastType != RECAST_TYPE_UNLINKED_ITEM && recast_timestamps.count(item->RecastType)) {
+			inst.SetRecastTimestamp(recast_timestamps.at(item->RecastType));
+		} else if (item->RecastType == RECAST_TYPE_UNLINKED_ITEM && recast_timestamps.count(item->ID)) {
+			inst.SetRecastTimestamp(recast_timestamps.at(item->ID));
+		} else {
+			inst.SetRecastTimestamp(0);
+		}
+	}
+
+	if (item->EvolvingItem && EQ::ValueWithin(slot_id, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
+		inst.SetEvolveEquipped(true);
+	}
+
+	EvolvingItemsManager::Instance()->LoadRecords(*this, inst);
 }
 
 bool SharedDatabase::SetStartingItems(
@@ -480,27 +603,7 @@ bool SharedDatabase::GetInventory(Client *c)
 			}
 		}
 
-		if (item->Attuneable && EQ::ValueWithin(slot_id, EQ::invslot::EQUIPMENT_BEGIN, EQ::invslot::EQUIPMENT_END)) {
-			inst->SetAttuned(true);
-		}
-
-		if (item->RecastDelay) {
-			if (item->RecastType != RECAST_TYPE_UNLINKED_ITEM && timestamps.count(item->RecastType)) {
-				inst->SetRecastTimestamp(timestamps.at(item->RecastType));
-			} else if (item->RecastType == RECAST_TYPE_UNLINKED_ITEM && timestamps.count(item->ID)) {
-				inst->SetRecastTimestamp(timestamps.at(item->ID));
-			} else {
-				inst->SetRecastTimestamp(0);
-			}
-		}
-
-		if (item->EvolvingItem) {
-			if (slot_id >= EQ::invslot::EQUIPMENT_BEGIN && slot_id <= EQ::invslot::EQUIPMENT_END) {
-				inst->SetEvolveEquipped(true);
-			}
-
-			EvolvingItemsManager::Instance()->LoadRecord(*this, *inst);
-		}
+		PrepareLoadedItem(*inst, slot_id, timestamps);
 
 		if (slot_id == EQ::invslot::slotCursor) {
 			cursor.push_back(h);

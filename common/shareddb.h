@@ -97,8 +97,28 @@ public:
 	// one item, one place refuses the second of two plain updates.
 	bool SaveSwap(Client *c, int16 slot_a, int16 slot_b);
 	bool VerifyInventory(uint32 account_id, int16 slot_id, const EQ::ItemInstance *inst);
+
+	/**
+	 * Several sessions of one account may be in the world at once; one of them at a time holds the account's
+	 * shared bank, for one shared bank action, and only the holder writes it. The hold is a named lock on this
+	 * process's database connection, so it ends if the process dies, and a map within this process, since
+	 * sessions in one process share the connection. Taking again while holding nests.
+	 */
+	bool TakeSharedBank(uint32 account_id, uint32 character_id);
+	// True when this release ends the hold and the shared bank was written during it.
+	bool ReleaseSharedBank(uint32 account_id, uint32 character_id);
+	bool IsSharedBankHolder(uint32 account_id, uint32 character_id);
+	// A write to a shared bank slot is the holder's alone; it is refused with an error otherwise, and marks the hold
+	// as having changed the shared bank.
+	bool ClaimSharedBankWrite(uint32 account_id, uint32 character_id, int16 slot_id);
+	// What a loaded item takes from where it lands: attunement in a worn slot, its recast time, its evolving record.
+	void PrepareLoadedItem(EQ::ItemInstance &inst, int16 slot_id, const std::map<uint32, uint32> &recast_timestamps);
+
 	int32 GetSharedPlatinum(uint32 account_id);
-	bool SetSharedPlatinum(uint32 account_id, int32 amount_to_add);
+	/**
+	 * Adds to the account's shared platinum; a negative amount succeeds only if the account holds at least that much.
+	 */
+	bool AddSharedPlatinum(uint32 account_id, int64 amount);
 	bool GetInventory(Client* c);
 	std::map<uint32, uint32> GetItemRecastTimestamps(uint32 char_id);
 	uint32 GetItemRecastTimestamp(uint32 char_id, uint32 recast_type);
@@ -196,6 +216,15 @@ public:
 protected:
 	uint32 m_shared_items_count = 0;
 	uint32 m_shared_spells_count = 0;
+
+private:
+	struct SharedBankHold {
+		uint32 character_id;
+		uint32 depth;
+		bool   changed;
+	};
+	// By account.
+	std::map<uint32, SharedBankHold> m_shared_bank_holds;
 };
 
 #endif /*SHAREDDB_H_*/

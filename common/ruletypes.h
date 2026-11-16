@@ -337,6 +337,7 @@ RULE_BOOL (World, IPLimitDisconnectAll, false, "Disconnect all current clients b
 RULE_INT (World, TellQueueSize, 20, "Maximum tell queue size")
 RULE_BOOL(World, StartZoneSameAsBindOnCreation, true, "Should the start zone always be the same location as your bind?")
 RULE_BOOL(World, EnforceCharacterLimitAtLogin, false, "Enforce the limit for characters that are online at login")
+RULE_INT(World, CharactersPerAccount, 12, "How many characters an account may hold: the character select lists that many and the client may create up to it")
 RULE_BOOL(World, EnableDevTools, true, "Enable or Disable the Developer Tools globally (Most of the time you want this enabled)")
 RULE_BOOL(World, EnableChecksumVerification, false, "Enable or Disable the Checksum Verification for eqgame.exe and spells_us.txt")
 RULE_INT(World, MaximumQuestErrors, 30, "Changes the maximum number of quest errors that can be displayed in #questerrors, default is 30")
@@ -353,7 +354,7 @@ RULE_STRING(World, CustomFilesUrl, "github.com/knervous/eqnexus/releases", "URL 
 RULE_INT(World, CustomFilesAdminLevel, 20, "Admin level at which custom file key is not required when CustomFilesKey is specified")
 RULE_BOOL(World, RealTimeCalculateGuilds, false, "(Temp feature flag) If true, guilds will be calculated in real time instead of at zone boot. This is a performance hit but allows for more dynamic guilds.")
 RULE_INT(World, WorldID, 0, "This world's id, 0 to 65535, stamped on every character at creation as its origin and carried in the GUIDs of the items it stamps. Changing it never restamps existing characters. Two worlds whose characters may meet need different ids")
-RULE_STRING(World, RecoverableItemStates, "destroyed", "Comma-delimited retirement states whose items a merchant's Recovery tab lists for recovery. Names: destroyed, sold, consumed, expired, decayed, corpseDeleted, characterDeleted, removedByGM, rolledBack, petDonated, botDonated, missingItemRow, unplaceable. Empty hides the tab. stacked is refused (the units live on in the stack they joined) and an unknown name stops the zone from booting. The tab lists a state's rows whose last holder was the character's inventory, cursor or bank or one of the character's corpses. Live recovers destroyed items and not sold ones.")
+RULE_STRING(World, RecoverableItemStates, "destroyed", "Comma-delimited retirement states whose items a merchant's Recovery tab lists for recovery. Names: destroyed, sold, consumed, expired, decayed, corpseDeleted, characterDeleted, removedByGM, rolledBack, petDonated, botDonated, missingItemRow, unplaceable. Empty hides the tab. stacked and evolved are refused (the units live on in the stack they joined; the item lives on at its new level) and an unknown name stops the zone from booting. The tab lists a state's rows whose last holder was the character's inventory, cursor or bank or one of the character's corpses. Live recovers destroyed items and not sold ones.")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Zone)

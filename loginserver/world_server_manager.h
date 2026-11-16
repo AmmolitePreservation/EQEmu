@@ -16,7 +16,8 @@ public:
 	void SendUserLoginToWorldRequest(
 		unsigned int server_id,
 		unsigned int client_account_id,
-		const std::string &client_loginserver
+		const std::string &client_loginserver,
+		uint32 session_id
 	);
 	std::unique_ptr<EQApplicationPacket> CreateServerListPacket(Client *client, uint32 sequence);
 	bool DoesServerExist(const std::string &s, const std::string &server_short_name, WorldServer *ignore = nullptr);

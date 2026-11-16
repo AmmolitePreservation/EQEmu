@@ -24,7 +24,6 @@ namespace housing {
     struct OpenContainer {
       std::unique_ptr<Object> object;
       uint32 recordId;
-      bool confirmed = false;
     };
 
     // At most one per player: the client refuses a second world container while one is open (0x4c19a0).
@@ -68,33 +67,7 @@ namespace housing {
     return item && item->IsClassBag() && !isStorageBag(item->BagType);
   }
 
-  // A transient Object holds the container item while it is open, so combines run through EQEmu's own code. What is put in is
-  // saved as the placed item's contents, so a crash leaves it there for the next open (serverPlan.md, housing tradeskill containers).
-  void openContainer(Client *client, const PlacedItem &row) {
-    auto found = open.find(client);
-    if (found != open.end()) {
-      forget(found);
-    }
-    if (client->GetTradeskillObject()) {
-      LogHousing("[{}] already has a world container open; record [{}] stays closed", client->GetCleanName(), row.id);
-      return;
-    }
-    auto instance = itemInstance(row);
-    if (!instance || !isTradeskillContainer(row.item_id)) {
-      throw std::runtime_error(fmt::format("record [{}] holds item [{}], which is not a tradeskill container", row.id, row.item_id));
-    }
-    const EQ::ItemData *item = instance->GetItem();
-    Object_Struct data{};
-    data.x = row.x;
-    data.y = row.y;
-    data.z = row.z;
-    data.heading = row.heading;
-    data.size = row.scale;
-    auto object = std::make_unique<Object>(0, item->BagType, item->Icon, data, instance.get(), true);
-    object->SetTransient(true);
-    object->SetUser(client);
-    client->SetTradeskillObject(object.get());
-
+  void queueOpen(Client *client, const PlacedItem &row, const EQ::ItemData *item) {
     ClickObjectActionHousing_Struct housing{};
     housing.action.player_id = client->GetID();
     housing.action.drop_id = 0;
@@ -107,11 +80,43 @@ namespace housing {
     EQApplicationPacket packet(OP_ClickObjectAction, sizeof(housing));
     memcpy(packet.pBuffer, &housing, sizeof(housing));
     client->QueuePacket(&packet);
-    for (uint8 index = EQ::invbag::SLOT_BEGIN; index <= EQ::invbag::SLOT_END; index++) {
-      if (const EQ::ItemInstance *content = object->GetItem(index)) {
-        client->SendItemPacket(index, content, ItemPacketWorldContainer);
-      }
+  }
+
+  // A transient Object holds the container item while it is open, so combines run through EQEmu's own code. What is put in is
+  // saved as the placed item's contents, so a crash leaves it there for the next open (serverPlan.md, housing tradeskill containers).
+  void openContainer(Client *client, const PlacedItem &row) {
+    auto instance = itemInstance(row);
+    if (!instance || !isTradeskillContainer(row.item_id)) {
+      throw std::runtime_error(fmt::format("record [{}] holds item [{}], which is not a tradeskill container", row.id, row.item_id));
     }
+    const EQ::ItemData *item = instance->GetItem();
+
+    // An entry the client closed itself, which processContainers has not cleared yet.
+    auto found = open.find(client);
+    if (found != open.end() && client->GetTradeskillObject() != found->second.object.get()) {
+      forget(found);
+    }
+    // The client refuses a second world container itself (0x4c19a0, eqstr 1443) and no server message closes the open
+    // one, so the open goes out for the client to answer and nothing here changes.
+    if (client->GetTradeskillObject()) {
+      LogHousing("[{}] already has a world container open; record [{}] stays closed", client->GetCleanName(), row.id);
+      queueOpen(client, row, item);
+      return;
+    }
+
+    Object_Struct data{};
+    data.x = row.x;
+    data.y = row.y;
+    data.z = row.z;
+    data.heading = row.heading;
+    data.size = row.scale;
+    auto object = std::make_unique<Object>(0, item->BagType, item->Icon, data, instance.get(), true);
+    object->SetTransient(true);
+    object->SetUser(client);
+    client->SetTradeskillObject(object.get());
+
+    queueOpen(client, row, item);
+    object->SendContents(client);
 
     open[client] = OpenContainer{std::move(object), row.id};
     LogHousing("[{}] opened housing container record [{}] (item [{}])", client->GetCleanName(), row.id, row.item_id);
@@ -127,7 +132,6 @@ namespace housing {
     if ((locationType & 0xFFFF) != worldLocationType) {
       return;
     }
-    found->second.confirmed = true;
     LogHousing("[{}]'s client opened housing container record [{}]", client->GetCleanName(), found->second.recordId);
   }
 

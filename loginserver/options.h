@@ -30,6 +30,15 @@ public:
 	inline std::string GetEQEmuLoginServerAddress() const { return m_eqemu_loginserver_address; }
 	inline void DefaultLoginServerName(const std::string &v) { m_default_loginserver_name = v; }
 	inline std::string GetDefaultLoginServerName() const { return m_default_loginserver_name; }
+	inline void SiteLoginCheck(const std::string &url, const std::string &token)
+	{
+		m_site_login_check_url   = url;
+		m_site_login_check_token = token;
+	}
+	// The ammolite site checks password logins (site_login_check.h) while its address is set.
+	inline bool IsSiteLoginCheckEnabled() const { return !m_site_login_check_url.empty(); }
+	inline std::string GetSiteLoginCheckURL() const { return m_site_login_check_url; }
+	inline std::string GetSiteLoginCheckToken() const { return m_site_login_check_token; }
 	inline bool IsShowPlayerCountEnabled() const { return m_show_player_count; }
 	inline void SetShowPlayerCount(bool show_player_count) { show_player_count = show_player_count; }
 	inline bool IsWorldDevTestServersListBottom() const { return m_world_dev_list_bottom; }
@@ -50,6 +59,8 @@ private:
 	int         m_max_expansions_mask;
 	std::string m_eqemu_loginserver_address;
 	std::string m_default_loginserver_name;
+	std::string m_site_login_check_url;
+	std::string m_site_login_check_token;
 };
 
 

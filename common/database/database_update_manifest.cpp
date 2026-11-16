@@ -7182,7 +7182,19 @@ ALTER TABLE `bug_reports` DROP COLUMN `client_version_id`, DROP COLUMN `client_v
 		.content_schema_update = true
 	},
 	ManifestEntry{
-		.version = 9328,
+		.version = 9331,
+		.description = "2026_11_15_account_names_of_64.sql",
+		.check = "SHOW COLUMNS FROM `account` LIKE 'name'",
+		.condition = "contains",
+		.match = "varchar(30)",
+		.sql = R"(
+ALTER TABLE `account` MODIFY COLUMN `name` varchar(64) NOT NULL DEFAULT '';
+ALTER TABLE `petitions` MODIFY COLUMN `accountname` varchar(64) NOT NULL DEFAULT '';
+		)",
+		.content_schema_update = false
+	},
+	ManifestEntry{
+		.version = 9332,
 		.description = "2026_10_26_item_instances.sql",
 		.check = "SHOW TABLES LIKE 'item_instances'",
 		.condition = "empty",
@@ -7207,7 +7219,7 @@ CREATE TABLE `item_instances` (
 	`parent_guid_second` INT(10) UNSIGNED NULL DEFAULT NULL,
 	`parent_guid_third` INT(10) UNSIGNED NULL DEFAULT NULL,
 	`parent_index` SMALLINT(5) UNSIGNED NULL DEFAULT NULL,
-	`retirement_state` ENUM('destroyed', 'sold', 'stacked', 'consumed', 'expired', 'decayed', 'corpseDeleted', 'characterDeleted', 'removedByGM', 'rolledBack', 'petDonated', 'botDonated', 'missingItemRow', 'unplaceable') NULL DEFAULT NULL,
+	`retirement_state` ENUM('destroyed', 'sold', 'stacked', 'consumed', 'expired', 'decayed', 'corpseDeleted', 'characterDeleted', 'removedByGM', 'rolledBack', 'petDonated', 'botDonated', 'missingItemRow', 'unplaceable', 'evolved') NULL DEFAULT NULL,
 	`retired_at` DATETIME NULL DEFAULT NULL,
 	`held_slot` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `slot`, NULL)) PERSISTENT,
 	`held_parent_index` SMALLINT(5) UNSIGNED AS (IF(`retirement_state` IS NULL, `parent_index`, NULL)) PERSISTENT,
@@ -7240,7 +7252,7 @@ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'item_instances rows are never delete
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9329,
+		.version = 9333,
 		.description = "2026_10_26_character_data_origin_world_id.sql",
 		.check = "SHOW COLUMNS FROM `character_data` LIKE 'origin_world_id'",
 		.condition = "empty",
@@ -7252,7 +7264,7 @@ ALTER TABLE `character_data`
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9330,
+		.version = 9334,
 		.description = "2026_10_31_item_instances_migration.sql",
 		.check = "SHOW TABLES LIKE 'inventory'",
 		.condition = "not_empty",
@@ -7866,13 +7878,20 @@ ALTER TABLE `character_parcels`
 	DROP COLUMN `aug_slot_6`,
 	DROP COLUMN `quantity`,
 	ADD CONSTRAINT `character_parcels_item_or_money` CHECK ((`guid_first` IS NULL) <> (`money` IS NULL));
+UPDATE `character_evolving_items` SET `activated` = 0 WHERE `activated` IS NULL;
+UPDATE `character_evolving_items` SET `current_amount` = 0 WHERE `current_amount` IS NULL;
 ALTER TABLE `character_evolving_items`
 	DROP COLUMN `character_id`,
 	DROP COLUMN `item_id`,
 	DROP COLUMN `deleted_at`,
+	DROP COLUMN `equipped`,
+	DROP COLUMN `progression`,
+	DROP COLUMN `final_item_id`,
 	MODIFY COLUMN `guid_first` INT(10) UNSIGNED NOT NULL,
 	MODIFY COLUMN `guid_second` INT(10) UNSIGNED NOT NULL,
-	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL;
+	MODIFY COLUMN `guid_third` INT(10) UNSIGNED NOT NULL,
+	MODIFY COLUMN `activated` TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+	MODIFY COLUMN `current_amount` BIGINT(20) NOT NULL DEFAULT 0;
 DROP TABLE `inventory`;
 DROP TABLE `sharedbank`;
 DROP TABLE `character_corpse_items`;

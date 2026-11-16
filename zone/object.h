@@ -149,6 +149,7 @@ public:
 	bool IsGroundSpawn() { return m_ground_spawn; }
 	// Event handlers
 	bool HandleClick(Client* sender, const ClickObject_Struct* click_object);
+	void SendContents(Client* client);
 	void Close();
 	void Delete(bool reset_state=false); // Object itself
 	static void HandleCombine(Client* user, const NewCombine_Struct* in_combine, Object *worldo);

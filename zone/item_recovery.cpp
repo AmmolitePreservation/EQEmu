@@ -30,6 +30,11 @@ bool ItemRecovery::LoadRules(Zone &zone)
 			return false;
 		}
 
+		if (*state == ItemRetirement::Evolved) {
+			LogError("Rule World:RecoverableItemStates names evolved, whose item lives on at its new level and cannot be recovered");
+			return false;
+		}
+
 		states.push_back(*state);
 	}
 

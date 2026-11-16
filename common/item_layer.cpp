@@ -1,5 +1,6 @@
 #include "item_layer.h"
 #include "eqemu_logsys.h"
+#include "evolving_items.h"
 #include "misc_functions.h"
 #include "repositories/character_data_repository.h"
 #include "repositories/inventory_snapshots_repository.h"
@@ -471,6 +472,51 @@ bool ItemLayer::MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &
 	return true;
 }
 
+bool ItemLayer::MoveRows(Database &db, uint32 character_id, std::vector<RowMove> moves)
+{
+	std::set<std::string> occupied;
+	for (const auto &move : moves) {
+		occupied.insert(PlaceOf(move.from));
+	}
+
+	const auto transit = ItemLocation::InTransit(character_id);
+	while (!moves.empty()) {
+		bool placed = false;
+		for (auto move = moves.begin(); move != moves.end();) {
+			const auto target = PlaceOf(move->to);
+			if (PlaceOf(move->from) != target && occupied.contains(target)) {
+				++move;
+				continue;
+			}
+
+			if (!MoveRow(db, move->guid, move->to)) {
+				return false;
+			}
+
+			occupied.erase(PlaceOf(move->from));
+			occupied.insert(target);
+			move   = moves.erase(move);
+			placed = true;
+		}
+
+		if (placed) {
+			continue;
+		}
+
+		auto aside = std::ranges::find_if(moves, [&](const RowMove &move) { return PlaceOf(move.from) != PlaceOf(transit); });
+		if (aside == moves.end() || occupied.contains(PlaceOf(transit)) || !MoveRow(db, aside->guid, transit)) {
+			LogError("Could not move [{}] rows of character [{}] that wait on each other", moves.size(), character_id);
+			return false;
+		}
+
+		occupied.erase(PlaceOf(aside->from));
+		occupied.insert(PlaceOf(transit));
+		aside->from = transit;
+	}
+
+	return true;
+}
+
 bool ItemLayer::Retire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason)
 {
 	if (!inst.HasGUID()) {
@@ -590,6 +636,29 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 			fmt::arg("holder", new_holder_id)
 		),
 	};
+	const size_t item_rows_statement = statements.size() - 1;
+
+	// The rows that follow an item under its GUID come along with it: its evolving record and, for a parcel, its row
+	// in the new holder's mailbox.
+	statements.push_back(
+		fmt::format(
+			"INSERT INTO character_evolving_items (guid_first, guid_second, guid_third, activated, current_amount) "
+			"SELECT {first}, {second}, m.n, e.activated, e.current_amount FROM character_evolving_items e "
+			"JOIN item_copy_map m ON e.guid_first = m.f AND e.guid_second = m.s AND e.guid_third = m.t",
+			fmt::arg("first", issuer.character_id),
+			fmt::arg("second", issuer.origin_world_id)
+		)
+	);
+	statements.push_back(
+		fmt::format(
+			"INSERT INTO character_parcels (char_id, guid_first, guid_second, guid_third, money, slot_id, from_name, note, sent_date) "
+			"SELECT {holder}, {first}, {second}, m.n, p.money, p.slot_id, p.from_name, p.note, p.sent_date FROM character_parcels p "
+			"JOIN item_copy_map m ON p.guid_first = m.f AND p.guid_second = m.s AND p.guid_third = m.t",
+			fmt::arg("first", issuer.character_id),
+			fmt::arg("second", issuer.origin_world_id),
+			fmt::arg("holder", new_holder_id)
+		)
+	);
 
 	int copied = 0;
 	for (size_t i = 0; i < statements.size(); ++i) {
@@ -600,7 +669,7 @@ int ItemLayer::CopyRows(Database &db, const std::string &holder_filter, const Ow
 			return -1;
 		}
 
-		if (i == statements.size() - 1) {
+		if (i == item_rows_statement) {
 			copied = static_cast<int>(results.RowsAffected());
 		}
 	}
@@ -658,7 +727,7 @@ bool Holds(uint32 parent_class, uint32 parent_bag_slots, uint32 child_type, uint
 
 // A row whose item number content does not have retires missingItemRow, a row its parent cannot hold (past a bag's last
 // slot, or under a non-bag without being an augment in a socket) retires unplaceable, and so do the rows under either.
-static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemData *item, const ItemInstancesRepository::ItemInstances &row)
+static EQ::ItemInstance *Instantiate(Database &db, SharedDatabase &content_db, const EQ::ItemData *item, const ItemInstancesRepository::ItemInstances &row)
 {
 	auto *inst = content_db.CreateBaseItem(item, row.charges);
 	if (!inst) {
@@ -666,6 +735,9 @@ static EQ::ItemInstance *Instantiate(SharedDatabase &content_db, const EQ::ItemD
 	}
 
 	ItemLayer::AssignGUID(*inst, row.guid);
+	if (item->EvolvingItem) {
+		EvolvingItemsManager::Instance()->FindRecord(db, *inst);
+	}
 	if (!row.custom_data.empty()) {
 		inst->SetCustomDataString(row.custom_data);
 	}
@@ -757,7 +829,7 @@ std::vector<ItemLayer::Held> ItemLayer::Load(Database &db, SharedDatabase &conte
 			}
 		}
 
-		auto *inst = Instantiate(content_db, item, row);
+		auto *inst = Instantiate(db, content_db, item, row);
 		if (!inst) {
 			continue;
 		}
@@ -810,7 +882,7 @@ std::vector<ItemLayer::Recoverable> ItemLayer::LoadRecoverable(Database &db, Sha
 			continue;
 		}
 
-		auto *inst = Instantiate(content_db, item, row);
+		auto *inst = Instantiate(db, content_db, item, row);
 		if (!inst) {
 			left_out.insert(key);
 			continue;

@@ -97,15 +97,74 @@ public:
 
 	static bool SetAutoLoginCharacterNameByAccountID(Database& db, const uint32 account_id, const std::string& character_name)
 	{
-		auto e = AccountRepository::FindOne(db, account_id);
+		return SetColumns(db, account_id, {{"auto_login_charname", character_name}});
+	}
 
-		if (!e.id) {
-			return false;
+	/**
+	 * Account rows are written column by column, never with UpdateOne: several sessions of one account write the row
+	 * from different zone processes, and UpdateOne writes every column from a copy read moments earlier, putting
+	 * back what another session changed in between (shared platinum, karma).
+	 */
+	static bool SetColumns(
+		Database& db,
+		const uint32 account_id,
+		const std::vector<std::pair<std::string, std::string>>& values
+	)
+	{
+		std::vector<std::string> assignments;
+		for (const auto& [column, value] : values) {
+			assignments.emplace_back(fmt::format("`{}` = '{}'", column, Strings::Escape(value)));
 		}
 
-		e.auto_login_charname = character_name;
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE `{}` SET {} WHERE `{}` = {}",
+				TableName(),
+				Strings::Implode(", ", assignments),
+				PrimaryKey(),
+				account_id
+			)
+		);
 
-		return AccountRepository::UpdateOne(db, e);
+		return results.Success();
+	}
+
+	static bool SetSuspension(
+		Database& db,
+		const uint32 account_id,
+		const int16 status,
+		const time_t suspended_until,
+		const std::string& reason
+	)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE `{}` SET `status` = {}, `suspendeduntil` = FROM_UNIXTIME({}), `suspend_reason` = '{}' WHERE `{}` = {}",
+				TableName(),
+				status,
+				suspended_until > 0 ? std::to_string(suspended_until) : "null",
+				Strings::Escape(reason),
+				PrimaryKey(),
+				account_id
+			)
+		);
+
+		return results.Success();
+	}
+
+	static bool AddKarma(Database& db, const uint32 account_id, const uint32 amount)
+	{
+		auto results = db.QueryDatabase(
+			fmt::format(
+				"UPDATE `{}` SET `karma` = `karma` + {} WHERE `{}` = {}",
+				TableName(),
+				amount,
+				PrimaryKey(),
+				account_id
+			)
+		);
+
+		return results.Success();
 	}
 };
 

@@ -2,11 +2,17 @@
 #include "login_server.h"
 #include "encryption.h"
 #include "account_management.h"
+#include "site_login_check.h"
 
 extern LoginServer server;
 
+namespace {
+	uint32 next_session_id = 1;
+}
+
 Client::Client(std::shared_ptr<EQStreamInterface> c, LSClientVersion v)
 {
+	m_session_id = next_session_id++;
 	m_connection              = c;
 	m_client_version          = v;
 	m_client_status           = cs_not_sent_session_ready;
@@ -202,6 +208,11 @@ void Client::HandleLogin(const char *data, unsigned int size)
 
 	ParseAccountString(user, user, db_loginserver);
 
+	if (server.options.IsSiteLoginCheckEnabled()) {
+		HandleSiteCheckedLogin(user, cred);
+		return;
+	}
+
 	LoginAccountContext c = {};
 	c.username           = user;
 	c.password           = cred;
@@ -240,6 +251,48 @@ void Client::HandleLogin(const char *data, unsigned int size)
 	AttemptLoginAccountCreation(c);
 }
 
+void Client::HandleSiteCheckedLogin(const std::string &username, const std::string &password)
+{
+	in_addr in{};
+	in.s_addr = m_connection->GetRemoteIP();
+	const std::string player_address = inet_ntoa(in);
+
+	SiteLoginVerdict verdict;
+	try {
+		verdict = CheckLoginWithSite(
+			server.options.GetSiteLoginCheckURL(),
+			server.options.GetSiteLoginCheckToken(),
+			username,
+			password,
+			player_address
+		);
+	}
+	catch (const std::exception &e) {
+		LogError("Site login check for [{}] failed: [{}]", username, e.what());
+		SendFailedLogin();
+		return;
+	}
+
+	if (!verdict.accepted) {
+		LogInfo("Site refused login [{}] from [{}]: [{}]", username, player_address, verdict.refusal);
+		SendFailedLogin();
+		return;
+	}
+
+	LoginAccountContext c = {};
+	c.username           = verdict.account_name;
+	c.source_loginserver = "local";
+	auto a = LoginAccountsRepository::GetAccountFromContext(database, c);
+	if (a.id == 0) {
+		LogError("The site passed [{}], which has no login account here", verdict.account_name);
+		SendFailedLogin();
+		return;
+	}
+
+	LogInfo("Site checked login [{}] as account [{}]", username, a.account_name);
+	DoSuccessfulLogin(a);
+}
+
 void Client::SendPlayToWorld(const char *data)
 {
 	if (m_client_status != cs_logged_in) {
@@ -261,7 +314,7 @@ void Client::SendPlayToWorld(const char *data)
 	m_selected_play_server_id = (unsigned int) play->server_number;
 	m_play_sequence_id        = sequence_in;
 	m_selected_play_server_id = server_id_in;
-	server.server_manager->SendUserLoginToWorldRequest(server_id_in, m_account_id, m_loginserver_name);
+	server.server_manager->SendUserLoginToWorldRequest(server_id_in, m_account_id, m_loginserver_name, m_session_id);
 }
 
 void Client::SendServerListPacket(uint32 seq)
@@ -431,8 +484,6 @@ void Client::DoSuccessfulLogin(LoginAccountsRepository::LoginAccounts &a)
 		a.account_name,
 		a.source_loginserver
 	);
-
-	server.client_manager->RemoveExistingClient(a.id, a.source_loginserver);
 
 	in_addr in{};
 	in.s_addr = m_connection->GetRemoteIP();

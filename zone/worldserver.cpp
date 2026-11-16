@@ -640,13 +640,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 			SetZoneData(zone->GetZoneID(), zone->GetInstanceID());
 
 			if (szic->zoneid == zone->GetZoneID()) {
-				auto client = entity_list.GetClientByLSID(szic->lsid);
+				// The character is entering again: one already here is a ghost of it. Other characters of the
+				// account stay.
+				auto client = entity_list.GetClientByCharID(szic->charid);
 				if (client) {
 					client->Kick("Dropped by world CLE subsystem");
 					client->Save();
 				}
 
-				zone->RemoveAuth(szic->lsid);
+				zone->RemoveAuthForCharacter(szic->charid);
 				zone->AddAuth(szic);
 			}
 		}
@@ -664,9 +666,9 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 
 		ServerZoneDropClient_Struct* drop = (ServerZoneDropClient_Struct*)pack->pBuffer;
 		if (zone) {
-			zone->RemoveAuth(drop->lsid);
+			zone->RemoveAuthForCharacter(drop->character_id);
 
-			auto client = entity_list.GetClientByLSID(drop->lsid);
+			auto client = entity_list.GetClientByCharID(drop->character_id);
 			if (client) {
 				client->Kick("Dropped by world CLE subsystem");
 				client->Save();
@@ -728,15 +730,18 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 	}
 	case ServerOP_KickPlayer: {
 		ServerKickPlayer_Struct* skp = (ServerKickPlayer_Struct*)pack->pBuffer;
-		Client* client;
+		std::vector<Client *> clients;
 		if (strlen(skp->name)) {
-			client = entity_list.GetClientByName(skp->name);
+			if (auto client = entity_list.GetClientByName(skp->name)) {
+				clients.push_back(client);
+			}
 		} else if (skp->account_id) {
-			client = entity_list.GetClientByAccID(skp->account_id);
+			clients = entity_list.GetClientsByAccountID(skp->account_id);
 		}
 
-		if (client) {
+		for (auto client : clients) {
 			if (skp->adminrank >= client->Admin()) {
+				const std::string kicked_name = client->GetCleanName();
 				client->WorldKick();
 				SendEmoteMessage(
 					skp->adminname,
@@ -744,7 +749,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					Chat::White,
 					fmt::format(
 						"Remote Kick | {} booted{}.",
-						skp->name,
+						kicked_name,
 						is_zone_loaded ?
 						fmt::format(
 							" in {}",
@@ -760,7 +765,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					Chat::White,
 					fmt::format(
 						"Remote Kick | Your Status Level is not high enough to kick {}.",
-						skp->name
+						client->GetCleanName()
 					).c_str()
 				);
 			}
@@ -824,8 +829,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 		break;
 	}
 	case ServerOP_FlagUpdate: {
-		Client* client = entity_list.GetClientByAccID(*((uint32*)pack->pBuffer));
-		if (client) {
+		for (auto client : entity_list.GetClientsByAccountID(*((uint32*)pack->pBuffer))) {
 			client->UpdateAdmin();
 		}
 		break;
@@ -1040,8 +1044,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 	}
 	case ServerOP_Revoke: {
 		RevokeStruct* rev = (RevokeStruct*)pack->pBuffer;
-		Client* client = entity_list.GetClientByName(rev->name);
-		if (client) {
+		for (auto client : entity_list.GetClientsByAccountID(rev->account_id)) {
 			SendEmoteMessage(
 				rev->adminname,
 				0,
@@ -1054,6 +1057,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 				).c_str()
 			);
 			client->SetRevoked(rev->toggle);
+		}
+		break;
+	}
+	case ServerOP_SharedBankChanged: {
+		auto changed = (SharedBankChanged_Struct *) pack->pBuffer;
+		for (auto client : entity_list.GetClientsByAccountID(changed->account_id)) {
+			if (client->CharacterID() != changed->character_id) {
+				client->ReloadSharedBank();
+			}
 		}
 		break;
 	}
@@ -3867,10 +3879,14 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
 
 					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(in->buy_item_id, in->seller_quantity));
+
+					// The buyer's zone took the coin before the seller's zone was asked for the item, so a failure on
+					// the seller's side gives it back; a failure on the buyer's side came before any coin moved.
+					const bool buyer_paid = in->sub_action == Barter_FailedSellerChecks || in->sub_action == Barter_SellerCouldNotBeFound;
 
 					switch (in->sub_action) {
 						case Barter_FailedBuyerChecks:
+						case Barter_SellerCouldNotBeFound:
 						case Barter_FailedSellerChecks: {
 							if (seller) {
 								LogTradingDetail("Significant barter transaction failure.");
@@ -3903,13 +3919,14 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 							}
 
 							if (buyer) {
-								LogError("Significant barter transaction failure.  Replacing {} and {} {} to {}",
-										 buyer->DetermineMoneyString(total_cost),
-										 sell_line.seller_quantity,
-										 sell_line.item_name,
-										 buyer->GetCleanName());
-								buyer->AddMoneyToPP(total_cost, true);
-								buyer->RemoveItem(sell_line.item_id, sell_line.seller_quantity);
+								if (buyer_paid) {
+									LogError("Significant barter transaction failure.  Returning {} for {} {} to {}",
+											 buyer->DetermineMoneyString(total_cost),
+											 sell_line.seller_quantity,
+											 sell_line.item_name,
+											 buyer->GetCleanName());
+									buyer->AddMoneyToPP(total_cost, true);
+								}
 
 								buyer->Message(
 									Chat::Red,
@@ -3995,6 +4012,39 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 						break;
 					}
 
+					// The buyer pays here; the seller's zone then sends the seller's own item by parcel and answers, or
+					// the coin comes back with a failed transaction. The buy line changes when the seller's zone answers.
+					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
+					if (!buyer->TakeMoneyFromPP(total_cost, false)) {
+						in->action     = Barter_FailedTransaction;
+						in->sub_action = Barter_FailedBuyerChecks;
+						worldserver.SendPacket(pack);
+						break;
+					}
+
+					in->action = Barter_BuyerTransactionComplete;
+					worldserver.SendPacket(pack);
+
+					break;
+				}
+				case Barter_SellerTransactionComplete: {
+					// The seller's zone has sent the item and paid the seller: the buyer's buy line and windows follow.
+					auto buyer = entity_list.GetClientByID(in->buyer_entity_id);
+					if (!buyer) {
+						break;
+					}
+
+					BuyerLineSellItem_Struct sell_line{};
+					sell_line.item_id         = in->buy_item_id;
+					sell_line.item_quantity   = in->buy_item_qty;
+					sell_line.item_cost       = in->buy_item_cost;
+					sell_line.seller_name     = in->seller_name;
+					sell_line.buyer_name      = in->buyer_name;
+					sell_line.buyer_entity_id = in->buyer_entity_id;
+					sell_line.seller_quantity = in->seller_quantity;
+					sell_line.slot            = in->slot;
+					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
+
 					BuyerLineSellItem_Struct blis{};
 					blis.enabled         = 1;
 					blis.item_toggle     = 1;
@@ -4006,40 +4056,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					blis.seller_quantity = in->seller_quantity;
 					blis.buyer_entity_id = in->buyer_entity_id;
 					strn0cpy(blis.item_name, in->item_name, sizeof(blis.item_name));
-
-					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					std::unique_ptr<EQ::ItemInstance> inst(database.CreateItem(in->buy_item_id, in->seller_quantity));
-
-					if (inst->IsStackable()) {
-						if (!buyer->PutItemInInventoryWithStacking(inst.get())) {
-							buyer->Message(Chat::Red, "Error putting item in your inventory.");
-							buyer->AddMoneyToPP(total_cost, true);
-							in->action     = Barter_FailedTransaction;
-							in->sub_action = Barter_FailedBuyerChecks;
-							worldserver.SendPacket(pack);
-							break;
-						}
-					}
-					else {
-						for (int i = 1; i <= sell_line.seller_quantity; i++) {
-							inst->SetCharges(1);
-							if (!buyer->PutItemInInventoryWithStacking(inst.get())) {
-								buyer->Message(Chat::Red, "Error putting item in your inventory.");
-								buyer->AddMoneyToPP(total_cost, true);
-								in->action     = Barter_FailedTransaction;
-								in->sub_action = Barter_FailedBuyerChecks;
-								worldserver.SendPacket(pack);
-								goto exit_loop;
-							}
-						}
-					}
-
-					if (!buyer->TakeMoneyFromPP(total_cost, false)) {
-						in->action     = Barter_FailedTransaction;
-						in->sub_action = Barter_FailedBuyerChecks;
-						worldserver.SendPacket(pack);
-						break;
-					}
 
 					buyer->SendWindowUpdatesToSellerAndBuyer(blis);
 					buyer->SendBarterBuyerClientMessage(
@@ -4065,10 +4081,6 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 						RecordPlayerEventLogWithClient(buyer, PlayerEvent::BARTER_TRANSACTION, e);
 					}
 
-					in->action = Barter_BuyerTransactionComplete;
-					worldserver.SendPacket(pack);
-
-					exit_loop:
 					break;
 				}
 				case Barter_BuyerTransactionComplete: {
@@ -4091,15 +4103,52 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					strn0cpy(sell_line.item_name, in->item_name, sizeof(sell_line.item_name));
 
 					if (!seller->DoBarterSellerChecks(sell_line)) {
-						in->action = Barter_FailedTransaction;
-						in->action = Barter_FailedSellerChecks;
+						in->action     = Barter_FailedTransaction;
+						in->sub_action = Barter_FailedSellerChecks;
 						worldserver.SendPacket(pack);
 						return;
 					}
 
+					// The seller's own item goes to the buyer's parcels and the coin to the seller as one exchange.
 					uint64 total_cost = (uint64) sell_line.item_cost * (uint64) sell_line.seller_quantity;
-					seller->RemoveItem(in->buy_item_id, in->seller_quantity);
-					seller->AddMoneyToPP(total_cost, false);
+					std::vector<int32> parcel_slots;
+					{
+						DBcore::Transaction transaction(database);
+						const bool parceled = seller->ParcelItemsTo(in->buyer_id, in->buy_item_id, in->seller_quantity, parcel_slots);
+						if (parceled) {
+							seller->AddMoneyToPP(total_cost, false);
+						}
+
+						if (!parceled || !transaction.Commit()) {
+							transaction.Rollback();
+							LogError(
+								"Barter sale of [{}] x [{}] from [{}] to [{}] was not saved; the buyer's coin goes back",
+								in->buy_item_id,
+								in->seller_quantity,
+								in->seller_name,
+								in->buyer_name
+							);
+							if (!parcel_slots.empty()) {
+								seller->Kick("A barter sale was not saved");
+							}
+
+							in->action     = Barter_FailedTransaction;
+							in->sub_action = Barter_FailedSellerChecks;
+							worldserver.SendPacket(pack);
+							return;
+						}
+					}
+
+					for (const auto parcel_slot : parcel_slots) {
+						Parcel_Struct ps{};
+						ps.item_slot = parcel_slot;
+						strn0cpy(ps.send_to, in->buyer_name, sizeof(ps.send_to));
+						seller->SendParcelDeliveryToWorld(ps);
+					}
+
+					in->action = Barter_SellerTransactionComplete;
+					worldserver.SendPacket(pack);
+
 					seller->SendBarterBuyerClientMessage(
 						sell_line,
 						Barter_SellerTransactionComplete,
@@ -4126,6 +4175,8 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					break;
 				}
 			}
+
+			break;
 		}
 		default: {
 			LogInfo("Unknown ZS Opcode [{}] size [{}]", (int) pack->opcode, pack->size);

@@ -61,9 +61,10 @@ enum class ItemRetirement : uint8 {
 	BotDonated,
 	MissingItemRow,
 	Unplaceable,
+	Evolved,
 };
 
-constexpr std::array<std::string_view, 14> item_retirement_names = {
+constexpr std::array<std::string_view, 15> item_retirement_names = {
 	"destroyed",
 	"sold",
 	"stacked",
@@ -78,8 +79,9 @@ constexpr std::array<std::string_view, 14> item_retirement_names = {
 	"botDonated",
 	"missingItemRow",
 	"unplaceable",
+	"evolved",
 };
-static_assert(item_retirement_names.size() == static_cast<size_t>(ItemRetirement::Unplaceable) + 1);
+static_assert(item_retirement_names.size() == static_cast<size_t>(ItemRetirement::Evolved) + 1);
 
 inline std::string_view ItemHolderTypeName(ItemHolderType holder_type)
 {

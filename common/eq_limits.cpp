@@ -44,12 +44,10 @@ static const EQ::constants::LookupEntry constants_static_lookup_entries[EQ::vers
 	/*[ClientVersion::Unknown] =*/
 	EQ::constants::LookupEntry(
 		ClientUnknown::INULL,
-		ClientUnknown::INULL,
 		ClientUnknown::INULL
 	),
 	/*[ClientVersion::RoF2] =*/
 	EQ::constants::LookupEntry(
-		RoF2::constants::CHARACTER_CREATION_LIMIT,
 		RoF2::constants::SAY_LINK_BODY_SIZE,
 		RoF2::constants::MAX_BAZAAR_TRADERS
 	)

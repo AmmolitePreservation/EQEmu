@@ -52,31 +52,44 @@ double EvolvingItemsManager::CalculateProgression(const uint64 current_amount, c
 		: 0;
 }
 
-void EvolvingItemsManager::DoLootChecks(const uint32 char_id, const uint16 slot_id, const EQ::ItemInstance &inst) const
+uint64 EvolvingItemsManager::AmountPastRequirement(const uint64 current_amount, const uint32 item_id)
+{
+	const auto &cache = EvolvingItemsManager::Instance()->GetEvolvingItemsCache();
+	if (!cache.contains(item_id)) {
+		return 0;
+	}
+
+	const auto required = cache.at(item_id).required_amount;
+
+	return required > 0 && current_amount > static_cast<uint64>(required) ? current_amount - required : 0;
+}
+
+void EvolvingItemsManager::DoLootChecks(const uint16 slot_id, const EQ::ItemInstance &inst) const
 {
 	if (!inst) {
 		return;
 	}
 
-	inst.SetEvolveEquipped(false);
-	if (inst.IsEvolving() && slot_id <= EQ::invslot::EQUIPMENT_END && slot_id >= EQ::invslot::EQUIPMENT_BEGIN) {
-		inst.SetEvolveEquipped(true);
-	}
-
-	if (!inst.IsEvolving()) {
-		return;
-	}
-
-	const bool equipped = inst.GetEvolveEquipped();
-	if (!inst.HasEvolveRecord() && !LoadRecord(*m_db, inst)) {
-		return;
-	}
-	inst.SetEvolveEquipped(equipped);
-	CharacterEvolvingItemsRepository::SetEquipped(*m_db, inst.GetGUID(), equipped);
+	inst.SetEvolveEquipped(slot_id <= EQ::invslot::EQUIPMENT_END && slot_id >= EQ::invslot::EQUIPMENT_BEGIN);
+	LoadRecords(*m_db, inst);
 }
 
-// An item landing from a holder that does not carry evolving state (a corpse, a parcel, the guild bank) already has its
-// record if it ever landed before; only a first landing makes one.
+// The record of the item and of every evolving item it holds: what is in a bag comes and goes with the bag.
+void EvolvingItemsManager::LoadRecords(Database &db, const EQ::ItemInstance &inst) const
+{
+	if (inst.IsEvolving() && !inst.HasEvolveRecord()) {
+		LoadRecord(db, inst);
+	}
+
+	for (const auto &[index, content] : *inst.GetContents()) {
+		if (content) {
+			LoadRecords(db, *content);
+		}
+	}
+}
+
+// An item's record is made at its first landing and found by its GUID ever after, wherever the item has been since
+// (a corpse, a parcel, the guild bank and a vendor carry no evolving state of their own).
 bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst) const
 {
 	if (!inst.HasGUID()) {
@@ -84,27 +97,43 @@ bool EvolvingItemsManager::LoadRecord(Database &db, const EQ::ItemInstance &inst
 		return false;
 	}
 
-	auto e = CharacterEvolvingItemsRepository::FindByGUID(db, inst.GetGUID());
-	if (!e.id) {
-		e = CharacterEvolvingItemsRepository::NewEntity();
-		CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
-		e.equipped      = inst.GetEvolveEquipped();
-		e.final_item_id = GetFinalItemID(inst);
-
-		e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
-		if (!e.id) {
-			const auto guid = inst.GetGUID();
-			LogError("Evolving item [{}] guid [{} {} {}]: its record could not be made", inst.GetID(), guid.first, guid.second, guid.third);
-			return false;
-		}
+	if (FindRecord(db, inst)) {
+		return true;
 	}
 
-	CharacterEvolvingItemsRepository::SetGUID(inst.GetEvolvingDetails(), inst.GetGUID());
-	inst.SetEvolveActivated(e.activated);
-	inst.SetEvolveEquipped(e.equipped);
-	inst.SetEvolveCurrentAmount(e.current_amount);
+	auto e = CharacterEvolvingItemsRepository::NewEntity();
+	CharacterEvolvingItemsRepository::SetGUID(e, inst.GetGUID());
+
+	e.id = CharacterEvolvingItemsRepository::InsertOne(db, e).id;
+	if (!e.id) {
+		const auto guid = inst.GetGUID();
+		LogError("Evolving item [{}] guid [{} {} {}]: its record could not be made", inst.GetID(), guid.first, guid.second, guid.third);
+		return false;
+	}
+
+	inst.GetEvolvingDetails() = e;
 	inst.CalculateEvolveProgression();
-	inst.SetEvolveFinalItemID(e.final_item_id);
+	inst.SetEvolveFinalItemID(GetFinalItemID(inst));
+
+	return true;
+}
+
+// The record an item already has, for every load of it (a listing, a parcel, a corpse show its progress too); none is
+// made here.
+bool EvolvingItemsManager::FindRecord(Database &db, const EQ::ItemInstance &inst) const
+{
+	if (!inst.HasGUID()) {
+		return false;
+	}
+
+	const auto e = CharacterEvolvingItemsRepository::FindByGUID(db, inst.GetGUID());
+	if (!e.id) {
+		return false;
+	}
+
+	inst.GetEvolvingDetails() = e;
+	inst.CalculateEvolveProgression();
+	inst.SetEvolveFinalItemID(GetFinalItemID(inst));
 
 	return true;
 }

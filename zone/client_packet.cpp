@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <iomanip>
 #include <iostream>
 #include <math.h>
+#include <optional>
 #include <set>
 #include <stdio.h>
 #include <string.h>
@@ -575,7 +576,6 @@ void Client::CompleteConnect()
 	EnteringMessages(this);
 	LoadPEQZoneFlags();
 	LoadZoneFlags();
-	LoadAccountFlags();
 
 	/* Sets GM flag if needed & Sends Petition Queue */
 	UpdateAdmin(false);
@@ -10793,6 +10793,34 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 		}
 	}
 
+	// Held past the commit below, so no other session reads the shared bank between this move's writes and its commit.
+	std::optional<SharedBankHold> shared_bank_hold;
+	const std::vector<int16> moved_slots = {static_cast<int16>(mi->from_slot), static_cast<int16>(mi->to_slot)};
+	if (
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[0]) ||
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[1])
+	) {
+		shared_bank_hold.emplace(this, true);
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				mi->from_slot,
+				mi->to_slot,
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+	}
+
 	DBcore::Transaction transaction(database);
 
 	if (!SwapItem(mi) && IsValidSlot(mi->from_slot) && IsValidSlot(mi->to_slot)) {
@@ -10802,13 +10830,6 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 		InterrogateInventory(this, false, true, false, error, false);
 		if (error) {
 			InterrogateInventory(this, true, false, true, error);
-		}
-	}
-
-	for (int slot : {mi->to_slot, mi->from_slot}) {
-		auto item = GetInv().GetItem(slot);
-		if (item && item->IsEvolving()) {
-			CharacterEvolvingItemsRepository::SetEquipped(database, item->GetGUID(), item->GetEvolveEquipped());
 		}
 	}
 
@@ -10838,6 +10859,64 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 
 	const int16 from_parent = multi_move->moves[0].from_slot.Slot;
 	const int16 to_parent   = multi_move->moves[0].to_slot.Slot;
+
+	bool touches_shared_bank = false;
+	for (int i = 0; i < multi_move->count; i++) {
+		touches_shared_bank = touches_shared_bank ||
+			multi_move->moves[i].from_slot.Type == EQ::invtype::typeSharedBank ||
+			multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank;
+	}
+
+	std::optional<SharedBankHold> shared_bank_hold;
+	if (touches_shared_bank) {
+		const auto parent_slot = [](const auto &slot) {
+			switch (slot.Type) {
+				case EQ::invtype::typeBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::BANK_BEGIN);
+				case EQ::invtype::typeSharedBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::SHARED_BANK_BEGIN);
+				default:
+					return static_cast<int16>(slot.Slot);
+			}
+		};
+
+		std::vector<int16> moved_slots;
+		for (int i = 0; i < multi_move->count; i++) {
+			moved_slots.push_back(parent_slot(multi_move->moves[i].from_slot));
+			moved_slots.push_back(parent_slot(multi_move->moves[i].to_slot));
+		}
+
+		shared_bank_hold.emplace(this, true);
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Multiple item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				moved_slots[0],
+				moved_slots[1],
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		// Items that leave the shared bank write no shared bank slot, yet change the shared bank all the same.
+		const auto shared_bank_slot = std::ranges::find_if(moved_slots, EQ::InventoryProfile::IsSharedBankSlot);
+		if (
+			shared_bank_slot == moved_slots.end() ||
+			!database.ClaimSharedBankWrite(AccountID(), CharacterID(), *shared_bank_slot)
+		) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+	}
 
 	// CTRL + left click drops an item into a bag without opening it.
 	// This can be a bag, in which case it tries to fill the target bag with the contents of the bag on the cursor
@@ -10887,12 +10966,24 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 	// Items get rearranged to fill the 'top' of the bag first
 	} else {
 		struct MoveInfo {
-			EQ::ItemInstance* item;
+			uint16 from_slot;
 			uint16 to_slot;
 		};
 
-		std::vector<MoveInfo> items;
-    		items.reserve(multi_move->count);
+		auto bag_location = [&](const uint16 slot_id) -> std::optional<ItemLocation> {
+			const int16 parent_slot_id = EQ::InventoryProfile::CalcSlotId(slot_id);
+			const auto *parent        = parent_slot_id != INVALID_INDEX ? m_inv.GetItem(parent_slot_id) : nullptr;
+			if (!parent || !parent->HasGUID()) {
+				return std::nullopt;
+			}
+
+			return ItemLocation::InParent(parent->GetGUID(), EQ::InventoryProfile::CalcBagIdx(slot_id));
+		};
+
+		std::vector<MoveInfo>           slots;
+		std::vector<ItemLayer::RowMove> rows;
+		slots.reserve(multi_move->count);
+		rows.reserve(multi_move->count);
 
 		for (int i = 0; i < multi_move->count; i++) {
 			// These are always bags, so we don't need to worry about raw items in slotCursor
@@ -10910,25 +11001,41 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 				to_slot = m_inv.CalcSlotId(multi_move->moves[i].to_slot.Slot + EQ::invslot::SHARED_BANK_BEGIN, multi_move->moves[i].to_slot.SubIndex);
 			}
 
-			// I wasn't able to produce any error states on purpose.
-			MoveInfo move{
-				.item = m_inv.PopItem(from_slot), // Don't delete the instance here
-				.to_slot = to_slot
-			};
-
-			if (move.item) {
-				items.push_back(move);
-			} else {
+			const auto *item = m_inv.GetItem(from_slot);
+			const auto  from = bag_location(from_slot);
+			const auto  to   = bag_location(to_slot);
+			if (!item || !item->HasGUID() || !from || !to) {
 				LinkDead();
 				return; // Prevent inventory desync here. Forcing a resync would be better, but we don't have a MoveItem struct to work with.
 			}
+
+			slots.push_back(MoveInfo{from_slot, to_slot});
+			rows.push_back(ItemLayer::RowMove{item->GetGUID(), *from, *to});
 		}
 
+		// The contents of two bags trade places, so their rows move first and together: a put alone would meet the row
+		// still in its slot. Each put then saves its item where the row already is.
 		DBcore::Transaction transaction(database);
-		for (const MoveInfo& move : items) {
-			PutItemInInventory(move.to_slot, *move.item); // This saves inventory too
+		if (!ItemLayer::MoveRows(database, CharacterID(), rows)) {
+			LinkDead();
+			return;
 		}
-		transaction.Commit();
+
+		std::vector<std::unique_ptr<EQ::ItemInstance>> items;
+		items.reserve(slots.size());
+		for (const auto &slot : slots) {
+			items.emplace_back(m_inv.PopItem(slot.from_slot));
+		}
+
+		bool put = true;
+		for (size_t i = 0; i < slots.size(); i++) {
+			put = PutItemInInventory(slots[i].to_slot, *items[i]) && put; // This saves inventory too
+		}
+
+		if (!put || !transaction.Commit()) {
+			LogError("Swap of bag contents for character [{}] was not saved", CharacterID());
+			LinkDead();
+		}
 	}
 
 }
@@ -14282,6 +14389,11 @@ void Client::Handle_OP_ShopPlayerSell(const EQApplicationPacket *app)
 			) > 0) {
 			EQ::ItemInstance *inst2 = inst->Clone();
 			ItemLayer::AssignGUID(*inst2, zone->GetTempMerchantGUID(vendor->GetNPCTypeID(), freeslot));
+			if (inst2->IsEvolving()) {
+				// The row shows what a buyer gets: a new item at the start of its level.
+				inst2->SetEvolveCurrentAmount(0);
+				inst2->CalculateEvolveProgression();
+			}
 
 			while (true) {
 				if (!inst2) {

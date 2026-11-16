@@ -138,7 +138,8 @@ uint32 Client::NukeItem(uint32 itemnum, ItemRetirement reason, uint8 where_to_ch
 	}
 
 	if(where_to_check & invWhereSharedBank) {
-		for (i = EQ::invslot::SHARED_BANK_BEGIN; i <= EQ::invslot::SHARED_BANK_END; i++) {
+		SharedBankHold shared_bank_hold(this, true);
+		for (i = EQ::invslot::SHARED_BANK_BEGIN; shared_bank_hold.Held() && i <= EQ::invslot::SHARED_BANK_END; i++) {
 			if (GetItemIDAt(i) == itemnum || (itemnum == 0xFFFE && GetItemIDAt(i) != INVALID_ID)) {
 				cur = m_inv.GetItem(i);
 				if(cur && cur->GetItem()->Stackable) {
@@ -151,7 +152,7 @@ uint32 Client::NukeItem(uint32 itemnum, ItemRetirement reason, uint8 where_to_ch
 			}
 		}
 
-		for (i = EQ::invbag::SHARED_BANK_BAGS_BEGIN; i <= EQ::invbag::SHARED_BANK_BAGS_END; i++) {
+		for (i = EQ::invbag::SHARED_BANK_BAGS_BEGIN; shared_bank_hold.Held() && i <= EQ::invbag::SHARED_BANK_BAGS_END; i++) {
 			if (GetItemIDAt(i) == itemnum || (itemnum == 0xFFFE && GetItemIDAt(i) != INVALID_ID)) {
 				cur = m_inv.GetItem(i);
 				if(cur && cur->GetItem()->Stackable) {
@@ -962,6 +963,10 @@ void Client::DeleteItemInInventory(int16 slot_id, int16 quantity, bool client_up
 		return;
 	}
 
+	if (EQ::InventoryProfile::IsSharedBankSlot(slot_id) && !database.ClaimSharedBankWrite(AccountID(), CharacterID(), slot_id)) {
+		return;
+	}
+
 	const bool is_deleted = m_inv.DeleteItem(slot_id, quantity);
 
 	// The deleted instance stays allocated until the profile cleans its dirty list, so its GUIDs are still readable here.
@@ -1081,11 +1086,11 @@ bool Client::PushItemOnCursor(const EQ::ItemInstance& inst, bool client_update)
 	LogInventory("Putting item [{}] ([{}]) on the cursor", inst.GetItem()->Name, inst.GetItem()->ID);
 	m_inv.PushCursor(inst);
 	const bool saved = database.SaveCursor(this);
+	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
+	EvolvingItemsManager::Instance()->DoLootChecks(EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
 	if (client_update) {
 		SendItemPacket(EQ::invslot::slotCursor, LandedItem(EQ::invslot::slotCursor), ItemPacketLimbo);
 	}
-	// An evolving item's record is keyed by its GUID, so it waits for the save that issues one.
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), EQ::invslot::slotCursor, *m_inv.GetLastCursorItem());
 	return saved;
 }
 
@@ -1101,10 +1106,10 @@ bool Client::PutItemInInventory(int16 slot_id, const EQ::ItemInstance& inst, boo
 	m_inv.PutItem(slot_id, inst);
 	CalcBonuses();
 	const bool saved = database.SaveInventory(this, slot_id);
+	EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetItem(slot_id));
 	if (client_update) {
 		SendItemPacket(slot_id, LandedItem(slot_id), ItemPacketTrade);
 	}
-	EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
 	return saved;
 }
 
@@ -1116,12 +1121,12 @@ void Client::PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, Loo
 	if (slot_id == EQ::invslot::slotCursor) {
 		m_inv.PushCursor(inst);
 		database.SaveCursor(this);
-		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetLastCursorItem());
+		EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetLastCursorItem());
 	}
 	else {
 		m_inv.PutItem(slot_id, inst);
 		database.SaveInventory(this, slot_id);
-		EvolvingItemsManager::Instance()->DoLootChecks(CharacterID(), slot_id, *m_inv.GetItem(slot_id));
+		EvolvingItemsManager::Instance()->DoLootChecks(slot_id, *m_inv.GetItem(slot_id));
 	}
 
 	// Subordinate items in cursor buffer must be sent via ItemPacketSummonItem or we just overwrite the visible cursor and desync the client
@@ -1599,6 +1604,15 @@ bool Client::SwapItem(MoveItem_Struct* move_in) {
 	// Step 1: Variables
 	int16 src_slot_id = (int16)move_in->from_slot;
 	int16 dst_slot_id = (int16)move_in->to_slot;
+
+	// A move out of the shared bank writes no shared bank slot, yet changes the shared bank all the same.
+	const int16 shared_bank_slot = EQ::InventoryProfile::IsSharedBankSlot(src_slot_id) ? src_slot_id : dst_slot_id;
+	if (
+		EQ::InventoryProfile::IsSharedBankSlot(shared_bank_slot) &&
+		!database.ClaimSharedBankWrite(AccountID(), CharacterID(), shared_bank_slot)
+	) {
+		return false;
+	}
 
 	if(IsBankSlot(src_slot_id) || IsBankSlot(dst_slot_id) || IsBankSlot(src_slot_check) || IsBankSlot(dst_slot_check)) {
 		uint32 distance = 0;
@@ -2193,6 +2207,236 @@ void Client::SwapItemResync(MoveItem_Struct* move_slots) {
 	}
 }
 
+namespace {
+	// A move the client made on shared bank contents sent before the newer ones arrives within its round trip of
+	// them.
+	const uint32 shared_bank_stale_milliseconds = 1500;
+
+	// A shared bank slot, or the shared bank slot of the bag a slot is in.
+	int16 SharedBankParentSlot(int16 slot_id)
+	{
+		if (EQ::ValueWithin(slot_id, EQ::invslot::SHARED_BANK_BEGIN, EQ::invslot::SHARED_BANK_END)) {
+			return slot_id;
+		}
+
+		return EQ::InventoryProfile::CalcSlotId(slot_id);
+	}
+
+	// The same item as the stored one: its GUID, item, count, and what it holds, bag contents and augments alike.
+	bool IsSameAsStored(const EQ::ItemInstance *held, const EQ::ItemInstance *stored)
+	{
+		if (!held || !stored) {
+			return !held && !stored;
+		}
+
+		if (
+			!held->HasGUID() ||
+			held->GetGUID() != stored->GetGUID() ||
+			held->GetID() != stored->GetID() ||
+			held->GetCharges() != stored->GetCharges()
+		) {
+			return false;
+		}
+
+		const auto *held_contents   = held->GetContents();
+		const auto *stored_contents = stored->GetContents();
+		if (held_contents->size() != stored_contents->size()) {
+			return false;
+		}
+
+		for (const auto &[index, inst] : *held_contents) {
+			const auto other = stored_contents->find(index);
+			if (other == stored_contents->end() || !IsSameAsStored(inst, other->second)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
+
+bool Client::RefreshSharedBank(bool client_update)
+{
+	auto stored = ItemLayer::Load(database, database, ItemLayer::HolderFilter(ItemHolderType::SharedBank, AccountID()));
+
+	std::map<int16, EQ::ItemInstance *> stored_by_slot;
+	for (auto &h : stored) {
+		stored_by_slot[EQ::InventoryProfile::SlotForLocation(h.location)] = h.inst;
+	}
+
+	std::set<int16> differing_slots;
+	for (int16 slot_id = EQ::invslot::SHARED_BANK_BEGIN; slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
+		const auto row = stored_by_slot.find(slot_id);
+		if (!IsSameAsStored(m_inv.GetItem(slot_id), row == stored_by_slot.end() ? nullptr : row->second)) {
+			differing_slots.insert(slot_id);
+		}
+	}
+
+	if (differing_slots.empty()) {
+		for (auto &h : stored) {
+			safe_delete(h.inst);
+		}
+
+		return false;
+	}
+
+	const int16 first_slot = *differing_slots.begin();
+	const EQ::ItemInstance *held = m_inv.GetItem(first_slot);
+	const auto row = stored_by_slot.find(first_slot);
+	const EQ::ItemInstance *stored_inst = row == stored_by_slot.end() ? nullptr : row->second;
+	LogInfo(
+		"Shared bank of account [{}] changed in another session; character [{}] reloads it. First difference at slot [{}]: "
+		"this session held item [{}] guid [{}] charges [{}], the database item [{}] guid [{}] charges [{}]",
+		AccountID(),
+		CharacterID(),
+		first_slot,
+		held ? held->GetID() : 0,
+		held ? ItemGUIDText(held->GetGUID()) : "",
+		held ? held->GetCharges() : 0,
+		stored_inst ? stored_inst->GetID() : 0,
+		stored_inst ? ItemGUIDText(stored_inst->GetGUID()) : "",
+		stored_inst ? stored_inst->GetCharges() : 0
+	);
+
+	for (int16 slot_id = EQ::invslot::SHARED_BANK_BEGIN; slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
+		m_inv.DeleteItem(slot_id);
+	}
+
+	const auto recast_timestamps = database.GetItemRecastTimestamps(CharacterID());
+	for (auto &h : stored) {
+		const int16 slot_id = EQ::InventoryProfile::SlotForLocation(h.location);
+		database.PrepareLoadedItem(*h.inst, slot_id, recast_timestamps);
+		if (m_inv.PushItem(slot_id, h.inst) == INVALID_INDEX) {
+			LogError(
+				"Shared bank item [{}] guid [{}] of account [{}] has no place at slot [{}]",
+				h.inst->GetID(),
+				ItemGUIDText(h.inst->GetGUID()),
+				AccountID(),
+				slot_id
+			);
+			safe_delete(h.inst);
+		}
+	}
+
+	if (client_update) {
+		const uint32 now = Timer::GetCurrentTime();
+		for (const int16 slot_id : differing_slots) {
+			ResendInventorySlot(slot_id);
+			m_shared_bank_sent_at[slot_id] = now;
+		}
+	}
+
+	return true;
+}
+
+void Client::ResendSharedBankSlots()
+{
+	for (int16 slot_id = EQ::invslot::SHARED_BANK_BEGIN; slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
+		ResendInventorySlot(slot_id);
+	}
+}
+
+void Client::ReloadSharedBank()
+{
+	SharedBankHold shared_bank_hold(this, true);
+}
+
+void Client::AnnounceSharedBankChange()
+{
+	auto pack    = new ServerPacket(ServerOP_SharedBankChanged, sizeof(SharedBankChanged_Struct));
+	auto changed = (SharedBankChanged_Struct *) pack->pBuffer;
+
+	changed->account_id   = AccountID();
+	changed->character_id = CharacterID();
+
+	worldserver.SendPacket(pack);
+	safe_delete(pack);
+}
+
+bool Client::IsSharedBankMoveStale(const std::vector<int16> &slot_ids) const
+{
+	const uint32 now = Timer::GetCurrentTime();
+	for (const int16 slot_id : slot_ids) {
+		if (!EQ::InventoryProfile::IsSharedBankSlot(slot_id)) {
+			continue;
+		}
+
+		const auto sent = m_shared_bank_sent_at.find(SharedBankParentSlot(slot_id));
+		if (sent != m_shared_bank_sent_at.end() && now - sent->second < shared_bank_stale_milliseconds) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void Client::ResyncSharedBankMove(const std::vector<int16> &slot_ids)
+{
+	bool touches_shared_bank = false;
+	for (const int16 slot_id : slot_ids) {
+		if (EQ::InventoryProfile::IsSharedBankSlot(slot_id)) {
+			touches_shared_bank = true;
+			continue;
+		}
+
+		const int16 parent_slot = EQ::InventoryProfile::CalcSlotId(slot_id);
+		ResendInventorySlot(parent_slot == INVALID_INDEX ? slot_id : parent_slot);
+	}
+
+	if (touches_shared_bank) {
+		ResendSharedBankSlots();
+	}
+}
+
+void Client::ResendInventorySlot(int16 slot_id)
+{
+	// A coin sent first keeps the client from crashing when it closes a bag it shows open in that slot, and gives
+	// the delete below an item to delete: the client reports a failed move for a delete of an empty slot.
+	EQ::ItemInstance *token = database.CreateItem(database.GetItem(22292), 1);
+	SendItemPacket(slot_id, token, ItemPacketTrade);
+	safe_delete(token);
+
+	if (m_inv[slot_id]) {
+		SendItemPacket(slot_id, m_inv[slot_id], ItemPacketTrade);
+		return;
+	}
+
+	auto outapp      = new EQApplicationPacket(OP_DeleteItem, sizeof(DeleteItem_Struct));
+	auto delete_slot = (DeleteItem_Struct *) outapp->pBuffer;
+
+	delete_slot->from_slot       = slot_id;
+	delete_slot->to_slot         = 0xFFFFFFFF;
+	delete_slot->number_in_stack = 0xFFFFFFFF;
+
+	QueuePacket(outapp);
+	safe_delete(outapp);
+}
+
+SharedBankHold::SharedBankHold(Client *client, bool client_update) :
+	m_client(client),
+	m_held(false),
+	m_refreshed(false)
+{
+	m_held = database.TakeSharedBank(client->AccountID(), client->CharacterID());
+	if (!m_held) {
+		LogWarning(
+			"Shared bank of account [{}] is held by another session; character [{}] could not take it",
+			client->AccountID(),
+			client->CharacterID()
+		);
+		return;
+	}
+
+	m_refreshed = client->RefreshSharedBank(client_update);
+}
+
+SharedBankHold::~SharedBankHold()
+{
+	if (m_held && database.ReleaseSharedBank(m_client->AccountID(), m_client->CharacterID())) {
+		m_client->AnnounceSharedBankChange();
+	}
+}
+
 void Client::DyeArmor(EQ::TintProfile* dye){
 	int16 slot=0;
 	for (int i = EQ::textures::textureBegin; i <= EQ::textures::LastTintableTexture; i++) {
@@ -2485,7 +2729,8 @@ void Client::DisenchantSummonedBags(bool client_update)
 		safe_delete(new_inst);
 	}
 
-	for (auto slot_id = EQ::invslot::SHARED_BANK_BEGIN; slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
+	SharedBankHold shared_bank_hold(this, client_update);
+	for (auto slot_id = EQ::invslot::SHARED_BANK_BEGIN; shared_bank_hold.Held() && slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
 		auto inst = m_inv[slot_id];
 		if (!inst) { continue; }
 		if (!IsSummonedBagID(inst->GetItem()->ID)) { continue; }
@@ -2610,7 +2855,8 @@ void Client::RemoveNoRent(bool client_update)
 		}
 	}
 
-	for (auto slot_id = EQ::invslot::SHARED_BANK_BEGIN; slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
+	SharedBankHold shared_bank_hold(this, client_update);
+	for (auto slot_id = EQ::invslot::SHARED_BANK_BEGIN; shared_bank_hold.Held() && slot_id <= EQ::invslot::SHARED_BANK_END; ++slot_id) {
 		auto inst = m_inv[slot_id];
 		if(inst && !inst->GetItem()->NoRent) {
 			LogInventory("NoRent Timer Lapse: Deleting [{}] from slot [{}]", inst->GetItem()->Name, slot_id);
@@ -2618,7 +2864,7 @@ void Client::RemoveNoRent(bool client_update)
 		}
 	}
 
-	for (auto slot_id = EQ::invbag::SHARED_BANK_BAGS_BEGIN; slot_id <= EQ::invbag::SHARED_BANK_BAGS_END; ++slot_id) {
+	for (auto slot_id = EQ::invbag::SHARED_BANK_BAGS_BEGIN; shared_bank_hold.Held() && slot_id <= EQ::invbag::SHARED_BANK_BAGS_END; ++slot_id) {
 		auto inst = m_inv[slot_id];
 		if(inst && !inst->GetItem()->NoRent) {
 			LogInventory("NoRent Timer Lapse: Deleting [{}] from slot [{}]", inst->GetItem()->Name, slot_id);

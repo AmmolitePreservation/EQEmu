@@ -239,12 +239,18 @@ void WorldServer::ProcessUserToWorldResponse(uint16_t opcode, const EQ::Net::Pac
 	}
 
 	auto res = (UsertoWorldResponse *) packet.Data();
-	LogDebug("Trying to find client with user id of [{}]", res->lsaccountid);
+	LogDebug("Trying to find login session [{}] of user id [{}]", res->ToID, res->lsaccountid);
 
-	Client *c = server.client_manager->GetClient(
-		res->lsaccountid,
-		res->login
-	);
+	Client *c = server.client_manager->GetClientBySession(res->ToID);
+	if (c && c->GetAccountID() != res->lsaccountid) {
+		LogError(
+			"World answered session [{}] for account [{}], which is account [{}]'s; answer dropped",
+			res->ToID,
+			res->lsaccountid,
+			c->GetAccountID()
+		);
+		return;
+	}
 
 	if (c) {
 		LogDebug(
@@ -496,7 +502,7 @@ void WorldServer::SendClientAuthToWorld(Client *c)
 
 	a.loginserver_account_id = c->GetAccountID();
 
-	strncpy(a.account_name, c->GetAccountName().c_str(), 30);
+	strncpy(a.account_name, c->GetAccountName().c_str(), sizeof(a.account_name) - 1);
 	strncpy(a.key, c->GetLoginKey().c_str(), 30);
 
 	a.lsadmin        = 0;

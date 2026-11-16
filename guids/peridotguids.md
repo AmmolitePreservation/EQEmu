@@ -21,8 +21,34 @@ Changed from Peridot's copy while its network link was still down (`link_down=1`
 | `pristine` | The clone set up, the `guids` build running, the database at 9325 / bots 0 / custom 0 with no migration applied; RAM included |
 | `ready` | `pristine` plus the claudelink login and character below, camped; RAM included |
 | `preGuids` | `ready` plus the full pre-migration seed set below, every character camped; RAM included. **The state TST-3 and TST-6 run from** |
+| `guidsEvolved` | `preGuids` taken by the updater from 9325 to 9334 on e6f14e1c1 (`rof2` merged, ISS-19, ISS-18), the chat host, quest patch and log categories redone; items 85612 to 85614 with lore group 0; Claudeguids level 11 wearing the Cloak of the Spirit Stalker 117-0-37 with the Tracker 117-0-36 and its augment in the Backpack; RAM included |
+| `pluginsState20261116` | the plugins session's state when it handed the machine back on 2026-11-16 (its `rof2RC*` snapshots hold its pure `rof2` test states); RAM included |
 
 `qm rollback 145 preGuids` (or `ready`, or `pristine`) returns to that running state. A plain reboot also brings the server back by itself: Docker restarts the stack's containers and Spire starts the launcher (`spire.launcher_start` in eqemu_config.json). The containers carried over from Peridot first had to be recreated, since their ports were pinned to Peridot's address (PRC-4).
+
+### After a rollback
+
+A rollback returns the machine to the snapshot's moment, so everything made later is gone. Redo, in this order:
+
+1. The clock: `sudo systemctl restart systemd-timesyncd`, then `date -u` (the guest wakes with the snapshot's time).
+2. `~/q.sh` on the host: SQL on stdin as root against `peq`, the password read on the host and never printed.
+
+   ```bash
+   #!/bin/bash
+   pw=$(sudo grep '^MARIADB_ROOT_PASSWORD=' /opt/eqemu/akk-stack/.env | cut -d= -f2-)
+   sudo docker exec -i -e MYSQL_PWD="$pw" akk-stack-mariadb-1 mariadb -uroot peq "$@"
+   ```
+
+3. The code, as `eqemu` inside the `akk-stack-eqemu-server-1` container: `cd ~/code && git fetch -q origin guids && git checkout -q -f --detach FETCH_HEAD`. That brings guids/tools: stopServer.sh, startServer.sh and buildServer.sh, each run as `sudo docker exec -u eqemu akk-stack-eqemu-server-1 bash /home/eqemu/code/guids/tools/<script>`.
+4. stopServer.sh: the snapshot's server runs the pre-GUID binaries.
+5. When a migration changed: `sudo docker exec akk-stack-eqemu-server-1 cat /home/eqemu/code/guids/migrationCheckBefore.sql | ~/q.sh -t`, now, before the updater runs.
+6. buildServer.sh (about 210 seconds from the snapshot's build tree; it takes a patch file to apply on the tip as its argument).
+7. The quest patch: `cd ~/server/quests && git apply ~/code/rof2/peridotQuests.patch`.
+8. The chat host: `ucs.host` in `~/server/eqemu_config.json` is Peridot's in the snapshot. Set it to `peridotguids.strata.unseencolor.com`, or a test client reaches for Peridot's chat service.
+9. The Error and Warning log categories to file: `UPDATE logsys_categories SET log_to_file = 1 WHERE log_category_id IN (11, 54)`.
+10. startServer.sh: world takes the database through the updater (9325 to 9334) before the zones come up. Then migrationCheckAfter.sql, run as in step 5.
+
+The accounts, the characters and the seed set are the snapshot's (below). The tools mqperidotemu's suites need (g++-multilib, luajit) are not in the snapshot: install them in the container when a suite is run.
 
 ## The server
 

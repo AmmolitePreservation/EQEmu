@@ -79,7 +79,7 @@ protected:
 
 	uint32 petid;
 	char charname[64];
-	char accountname[32];
+	char accountname[64];
 	char lastgm[64];
 	char petitiontext[1024];
 	char gmtext[1024];

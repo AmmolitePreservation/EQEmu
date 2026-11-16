@@ -41,14 +41,17 @@ public:
 	void SetContentDatabase(Database *db);
 
 	void LoadEvolvingItems() const;
-	void DoLootChecks(uint32 char_id, uint16 slot_id, const EQ::ItemInstance &inst) const;
+	void DoLootChecks(uint16 slot_id, const EQ::ItemInstance &inst) const;
+	bool FindRecord(Database &db, const EQ::ItemInstance &inst) const;
 	bool LoadRecord(Database &db, const EQ::ItemInstance &inst) const;
+	void LoadRecords(Database &db, const EQ::ItemInstance &inst) const;
 	uint32 GetFinalItemID(const EQ::ItemInstance &inst) const;
 	uint32 GetNextEvolveItemID(const EQ::ItemInstance &inst) const;
 	uint32 GetFirstItemInLoreGroup(uint32 lore_id);
 	uint32 GetFirstItemInLoreGroupByItemID(uint32 item_id);
 	uint64 GetTotalEarnedXP(const EQ::ItemInstance &inst);
 	static double CalculateProgression(uint64 current_amount, uint32 item_id);
+	static uint64 AmountPastRequirement(uint64 current_amount, uint32 item_id);
 	static void LoadPlayerEvent(const EQ::ItemInstance &inst, PlayerEvent::EvolveItem &e);
 
 	ItemsEvolvingDetailsRepository::ItemsEvolvingDetails GetEvolveItemDetails(uint64 id);

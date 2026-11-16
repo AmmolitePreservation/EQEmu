@@ -55,6 +55,16 @@ public:
 	// Moves a row whose instance is not in memory.
 	static bool MoveRow(Database &db, const ItemGUID &guid, const ItemLocation &location);
 
+	struct RowMove {
+		ItemGUID     guid;
+		ItemLocation from;
+		ItemLocation to;
+	};
+
+	// Moves a character's rows that may trade places (the contents of two bags swapped): a row waits while another of
+	// them is still where it goes, and when none can move one steps aside to the in-transit slot.
+	static bool MoveRows(Database &db, uint32 character_id, std::vector<RowMove> moves);
+
 	// Retires an item and everything inside it; the row keeps its last location.
 	static bool Retire(Database &db, const EQ::ItemInstance &inst, ItemRetirement reason);
 	static bool RetireRow(Database &db, const ItemGUID &guid, ItemRetirement reason);
@@ -66,8 +76,8 @@ public:
 	static int MoveHolder(Database &db, const std::string &holder_filter, ItemHolderType holder_type);
 
 	// Copies every row in play that a holder filter matches, with everything inside, as new items issued from the
-	// issuer's counter in a fixed order, held by new_holder_id (a copied character, a cloned bot). Runs inside the
-	// caller's transaction. Returns the count, or -1.
+	// issuer's counter in a fixed order, held by new_holder_id (a copied character, a cloned bot), each with its
+	// evolving record and parcel row. Runs inside the caller's transaction. Returns the count of item rows, or -1.
 	static int CopyRows(Database &db, const std::string &holder_filter, const Owner &issuer, uint32 new_holder_id);
 
 	// The items a holder filter matches, each with its augments and bag contents attached and its GUID set; the rows

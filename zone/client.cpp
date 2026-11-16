@@ -717,7 +717,6 @@ Client::~Client() {
 
 	mMovementManager->RemoveClient(this);
 
-	DataBucket::DeleteCachedBuckets(DataBucketLoadType::Account, AccountID());
 	DataBucket::DeleteCachedBuckets(DataBucketLoadType::Client, CharacterID());
 
 	if (RuleB(Bots, Enabled)) {
@@ -8410,20 +8409,6 @@ void Client::SendFactionMessage(int32 tmpvalue, int32 faction_id, int32 faction_
 	} //New Live faction message (14261)
 }
 
-void Client::LoadAccountFlags()
-{
-	accountflags.clear();
-
-	const auto& l = AccountFlagsRepository::GetWhere(database, fmt::format("p_accid = {}", account_id));
-	if (l.empty()) {
-		return;
-	}
-
-	for (const auto& e : l) {
-		accountflags[e.p_flag] = e.p_value;
-	}
-}
-
 void Client::ClearAccountFlag(const std::string& flag)
 {
 	auto e = AccountFlagsRepository::NewEntity();
@@ -8443,26 +8428,27 @@ void Client::SetAccountFlag(const std::string& flag, const std::string& value)
 	e.p_value = value;
 
 	AccountFlagsRepository::ReplaceFlag(database, e);
-
-	accountflags[flag] = value;
 }
 
+// Account flags are read from the database, not kept per session: the account's other sessions set them too.
 std::string Client::GetAccountFlag(const std::string& flag)
 {
-	return accountflags[flag];
+	const auto& l = AccountFlagsRepository::GetWhere(
+		database,
+		fmt::format("p_accid = {} AND p_flag = '{}' LIMIT 1", account_id, Strings::Escape(flag))
+	);
+
+	return l.empty() ? std::string() : l.front().p_value;
 }
 
 std::vector<std::string> Client::GetAccountFlags()
 {
-	std::vector<std::string> l;
-
-	l.reserve(accountflags.size());
-
-	for (const auto& e : accountflags) {
-		l.emplace_back(e.first);
+	std::vector<std::string> flags;
+	for (const auto& e : AccountFlagsRepository::GetWhere(database, fmt::format("p_accid = {}", account_id))) {
+		flags.emplace_back(e.p_flag);
 	}
 
-	return l;
+	return flags;
 }
 
 void Client::ItemTimerCheck()
@@ -10919,6 +10905,136 @@ void Client::RemoveItem(uint32 item_id, uint32 quantity)
 			}
 		}
 	}
+}
+
+// What barter may hand over of an item: its instances in the general slots and their bags that hold no augment and
+// may be traded, in slot order, as slot and units to take. Empty when they do not add up to the quantity.
+std::vector<std::pair<int16, uint32>> Client::BarterUnits(uint32 item_id, uint32 quantity)
+{
+	std::vector<std::pair<int16, uint32>> units;
+	uint32                                found = 0;
+
+	auto take = [&](int16 slot_id) {
+		auto *item = GetInv().GetItem(slot_id);
+		if (found == quantity || !item || item->GetID() != item_id || !item->HasGUID() || item->IsAugmented() || !item->IsDroppable()) {
+			return;
+		}
+
+		const uint32 held = item->IsStackable() ? std::max<uint32>(item->GetCharges(), 1) : 1;
+		const uint32 part = std::min(held, quantity - found);
+		units.emplace_back(slot_id, part);
+		found += part;
+	};
+
+	for (int16 slot_id = EQ::invslot::GENERAL_BEGIN; slot_id <= EQ::invslot::GENERAL_END; ++slot_id) {
+		take(slot_id);
+	}
+
+	for (int16 slot_id = EQ::invbag::GENERAL_BAGS_BEGIN; slot_id <= EQ::invbag::GENERAL_BAGS_END; ++slot_id) {
+		take(slot_id);
+	}
+
+	if (found != quantity) {
+		units.clear();
+	}
+
+	return units;
+}
+
+// Hands a quantity of an item to another client. A whole item or stack goes as it is, its row and all it holds landing
+// through the receiver's funnel; a part of a stack lands there as a new item and the stack is saved smaller.
+bool Client::HandItemsTo(Client *to, uint32 item_id, uint32 quantity)
+{
+	const auto units = BarterUnits(item_id, quantity);
+	if (units.empty()) {
+		return false;
+	}
+
+	for (const auto &[slot_id, part] : units) {
+		const auto  *item  = GetInv().GetItem(slot_id);
+		const bool   whole = !item->IsStackable() || part >= static_cast<uint32>(item->GetCharges());
+
+		std::unique_ptr<EQ::ItemInstance> landing(item->Clone());
+		if (!whole) {
+			ItemLayer::ClearGUID(*landing);
+			landing->SetCharges(static_cast<int16>(part));
+		}
+
+		if (!to->PutItemInInventoryWithStacking(landing.get())) {
+			return false;
+		}
+
+		if (whole) {
+			RemoveItemFromInventory(slot_id, true);
+		}
+		else {
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		}
+	}
+
+	return true;
+}
+
+// Hands a quantity of an item to a character in another zone, by parcel. A whole item or stack goes as it is, its row
+// moving to the parcel with all it holds; a part of a stack is split off, issued from this character's counter. The
+// caller's transaction holds the rows; parcel_slots are the parcels made, to announce once it has committed.
+bool Client::ParcelItemsTo(uint32 to_character_id, uint32 item_id, uint32 quantity, std::vector<int32> &parcel_slots)
+{
+	const auto units = BarterUnits(item_id, quantity);
+	if (units.empty()) {
+		return false;
+	}
+
+	for (const auto &[slot_id, part] : units) {
+		const auto  *item  = GetInv().GetItem(slot_id);
+		const bool   whole = !item->IsStackable() || part >= static_cast<uint32>(item->GetCharges());
+
+		const int32 parcel_slot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, to_character_id, RuleI(Parcel, ParcelMaxItems));
+		if (parcel_slot == INVALID_INDEX) {
+			return false;
+		}
+
+		CharacterParcelsRepository::CharacterParcels parcel{};
+		parcel.char_id   = to_character_id;
+		parcel.from_name = GetCleanName();
+		parcel.note      = "Delivered from a Barter Sale";
+		parcel.sent_date = time(nullptr);
+		parcel.slot_id   = parcel_slot;
+
+		const auto location = ItemLocation::InHolder(ItemHolderType::Parcel, to_character_id, static_cast<uint16>(parcel_slot));
+		if (whole) {
+			if (!ItemLayer::MoveRow(database, item->GetGUID(), location)) {
+				return false;
+			}
+
+			CharacterParcelsRepository::SetGUID(parcel, item->GetGUID());
+		}
+		else {
+			std::unique_ptr<EQ::ItemInstance> piece(item->Clone());
+			ItemLayer::ClearGUID(*piece);
+			piece->SetCharges(static_cast<int16>(part));
+			if (!ItemLayer::Save(database, *piece, location, ItemOwner())) {
+				return false;
+			}
+
+			CharacterParcelsRepository::SetGUID(parcel, piece->GetGUID());
+		}
+
+		if (!CharacterParcelsRepository::InsertOne(database, parcel).id) {
+			return false;
+		}
+
+		if (whole) {
+			RemoveItemFromInventory(slot_id, true);
+		}
+		else {
+			DeleteItemInInventory(slot_id, part, true, ItemRetirement::Consumed);
+		}
+
+		parcel_slots.push_back(parcel_slot);
+	}
+
+	return true;
 }
 
 void Client::SetGMStatus(int new_status) {
