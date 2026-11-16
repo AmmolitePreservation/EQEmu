@@ -337,6 +337,7 @@ RULE_BOOL (World, IPLimitDisconnectAll, false, "Disconnect all current clients b
 RULE_INT (World, TellQueueSize, 20, "Maximum tell queue size")
 RULE_BOOL(World, StartZoneSameAsBindOnCreation, true, "Should the start zone always be the same location as your bind?")
 RULE_BOOL(World, EnforceCharacterLimitAtLogin, false, "Enforce the limit for characters that are online at login")
+RULE_INT(World, CharactersPerAccount, 12, "How many characters an account may hold: the character select lists that many and the client may create up to it")
 RULE_BOOL(World, EnableDevTools, true, "Enable or Disable the Developer Tools globally (Most of the time you want this enabled)")
 RULE_BOOL(World, EnableChecksumVerification, false, "Enable or Disable the Checksum Verification for eqgame.exe and spells_us.txt")
 RULE_INT(World, MaximumQuestErrors, 30, "Changes the maximum number of quest errors that can be displayed in #questerrors, default is 30")

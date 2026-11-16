@@ -37,17 +37,16 @@ void SetAutoLogin(Client* c, const Seperator* sep)
 		return;
 	}
 
-	const bool set_login = Strings::ToBool(sep->arg[2]);
+	const bool        set_login           = Strings::ToBool(sep->arg[2]);
+	const std::string auto_login_charname = set_login ? t->GetCleanName() : std::string();
 
-	e.auto_login_charname = set_login ? t->GetCleanName() : std::string();
-
-	AccountRepository::UpdateOne(database, e);
+	AccountRepository::SetAutoLoginCharacterNameByAccountID(database, t->AccountID(), auto_login_charname);
 
 	c->Message(
 		Chat::White,
 		fmt::format(
 			"Auto login character has been set to '{}' for {}.",
-			e.auto_login_charname,
+			auto_login_charname,
 			c->GetTargetDescription(t)
 		).c_str()
 	);

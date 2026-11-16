@@ -1175,6 +1175,20 @@ public:
 	// Trades the contents of two slots for a script: the rows are saved as one swap and the client is shown both slots.
 	bool SwapSlots(int16 source_slot, int16 destination_slot);
 	void SwapItemResync(MoveItem_Struct* move_slots);
+	// While holding the shared bank: true when another session changed it, after this session's copy (and, with
+	// client_update, the client's) were replaced from the database.
+	bool RefreshSharedBank(bool client_update);
+	// Sends the client this session's shared bank, bags with their contents, and clears its empty slots.
+	void ResendSharedBankSlots();
+	// Another session of the account wrote the shared bank: this session and its client take it up.
+	void ReloadSharedBank();
+	void AnnounceSharedBankChange();
+	// True when a move names a shared bank slot whose contents were just sent to the client, so the move may
+	// have been made on what the client showed before.
+	bool IsSharedBankMoveStale(const std::vector<int16> &slot_ids) const;
+	// Puts a refused shared bank move's slots back on the client as this session holds them.
+	void ResyncSharedBankMove(const std::vector<int16> &slot_ids);
+	void ResendInventorySlot(int16 slot_id);
 	void PutLootInInventory(int16 slot_id, const EQ::ItemInstance &inst, LootItem** bag_item_data = 0);
 	bool AutoPutLootInInventory(EQ::ItemInstance& inst, bool try_worn = false, bool try_cursor = true, LootItem** bag_item_data = 0);
 	bool SummonItem(uint32 item_id, int16 charges = -1, uint32 aug1 = 0, uint32 aug2 = 0, uint32 aug3 = 0, uint32 aug4 = 0, uint32 aug5 = 0, uint32 aug6 = 0, bool attuned = false, uint16 to_slot = EQ::invslot::slotCursor, uint32 ornament_icon = 0, uint32 ornament_idfile = 0, uint32 ornament_hero_model = 0);
@@ -1846,7 +1860,6 @@ public:
 	int32 GetActINT() { return( std::min(GetMaxINT(), GetINT()) ); }
 	int32 GetActWIS() { return( std::min(GetMaxWIS(), GetWIS()) ); }
 	int32 GetActCHA() { return( std::min(GetMaxCHA(), GetCHA()) ); }
-	void LoadAccountFlags();
 	void ClearAccountFlag(const std::string& flag);
 	void SetAccountFlag(const std::string& flag, const std::string& value);
 	std::string GetAccountFlag(const std::string& flag);
@@ -2079,7 +2092,7 @@ private:
 	uint32 character_id;
 	uint32 WID;
 	uint32 account_id;
-	char account_name[30];
+	char account_name[64];
 	char loginserver[64];
 	uint32 lsaccountid;
 	char lskey[30];
@@ -2172,6 +2185,8 @@ private:
 	PlayerProfile_Struct m_pp;
 	ExtendedProfile_Struct m_epp;
 	EQ::InventoryProfile m_inv;
+	// By shared bank slot (bags by their slot): when the client was last sent changed contents.
+	std::map<int16, uint32> m_shared_bank_sent_at;
 	Object* m_tradeskill_object;
 	PetInfo m_petinfo; // current pet data, used while loading from and saving to DB
 	PetInfo m_suspendedminion; // pet data for our suspended minion.
@@ -2360,7 +2375,6 @@ private:
 	AggroMeter m_aggrometer;
 
 	Timer ItemQuestTimer;
-	std::map<std::string,std::string> accountflags;
 
 	uint8 initial_respawn_selection;
 
@@ -2457,6 +2471,27 @@ public:
 	bool IsFilteredAFKPacket(const EQApplicationPacket *p);
 	void CheckAutoIdleAFK(PlayerPositionUpdateClient_Struct *p);
 	void SyncWorldPositionsToClient(bool ignore_idle = false);
+};
+
+/**
+ * One shared bank action's hold on the account's shared bank: taken, then the session's copy checked against the
+ * database; released when it goes out of scope. Ready() when held and the copy was current, so the action may go on.
+ * With client_update the player is told why when it is not.
+ */
+class SharedBankHold {
+public:
+	SharedBankHold(Client *client, bool client_update);
+	~SharedBankHold();
+	SharedBankHold(const SharedBankHold &) = delete;
+	SharedBankHold &operator=(const SharedBankHold &) = delete;
+
+	bool Held() const { return m_held; }
+	bool Ready() const { return m_held && !m_refreshed; }
+
+private:
+	Client *m_client;
+	bool    m_held;
+	bool    m_refreshed;
 };
 
 #endif

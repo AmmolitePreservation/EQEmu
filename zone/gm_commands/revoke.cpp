@@ -44,34 +44,14 @@ void command_revoke(Client *c, const Seperator *sep)
 		).c_str()
 	);
 
-	auto revoke_client = entity_list.GetClientByAccID(account_id);
-	if (revoke_client) {
-		c->Message(
-			Chat::White,
-			fmt::format(
-				"Found {} in this zone.",
-				c->GetTargetDescription(revoke_client)
-			).c_str()
-		);
-		revoke_client->SetRevoked(revoked);
-		return;
-	} else {
-		c->Message(
-			Chat::White,
-			fmt::format(
-				"Attempting to {} {}.",
-				revoked ? "revoked" : "unrevoke",
-				character_name
-			).c_str()
-		);
-
-		auto pack = new ServerPacket(ServerOP_Revoke, sizeof(RevokeStruct));
-		auto rs = (RevokeStruct *) pack->pBuffer;
-		strn0cpy(rs->adminname, c->GetName(), sizeof(rs->adminname));
-		strn0cpy(rs->name, character_name.c_str(), sizeof(rs->name));
-		rs->toggle = revoked;
-		worldserver.SendPacket(pack);
-		safe_delete(pack);
-	};
+	// Through world, which sends it to every zone, this one too: every session of the account takes it.
+	auto pack = new ServerPacket(ServerOP_Revoke, sizeof(RevokeStruct));
+	auto rs = (RevokeStruct *) pack->pBuffer;
+	strn0cpy(rs->adminname, c->GetName(), sizeof(rs->adminname));
+	strn0cpy(rs->name, character_name.c_str(), sizeof(rs->name));
+	rs->account_id = account_id;
+	rs->toggle     = revoked;
+	worldserver.SendPacket(pack);
+	safe_delete(pack);
 }
 

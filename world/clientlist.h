@@ -30,6 +30,8 @@ public:
 	void	Add(Client* client);
 	Client*	Get(uint32 ip, uint16 port);
 	Client* FindByAccountID(uint32 account_id);
+	// The world session whose client list entry this is.
+	Client* FindByCLEID(uint32 cle_id);
 
 	void	ZoneBootup(ZoneServer* zs);
 	void	RemoveCLEReferances(ClientListEntry* cle);
@@ -54,6 +56,8 @@ public:
 	ClientListEntry* CheckAuth(uint32 loginserver_account_id, const char* key);
 	ClientListEntry* FindCharacter(const char* name);
 	ClientListEntry* FindCLEByAccountID(uint32 iAccID);
+	// Every session's entry of the account: one account may have several characters in the world at once.
+	std::vector<ClientListEntry *> GetCLEsByAccountID(uint32 account_id);
 	ClientListEntry* FindCLEByCharacterID(uint32 iCharID);
 	void	GetCLEIP(uint32 in_ip);
 	void	DisconnectByIP(uint32 in_ip);

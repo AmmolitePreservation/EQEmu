@@ -43,7 +43,8 @@ extern WorldServer worldserver;
 void Petition::SendPetitionToPlayer(Client* clientto) {
 	auto outapp = new EQApplicationPacket(OP_PetitionCheckout, sizeof(Petition_Struct));
 	Petition_Struct* pet = (Petition_Struct*) outapp->pBuffer;
-	strcpy(pet->accountid,GetAccountName());
+	// The client's petition window holds 31 letters of the account name.
+	strn0cpy(pet->accountid, GetAccountName(), sizeof(pet->accountid));
 	strcpy(pet->lastgm,GetLastGM());
 	strcpy(pet->charname,GetCharName());
 	pet->petnumber = petid;

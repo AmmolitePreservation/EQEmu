@@ -44,7 +44,7 @@ A rollback returns the machine to the snapshot's moment, so everything made late
 7. The quest patch: `cd ~/server/quests && git apply ~/code/rof2/peridotQuests.patch`.
 8. The chat host: `ucs.host` in `~/server/eqemu_config.json` is Peridot's in the snapshot. Set it to `peridotguids.strata.unseencolor.com`, or a test client reaches for Peridot's chat service.
 9. The Error and Warning log categories to file: `UPDATE logsys_categories SET log_to_file = 1 WHERE log_category_id IN (11, 54)`.
-10. startServer.sh: world takes the database through the updater (9325 to 9330) before the zones come up. Then migrationCheckAfter.sql, run as in step 5.
+10. startServer.sh: world takes the database through the updater (9325 to 9334) before the zones come up. Then migrationCheckAfter.sql, run as in step 5.
 
 The accounts, the characters and the seed set are the snapshot's (below). The tools mqperidotemu's suites need (g++-multilib, luajit) are not in the snapshot: install them in the container when a suite is run.
 

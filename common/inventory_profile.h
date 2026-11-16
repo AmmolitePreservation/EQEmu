@@ -204,6 +204,7 @@ namespace EQ
 
 		// Test whether a given slot can support a container item
 		static bool SupportsContainers(int16 slot_id);
+		static bool IsSharedBankSlot(int16 slot_id);
 
 		int GetSlotByItemInst(ItemInstance *inst);
 		// The held item with this GUID or serial, in any bucket, inside a bag or in an augment socket, or nothing.

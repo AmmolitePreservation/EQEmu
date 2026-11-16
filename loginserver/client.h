@@ -43,7 +43,19 @@ public:
 	bool VerifyAndUpdateLoginHash(LoginAccountContext c, const LoginAccountsRepository::LoginAccounts& a);
 	void DoSuccessfulLogin(LoginAccountsRepository::LoginAccounts& a);
 
+	/**
+	 * A password login the ammolite site checks: the site's verdict on what the player typed, then the login account
+	 * the site names, which the site made at the player's first good login.
+	 */
+	void HandleSiteCheckedLogin(const std::string &username, const std::string &password);
+
+	/**
+	 * This login session's own number, which a play request carries to world and world's answer brings back.
+	 */
+	uint32 GetSessionID() const { return m_session_id; }
+
 private:
+	uint32 m_session_id;
 	EQ::Random                                          m_random;
 	std::shared_ptr<EQStreamInterface>                  m_connection;
 	LSClientVersion                                     m_client_version;

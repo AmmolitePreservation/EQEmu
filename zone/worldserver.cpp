@@ -639,13 +639,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 			SetZoneData(zone->GetZoneID(), zone->GetInstanceID());
 
 			if (szic->zoneid == zone->GetZoneID()) {
-				auto client = entity_list.GetClientByLSID(szic->lsid);
+				// The character is entering again: one already here is a ghost of it. Other characters of the
+				// account stay.
+				auto client = entity_list.GetClientByCharID(szic->charid);
 				if (client) {
 					client->Kick("Dropped by world CLE subsystem");
 					client->Save();
 				}
 
-				zone->RemoveAuth(szic->lsid);
+				zone->RemoveAuthForCharacter(szic->charid);
 				zone->AddAuth(szic);
 			}
 		}
@@ -663,9 +665,9 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 
 		ServerZoneDropClient_Struct* drop = (ServerZoneDropClient_Struct*)pack->pBuffer;
 		if (zone) {
-			zone->RemoveAuth(drop->lsid);
+			zone->RemoveAuthForCharacter(drop->character_id);
 
-			auto client = entity_list.GetClientByLSID(drop->lsid);
+			auto client = entity_list.GetClientByCharID(drop->character_id);
 			if (client) {
 				client->Kick("Dropped by world CLE subsystem");
 				client->Save();
@@ -727,15 +729,18 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 	}
 	case ServerOP_KickPlayer: {
 		ServerKickPlayer_Struct* skp = (ServerKickPlayer_Struct*)pack->pBuffer;
-		Client* client;
+		std::vector<Client *> clients;
 		if (strlen(skp->name)) {
-			client = entity_list.GetClientByName(skp->name);
+			if (auto client = entity_list.GetClientByName(skp->name)) {
+				clients.push_back(client);
+			}
 		} else if (skp->account_id) {
-			client = entity_list.GetClientByAccID(skp->account_id);
+			clients = entity_list.GetClientsByAccountID(skp->account_id);
 		}
 
-		if (client) {
+		for (auto client : clients) {
 			if (skp->adminrank >= client->Admin()) {
+				const std::string kicked_name = client->GetCleanName();
 				client->WorldKick();
 				SendEmoteMessage(
 					skp->adminname,
@@ -743,7 +748,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					Chat::White,
 					fmt::format(
 						"Remote Kick | {} booted{}.",
-						skp->name,
+						kicked_name,
 						is_zone_loaded ?
 						fmt::format(
 							" in {}",
@@ -759,7 +764,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 					Chat::White,
 					fmt::format(
 						"Remote Kick | Your Status Level is not high enough to kick {}.",
-						skp->name
+						client->GetCleanName()
 					).c_str()
 				);
 			}
@@ -823,8 +828,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 		break;
 	}
 	case ServerOP_FlagUpdate: {
-		Client* client = entity_list.GetClientByAccID(*((uint32*)pack->pBuffer));
-		if (client) {
+		for (auto client : entity_list.GetClientsByAccountID(*((uint32*)pack->pBuffer))) {
 			client->UpdateAdmin();
 		}
 		break;
@@ -1039,8 +1043,7 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 	}
 	case ServerOP_Revoke: {
 		RevokeStruct* rev = (RevokeStruct*)pack->pBuffer;
-		Client* client = entity_list.GetClientByName(rev->name);
-		if (client) {
+		for (auto client : entity_list.GetClientsByAccountID(rev->account_id)) {
 			SendEmoteMessage(
 				rev->adminname,
 				0,
@@ -1053,6 +1056,15 @@ void WorldServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p)
 				).c_str()
 			);
 			client->SetRevoked(rev->toggle);
+		}
+		break;
+	}
+	case ServerOP_SharedBankChanged: {
+		auto changed = (SharedBankChanged_Struct *) pack->pBuffer;
+		for (auto client : entity_list.GetClientsByAccountID(changed->account_id)) {
+			if (client->CharacterID() != changed->character_id) {
+				client->ReloadSharedBank();
+			}
 		}
 		break;
 	}

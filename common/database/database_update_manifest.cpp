@@ -7182,7 +7182,19 @@ ALTER TABLE `bug_reports` DROP COLUMN `client_version_id`, DROP COLUMN `client_v
 		.content_schema_update = true
 	},
 	ManifestEntry{
-		.version = 9328,
+		.version = 9331,
+		.description = "2026_11_15_account_names_of_64.sql",
+		.check = "SHOW COLUMNS FROM `account` LIKE 'name'",
+		.condition = "contains",
+		.match = "varchar(30)",
+		.sql = R"(
+ALTER TABLE `account` MODIFY COLUMN `name` varchar(64) NOT NULL DEFAULT '';
+ALTER TABLE `petitions` MODIFY COLUMN `accountname` varchar(64) NOT NULL DEFAULT '';
+		)",
+		.content_schema_update = false
+	},
+	ManifestEntry{
+		.version = 9332,
 		.description = "2026_10_26_item_instances.sql",
 		.check = "SHOW TABLES LIKE 'item_instances'",
 		.condition = "empty",
@@ -7240,7 +7252,7 @@ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'item_instances rows are never delete
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9329,
+		.version = 9333,
 		.description = "2026_10_26_character_data_origin_world_id.sql",
 		.check = "SHOW COLUMNS FROM `character_data` LIKE 'origin_world_id'",
 		.condition = "empty",
@@ -7252,7 +7264,7 @@ ALTER TABLE `character_data`
 		.content_schema_update = false
 	},
 	ManifestEntry{
-		.version = 9330,
+		.version = 9334,
 		.description = "2026_10_31_item_instances_migration.sql",
 		.check = "SHOW TABLES LIKE 'inventory'",
 		.condition = "not_empty",

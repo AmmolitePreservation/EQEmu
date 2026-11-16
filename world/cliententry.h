@@ -123,14 +123,14 @@ private:
 	// Login Server stuff
 	char   m_source_loginserver[64]{}; //Loginserver we came from.
 	uint32 m_login_server_id;
-	char   m_login_account_name[32]{};
+	char   m_login_account_name[64]{};
 	char   m_key[16]{};
 	int16  m_world_admin;        // Login server's suggested admin status setting
 	bool   m_is_local;
 
 	// Account stuff
 	uint32 m_account_id;
-	char   m_account_name[32]{};
+	char   m_account_name[64]{};
 	int16  m_admin{};
 
 	// Character info

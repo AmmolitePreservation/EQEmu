@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <iomanip>
 #include <iostream>
 #include <math.h>
+#include <optional>
 #include <set>
 #include <stdio.h>
 #include <string.h>
@@ -543,7 +544,6 @@ void Client::CompleteConnect()
 	EnteringMessages(this);
 	LoadPEQZoneFlags();
 	LoadZoneFlags();
-	LoadAccountFlags();
 
 	/* Sets GM flag if needed & Sends Petition Queue */
 	UpdateAdmin(false);
@@ -10722,6 +10722,34 @@ void Client::Handle_OP_MoveItem(const EQApplicationPacket *app)
 		}
 	}
 
+	// Held past the commit below, so no other session reads the shared bank between this move's writes and its commit.
+	std::optional<SharedBankHold> shared_bank_hold;
+	const std::vector<int16> moved_slots = {static_cast<int16>(mi->from_slot), static_cast<int16>(mi->to_slot)};
+	if (
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[0]) ||
+		EQ::InventoryProfile::IsSharedBankSlot(moved_slots[1])
+	) {
+		shared_bank_hold.emplace(this, true);
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				mi->from_slot,
+				mi->to_slot,
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+	}
+
 	DBcore::Transaction transaction(database);
 
 	if (!SwapItem(mi) && IsValidSlot(mi->from_slot) && IsValidSlot(mi->to_slot)) {
@@ -10760,6 +10788,64 @@ void Client::Handle_OP_MoveMultipleItems(const EQApplicationPacket *app)
 
 	const int16 from_parent = multi_move->moves[0].from_slot.Slot;
 	const int16 to_parent   = multi_move->moves[0].to_slot.Slot;
+
+	bool touches_shared_bank = false;
+	for (int i = 0; i < multi_move->count; i++) {
+		touches_shared_bank = touches_shared_bank ||
+			multi_move->moves[i].from_slot.Type == EQ::invtype::typeSharedBank ||
+			multi_move->moves[i].to_slot.Type == EQ::invtype::typeSharedBank;
+	}
+
+	std::optional<SharedBankHold> shared_bank_hold;
+	if (touches_shared_bank) {
+		const auto parent_slot = [](const auto &slot) {
+			switch (slot.Type) {
+				case EQ::invtype::typeBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::BANK_BEGIN);
+				case EQ::invtype::typeSharedBank:
+					return static_cast<int16>(slot.Slot + EQ::invslot::SHARED_BANK_BEGIN);
+				default:
+					return static_cast<int16>(slot.Slot);
+			}
+		};
+
+		std::vector<int16> moved_slots;
+		for (int i = 0; i < multi_move->count; i++) {
+			moved_slots.push_back(parent_slot(multi_move->moves[i].from_slot));
+			moved_slots.push_back(parent_slot(multi_move->moves[i].to_slot));
+		}
+
+		shared_bank_hold.emplace(this, true);
+		if (!shared_bank_hold->Held()) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		if (!shared_bank_hold->Ready() || IsSharedBankMoveStale(moved_slots)) {
+			LogWarning(
+				"Multiple item move of character [{}] from slot [{}] to [{}] refused: it was made on shared bank contents of account [{}] that another session had changed",
+				CharacterID(),
+				moved_slots[0],
+				moved_slots[1],
+				AccountID()
+			);
+			Message(Chat::Yellow, "Another of your characters changed your shared bank first.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+
+		// Items that leave the shared bank write no shared bank slot, yet change the shared bank all the same.
+		const auto shared_bank_slot = std::ranges::find_if(moved_slots, EQ::InventoryProfile::IsSharedBankSlot);
+		if (
+			shared_bank_slot == moved_slots.end() ||
+			!database.ClaimSharedBankWrite(AccountID(), CharacterID(), *shared_bank_slot)
+		) {
+			Message(Chat::Red, "Another of your characters is using your shared bank. Try again in a moment.");
+			ResyncSharedBankMove(moved_slots);
+			return;
+		}
+	}
 
 	// CTRL + left click drops an item into a bag without opening it.
 	// This can be a bag, in which case it tries to fill the target bag with the contents of the bag on the cursor

@@ -774,10 +774,11 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			}
 
 			auto wtz = (WorldToZone_Struct*) pack->pBuffer;
-			auto client = ClientList::Instance()->FindByAccountID(wtz->account_id);
+			auto client = ClientList::Instance()->FindByCLEID(wtz->cle_id);
 			if (client) {
 				client->Clearance(wtz->response);
 			}
+			break;
 		}
 		case ServerOP_ZoneToZoneRequest: {
 			// ZoneChange is received by the zone the player is in, then the
@@ -999,8 +1000,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			break;
 		}
 		case ServerOP_FlagUpdate: {
-			auto cle = ClientList::Instance()->FindCLEByAccountID(*((uint32*) pack->pBuffer));
-			if (cle) {
+			for (auto cle : ClientList::Instance()->GetCLEsByAccountID(*((uint32*) pack->pBuffer))) {
 				cle->SetAdmin(*((int16*)&pack->pBuffer[4]));
 			}
 
@@ -1212,13 +1212,9 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 
 			break;
 		}
-		case ServerOP_Revoke: {
-			auto rev = (RevokeStruct*) pack->pBuffer;
-			auto cle = ClientList::Instance()->FindCharacter(rev->name);
-			if (cle && cle->Server()) {
-				cle->Server()->SendPacket(pack);
-			}
-
+		case ServerOP_Revoke:
+		case ServerOP_SharedBankChanged: {
+			ZSList::Instance()->SendPacket(pack);
 			break;
 		}
 		case ServerOP_SpawnPlayerCorpse: {
