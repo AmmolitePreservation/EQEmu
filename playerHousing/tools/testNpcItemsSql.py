@@ -68,6 +68,7 @@ check('528 NPC types in the housing block', 'SELECT COUNT(*) FROM npc_types WHER
 check('528 NPC item rows, each naming its type', 'SELECT COUNT(*) FROM real_estate_npc_items i JOIN npc_types n ON n.id = i.npc_type_id AND n.id = 3000000 + i.item_id', '528')
 check('the 42 gaps have no row but keep their names', "SELECT COUNT(*) FROM items it LEFT JOIN real_estate_npc_items i ON i.item_id = it.id WHERE i.item_id IS NULL AND it.housepet_file_name <> ''", '42')
 check('49 merchant rows for the two vendors', 'SELECT merchantid, COUNT(*) FROM merchantlist GROUP BY merchantid ORDER BY merchantid', '3066639\t24\n3066640\t25')
+check('every merchant row shows to every status', 'SELECT min_status, max_status, COUNT(*) FROM merchantlist GROUP BY min_status, max_status', '0\t255\t49')
 check('3 tint sets, each on its NPC type', 'SELECT COUNT(*) FROM npc_types_tint t JOIN npc_types n ON n.armortint_id = t.id', '3')
 check('2013 actions, all on NPC items', 'SELECT COUNT(*) FROM real_estate_npc_item_actions a JOIN real_estate_npc_items i ON i.item_id = a.item_id', '2013')
 check('17 training dummies', 'SELECT COUNT(*) FROM real_estate_npc_items WHERE training_dummy = 1', '17')

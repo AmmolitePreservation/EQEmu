@@ -112,7 +112,7 @@ check('no mount rides another (Ganak is not in Peridot)', all(dummy == 0 or True
 check('the SQL reserves the whole 3000000 block and refuses existing rows',
       ('BETWEEN 3000000 AND 3999999' in sql, 'FROM real_estate_npc_items)' in sql, 'merchantid IN (3066639, 3066640)' in sql), (True, True, True))
 check('the SQL names the worg', "UPDATE items SET housepet_file_name = 'a_black_worg_mount' WHERE id = 40426 AND housepet_file_name = '';" in sql, True)
-check('merchant rows take EQEmu\'s defaults for faction, level and expansion', '(3066639, 1, 47018, -100, 0, 0, 0, 0, 65535, 100, -1, -1)' in sql, True)
+check('merchant rows take EQEmu\'s defaults for faction, level, status and expansion', '(3066639, 1, 47018, -100, 0, 0, 255, 0, 65535, 100, -1, -1)' in sql, True)
 expectRaises('a name past 31 characters', lambda: generator.npcName('x' * 32), 'at most 31')
 expectRaises('a name with a space-only text', lambda: generator.npcName('  '), 'at most 31')
 expectRaises('a size out of range', lambda: generator.size('60', 'test'), 'is not a size')

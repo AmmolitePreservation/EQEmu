@@ -547,7 +547,8 @@ def renderSql(rows):
                           f'{", ".join(str(channel) for color in tintRow["colors"] for channel in color)})' for tintRow in rows['tints']) + ';')
   out.append('  INSERT INTO merchantlist (merchantid, slot, item, faction_required, level_required, min_status, max_status, alt_currency_cost, '
              'classes_required, probability, min_expansion, max_expansion) VALUES')
-  out.append(',\n'.join(f'    ({merchant}, {slot}, {sold}, -100, 0, 0, 0, 0, 65535, 100, -1, -1)' for merchant, slot, sold in rows['merchants']) + ';')
+  # A row shows only to a player whose status lies in min_status..max_status (zone/client_process.cpp), so 0..255 is everyone.
+  out.append(',\n'.join(f'    ({merchant}, {slot}, {sold}, -100, 0, 0, 255, 0, 65535, 100, -1, -1)' for merchant, slot, sold in rows['merchants']) + ';')
   out.append('  INSERT INTO real_estate_npc_items (item_id, npc_type_id, mount_npc_type_id, race_tag, training_dummy) VALUES')
   out.append(',\n'.join(f"    ({itemId}, {npcType}, 0, '{raceTag}', {dummy})" for itemId, npcType, raceTag, dummy in rows['npcItems']) + ';')
   out.append('  INSERT INTO real_estate_npc_item_actions (item_id, action_id) VALUES')
