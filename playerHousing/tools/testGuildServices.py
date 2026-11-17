@@ -36,7 +36,7 @@ keys = generator.keys(rows)
 byItem = {key['itemId']: key for key in keys}
 with open(generator.sqlPath, encoding='utf-8') as file:
   sql = file.read()
-check("sql/guildServices.sql is the generator's output", sql == generator.renderSql(), True)
+check("sql/guildServices.sql is the generator's output", sql == generator.renderSql(keys), True)
 with open(os.path.join(quests, generator.keysRelativePath), encoding='utf-8') as file:
   check("lua_modules/guild_portal_keys.lua is the generator's output", file.read() == generator.renderKeys(keys), True)
 check('Live lists 37 keys', len(rows), 37)
@@ -60,6 +60,18 @@ check("the pool's aura runs FullyScripted for nobody's spawn list, stationary, u
 check("the aura's NPC type is PEQ's aura NPC under its own id and name", "(2000100, 'IOAuraOfTheHall', 70, 127, 62, 11, 55309, 2, 553, 337, 1330, -1, '12,1^" in sql, True)
 check('the pool names its aura', "INSERT INTO real_estate_auras (item_id, aura_type) VALUES (66645, 31874);" in sql, True)
 check('the SQL refuses existing rows', ("WHERE item_id = 66645" in sql, "WHERE type = 31874" in sql, "WHERE id = 2000100" in sql), (True, True, True))
+sold = [key['itemId'] for key in generator.soldKeys(keys)]
+check("the sellers' keys run in Live's list order", (len(sold), sold[0], sold[1], sold.index(88737)), (25, 76005, 64191, 4))
+check("each seller has a row for every key", (sql.count('    (assistantMerchant, '), sql.count('    (zeflminMerchant, ')), (25, 25))
+check("a key's row starts where its landing's zone version serves",
+      "    (assistantMerchant, 1, 76005, -100, 0, 0, 255, 0, 65535, 100, (SELECT GREATEST(MAX(expansion), MAX(min_expansion)) FROM zone WHERE zoneidnumber = 86), -1)" in sql, True)
+check("Zeflmin's rows are the Assistant's",
+      [line.rstrip(',;').replace('zeflminMerchant', 'assistantMerchant') for line in sql.splitlines() if line.startswith('    (zeflminMerchant, ')]
+      == [line.rstrip(',;') for line in sql.splitlines() if line.startswith('    (assistantMerchant, ')], True)
+check('the splinter starts with The Buried Sea', "    (zeflminMerchant, 5, 88737, -100, 0, 0, 255, 0, 65535, 100, 13, -1)" in sql, True)
+check("the SQL refuses a list other than ProjectEQ's, a key that is no item and a landing zone without a row",
+      ("Zeflmin Werlikanin''s list is not ProjectEQ''s 22 keys" in sql, 'a key the halls sell is not in items' in sql,
+       'a key lands in a zone with no zone row' in sql, 'the Teleportation Assistant already sells keys' in sql), (True, True, True, True))
 expectRaises('a heading above 360 degrees', lambda: generator.eqHeading(361.0), 'outside 0-360')
 landed = dict(rows[0])
 expectRaises('a landing without a zone id', lambda: generator.keys([dict(landed, zoneId='')]), 'with no zone id')

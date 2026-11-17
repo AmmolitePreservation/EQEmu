@@ -493,12 +493,15 @@ def composeItem(itemId, item, sources, rows, report, notes):
         raise ValueError(f"the General Supply Merchant sells items Peridot lacks: {missing}")
       rows['merchants'].extend((npc['id'], slot + 1, sold) for slot, sold in enumerate(vendors[generalSupplyVendor]))
     if itemId == teleportationAssistant:
+      # His rows are sql/guildServices.sql's, which writes the same keys for Zeflmin Werlikanin (NPC-43).
       npc['merchant_id'] = npc['id']
       sold = [key for key in vendors[assistantVendor] if key in moduleKeys and key in peridotIds]
+      listed = [key['itemId'] for key in guildServices.soldKeys(guildServices.keys(guildServices.readDestinations()))]
+      if sold != listed:
+        raise ValueError(f"the Teleportation Assistant's Live list {sold} is not the keys sql/guildServices.sql sells {listed}")
       notes.append(f'the Teleportation Assistant sells {len(sold)} of Live\'s {len(vendors[assistantVendor])} keys: '
                    f'{len([k for k in vendors[assistantVendor] if k not in moduleKeys])} go to zones RoF2 lacks or Live refused, '
                    f'{len([k for k in vendors[assistantVendor] if k in moduleKeys and k not in peridotIds])} are items Peridot lacks')
-      rows['merchants'].extend((npc['id'], slot + 1, key) for slot, key in enumerate(sold))
     if itemId in parcelMerchants:
       npc['is_parcel_merchant'] = 1
     if len(raceTag) != 3 or not all(character.isdigit() or character.isupper() for character in raceTag):
