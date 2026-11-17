@@ -1,6 +1,7 @@
 #include "housingAccess.h"
 
 #include "housingEvents.h"
+#include "housingGuildServices.h"
 #include "housingInteriors.h"
 #include "housingSession.h"
 
@@ -322,5 +323,6 @@ namespace housing {
         leaveForExitPoint(client);
       }
     });
+    refreshAuraBuffs();
   }
 }

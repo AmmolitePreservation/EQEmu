@@ -722,6 +722,11 @@ void Aura::ProcessFullyScripted(Mob *owner)
 		if (!mob || !(mob->IsOfClientBotMerc() || mob->IsPetOwnerOfClientBot()) || casted_on.count(mob->GetID())) {
 			continue;
 		}
+		// A client still loading the zone is in the entity list before it is in the game (what a script asks about it, such
+		// as housing's session, comes at CompleteConnect), so it enters once loaded, as AE spells wait for it.
+		if (mob->IsClient() && !mob->CastToClient()->ClientFinishedLoading()) {
+			continue;
+		}
 		if (DistanceSquared(GetPosition(), mob->GetPosition()) <= distance) {
 			casted_on.insert(mob->GetID());
 			if (parse->HasQuestSub(GetNPCTypeID(), EVENT_AURA_ENTER)) {

@@ -16,6 +16,7 @@
 #include "../client.h"
 #include "../entity.h"
 #include "../npc.h"
+#include "../quest_parser_collection.h"
 #include "../zonedb.h"
 
 #include <cstring>
@@ -41,6 +42,8 @@ namespace housing {
       PlacedItem row;
       bool active = false;
       uint16 npcId = 0;
+      uint16 spellId = 0;
+      float distanceSquared = 0.0f;
     };
 
     std::map<uint32, AuraState> auras;
@@ -79,6 +82,8 @@ namespace housing {
       npc->SetEntityVariable(auraPropertyVariable, std::to_string(state.row.property_id));
       entity_list.AddNPC(npc, false);
       state.npcId = npc->GetID();
+      state.spellId = static_cast<uint16>(record.spell_id);
+      state.distanceSquared = static_cast<float>(record.distance);
       LogHousing("Aura of record [{}] runs as aura spawn [{}]", state.row.id, state.npcId);
     }
 
@@ -244,6 +249,31 @@ namespace housing {
   void stripAuraBuffs(Client *client) {
     for (uint32 spellId : catalog().auraSpellIds()) {
       client->BuffFadeBySpellID(static_cast<uint16>(spellId));
+    }
+  }
+
+  // Who holds Receive Buffs changes for those already inside a circle at once, through the aura's own script: one who lost it
+  // gets its leave event (the buff goes, with the leave line), one who gained it its enter event (the buff comes, with the near
+  // line), as Live's Deactivate and Activate act on those inside.
+  void refreshAuraBuffs() {
+    for (auto &[id, state] : auras) {
+      NPC *npc = auraNpc(state);
+      if (!npc) {
+        continue;
+      }
+      for (const auto &[clientId, client] : entity_list.GetClientList()) {
+        if (!client->ClientFinishedLoading() || DistanceSquared(npc->GetPosition(), client->GetPosition()) > state.distanceSquared) {
+          continue;
+        }
+        const bool holds = client->FindBuff(state.spellId);
+        const bool permitted = questHasPermission(client, state.row.property_id, static_cast<int>(Permission::receiveBuffs));
+        if (holds && !permitted && parse->HasQuestSub(npc->GetNPCTypeID(), EVENT_AURA_LEAVE)) {
+          parse->EventNPC(EVENT_AURA_LEAVE, npc, client, "", 0);
+        }
+        else if (!holds && permitted && parse->HasQuestSub(npc->GetNPCTypeID(), EVENT_AURA_ENTER)) {
+          parse->EventNPC(EVENT_AURA_ENTER, npc, client, "", 0);
+        }
+      }
     }
   }
 

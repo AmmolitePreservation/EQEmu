@@ -22,6 +22,7 @@ namespace housing {
   void processGuildServices();
   void resetGuildServices();
   void stripAuraBuffs(Client *client);
+  void refreshAuraBuffs();
 }
 
 #endif
