@@ -241,13 +241,11 @@ namespace housing {
     sendPropertyChanged(plotId, PropertyChangedPayload{offer->ownerCharacterId, client->CharacterID(), 0, 0});
   }
 
+  // Only the owner is told: the recipient's offer dialog closes by itself at 300 s and prints the line itself (STT-21).
   void expireTransferOffers() {
     for (const auto &offer : offers.expire(currentTime())) {
-      for (uint32 characterId : {offer.ownerCharacterId, offer.recipientCharacterId}) {
-        Client *party = entity_list.GetClientByCharID(characterId);
-        if (party) {
-          party->MessageString(Chat::White, declined);
-        }
+      if (Client *owner = entity_list.GetClientByCharID(offer.ownerCharacterId)) {
+        owner->MessageString(Chat::White, declined);
       }
       LogHousing("The transfer offer of property [{}] expired", offer.propertyId);
     }
