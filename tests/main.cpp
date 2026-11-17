@@ -35,6 +35,7 @@
 #include "housingTest.h"
 #include "item_guid_test.h"
 #include "item_layer_lookup_test.h"
+#include "item_custom_data_test.h"
 
 const EQEmuConfig *Config;
 
@@ -62,6 +63,7 @@ int main()
 		tests.add(new HousingTest());
 		tests.add(new ItemGUIDTest());
 		tests.add(new ItemLayerLookupTest());
+		tests.add(new ItemCustomDataTest());
 		tests.run(*output, true);
 	}
 	catch (std::exception &ex) {

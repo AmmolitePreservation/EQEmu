@@ -835,6 +835,9 @@ std::map<std::string, std::string> EQ::ItemInstance::ParseCustomDataString(const
 	}
 
 	for (size_t i = 0; i < components.size(); i += 2) {
+		if (components[i].empty()) {
+			throw std::invalid_argument(fmt::format("item custom data [{}] has an empty identifier", str));
+		}
 		custom_data[components[i]] = components[i + 1];
 	}
 
@@ -858,29 +861,30 @@ std::string EQ::ItemInstance::GetCustomData(const std::string& identifier) {
 }
 
 void EQ::ItemInstance::SetCustomData(const std::string& identifier, const std::string& value) {
+	// The saved form joins identifiers and values with '^' (GetCustomDataString), so either holding one reads back as other pairs.
+	if (identifier.empty() || identifier.find('^') != std::string::npos || value.find('^') != std::string::npos) {
+		throw std::invalid_argument(fmt::format("item custom data [{}] = [{}] would not read back: the identifier must not be empty, and neither part may hold '^'", identifier, value));
+	}
 	DeleteCustomData(identifier);
 	m_custom_data[identifier] = value;
 }
 
 void EQ::ItemInstance::SetCustomData(const std::string& identifier, int value) {
-	DeleteCustomData(identifier);
 	std::stringstream ss;
 	ss << value;
-	m_custom_data[identifier] = ss.str();
+	SetCustomData(identifier, ss.str());
 }
 
 void EQ::ItemInstance::SetCustomData(const std::string& identifier, float value) {
-	DeleteCustomData(identifier);
 	std::stringstream ss;
 	ss << value;
-	m_custom_data[identifier] = ss.str();
+	SetCustomData(identifier, ss.str());
 }
 
 void EQ::ItemInstance::SetCustomData(const std::string& identifier, bool value) {
-	DeleteCustomData(identifier);
 	std::stringstream ss;
 	ss << value;
-	m_custom_data[identifier] = ss.str();
+	SetCustomData(identifier, ss.str());
 }
 
 void EQ::ItemInstance::DeleteCustomData(const std::string& identifier) {

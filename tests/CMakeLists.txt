@@ -13,6 +13,7 @@ SET(tests_headers
 	fixed_memory_variable_test.h
 	hextoi_32_64_test.h
 	housingTest.h
+	item_custom_data_test.h
 	item_guid_test.h
 	item_layer_lookup_test.h
 	ipc_mutex_test.h
