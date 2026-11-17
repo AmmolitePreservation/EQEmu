@@ -82,8 +82,11 @@ print('a row holding a housing id or short name under another name or id refuses
 sql(settings)
 check("the settings put the discard delay, the bypass and no binding on every housing row",
       "SELECT COUNT(*) FROM zone WHERE shutdowndelay = 1920000 AND bypass_expansion_check = 1 AND canbind = 0 AND (zoneidnumber BETWEEN 714 AND 766 OR (zoneidnumber = 345 AND version = 2))", '25')
-check("the houses are Live's zone type 1, the Standard Guild Hall's interior Live's type 2",
-      "SELECT GROUP_CONCAT(DISTINCT ztype ORDER BY ztype) FROM zone WHERE short_name LIKE 'phinterior%' OR short_name LIKE 'plh%' UNION ALL SELECT ztype FROM zone WHERE short_name = 'guildhall' AND version = 2", '1\n2')
+check("Live's fog switch goes to ztype and its zone type to time_type: the houses and the three new halls fog off and type 1, "
+      "the Standard Guild Hall's interior fog off and type 2, the neighborhood fog on and type 1",
+      "SELECT GROUP_CONCAT(DISTINCT CONCAT(ztype, '/', time_type)) FROM zone WHERE zoneidnumber BETWEEN 714 AND 766 UNION ALL "
+      "SELECT CONCAT(ztype, '/', time_type) FROM zone WHERE short_name = 'guildhall' AND version = 2 UNION ALL "
+      "SELECT CONCAT(ztype, '/', time_type) FROM zone WHERE short_name = 'neighborhood'", '0/1\n0/2\n1/1')
 check("phinterior3a1 gets Live's safe point and floor", "SELECT safe_x, safe_y, safe_z, safe_heading, underworld, ceiling FROM zone WHERE short_name = 'phinterior3a1'", '0\t-12\t5\t128\t-60\t100')
 check("a zone Live never sent keeps its derived safe point", "SELECT safe_x, safe_y, safe_z FROM zone WHERE short_name = 'plhogrinteriors1a1'", '-1.6\t2.9\t-1.4')
 check("the neighborhood gets Live's header values, its safe point among them, and the bypass", "SELECT safe_x, safe_y, bypass_expansion_check, canbind FROM zone WHERE short_name = 'neighborhood'", '2035\t-2940\t1\t0')

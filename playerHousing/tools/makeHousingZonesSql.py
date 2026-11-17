@@ -69,7 +69,7 @@ fogColumns = [('FogRed', ['fog_red', 'fog_red2', 'fog_red3', 'fog_red4']), ('Fog
 def zoneColumns():
   columns = columnsOf('zone')
   needed = ['zoneidnumber', 'version', 'short_name', 'long_name', 'file_name', 'map_file_name', 'note', 'underworld', 'safe_x', 'safe_y', 'safe_z',
-            'safe_heading', 'ztype', 'minclip', 'maxclip', 'fog_density', 'canbind', 'shutdowndelay', 'bypass_expansion_check', 'ceiling',
+            'safe_heading', 'ztype', 'time_type', 'minclip', 'maxclip', 'fog_density', 'canbind', 'shutdowndelay', 'bypass_expansion_check', 'ceiling',
             'filter_id', 'disallow_mana_stone'] + gateColumns
   needed += [column for _, names in fogColumns for column in names]
   if any(column not in columns for column in needed):
@@ -85,7 +85,9 @@ def number(value):
 def headerValues(header, geometry):
   if header['bNoBind'] != '1':
     raise ValueError(f"{header['zone']}: Live lets players bind there, which no housing zone does")
-  values = dict(ztype=str(int(header['ZoneType'])), minclip=number(header['MinClip']), maxclip=number(header['MaxClip']),
+  # EQEmu's ztype column is the client's FogOnOff and its time_type the client's zone type (rof2_structs.h NewZone_Struct).
+  values = dict(ztype=str(int(header['FogOnOff'])), time_type=str(int(header['ZoneType'])), minclip=number(header['MinClip']),
+                maxclip=number(header['MaxClip']),
                 fog_density=number(header['FogDensity']), canbind='0', ceiling=number(header['Ceiling']), filter_id=str(int(header['FilterID'])),
                 disallow_mana_stone=str(int(header['bDisallowManaStone'])))
   for field, names in fogColumns:
@@ -171,7 +173,7 @@ BEGIN NOT ATOMIC
   END IF;
 {inserts}END //
 DELIMITER ;
-SELECT zoneidnumber, version, short_name, long_name, min_expansion, max_expansion, underworld, ceiling, filter_id, disallow_mana_stone, ztype, canbind, shutdowndelay FROM zone WHERE {anyRow} ORDER BY zoneidnumber, version;
+SELECT zoneidnumber, version, short_name, long_name, min_expansion, max_expansion, underworld, ceiling, filter_id, disallow_mana_stone, ztype, time_type, canbind, shutdowndelay FROM zone WHERE {anyRow} ORDER BY zoneidnumber, version;
 """
   path = os.path.join(here, '..', 'sql', 'housingZones.sql')
   open(path, 'w', encoding='ascii').write(sql)
@@ -189,7 +191,7 @@ BEGIN NOT ATOMIC
   END IF;
 {updates}END //
 DELIMITER ;
-SELECT zoneidnumber, version, short_name, safe_x, safe_y, safe_z, safe_heading, underworld, ceiling, filter_id, disallow_mana_stone, ztype, maxclip, canbind, shutdowndelay, expansion, bypass_expansion_check FROM zone WHERE (short_name = 'neighborhood' AND version = 0) OR {anyRow} ORDER BY zoneidnumber, version;
+SELECT zoneidnumber, version, short_name, safe_x, safe_y, safe_z, safe_heading, underworld, ceiling, filter_id, disallow_mana_stone, ztype, time_type, maxclip, canbind, shutdowndelay, expansion, bypass_expansion_check FROM zone WHERE (short_name = 'neighborhood' AND version = 0) OR {anyRow} ORDER BY zoneidnumber, version;
 """
   updatePath = os.path.join(here, '..', 'sql', 'housingZoneSettings.sql')
   open(updatePath, 'w', encoding='ascii').write(update)
