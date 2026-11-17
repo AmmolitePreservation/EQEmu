@@ -3984,6 +3984,10 @@ bool Mob::SpellOnTarget(
 	// select source
 	if (IsClient() && CastToClient()->GMHideMe()) {
 		action->source = spelltar->GetID();
+	} else if (spelltar->IsClient() && !ShouldISpawnFor(spelltar->CastToClient())) {
+		// The target's client was never sent this caster (an aura shown to no one, as the guild hall pool's): it drops an
+		// action from a spawn it does not know, buff and all, so the spell lands as the target's own.
+		action->source = spelltar->GetID();
 	} else {
 		action->source = GetID();
 		// this is a hack that makes detrimental buffs work client to client
