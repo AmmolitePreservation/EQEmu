@@ -32,7 +32,8 @@ namespace housing {
     constexpr uint32 ownerTransferred = 736;
     constexpr uint32 declined = 7638;
     constexpr size_t ownerNameOffset = 0x0c;
-    constexpr size_t targetNameOffset = 0x68;
+    // Measured in the client's request (STT-20); the static reading had +0x68, inside the string before it.
+    constexpr size_t targetNameOffset = 0x6c;
     constexpr size_t acceptedOffset = 0xb9;
 
     TransferOffers offers;

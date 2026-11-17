@@ -162,7 +162,7 @@ Total size is 0xbc (188) bytes. **Five opcodes carry this struct**:
 |---|---|---|---|
 | **`0x45be`** | C → S | Purchase button (`0x74d563`) | **purchase request**: `+0x00` property id (Purchase window `+0x228`), `+0xac` selected **price option key**, `+0xb0` selected **upkeep option key** (0 without the combobox), `+0xb4` global `[0xdd5d00]` (unknown) |
 | **`0x792c`** | C → S | Purchase dialog `0x64` "sell this plot?" yes | **sell request**: `+0x00` property id (window `+0x228`) |
-| **`0x507f`** | C → S | Purchase/Manage dialog `0x65` "transfer … to %1?" yes (`0x5b1470`) | **transfer request**: `+0x00` = manager `+0x94`; 64 characters from `[0xdd2648]+0xa4` (the target's name) copied to `+0x68`. `+0x68` falls inside the `+0x4c` string's range, so field boundaries there are unconfirmed. |
+| **`0x507f`** | C → S | Purchase/Manage dialog `0x65` "transfer … to %1?" yes (`0x5b1470`) | **transfer request**: `+0x00` = manager `+0x94`; 64 characters from `[0xdd2648]+0xa4` (the target's name), which the request carries at **`+0x6c`** (measured, STT-20: a logged 0x507f holds the plot at `+0x00`, -1 at `+0x04` and `+0x08`, zeros to `+0x6b`, then the name). |
 | **`0x5a63`** | S → C | server | **transfer offer** to the recipient: `+0x00` property id, `+0x0c` the offering player's name |
 | **`0x5a63`** | C → S | game dialog `0x89` answer | **transfer reply**: the same struct echoed, with `+0xb9` = 1 (accept) or 0 (decline) |
 
