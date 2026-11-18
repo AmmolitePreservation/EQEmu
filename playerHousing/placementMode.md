@@ -79,7 +79,7 @@ Wire order (the stream cursor is the usual `{buffer, length, position}`):
 | 6 | u32 | `+0x24` | **property id** the item belongs to (sent in `0x711a`; rewritten by `0x1097` via `0x556e10`) |
 | 7 | u32 | `+0x28` | **record id** of the placed-item entry (same) |
 | 8 | u32 × 7 (floats) | `+0x7c`–`+0x94` | **transform: scale (`+0x7c`), heading (`+0x80`), pitch (`+0x84`), roll (`+0x88`), then position (`+0x8c`–`+0x94`)** (verified from the world-object body build, `worldLayer.md`). `0x711a` sends these in another order: heading, pitch, roll, scale, then the position (`0x5b1f90` pushes `+0x80`, `+0x84`, `+0x88`, `+0x7c`; the position adjusted when anchored to a spawn). End reads the position from `+0x8c`–`+0x94`. **Note the order differs from the placed-item entry and layouts (heading first).** |
-| 9 | u8 × 3 | `+0x98`, `+0x99`, `+0x9a` | `+0x98` NPC item (actor flags: no surface, no collision); `+0x99`/`+0x9a` sub-mode gates |
+| 9 | u8 × 3 | `+0x98`, `+0x99`, `+0x9a` | `+0x98` bIgnoreCollisions: an NPC item or an item with `placeable_ignore_collisions` (actor flags: no surface, no collision; WOB-3); `+0x99`/`+0x9a` sub-mode gates |
 | 10 | u32 | `+0x9c` | surface type (1 = wall) |
 | 11 | u32 × 7 | `+0xa0`–`+0xb8` | **min / max / default scale**, **heading offset**, **two wall-mount tilts**, **light type** (`worldLayer.md`, *The placement object*) |
 
@@ -260,7 +260,7 @@ These are the same opcodes and 12-byte layout as the interaction menu's entry ty
 |---|---|---|
 | **`0x5ae1f0`: server `0x1228` result, code 0** | **1** | **the server accepted the commit** → finalize (reads the final position, notifies the owner) |
 | `0x5afe80`: server `0x1baf` (item removed) | 0 | cancel ("Item placement has been cancelled because the item being placed has been removed…") |
-| `0x4d0a30` (second switch; references `.eqg`/`.s3d`) | 0 | cancel (*inferred:* zone/asset change) |
+| `0x4d0a4f`: server `0x6213` (no payload), through `0x558540` | 0 | cancel: the server ends the placement without a commit (OPC-7; `cancelPlacement` sends it) |
 | `0x5585f0` ← game loop `0x540d30` | 0 | cancel from the game loop |
 | `0x590a60` ← `0x5982b0` (spawn cleanup) | 0 | if the spawn has `+0x1e54` → cancel; otherwise, if the spawn carries `0x21ea`'s fields (`+0x198`, `+0x420`) and its GUID (`+0x378`) is the placed item → clear the state's spawn link (`+0x24`, `+0x28`) |
 | `0x4d9180` (cancel keybind) | 0 | see above (only while the latch is clear) |
