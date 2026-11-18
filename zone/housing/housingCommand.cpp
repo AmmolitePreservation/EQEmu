@@ -97,7 +97,7 @@ namespace housing {
         return false;
       }
       sendEvent(EventType::catalogChanged, EventTarget::allZones, 0, 0, {});
-      say(client, done + "; every zone reloads the catalog.");
+      say(client, done + "; every zone reloads the catalog, and players get it at their next zone-in.");
       return true;
     }
 
@@ -443,7 +443,7 @@ namespace housing {
       say(client, "#realestate definition show <id> | set <id> <field> <value> | origin <id> (the switch, at you) | create <id> <type 1-8> <name> | child add|remove <parent> <child>");
       say(client, "#realestate cost set <cost id> <currency> <amount>: any cost's price in coin (currency 0, in copper) or an alternate currency; a negative amount is a reduction");
       say(client, "#realestate poll list | create | location | option | unoption | prompt | hideresults | publish | close | archive: Peridot's polls");
-      say(client, "#realestate reload: every zone reloads the catalog");
+      say(client, "#realestate reload: every zone reloads the catalog; players get it at their next zone-in");
       say(client, "Edits are validated before they're kept and reach every zone; one that would break the catalog is refused.");
     }
   }
@@ -467,7 +467,7 @@ namespace housing {
     }
     else if (subcommand == "reload") {
       sendEvent(EventType::catalogChanged, EventTarget::allZones, 0, 0, {});
-      say(client, "Every zone reloads the catalog.");
+      say(client, "Every zone reloads the catalog; players get it at their next zone-in.");
     }
     else {
       help(client);

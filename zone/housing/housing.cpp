@@ -395,22 +395,22 @@ namespace housing {
     return catalogReady;
   }
 
+  // Clients get the new catalog at their next zone-in, the only time Live sends one: RoF2's heap was corrupted by the catalog,
+  // records and region list sent again while a placement was active (PLC-22).
   bool reloadCatalog() {
     catalogReady = catalog().load();
-    if (catalogReady) {
-      try {
-        loadHostedRoot();
-      }
-      catch (const std::exception &error) {
-        LogError("Housing: the property this zone runs could not be found after the catalog reload: {}", error.what());
-        clearHostedRoot();
-      }
+    if (!catalogReady) {
+      sessions.clear();
+      return false;
     }
-    for (const auto &[id, client] : entity_list.GetClientList()) {
-      sendZoneContents(client);
-      sendZoneIn(client);
+    try {
+      loadHostedRoot();
     }
-    return catalogReady;
+    catch (const std::exception &error) {
+      LogError("Housing: the property this zone runs could not be found after the catalog reload: {}", error.what());
+      clearHostedRoot();
+    }
+    return true;
   }
 
   Session *session(Client *client) {

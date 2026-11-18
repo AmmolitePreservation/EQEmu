@@ -132,7 +132,7 @@ The PEQ-derived `items` table already holds the housing tail, captured from Live
 | Personal trophy benefits changed | the owner | recomputes the available benefits (they come from trophies placed in the owner's plots) |
 | Guild neighborhood created | the guild | `0x1d3c` |
 | Polls changed | all zones | re-sends the affected poll messages to players with the vote windows' data |
-| Catalog changed (a kept `#realestate` edit, `reload`) | all zones | reloads the catalog and re-sends it, and the state that depends on it, to everyone present |
+| Catalog changed (a kept `#realestate` edit, `reload`) | all zones | reloads the catalog; players get it at their next zone-in, as Live sends it only then (a catalog and region list sent again during a placement corrupted RoF2's heap, PLC-22) |
 
 A transfer offer needs no event: the recipient is in the owner's zone, which holds the offer (S7). The expiry lines go from world to an online owner as an ordinary chat message, and the notice mail straight into the `mail` table (S8).
 
