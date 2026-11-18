@@ -14,30 +14,31 @@ namespace housing {
     bool zoneRoot = false;
   };
 
-  // Live gives a client the records and lists of its related properties only (ZIN-1): every seed (own, carried, guild,
-  // access-granted) with its ancestors and, below anything but a zone-level root, its descendants; the current property with its
-  // ancestors. A guild village's root is a guild seed, and its plots stay out.
-  inline std::set<uint32> relatedProperties(const std::map<uint32, PropertyLink> &links, const std::set<uint32> &seeds, uint32 currentId, int maximumDepth) {
-    std::set<uint32> related;
-    auto addLine = [&](uint32 id) {
-      int depth = 0;
-      for (uint32 at = id; at;) {
-        auto link = links.find(at);
-        if (link == links.end()) {
-          throw std::invalid_argument(fmt::format("property [{}] in the line of [{}] is unknown", at, id));
-        }
-        if (++depth > maximumDepth) {
-          throw std::invalid_argument(fmt::format("property [{}] has an ancestor chain deeper than [{}]", id, maximumDepth));
-        }
-        related.insert(at);
-        at = link->second.parentId;
+  inline std::set<uint32> propertyLine(const std::map<uint32, PropertyLink> &links, uint32 id, int maximumDepth) {
+    std::set<uint32> line;
+    int depth = 0;
+    for (uint32 at = id; at;) {
+      auto link = links.find(at);
+      if (link == links.end()) {
+        throw std::invalid_argument(fmt::format("property [{}] in the line of [{}] is unknown", at, id));
       }
-    };
-    for (uint32 id : seeds) {
-      addLine(id);
+      if (++depth > maximumDepth) {
+        throw std::invalid_argument(fmt::format("property [{}] has an ancestor chain deeper than [{}]", id, maximumDepth));
+      }
+      line.insert(at);
+      at = link->second.parentId;
     }
-    if (currentId) {
-      addLine(currentId);
+    return line;
+  }
+
+  // Live gives a client the records and lists of its related properties only (ZIN-1): every seed (own, carried, guild,
+  // access-granted) with its line and, below anything but a zone-level root, its descendants. A guild village's root is a guild
+  // seed, and its plots stay out.
+  inline std::set<uint32> relatedProperties(const std::map<uint32, PropertyLink> &links, const std::set<uint32> &seeds, int maximumDepth) {
+    std::set<uint32> related;
+    for (uint32 id : seeds) {
+      const auto line = propertyLine(links, id, maximumDepth);
+      related.insert(line.begin(), line.end());
     }
     std::map<uint32, std::set<uint32>> children;
     for (const auto &[id, link] : links) {

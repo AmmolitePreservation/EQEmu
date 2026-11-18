@@ -15,6 +15,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -82,8 +84,9 @@ public:
     TEST_ADD(HousingTest::pollResultsRankTiesTogether);
     TEST_ADD(HousingTest::houseSwapNeedsRoomForThePlacedHousesItems);
     TEST_ADD(HousingTest::itemListPayloadIsTwentyEightBytesARecordAndRefusesATornOne);
-    TEST_ADD(HousingTest::relatedPropertiesAreSeedsWithTheirLinesAndTheCurrentLine);
-    TEST_ADD(HousingTest::relatedPropertiesRefuseUnknownIdsAndCycles);
+    TEST_ADD(HousingTest::relatedPropertiesAreSeedsWithTheirLinesAndDescendants);
+    TEST_ADD(HousingTest::propertyLineIsThePropertyAndItsAncestors);
+    TEST_ADD(HousingTest::relatedPropertiesAndLinesRefuseUnknownIdsAndCycles);
   }
 
 private:
@@ -903,35 +906,46 @@ private:
     TEST_ASSERT(refused);
   }
 
-  void relatedPropertiesAreSeedsWithTheirLinesAndTheCurrentLine() {
-    const std::map<uint32, housing::PropertyLink> links{
+  static std::map<uint32, housing::PropertyLink> neighborhoodLinks() {
+    return {
       {1, {0, true}}, {2, {1, true}},
       {10, {2, false}}, {11, {10, false}}, {12, {11, false}}, {13, {11, false}},
       {20, {2, false}}, {21, {20, false}}, {22, {21, false}},
       {30, {2, false}}, {31, {30, false}}
     };
-    TEST_ASSERT(housing::relatedProperties(links, {10, 30}, 2, 10) == std::set<uint32>({1, 2, 10, 11, 12, 13, 30, 31}));
-    TEST_ASSERT(housing::relatedProperties(links, {2}, 2, 10) == std::set<uint32>({1, 2}));
-    TEST_ASSERT(housing::relatedProperties(links, {}, 21, 10) == std::set<uint32>({1, 2, 20, 21}));
-    TEST_ASSERT(housing::relatedProperties(links, {12, 10}, 2, 10) == std::set<uint32>({1, 2, 10, 11, 12, 13}));
-    TEST_ASSERT(housing::relatedProperties(links, {}, 0, 10).empty());
   }
 
-  void relatedPropertiesRefuseUnknownIdsAndCycles() {
+  void relatedPropertiesAreSeedsWithTheirLinesAndDescendants() {
+    const auto links = neighborhoodLinks();
+    TEST_ASSERT(housing::relatedProperties(links, {10, 30}, 10) == std::set<uint32>({1, 2, 10, 11, 12, 13, 30, 31}));
+    TEST_ASSERT(housing::relatedProperties(links, {2}, 10) == std::set<uint32>({1, 2}));
+    TEST_ASSERT(housing::relatedProperties(links, {12, 10}, 10) == std::set<uint32>({1, 2, 10, 11, 12, 13}));
+    TEST_ASSERT(housing::relatedProperties(links, {}, 10).empty());
+  }
+
+  void propertyLineIsThePropertyAndItsAncestors() {
+    const auto links = neighborhoodLinks();
+    TEST_ASSERT(housing::propertyLine(links, 21, 10) == std::set<uint32>({1, 2, 20, 21}));
+    TEST_ASSERT(housing::propertyLine(links, 2, 10) == std::set<uint32>({1, 2}));
+    TEST_ASSERT(housing::propertyLine(links, 0, 10).empty());
+  }
+
+  void relatedPropertiesAndLinesRefuseUnknownIdsAndCycles() {
     const std::map<uint32, housing::PropertyLink> links{{1, {0, true}}, {10, {1, false}}, {40, {41, false}}, {41, {40, false}}};
-    auto refused = [&](const std::set<uint32> &seeds, uint32 currentId) {
+    auto refused = [](const std::function<void()> &call) {
       try {
-        housing::relatedProperties(links, seeds, currentId, 10);
+        call();
       }
       catch (const std::invalid_argument &) {
         return true;
       }
       return false;
     };
-    TEST_ASSERT(refused({99}, 0));
-    TEST_ASSERT(refused({}, 99));
-    TEST_ASSERT(refused({40}, 0));
-    TEST_ASSERT(!refused({10}, 1));
+    TEST_ASSERT(refused([&]() { housing::relatedProperties(links, {99}, 10); }));
+    TEST_ASSERT(refused([&]() { housing::propertyLine(links, 99, 10); }));
+    TEST_ASSERT(refused([&]() { housing::relatedProperties(links, {40}, 10); }));
+    TEST_ASSERT(refused([&]() { housing::propertyLine(links, 41, 10); }));
+    TEST_ASSERT(!refused([&]() { housing::relatedProperties(links, {10}, 10); }));
   }
 };
 

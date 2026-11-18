@@ -240,7 +240,8 @@ namespace housing {
       return holders;
     }
 
-    std::set<uint32> relatedIdsOf(Client *client, const Session &state) {
+    // The current property's line goes out as records alone: a visitor in a stranger's house gets no lists of that plot (ZIN-1).
+    void setClientView(Client *client, Session &state) {
       const PropertyLookup lookup = state.lookup();
       const AccessListLookup listOf = state.accessLookup();
       std::set<uint32> seeds(state.ownedIds.begin(), state.ownedIds.end());
@@ -254,7 +255,10 @@ namespace housing {
           seeds.insert(id);
         }
       }
-      return relatedProperties(links, seeds, state.currentPropertyId, maximumDepth);
+      state.relatedIds = relatedProperties(links, seeds, maximumDepth);
+      state.knownIds = state.relatedIds;
+      const auto currentLine = propertyLine(links, state.currentPropertyId, maximumDepth);
+      state.knownIds.insert(currentLine.begin(), currentLine.end());
     }
 
     bool buildSession(Client *client, Session &state, std::map<uint32, RecordFields> &fields, const std::set<uint32> &alsoKnown, uint32 keptCurrentId) {
@@ -291,8 +295,7 @@ namespace housing {
           }
           fields = recordFieldsFor(state.properties, problems);
           state.accessLists = accessLists(listHoldersOf(state));
-          state.relatedIds = relatedIdsOf(client, state);
-          state.knownIds = state.relatedIds;
+          setClientView(client, state);
         }
       }
       catch (const std::exception &error) {

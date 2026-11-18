@@ -50,7 +50,8 @@ namespace housing {
     std::map<uint32, AccessList> accessLists;
     std::optional<Placement> placement;
     std::optional<AugmentaterMode> augmentaterMode;
-    // The client holds the records of knownIds: relatedIds, whose item and access lists it gets too, and those revealed on demand.
+    // The client holds the records of knownIds: relatedIds, whose item and access lists it gets too, the current property's line
+    // and those revealed on demand.
     std::set<uint32> relatedIds;
     std::set<uint32> knownIds;
     PropertyLookup lookup() const;
