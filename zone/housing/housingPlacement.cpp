@@ -829,23 +829,6 @@ namespace housing {
       return yardOrHouse ? location : 0;
     }
 
-    PickUpFacts pickUpAccessFacts(Client *client, const Property &holder, const Property *carried, bool carriesItems, const PlacedItem &record,
-      const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf) {
-      PickUpFacts facts;
-      facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
-      facts.itemUpkeepExpired = record.upkeep_expired_at || (carried && carried->upkeep_expired_time);
-      facts.kind = carried ? kindOf(static_cast<uint8>(typeOf(*carried))) : CarriedKind::none;
-      const Permission removal = facts.kind == CarriedKind::none ? Permission::removeItem
-        : facts.kind == CarriedKind::crate ? Permission::removeCrate : Permission::removeHouse;
-      facts.mayRemoveKind = permitted(client, removal, holder, lookup, listOf);
-      // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
-      facts.placedByTaker = record.owner_character_id ? record.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
-      // Placement attunes every house and crate; only the item's own flag or a property that holds items makes one No Trade (ACC-11).
-      facts.noTrade = !item.NoDrop || carriesItems;
-      facts.carriesItems = carriesItems;
-      return facts;
-    }
-
     // The pick-up rules on fresh rows: throws the refusal, or tells whether the item carries real estate that holds contents.
     bool checkPickUp(Client *client, const Session &state, const Candidate &candidate, int16 slot) {
       const PlacedItem &taken = *candidate.row;
@@ -878,6 +861,23 @@ namespace housing {
       }
       return carriesItems;
     }
+  }
+
+  PickUpFacts pickUpAccessFacts(Client *client, const Property &holder, const Property *carried, bool carriesItems, const PlacedItem &record,
+    const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf) {
+    PickUpFacts facts;
+    facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
+    facts.itemUpkeepExpired = record.upkeep_expired_at || (carried && carried->upkeep_expired_time);
+    facts.kind = carried ? kindOf(static_cast<uint8>(typeOf(*carried))) : CarriedKind::none;
+    const Permission removal = facts.kind == CarriedKind::none ? Permission::removeItem
+      : facts.kind == CarriedKind::crate ? Permission::removeCrate : Permission::removeHouse;
+    facts.mayRemoveKind = permitted(client, removal, holder, lookup, listOf);
+    // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
+    facts.placedByTaker = record.owner_character_id ? record.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
+    // Placement attunes every house and crate; only the item's own flag or a property that holds items makes one No Trade (ACC-11).
+    facts.noTrade = !item.NoDrop || carriesItems;
+    facts.carriesItems = carriesItems;
+    return facts;
   }
 
   bool readItemRequest(WireReader &reader, ItemRequest &request) {

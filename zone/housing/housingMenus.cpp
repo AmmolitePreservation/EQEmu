@@ -206,11 +206,12 @@ namespace housing {
       if (mayMove && !(house && holdsContents(database, carried->id))) {
         menu.entries.push_back(moveToStorageEntry);
       }
-      // Live's menus (ACC-3): a crate's Move to Inventory needs Remove Crate, any other item's comes only to the plot's owner and
-      // its placer, whatever bits a viewer holds; the request itself, which the Items window sends unchecked, follows pickUpResult.
-      const bool owner = accessGroup(client, *located.holder, lookup, listOf) == ownerGroup;
-      const bool crate = carried && typeOf(*carried) == DefinitionType::movingCrate;
-      if (!plotExpired && (crate ? permitted(client, Permission::removeCrate, *located.holder, lookup, listOf) : (owner || located.item.owner_character_id == client->CharacterID()))) {
+      const EQ::ItemData *itemData = database.GetItem(located.item.item_id);
+      if (!itemData) {
+        throw std::runtime_error(fmt::format("record [{}] names item [{}], which does not exist", located.item.id, located.item.item_id));
+      }
+      const bool carriesItems = carried && holdsContents(database, carried->id);
+      if (pickUpAccessResult(pickUpAccessFacts(client, *located.holder, carried, carriesItems, located.item, *itemData, located.plot, lookup, listOf)) == ItemResult::success) {
         menu.entries.push_back(moveToInventoryEntry);
       }
       if (mailToOwnerResult(mailFacts(client, located.item, *located.holder, carried != nullptr, lookup, listOf)) == ItemResult::success) {
