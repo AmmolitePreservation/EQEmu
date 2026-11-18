@@ -255,6 +255,35 @@ namespace housing {
       }
     }
 
+    // Every property row holds to the catalog it names, so zone-in never meets one it would have to guess at (REC-12).
+    auto properties = database.QueryDatabase("SELECT id, parent_id, definition_id, upkeep_currency, owner_character_id, guild_id FROM real_estate_properties");
+    if (!properties.Success()) {
+      problems.push_back(fmt::format("the properties could not be read: {}", properties.ErrorMessage()));
+    }
+    std::set<uint32> propertyIds;
+    for (auto row : properties) {
+      propertyIds.insert(Strings::ToUnsignedInt(row[0]));
+    }
+    for (auto row : properties) {
+      const uint32 propertyId = Strings::ToUnsignedInt(row[0]);
+      const uint32 parentId = Strings::ToUnsignedInt(row[1]);
+      const uint32 definitionId = Strings::ToUnsignedInt(row[2]);
+      const uint32 upkeepCurrency = Strings::ToUnsignedInt(row[3]);
+      const bool owned = Strings::ToUnsignedInt(row[4]) || Strings::ToUnsignedInt(row[5]);
+      if (parentId && !propertyIds.count(parentId)) {
+        problems.push_back(fmt::format("property [{}] names parent [{}], which does not exist", propertyId, parentId));
+      }
+      auto definition = definitions.find(definitionId);
+      if (definition == definitions.end()) {
+        problems.push_back(fmt::format("property [{}] names definition [{}], which the catalog lacks", propertyId, definitionId));
+        continue;
+      }
+      const uint32 upkeepCost = definition->second.row.upkeep_definition_id;
+      if (owned && upkeepCost && !option(upkeepCost, upkeepCurrency)) {
+        problems.push_back(fmt::format("property [{}] pays upkeep in currency [{}], which its upkeep cost [{}] doesn't offer", propertyId, upkeepCurrency, upkeepCost));
+      }
+    }
+
     npcItems.clear();
     npcItemsWithoutRows.clear();
     const std::set<uint32> npcItemIdSet = npcItemIds();
