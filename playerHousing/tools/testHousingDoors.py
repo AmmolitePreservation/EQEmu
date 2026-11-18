@@ -35,7 +35,7 @@ committed = open(sqlPath).read()
 subprocess.run([sys.executable, os.path.join(here, 'makeHousingDoorsSql.py'), '--live', liveClone], capture_output=True, text=True, check=True)
 check('the committed SQL equals a fresh generation', open(sqlPath).read() == committed, True)
 
-liveDoors, lotIDs, doorRows, mapRows = generator.generate(liveClone)
+liveDoors, lotIDs, doorRows, mapRows, added, changed = generator.generate(liveClone)
 lotSquares = generator.readLotSquares()
 
 neighborhoodRows = [row for row in mapRows if row[:2] == (712, 0)]
@@ -80,7 +80,8 @@ sql = open(sqlPath).read()
 updates = [line.strip() for line in sql.splitlines() if line.lstrip().startswith('UPDATE')]
 check('the gate update sets its open type and RealEstateDoorID at version 1', [line for line in updates if "'guildlobby'" in line],
       ["UPDATE doors SET opentype = 159, real_estate_door_id = 1 WHERE zone = 'guildlobby' AND version = 1 AND doorid = 38;"])
-check('one RealEstateDoorID update per neighborhood square and the portal, and the gate', (len([line for line in updates if "'neighborhood'" in line]), len(updates)), (78, 79))
+mapUpdates = [line for line in updates if 'real_estate_door_id' in line]
+check('one RealEstateDoorID update per neighborhood square and the portal, and the gate', (len([line for line in mapUpdates if "'neighborhood'" in line]), len(mapUpdates)), (78, 79))
 check("the portal moves to Live's position and takes its RealEstateDoorID; a guild square takes its plot",
       ("UPDATE doors SET pos_x = 1955.43, pos_y = -2900.76, pos_z = 3.24432, heading = 359.0, real_estate_door_id = 1 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 130;" in updates,
        "UPDATE doors SET real_estate_door_id = 187 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 226;" in updates), (True, True))
@@ -89,9 +90,24 @@ check("the SQL requires the portal as a closed void portal anywhere and the gate
        "zone = 'guildlobby' AND version = 1 AND doorid = 38 AND name = 'OBJ_IRONGATESWITCH'\n      AND doorisopen = 0 AND invert_state = 0 AND ABS(pos_x - (293.331)) <= 1.0" in sql), (True, True))
 check('the SQL refuses doors that already carry a RealEstateDoorID', "IF EXISTS (SELECT 1 FROM doors WHERE real_estate_door_id <> 0) THEN" in sql, True)
 check('every door row is inserted with RealEstateDoorID 0', sql.count("`content_flags_disabled`, 0 FROM doors WHERE id = templateId;"), 38)
-check('one insert per door row', sql.count('INSERT INTO doors '), 38)
+check('one insert per door row and per added decoration', sql.count('INSERT INTO doors '), 78)
 check('the 345 version 2 door row', "SELECT 3, 'guildhall', 2, 'OBJ_GUILD_DOOR', -162.899, -3.4, 6.9, 128.0, 161," in sql, True)
-check('every door row is written closed and uninverted', sql.count(", 0, `door_param`,") == 38 and sql.count('`dest_heading`, 0, `incline`') == 38, True)
+check('every door row and added decoration is written closed and uninverted', sql.count(", 0, `door_param`,") == 78 and sql.count('`dest_heading`, 0, `incline`') == 78, True)
+
+check("Live's neighborhood decorations PEQ lacks: 40, ids 199-225 and 230-242", [row['doorID'] for row in added], list(range(199, 226)) + list(range(230, 243)))
+check('each added decoration is of open type 0 or 55', {row['type'] for row in added}, {0, 55})
+check("decoration 199 at Live's values", next((row['name'], row['type'], row['x'], row['y'], row['z'], row['heading'], row['size']) for row in added if row['doorID'] == 199),
+      ('IT20129', 55, 2120.21, -2801.67, 0.229999, 502.0, 135))
+check("the decorations PEQ holds otherwise than Live: 153 and 181 moved, 182 and 183 other models", [(peq['id'], peq['name'], live['name']) for peq, live in changed],
+      [(153, 'IT20028', 'IT20028'), (181, 'IT11618', 'IT11618'), (182, 'IT11679', 'IT11059'), (183, 'IT11679', 'IT11073')])
+check('each added decoration copies a PEQ decoration', sql.count('FROM doors WHERE id = decorationTemplateId;'), 40)
+check("decoration 182 takes Live's model, place, heading and size",
+      "UPDATE doors SET name = 'IT11059', opentype = 55, pos_x = 2080.84, pos_y = -2845.39, pos_z = 4.62999, heading = 181.0, size = 150 WHERE zone = 'neighborhood' AND version = 0 AND doorid = 182;" in updates, True)
+check('the SQL refuses a taken decoration id and decorations not as PEQ ships them',
+      ("a door id of Live''s neighborhood decorations is taken; load guildBorderDoors.sql first" in sql, "that differ from Live''s are not as PEQ ships them" in sql), (True, True))
+peqDoors = generator.readPeqNeighborhoodDoors()
+strayDecoration = {**peqDoors, 250: dict(peqDoors[143], id=250)}
+expectRaises("a PEQ decoration Live lacks", lambda: generator.neighborhoodDecorations(liveDoors, strayDecoration), 'are not among')
 
 good = next(row for row in doorRows if row['zone'] == 'phinterior1a1')
 variant = lambda **changes: [dict(good, **changes)]

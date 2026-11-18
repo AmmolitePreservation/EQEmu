@@ -46,6 +46,7 @@ portalDoorID, gateDoorID = 130, 38
 neighborhoodVersion, lobbyVersion = 0, 1
 lotSquareMatchUnits = 1.0
 maxDoorID, maxDoors = 255, 500
+decorationPositionUnits, decorationHeadingUnits = 0.05, 0.5
 
 
 def doorsColumns():
@@ -80,6 +81,40 @@ def readLiveDoors(live):
     doors[key]['fields'] = dict(state=int(row['State']), defaultState=int(row['DefaultState']), remainOpen=int(row['bRemainOpen']),
                                 realEstateDoorID=int(row['RealEstateDoorID']))
   return doors
+
+
+def readPeqNeighborhoodDoors():
+  doors = {}
+  path = os.path.join(here, '..', 'content', 'peridotExports', 'neighborhoodDoors.tsv')
+  for row in csv.DictReader(open(path, encoding='utf-8'), delimiter='\t'):
+    doorID = int(row['doorid'])
+    if doorID in doors:
+      raise ValueError(f'neighborhoodDoors.tsv repeats door {doorID}')
+    doors[doorID] = dict(id=doorID, name=row['name'], type=int(row['opentype']), x=float(row['pos_x']), y=float(row['pos_y']),
+                         z=float(row['pos_z']), heading=float(row['heading']), size=int(row['size']))
+  return doors
+
+
+def isDecoration(door):
+  return door['type'] not in (typeNeighborhoodList, typePlotBorder, typeFrontDoor)
+
+
+def decorationDiffers(live, peq):
+  return (live['name'] != peq['name'] or live['type'] != peq['type'] or int(live['size']) != peq['size']
+          or math.dist((live['x'], live['y'], live['z']), (peq['x'], peq['y'], peq['z'])) > decorationPositionUnits
+          or abs(live['heading'] - peq['heading']) > decorationHeadingUnits)
+
+
+def neighborhoodDecorations(liveDoors, peqDoors):
+  live = {door['id']: door for (zone, _), door in liveDoors.items() if zone == 'neighborhood' and isDecoration(door)}
+  peq = {doorID: door for doorID, door in peqDoors.items() if isDecoration(door)}
+  stray = sorted(set(peq) - set(live))
+  if stray:
+    raise ValueError(f"PEQ's neighborhood decorations {stray} are not among Live's")
+  added = [doorRow(live[doorID], neighborhoodZoneId, neighborhoodVersion, 'neighborhood') for doorID in sorted(set(live) - set(peq))]
+  changed = [(peq[doorID], doorRow(live[doorID], neighborhoodZoneId, neighborhoodVersion, 'neighborhood'))
+             for doorID in sorted(set(live) & set(peq)) if decorationDiffers(live[doorID], peq[doorID])]
+  return added, changed
 
 
 def readLotSquares():
@@ -221,13 +256,13 @@ def ruleRowsForMappedDoors(liveDoors, mapRows):
           for zoneID, version, doorID, _ in mapRows if zoneID in zoneNames]
 
 
-def insertStatement(columns, row):
+def insertStatement(columns, row, template='templateId'):
   values = dict(zone=f"'{row['zone']}'", version=str(row['version']), doorid=str(row['doorID']), name=f"'{row['name']}'", pos_x=repr(row['x']),
                 pos_y=repr(row['y']), pos_z=repr(row['z']), heading=repr(row['heading']), size=str(row['size']), opentype=str(row['type']),
                 doorisopen='0', invert_state='0', real_estate_door_id=str(max(row['realEstateDoorID'], 0)))
   selected = ', '.join(values.get(column, f'`{column}`') for column in columns)
   return (f"  INSERT INTO doors ({', '.join(f'`{column}`' for column in columns)})\n"
-          f"    SELECT {selected} FROM doors WHERE id = templateId;\n")
+          f"    SELECT {selected} FROM doors WHERE id = {template};\n")
 
 
 def updateStatement(zoneName, version, doorID, value, liveDoors):
@@ -241,11 +276,23 @@ def updateStatement(zoneName, version, doorID, value, liveDoors):
   return f"  UPDATE doors SET {columns} WHERE zone = '{zoneName}' AND version = {version} AND doorid = {doorID};\n"
 
 
+def decorationUpdateStatement(peq, live):
+  return (f"  UPDATE doors SET name = '{live['name']}', opentype = {live['type']}, pos_x = {live['x']!r}, pos_y = {live['y']!r}, "
+          f"pos_z = {live['z']!r}, heading = {live['heading']!r}, size = {live['size']} WHERE zone = 'neighborhood' AND version = "
+          f"{neighborhoodVersion} AND doorid = {peq['id']};\n")
+
+
+def peqDecorationCondition(peq):
+  return (f"(doorid = {peq['id']} AND name = '{peq['name']}' AND opentype = {peq['type']} AND size = {peq['size']} AND "
+          + ' AND '.join(f"ABS(pos_{axis} - ({peq[axis]!r})) <= {decorationPositionUnits!r}" for axis in 'xyz')
+          + f" AND ABS(heading - ({peq['heading']!r})) <= {decorationHeadingUnits!r})")
+
+
 def nearCondition(door):
   return ' AND '.join(f'ABS(pos_{axis} - ({door[axis]!r})) <= {lotSquareMatchUnits!r}' for axis in 'xyz')
 
 
-def buildSql(columns, liveDoors, lotIDs, doorRows, mapRows):
+def buildSql(columns, liveDoors, lotIDs, doorRows, mapRows, added, changed):
   byZone = collections.defaultdict(list)
   for row in doorRows:
     byZone[(row['zone'], row['version'])].append(row['doorID'])
@@ -261,10 +308,15 @@ def buildSql(columns, liveDoors, lotIDs, doorRows, mapRows):
   zoneNames = mappedZoneNames()
   updates = ''.join(updateStatement(zoneNames[zoneID], version, doorID, value, liveDoors) for zoneID, version, doorID, value in mapRows if zoneID in zoneNames)
   closed = 'doorisopen = 0 AND invert_state = 0'
+  addedIDs = idList(row['doorID'] for row in added)
+  decorationInserts = ''.join(insertStatement(columns, row, 'decorationTemplateId') for row in added)
+  decorationUpdates = ''.join(decorationUpdateStatement(peq, live) for peq, live in changed)
+  peqDecorations = ' OR '.join(peqDecorationCondition(peq) for peq, _ in changed)
   return f"""-- Generated by playerHousing/tools/makeHousingDoorsSql.py from Live's doors and content/sunriseHillsLotSquares.tsv; loads after guildLobby.sql and guildBorderDoors.sql.
 DELIMITER //
 BEGIN NOT ATOMIC
   DECLARE templateId INT DEFAULT NULL;
+  DECLARE decorationTemplateId INT DEFAULT NULL;
   DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
   IF EXISTS (SELECT 1 FROM doors WHERE real_estate_door_id <> 0) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'a door already carries a RealEstateDoorID';
@@ -284,15 +336,29 @@ BEGIN NOT ATOMIC
       AND {closed} AND {nearCondition(gate)}) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'guildlobby door {gateDoorID} is not a closed {gateModel} at Live''s position';
   END IF;
+  IF EXISTS (SELECT 1 FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion} AND doorid IN ({addedIDs})) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'a door id of Live''s neighborhood decorations is taken; load guildBorderDoors.sql first';
+  END IF;
+  IF (SELECT COUNT(*) FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion} AND ({peqDecorations})) <> {len(changed)} THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the neighborhood''s decorations that differ from Live''s are not as PEQ ships them';
+  END IF;
+  IF (SELECT COUNT(*) + {len(added)} > {maxDoors} FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion}) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'the neighborhood would pass {maxDoors} doors';
+  END IF;
+  SELECT id INTO decorationTemplateId FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion} AND opentype = 55 AND name LIKE 'IT%' ORDER BY doorid LIMIT 1;
+  IF decorationTemplateId IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'no neighborhood decoration of open type 55 to copy';
+  END IF;
   SELECT id INTO templateId FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion} AND name = '{lotSquareModel}' AND opentype = {typePlotBorder} ORDER BY doorid LIMIT 1;
   IF templateId IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'no {lotSquareModel} door with open type {typePlotBorder} to copy';
   END IF;
   START TRANSACTION;
-{inserts}{updates}  COMMIT;
+{inserts}{updates}{decorationInserts}{decorationUpdates}  COMMIT;
 END //
 DELIMITER ;
 SELECT zone, version, doorid, name, pos_x, pos_y, pos_z, heading, opentype, size FROM doors WHERE {existing} OR (zone = 'guildlobby' AND version = {lobbyVersion} AND doorid = {gateDoorID}) ORDER BY zone, version, doorid;
+SELECT COUNT(*), MIN(doorid), MAX(doorid) FROM doors WHERE zone = 'neighborhood' AND version = {neighborhoodVersion};
 SELECT zone, version, COUNT(*), MIN(real_estate_door_id), MAX(real_estate_door_id) FROM doors WHERE real_estate_door_id <> 0 OR opentype IN ({typeNeighborhoodList}, {typePlotBorder}, {typeFrontDoor}) GROUP BY zone, version ORDER BY zone, version;
 """
 
@@ -304,7 +370,9 @@ def generate(live):
   mapRows = realEstateDoorRows(liveDoors, lotSquares, doorRows)
   checkDoorRules(doorRows)
   checkDoorRules(ruleRowsForMappedDoors(liveDoors, mapRows))
-  return liveDoors, sorted(lotSquares), doorRows, mapRows
+  added, changed = neighborhoodDecorations(liveDoors, readPeqNeighborhoodDoors())
+  checkDoorRules(added + [live for _, live in changed])
+  return liveDoors, sorted(lotSquares), doorRows, mapRows, added, changed
 
 
 def main():
@@ -313,12 +381,13 @@ def main():
   live = parser.parse_args().live
   if not os.path.isdir(os.path.join(live, 'master')):
     raise SystemExit(f'{live} is not a livedumps clone')
-  liveDoors, lotIDs, doorRows, mapRows = generate(live)
-  sql = buildSql(doorsColumns(), liveDoors, lotIDs, doorRows, mapRows)
+  liveDoors, lotIDs, doorRows, mapRows, added, changed = generate(live)
+  sql = buildSql(doorsColumns(), liveDoors, lotIDs, doorRows, mapRows, added, changed)
   path = os.path.join(here, '..', 'sql', 'housingDoors.sql')
   open(path, 'w', encoding='ascii').write(sql)
   fronts = sum(row['type'] == typeFrontDoor for row in doorRows)
-  print(f'wrote {os.path.relpath(path)}: {len(doorRows)} doors ({fronts} front doors), {len(mapRows)} RealEstateDoorIDs, the Guild Lobby gate')
+  print(f'wrote {os.path.relpath(path)}: {len(doorRows)} doors ({fronts} front doors), {len(mapRows)} RealEstateDoorIDs, the Guild Lobby gate, '
+        f"{len(added)} of Live's neighborhood decorations added and {len(changed)} set to Live's")
 
 
 if __name__ == '__main__':
