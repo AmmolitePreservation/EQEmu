@@ -227,6 +227,34 @@ namespace housing {
       }
     }
 
+    // RoF2 keys a zone's plots by their region (0x4b30f0), so the plots one zone instance hosts never share one (CAT-6).
+    for (const auto &[rootId, root] : definitions) {
+      if (!isType(root.row.type, {DefinitionType::regularZone, DefinitionType::neighborhood, DefinitionType::town})) {
+        continue;
+      }
+      std::map<uint32, uint32> plotOfRegion;
+      std::set<uint32> visited;
+      std::vector<uint32> pending(root.children.begin(), root.children.end());
+      while (!pending.empty()) {
+        const uint32 childId = pending.back();
+        pending.pop_back();
+        auto child = definitions.find(childId);
+        if (!visited.insert(childId).second || child == definitions.end()) {
+          continue;
+        }
+        const auto &row = child->second.row;
+        if (isType(row.type, {DefinitionType::plot, DefinitionType::guildPlot})) {
+          auto [held, added] = plotOfRegion.emplace(row.area_id, childId);
+          if (row.area_id && !added) {
+            problems.push_back(fmt::format("plot definitions [{}] and [{}] under [{}] share region [{}]; the client keys a zone's plots by region", held->second, childId, rootId, row.area_id));
+          }
+        }
+        else if (isType(row.type, {DefinitionType::neighborhood, DefinitionType::town})) {
+          pending.insert(pending.end(), child->second.children.begin(), child->second.children.end());
+        }
+      }
+    }
+
     npcItems.clear();
     npcItemsWithoutRows.clear();
     const std::set<uint32> npcItemIdSet = npcItemIds();
