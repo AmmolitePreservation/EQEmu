@@ -851,16 +851,8 @@ namespace housing {
           }
         }
       }
-      PickUpFacts facts;
-      facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
-      facts.crate = candidate.kind == CarriedKind::crate;
-      facts.mayRemoveCrate = permitted(client, Permission::removeCrate, holder, lookup, listOf);
-      facts.ownerOrPlacer = accessGroup(client, holder, lookup, listOf) == ownerGroup || taken.owner_character_id == client->CharacterID();
-      facts.noDrop = !candidate.item->NoDrop || candidate.instance->IsAttuned();
-      // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
-      facts.placedByTaker = taken.owner_character_id ? taken.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
+      PickUpFacts facts = pickUpAccessFacts(client, holder, candidate.carried ? &*candidate.carried : nullptr, carriesItems, taken, *candidate.item, plot, lookup, listOf);
       facts.loreHeld = candidate.item->LoreFlag && client->CheckLoreConflict(candidate.item);
-      facts.carriesItems = carriesItems;
       facts.takerCarriesSameKindWithItems = takerCarriesSameKind;
       facts.inventoryRoom = slot != INVALID_INDEX;
       const ItemResult result = pickUpResult(facts);
@@ -869,6 +861,23 @@ namespace housing {
       }
       return carriesItems;
     }
+  }
+
+  PickUpFacts pickUpAccessFacts(Client *client, const Property &holder, const Property *carried, bool carriesItems, const PlacedItem &record,
+    const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf) {
+    PickUpFacts facts;
+    facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
+    facts.itemUpkeepExpired = record.upkeep_expired_at || (carried && carried->upkeep_expired_time);
+    facts.kind = carried ? kindOf(static_cast<uint8>(typeOf(*carried))) : CarriedKind::none;
+    const Permission removal = facts.kind == CarriedKind::none ? Permission::removeItem
+      : facts.kind == CarriedKind::crate ? Permission::removeCrate : Permission::removeHouse;
+    facts.mayRemoveKind = permitted(client, removal, holder, lookup, listOf);
+    // An entry without a placer is the plot owner's, as the Items window counts it (RealEstateItemsWnd.md, filters).
+    facts.placedByTaker = record.owner_character_id ? record.owner_character_id == client->CharacterID() : accessGroup(client, holder, lookup, listOf) == ownerGroup;
+    // Placement attunes every house and crate; only the item's own flag or a property that holds items makes one No Trade (ACC-11).
+    facts.noTrade = !item.NoDrop || carriesItems;
+    facts.carriesItems = carriesItems;
+    return facts;
   }
 
   bool readItemRequest(WireReader &reader, ItemRequest &request) {

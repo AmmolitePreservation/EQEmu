@@ -170,6 +170,15 @@ namespace housing {
       return action;
     }
 
+    MailFacts mailFacts(Client *client, const PlacedItem &record, const Property &holder, bool carriesRealEstate, const PropertyLookup &lookup,
+      const AccessListLookup &listOf) {
+      MailFacts facts;
+      facts.mayMail = permitted(client, Permission::mailItem, holder, lookup, listOf);
+      facts.placedByOther = record.owner_character_id && record.owner_character_id != client->CharacterID();
+      facts.carriesRealEstate = carriesRealEstate;
+      return facts;
+    }
+
     // Live's order (MNU-1): the item's own interactions, then Enter, Adjust Placement, Place, Move to Storage, Move to Inventory,
     // Mail to Owner, Swap Houses, Inspect, Manage, Show Items. Help is left out: RoF2's type 0xe opens a text entry, not Live's help window (MNU-5).
     MenuInteractions buildMenu(Client *client, const Session &state, const Located &located) {
@@ -183,7 +192,6 @@ namespace housing {
       addNpcItemInteractions(client, subject, menu);
       addContainerInteractions(client, subject, menu);
       addGuildServiceInteractions(client, subject, menu);
-      const bool crate = carried && typeOf(*carried) == DefinitionType::movingCrate;
       const bool house = isHouse(carried);
       const bool mayMove = !plotExpired && permitted(client, Permission::moveItem, *located.holder, lookup, listOf);
       if (mayEnter(client, state, located, inItemZone) && !plotExpired && upkeepCurrent(located)) {
@@ -198,11 +206,15 @@ namespace housing {
       if (mayMove && !(house && holdsContents(database, carried->id))) {
         menu.entries.push_back(moveToStorageEntry);
       }
-      const bool owner = accessGroup(client, *located.holder, lookup, listOf) == ownerGroup;
-      if (!plotExpired && (crate ? permitted(client, Permission::removeCrate, *located.holder, lookup, listOf) : (owner || located.item.owner_character_id == client->CharacterID()))) {
+      const EQ::ItemData *itemData = database.GetItem(located.item.item_id);
+      if (!itemData) {
+        throw std::runtime_error(fmt::format("record [{}] names item [{}], which does not exist", located.item.id, located.item.item_id));
+      }
+      const bool carriesItems = carried && holdsContents(database, carried->id);
+      if (pickUpAccessResult(pickUpAccessFacts(client, *located.holder, carried, carriesItems, located.item, *itemData, located.plot, lookup, listOf)) == ItemResult::success) {
         menu.entries.push_back(moveToInventoryEntry);
       }
-      if (located.item.owner_character_id && located.item.owner_character_id != client->CharacterID() && permitted(client, Permission::mailItem, *located.holder, lookup, listOf)) {
+      if (mailToOwnerResult(mailFacts(client, located.item, *located.holder, carried != nullptr, lookup, listOf)) == ItemResult::success) {
         menu.entries.push_back(mailToOwnerEntry);
       }
       // Live's menus never showed Swap Houses (no stored house beside a placed one was scanned); it sits before Inspect (MNU-11).
@@ -455,16 +467,7 @@ namespace housing {
         return;
       }
       mailed = located->item;
-      ItemResult result = ItemResult::success;
-      if (!permitted(client, Permission::mailItem, *located->holder, state->lookup(), state->accessLookup())) {
-        result = ItemResult::noMailItem;
-      }
-      else if (!mailed.owner_character_id || mailed.owner_character_id == client->CharacterID()) {
-        result = ItemResult::ownItem;
-      }
-      else if (located->carried) {
-        result = ItemResult::carriesRealEstate;
-      }
+      const ItemResult result = mailToOwnerResult(mailFacts(client, mailed, *located->holder, located->carried.has_value(), state->lookup(), state->accessLookup()));
       if (result != ItemResult::success) {
         LogHousing("Refused [{}]'s Mail to Owner of record [{}]: code [{}]", client->GetCleanName(), recordId, static_cast<uint32>(result));
         sendItemResult(client, result);

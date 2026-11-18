@@ -1,6 +1,7 @@
 #ifndef EQEMU_ZONE_HOUSING_HOUSING_PLACEMENT_H
 #define EQEMU_ZONE_HOUSING_HOUSING_PLACEMENT_H
 
+#include "housingAccess.h"
 #include "housingItems.h"
 #include "housingSession.h"
 #include "housingWire.h"
@@ -34,6 +35,10 @@ namespace housing {
   void handlePack(Client *client, WireReader &reader);
   void handleHouseSwap(Client *client, WireReader &reader);
   void handleLoadLayout(Client *client, WireReader &reader);
+
+  // The facts of the pick-up rule a menu's Move to Inventory and the move itself share; the move adds LORE, the limit and room.
+  PickUpFacts pickUpAccessFacts(Client *client, const Property &holder, const Property *carried, bool carriesItems, const PlacedItem &record,
+    const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf);
 
   void sendItemResult(Client *client, ItemResult result);
   // The plot whose region holds the player, else the current property (the client's +0x94).

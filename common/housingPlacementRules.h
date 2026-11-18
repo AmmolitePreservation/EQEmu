@@ -285,27 +285,51 @@ namespace housing {
 
   struct PickUpFacts {
     bool plotUpkeepExpired = false;
-    bool crate = false;
-    bool mayRemoveCrate = false;
-    bool ownerOrPlacer = false;
-    bool noDrop = false;
+    bool itemUpkeepExpired = false;
+    CarriedKind kind = CarriedKind::none;
     bool placedByTaker = false;
+    bool mayRemoveKind = false;
+    bool noTrade = false;
     bool loreHeld = false;
     bool carriesItems = false;
     bool takerCarriesSameKindWithItems = false;
     bool inventoryRoom = false;
   };
 
-  // Removing a NO DROP item needs its placer, a LORE item is refused while the taker holds one (PLC-4).
-  inline ItemResult pickUpResult(const PickUpFacts &facts) {
+  // RoF2's remove rule (0x5b72c0, ACC-11): the upkeeps, then the placer, or the plot's owner where the record has none, passes;
+  // anyone else needs Remove House on a house or hall, Remove Crate on a crate, Remove Item on an item, then a tradable item.
+  inline ItemResult pickUpAccessResult(const PickUpFacts &facts) {
     if (facts.plotUpkeepExpired) {
       return ItemResult::plotUpkeepExpired;
     }
-    if (facts.crate ? !facts.mayRemoveCrate : !facts.ownerOrPlacer) {
-      return facts.crate ? ItemResult::noRemoveCrate : ItemResult::noRemoveItem;
+    if (facts.itemUpkeepExpired) {
+      return ItemResult::itemUpkeepExpired;
     }
-    if (facts.noDrop && !facts.placedByTaker) {
+    if (facts.placedByTaker) {
+      return ItemResult::success;
+    }
+    if (!facts.mayRemoveKind) {
+      switch (facts.kind) {
+        case CarriedKind::house:
+        case CarriedKind::guildHall:
+          return ItemResult::noRemoveHouse;
+        case CarriedKind::crate:
+          return ItemResult::noRemoveCrate;
+        case CarriedKind::none:
+          return ItemResult::noRemoveItem;
+      }
+    }
+    if (facts.noTrade) {
       return ItemResult::noDropNotOwner;
+    }
+    return ItemResult::success;
+  }
+
+  // The server also refuses the placer a LORE item they already hold, which the client's rule lets through.
+  inline ItemResult pickUpResult(const PickUpFacts &facts) {
+    const ItemResult access = pickUpAccessResult(facts);
+    if (access != ItemResult::success) {
+      return access;
     }
     if (facts.loreHeld) {
       return ItemResult::loreHeld;
@@ -315,6 +339,25 @@ namespace housing {
     }
     if (!facts.inventoryRoom) {
       return ItemResult::noInventoryRoom;
+    }
+    return ItemResult::success;
+  }
+
+  struct MailFacts {
+    bool mayMail = false;
+    bool placedByOther = false;
+    bool carriesRealEstate = false;
+  };
+
+  inline ItemResult mailToOwnerResult(const MailFacts &facts) {
+    if (!facts.mayMail) {
+      return ItemResult::noMailItem;
+    }
+    if (!facts.placedByOther) {
+      return ItemResult::ownItem;
+    }
+    if (facts.carriesRealEstate) {
+      return ItemResult::carriesRealEstate;
     }
     return ItemResult::success;
   }

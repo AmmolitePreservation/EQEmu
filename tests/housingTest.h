@@ -56,6 +56,7 @@ public:
     TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
     TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
     TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
+    TEST_ADD(HousingTest::mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate);
     TEST_ADD(HousingTest::petCapsTakeTheLowerNonNegativeCap);
     TEST_ADD(HousingTest::npcItemsAreNamedAndNotInteractive);
     TEST_ADD(HousingTest::heldItemTurnMatchesLiveObjects);
@@ -511,29 +512,52 @@ private:
   }
 
   void pickUpRulesFollowTheClientsTexts() {
-    housing::PickUpFacts facts;
-    facts.ownerOrPlacer = true;
-    facts.placedByTaker = true;
-    facts.inventoryRoom = true;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 0u);
-    facts.noDrop = true;
-    facts.placedByTaker = false;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 64u);
-    facts.placedByTaker = true;
-    facts.loreHeld = true;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 65u);
-    facts.loreHeld = false;
-    facts.carriesItems = true;
-    facts.takerCarriesSameKindWithItems = true;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 33u);
-    facts.takerCarriesSameKindWithItems = false;
-    facts.inventoryRoom = false;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 4u);
-    facts.crate = true;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 78u);
-    facts.crate = false;
-    facts.ownerOrPlacer = false;
-    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpResult(facts)), 72u);
+    auto code = [](const housing::PickUpFacts &facts) { return static_cast<uint32>(housing::pickUpResult(facts)); };
+    housing::PickUpFacts placer;
+    placer.placedByTaker = true;
+    placer.noTrade = true;
+    placer.inventoryRoom = true;
+    TEST_ASSERT_EQUALS(code(placer), 0u);
+    placer.itemUpkeepExpired = true;
+    TEST_ASSERT_EQUALS(code(placer), 25u);
+    placer.plotUpkeepExpired = true;
+    TEST_ASSERT_EQUALS(code(placer), 24u);
+    housing::PickUpFacts other;
+    other.inventoryRoom = true;
+    TEST_ASSERT_EQUALS(code(other), 72u);
+    other.kind = housing::CarriedKind::house;
+    TEST_ASSERT_EQUALS(code(other), 76u);
+    other.kind = housing::CarriedKind::guildHall;
+    TEST_ASSERT_EQUALS(code(other), 76u);
+    other.kind = housing::CarriedKind::crate;
+    TEST_ASSERT_EQUALS(code(other), 78u);
+    other.mayRemoveKind = true;
+    TEST_ASSERT_EQUALS(code(other), 0u);
+    other.noTrade = true;
+    TEST_ASSERT_EQUALS(code(other), 64u);
+    other.noTrade = false;
+    other.loreHeld = true;
+    TEST_ASSERT_EQUALS(code(other), 65u);
+    other.loreHeld = false;
+    other.carriesItems = true;
+    other.takerCarriesSameKindWithItems = true;
+    TEST_ASSERT_EQUALS(code(other), 33u);
+    other.takerCarriesSameKindWithItems = false;
+    other.inventoryRoom = false;
+    TEST_ASSERT_EQUALS(code(other), 4u);
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::pickUpAccessResult(other)), 0u);
+  }
+
+  void mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate() {
+    auto code = [](const housing::MailFacts &facts) { return static_cast<uint32>(housing::mailToOwnerResult(facts)); };
+    housing::MailFacts facts;
+    TEST_ASSERT_EQUALS(code(facts), 79u);
+    facts.mayMail = true;
+    TEST_ASSERT_EQUALS(code(facts), 66u);
+    facts.placedByOther = true;
+    TEST_ASSERT_EQUALS(code(facts), 0u);
+    facts.carriesRealEstate = true;
+    TEST_ASSERT_EQUALS(code(facts), 67u);
   }
 
   void petCapsTakeTheLowerNonNegativeCap() {
