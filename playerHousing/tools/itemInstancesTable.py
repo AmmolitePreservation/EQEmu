@@ -1,5 +1,5 @@
-"""The item_instances table the housing tables refer to, for the tools' scratch databases: the SQL of the code's migration 9328,
-and the real_estate holder housing adds to it (sql/realEstateHolder.sql).
+"""The item_instances table the housing tables refer to, for the tools' scratch databases: the SQL of the code's migration that
+creates it, and the real_estate holder housing adds to it (sql/realEstateHolder.sql).
 """
 import os, re
 
@@ -9,7 +9,7 @@ holderSql = open(os.path.join(here, '..', 'sql', 'realEstateHolder.sql'), encodi
 
 def createSql():
   manifest = open(os.path.join(here, '..', '..', 'common', 'database', 'database_update_manifest.cpp'), encoding='utf-8').read()
-  migration = re.search(r'\.version = 9328,.*?\.sql = R"\((.*?)\)"', manifest, re.S)
-  if not migration or 'CREATE TABLE `item_instances`' not in migration.group(1):
-    raise ValueError('migration 9328 in database_update_manifest.cpp does not create item_instances')
-  return 'DROP TABLE IF EXISTS `item_instances`;' + migration.group(1)
+  creating = [sql for sql in re.findall(r'\.sql = R"\((.*?)\)"', manifest, re.S) if 'CREATE TABLE `item_instances`' in sql]
+  if len(creating) != 1:
+    raise ValueError(f'database_update_manifest.cpp has {len(creating)} migrations creating item_instances, not one')
+  return 'DROP TABLE IF EXISTS `item_instances`;' + creating[0]

@@ -10,7 +10,8 @@ the first point at least 10 units inside the zone's entrance object (FrontEntran
 floor's centre (the level with the most floor), over a floor no more than 5 below the entrance object's height; 2.95
 above the lowest such floor. A zone with neither object uses its main floor's centre.
 
-Usage: python3 housingZoneGeometry.py <folder with the zones' .eqg and .zon files> [zone ...]
+Usage: python3 housingZoneGeometry.py <folder with the zones' .eqg and .zon files> [zone ...]   (no zone: the zones whose entry
+points makeHousingZonesSql.py holds, each checked against it)
 """
 import math, os, struct, sys
 import numpy as np
@@ -116,10 +117,25 @@ def entryPoint(zoneDirectory, zoneName):
               safeX=round(float(y), 1), safeY=round(float(x), 1), safeZ=round(float(floor) + playerAboveFloor, 1))
 
 
+def show(point):
+  print(f"{point['zone']:20} EQEmu safe point ({point['safeX']:7.1f}, {point['safeY']:7.1f}, {point['safeZ']:6.1f})  "
+        f"/loc ({point['fileX']:7.1f}, {point['fileY']:7.1f})  from {point['source']}")
+
+
 if __name__ == '__main__':
   directory, names = sys.argv[1], sys.argv[2:]
-  names = names or sorted(n[:-4] for n in os.listdir(directory) if n.endswith('.zon'))
-  for zoneName in names:
-    point = entryPoint(directory, zoneName)
-    print(f"{point['zone']:20} EQEmu safe point ({point['safeX']:7.1f}, {point['safeY']:7.1f}, {point['safeZ']:6.1f})  "
-          f"/loc ({point['fileX']:7.1f}, {point['fileY']:7.1f})  from {point['source']}")
+  if names:
+    for zoneName in names:
+      show(entryPoint(directory, zoneName))
+  else:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from makeHousingZonesSql import housingZones
+    for zoneId, version, zoneName, title, liveHeader, held in housingZones:
+      if held is None:
+        continue
+      point = entryPoint(directory, zoneName)
+      show(point)
+      derived = (point['safeX'], point['safeY'], point['safeZ'])
+      if derived != tuple(held[:3]):
+        raise ValueError(f'{zoneName}: the zone files give {derived}, makeHousingZonesSql.py holds {tuple(held[:3])}')
+    print('every derived entry point is the one makeHousingZonesSql.py holds')
