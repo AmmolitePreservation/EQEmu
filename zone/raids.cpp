@@ -2291,7 +2291,7 @@ void Raid::SendRaidNotes()
 		data->general.parameter = 0;
 		data->general.unknown1 = 0;
 		strn0cpy(data->general.leader_name, c.member_name, sizeof(c.member_name));
-		strn0cpy(data->general.player_name, GetLeaderName().c_str(), GetLeaderName().length());
+		strn0cpy(data->general.player_name, GetLeaderName().c_str(), sizeof(data->general.player_name));
 		strn0cpy(data->note, c.note.c_str(), sizeof(data->note));
 
 		QueuePacket(outapp);
