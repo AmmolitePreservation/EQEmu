@@ -193,7 +193,8 @@ namespace housing {
       }
       return;
     }
-    if (!catalog().auraItem(subject.item.item_id) || !mayTransact(client, subject.holder, lookup, listOf)) {
+    // Live offered the pool's Activate and Deactivate to the owning guild's members alone, whatever a viewer's bits (MNU-1).
+    if (!catalog().auraItem(subject.item.item_id) || !inOwningGuild(client, subject.holder, lookup)) {
       return;
     }
     auto state = auras.find(subject.item.id);
@@ -214,7 +215,7 @@ namespace housing {
       LogHousing("[{}] asked record [{}] for aura action [{}], which it has none of", client->GetCleanName(), row.id, b);
       return;
     }
-    if (!mayTransact(client, holder, state.lookup(), state.accessLookup())) {
+    if (!inOwningGuild(client, holder, state.lookup())) {
       LogHousing("[{}] may not turn record [{}]'s aura", client->GetCleanName(), row.id);
       return;
     }

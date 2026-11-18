@@ -190,15 +190,14 @@ namespace housing {
   }
 
   // Live: a member of the owning guild always gets Transact; anyone else only with Interact Item (ACC-3).
-  bool mayTransact(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf) {
+  bool inOwningGuild(Client *client, const Property &property, const PropertyLookup &lookup) {
     const Property *guildPlot = ancestorOfType(property, typeBit(DefinitionType::guildPlot), false, lookup);
-    if (guildPlot) {
-      const uint32 guild = activeGuildId(*guildPlot);
-      if (guild && client->GuildID() == guild) {
-        return true;
-      }
-    }
-    return permitted(client, Permission::interactItem, property, lookup, listOf);
+    const uint32 guild = guildPlot ? activeGuildId(*guildPlot) : 0;
+    return guild && client->GuildID() == guild;
+  }
+
+  bool mayTransact(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf) {
+    return inOwningGuild(client, property, lookup) || permitted(client, Permission::interactItem, property, lookup, listOf);
   }
 
   void handleSetAccessList(Client *client, WireReader &reader) {

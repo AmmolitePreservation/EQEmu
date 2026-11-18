@@ -51,6 +51,8 @@ namespace housing {
   WireWriter accessListRemoveMessage(uint32 propertyId);
   uint8 accessGroup(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
   bool permitted(Client *client, Permission permission, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
+  // A member of the guild whose guild plot the property stands under.
+  bool inOwningGuild(Client *client, const Property &property, const PropertyLookup &lookup);
   bool mayTransact(Client *client, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf);
   void handleSetAccessList(Client *client, WireReader &reader);
   void applyAccessChange(uint32 propertyId);
