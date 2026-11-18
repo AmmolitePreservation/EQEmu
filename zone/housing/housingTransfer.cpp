@@ -151,6 +151,8 @@ namespace housing {
       if (offers.pending(plotId, currentTime())) {
         throw TransferRefusal("an offer for the plot is already waiting", failed);
       }
+      // The recipient's dialog names the plot from its own record (0x466030).
+      revealProperties(recipient, {plotId});
       offers.offer(plotId, client->CharacterID(), recipient->CharacterID(), plot.revision, currentTime(), RuleI(Housing, TransferOfferExpirySeconds));
     }
     catch (const TransferRefusal &refusal) {

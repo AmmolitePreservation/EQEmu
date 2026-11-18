@@ -294,19 +294,10 @@ namespace housing {
   }
 
   void applyAccessChange(uint32 propertyId) {
-    const auto lists = accessLists({propertyId});
-    auto list = lists.find(propertyId);
+    refreshClients({propertyId}, {});
     forEachSession([&](Client *client, Session &state) {
       if (!state.properties.count(propertyId)) {
         return;
-      }
-      if (list == lists.end()) {
-        state.accessLists.erase(propertyId);
-        sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(propertyId));
-      }
-      else {
-        state.accessLists[propertyId] = list->second;
-        sendMessage(client, OP_RealEstateAccessList, accessListMessage(propertyId, list->second));
       }
       auto current = state.properties.find(state.currentPropertyId);
       if (current == state.properties.end()) {

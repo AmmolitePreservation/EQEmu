@@ -337,6 +337,8 @@ namespace housing {
     if (type != DefinitionType::plot && type != DefinitionType::guildPlot) {
       throw std::logic_error(fmt::format("property [{}] is of type [{}]; the property window shows only plots", property.id, static_cast<uint32>(type)));
     }
+    // The Purchase gate needs the plot's record in the client's own map (0x5b1890, check 3).
+    revealProperties(client, {property.id});
     const auto owners = characterIdentities({property.owner_character_id});
     auto owner = owners.find(property.owner_character_id);
     const Definition &definition = *catalog().definition(property.definition_id);

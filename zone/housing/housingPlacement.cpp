@@ -475,12 +475,11 @@ namespace housing {
 
     void sendRemoved(const PlacedItem &row) {
       forEachSession([&](Client *client, Session &state) {
-        if (!state.properties.count(row.property_id)) {
-          return;
+        if (state.relatedIds.count(row.property_id)) {
+          WireWriter message;
+          message.u32(row.property_id).u32(row.id);
+          sendMessage(client, OP_RealEstateItemRemove, message);
         }
-        WireWriter message;
-        message.u32(row.property_id).u32(row.id);
-        sendMessage(client, OP_RealEstateItemRemove, message);
         if (state.placement && state.placement->sourcePropertyId == row.property_id && state.placement->sourceRecordId == row.id) {
           state.placement.reset();
         }

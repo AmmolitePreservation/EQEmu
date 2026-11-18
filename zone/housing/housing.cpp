@@ -21,6 +21,7 @@
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingCopies.h"
 #include "../../common/housingLedger.h"
+#include "../../common/housingRelatedProperties.h"
 #include "../../common/repositories/real_estate_items_repository.h"
 #include "../../common/rulesys.h"
 #include "../../common/strings.h"
@@ -229,7 +230,34 @@ namespace housing {
       return fields;
     }
 
-    bool buildSession(Client *client, Session &state, std::map<uint32, RecordFields> &fields, const std::set<uint32> &alsoKnown) {
+    std::set<uint32> listHoldersOf(const Session &state) {
+      std::set<uint32> holders;
+      for (const auto &[id, property] : state.properties) {
+        if (holdsAccessList(typeOf(property))) {
+          holders.insert(id);
+        }
+      }
+      return holders;
+    }
+
+    std::set<uint32> relatedIdsOf(Client *client, const Session &state) {
+      const PropertyLookup lookup = state.lookup();
+      const AccessListLookup listOf = state.accessLookup();
+      std::set<uint32> seeds(state.ownedIds.begin(), state.ownedIds.end());
+      seeds.insert(state.carriedIds.begin(), state.carriedIds.end());
+      std::map<uint32, PropertyLink> links;
+      for (const auto &[id, property] : state.properties) {
+        const DefinitionType type = typeOf(property);
+        links[id] = PropertyLink{property.parent_id, type == DefinitionType::neighborhood || type == DefinitionType::town || type == DefinitionType::regularZone};
+        const uint32 guild = activeGuildId(property);
+        if ((guild && guild == client->GuildID()) || (holdsAccessList(type) && accessGroup(client, property, lookup, listOf))) {
+          seeds.insert(id);
+        }
+      }
+      return relatedProperties(links, seeds, state.currentPropertyId, maximumDepth);
+    }
+
+    bool buildSession(Client *client, Session &state, std::map<uint32, RecordFields> &fields, const std::set<uint32> &alsoKnown, uint32 keptCurrentId) {
       std::vector<std::string> problems;
       try {
         const auto hosted = hostedProperties();
@@ -258,7 +286,13 @@ namespace housing {
         }
         if (problems.empty()) {
           state.currentPropertyId = currentPropertyFor(hosted, problems);
+          if (keptCurrentId && state.properties.count(keptCurrentId)) {
+            state.currentPropertyId = keptCurrentId;
+          }
           fields = recordFieldsFor(state.properties, problems);
+          state.accessLists = accessLists(listHoldersOf(state));
+          state.relatedIds = relatedIdsOf(client, state);
+          state.knownIds = state.relatedIds;
         }
       }
       catch (const std::exception &error) {
@@ -286,16 +320,6 @@ namespace housing {
         return depths[a->id] < depths[b->id];
       });
       return ordered;
-    }
-
-    std::set<uint32> listHoldersOf(const Session &state) {
-      std::set<uint32> holders;
-      for (const auto &[id, property] : state.properties) {
-        if (holdsAccessList(typeOf(property))) {
-          holders.insert(id);
-        }
-      }
-      return holders;
     }
 
     void sendPropertyLists(Client *client, const Session &state) {
@@ -352,12 +376,14 @@ namespace housing {
       }
       Session state;
       std::map<uint32, RecordFields> fields;
-      if (!buildSession(client, state, fields, {})) {
+      if (!buildSession(client, state, fields, {}, 0)) {
         return;
       }
       sendMessage(client, OP_RealEstateDefinitions, catalog().message(upkeepPercentHere));
       for (const Property *property : parentsFirst(state)) {
-        sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
+        if (state.knownIds.count(property->id)) {
+          sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
+        }
       }
       if (state.currentPropertyId) {
         sendMessage(client, OP_RealEstateCurrentProperty, propertyRecord(state.properties.at(state.currentPropertyId), fields.at(state.currentPropertyId)));
@@ -382,19 +408,20 @@ namespace housing {
       }
       sendMessage(client, OP_RealEstateRegions, regionList(regions));
 
-      std::set<uint32> itemHolders(state->hostedIds);
-      itemHolders.insert(state->ownedIds.begin(), state->ownedIds.end());
-      itemHolders.insert(state->carriedIds.begin(), state->carriedIds.end());
-      sendItemLists(client, itemHolders);
+      sendItemLists(client, state->relatedIds);
 
-      state->accessLists = accessLists(listHoldersOf(*state));
+      size_t accessListsSent = 0;
       for (const auto &[id, list] : state->accessLists) {
-        sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
+        if (state->relatedIds.count(id)) {
+          sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
+          accessListsSent++;
+        }
       }
       sendWorldObjects(client, *state);
       sendPolls(client);
-      LogHousing("Zone-in for [{}]: [{}] properties, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
-        client->GetCleanName(), state->properties.size(), state->currentPropertyId, regions.size(), itemHolders.size(), state->accessLists.size());
+      LogHousing("Zone-in for [{}]: [{}] of [{}] properties sent, current [{}], [{}] regions, [{}] item lists, [{}] access lists",
+        client->GetCleanName(), state->knownIds.size(), state->properties.size(), state->currentPropertyId, regions.size(), state->relatedIds.size(),
+        accessListsSent);
     }
 
     // A copy discarded between a door's hand-out and the arrival leaves the player alone in a dead instance, which EQEmu would send
@@ -534,52 +561,54 @@ namespace housing {
       }
       Session fresh;
       std::map<uint32, RecordFields> fields;
-      if (!buildSession(client, fresh, fields, existing)) {
+      std::set<uint32> alsoKnown(existing);
+      alsoKnown.insert(old->knownIds.begin(), old->knownIds.end());
+      if (!buildSession(client, fresh, fields, alsoKnown, old->currentPropertyId)) {
         sessions.erase(client);
         continue;
       }
-      if (fresh.properties.count(old->currentPropertyId)) {
-        fresh.currentPropertyId = old->currentPropertyId;
-      }
       fresh.placement = old->placement;
       fresh.augmentaterMode = old->augmentaterMode;
-      std::set<uint32> added;
-      for (const auto &[id, property] : fresh.properties) {
-        if (!old->properties.count(id)) {
-          added.insert(id);
+      for (uint32 id : old->knownIds) {
+        if (fresh.properties.count(id)) {
+          fresh.knownIds.insert(id);
+        }
+      }
+      std::set<uint32> newlyKnown;
+      for (uint32 id : fresh.knownIds) {
+        if (!old->knownIds.count(id)) {
+          newlyKnown.insert(id);
+        }
+      }
+      std::set<uint32> newlyRelated;
+      for (uint32 id : fresh.relatedIds) {
+        if (!old->relatedIds.count(id)) {
+          newlyRelated.insert(id);
         }
       }
       for (const Property *property : parentsFirst(fresh)) {
-        if (propertyIds.count(property->id) || added.count(property->id)) {
+        if (fresh.knownIds.count(property->id) && (propertyIds.count(property->id) || newlyKnown.count(property->id))) {
           sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
         }
       }
       for (uint32 id : propertyIds) {
-        if (!existing.count(id) && old->properties.count(id)) {
+        if (!existing.count(id) && old->knownIds.count(id)) {
           sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{false, 0, std::nullopt, {}, {}, {}, 0}));
         }
       }
       sendPropertyLists(client, fresh);
-      fresh.accessLists = accessLists(listHoldersOf(fresh));
       for (const auto &[id, list] : fresh.accessLists) {
-        if (propertyIds.count(id) || added.count(id)) {
+        const bool held = fresh.relatedIds.count(id) || old->relatedIds.count(id);
+        if ((held && propertyIds.count(id)) || newlyRelated.count(id)) {
           sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list));
         }
       }
       for (uint32 id : propertyIds) {
-        if (old->accessLists.count(id) && !fresh.accessLists.count(id)) {
+        if (old->relatedIds.count(id) && old->accessLists.count(id) && !fresh.accessLists.count(id)) {
           sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
         }
       }
-      std::set<uint32> newHolders;
-      for (uint32 id : added) {
-        const bool owned = std::find(fresh.ownedIds.begin(), fresh.ownedIds.end(), id) != fresh.ownedIds.end();
-        const bool carried = std::find(fresh.carriedIds.begin(), fresh.carriedIds.end(), id) != fresh.carriedIds.end();
-        if (fresh.hostedIds.count(id) || owned || carried) {
-          newHolders.insert(id);
-        }
-      }
-      sendItemLists(client, newHolders);
+      sendItemLists(client, newlyRelated);
       sessions[client] = std::move(fresh);
     }
   }
@@ -589,16 +618,55 @@ namespace housing {
       return;
     }
     forEachSession([&](Client *client, Session &state) {
-      std::set<uint32> known;
+      std::set<uint32> held;
       for (uint32 id : propertyIds) {
-        if (state.properties.count(id)) {
-          known.insert(id);
+        if (state.relatedIds.count(id)) {
+          held.insert(id);
         }
       }
-      if (!known.empty()) {
-        sendItemLists(client, known);
+      if (!held.empty()) {
+        sendItemLists(client, held);
       }
     });
+  }
+
+  void revealProperties(Client *client, const std::set<uint32> &propertyIds) {
+    Session *state = session(client);
+    if (!state) {
+      throw std::runtime_error(fmt::format("[{}] has no housing session to receive properties [{}]", client->GetCleanName(), idList(propertyIds)));
+    }
+    std::set<uint32> revealed;
+    for (uint32 id : propertyIds) {
+      int depth = 0;
+      for (uint32 at = id; at;) {
+        auto found = state->properties.find(at);
+        if (found == state->properties.end()) {
+          throw std::runtime_error(fmt::format("property [{}] in the line of [{}] is not in [{}]'s session", at, id, client->GetCleanName()));
+        }
+        if (++depth > maximumDepth) {
+          throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", id, maximumDepth));
+        }
+        if (!state->knownIds.count(at)) {
+          revealed.insert(at);
+        }
+        at = found->second.parent_id;
+      }
+    }
+    if (revealed.empty()) {
+      return;
+    }
+    std::vector<std::string> problems;
+    const auto fields = recordFieldsFor(state->properties, problems);
+    if (!problems.empty()) {
+      throw std::runtime_error(Strings::Join(problems, "; "));
+    }
+    for (const Property *property : parentsFirst(*state)) {
+      if (revealed.count(property->id)) {
+        sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
+        state->knownIds.insert(property->id);
+      }
+    }
+    LogHousing("Sent [{}] the records of properties [{}] on demand", client->GetCleanName(), idList(revealed));
   }
 
   std::string propertyName(uint32 propertyId) {

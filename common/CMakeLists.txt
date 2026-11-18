@@ -628,6 +628,7 @@ SET(common_headers
     housingNames.h
     housingPlacementRules.h
     housingPollRules.h
+    housingRelatedProperties.h
     housingTransferOffers.h
     housingUpkeepMath.h
     http/httplib.h

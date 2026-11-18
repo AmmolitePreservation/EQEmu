@@ -50,6 +50,9 @@ namespace housing {
     std::map<uint32, AccessList> accessLists;
     std::optional<Placement> placement;
     std::optional<AugmentaterMode> augmentaterMode;
+    // The client holds the records of knownIds: relatedIds, whose item and access lists it gets too, and those revealed on demand.
+    std::set<uint32> relatedIds;
+    std::set<uint32> knownIds;
     PropertyLookup lookup() const;
     AccessListLookup accessLookup() const;
   };
@@ -60,6 +63,7 @@ namespace housing {
   void forEachSession(const std::function<void(Client *, Session &)> &visit);
   void refreshClients(const std::set<uint32> &propertyIds, const std::set<uint32> &characterIds);
   void refreshItemLists(const std::set<uint32> &propertyIds);
+  void revealProperties(Client *client, const std::set<uint32> &propertyIds);
   std::string propertyName(uint32 propertyId);
   bool hostedHere(const Property &property);
   int64 currentTime();
