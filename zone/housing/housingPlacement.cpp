@@ -828,6 +828,8 @@ namespace housing {
       return yardOrHouse ? location : 0;
     }
 
+    constexpr int carriedDepthLimit = 10;
+
     // The pick-up rules on fresh rows: throws the refusal, or tells whether the item carries real estate that holds contents.
     bool checkPickUp(Client *client, const Session &state, const Candidate &candidate, int16 slot) {
       const PlacedItem &taken = *candidate.row;
@@ -843,11 +845,23 @@ namespace housing {
       const bool carriesItems = candidate.carried && view.holdsContents(candidate.carried->id);
       bool takerCarriesSameKind = false;
       if (carriesItems) {
-        for (uint32 carriedId : state.carriedIds) {
-          auto carried = view.properties.find(carriedId);
-          if (carried != view.properties.end() && kindOf(static_cast<uint8>(typeOf(carried->second))) == candidate.kind && carriedId != candidate.carried->id) {
-            takerCarriesSameKind = takerCarriesSameKind || propertiesChildOf({carriedId}).size() + itemsOf({carriedId}).size() > 0;
+        // RoF2 counts a property of the kind anywhere inside a carried one too, such as a house packed in a crate (0x5b56d0, 0x5b4eb0).
+        std::set<uint32> frontier(state.carriedIds.begin(), state.carriedIds.end());
+        frontier.erase(candidate.carried->id);
+        for (int depth = 0; !frontier.empty() && !takerCarriesSameKind; depth++) {
+          if (depth > carriedDepthLimit) {
+            throw std::runtime_error(fmt::format("[{}] carries properties nested deeper than [{}]", client->GetCleanName(), carriedDepthLimit));
           }
+          for (const auto &carried : propertiesById(frontier)) {
+            if (kindOf(static_cast<uint8>(typeOf(carried))) == candidate.kind && propertiesChildOf({carried.id}).size() + itemsOf({carried.id}).size() > 0) {
+              takerCarriesSameKind = true;
+            }
+          }
+          std::set<uint32> next;
+          for (const auto &child : propertiesChildOf(frontier)) {
+            next.insert(child.id);
+          }
+          frontier = next;
         }
       }
       PickUpFacts facts = pickUpAccessFacts(client, holder, candidate.carried ? &*candidate.carried : nullptr, carriesItems, taken, *candidate.item, plot, lookup, listOf);
