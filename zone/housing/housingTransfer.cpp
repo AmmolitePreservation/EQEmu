@@ -63,7 +63,8 @@ namespace housing {
         if (!row.carried_property_id) {
           continue;
         }
-        if (row.attuned || noTradeItem(row.item_id)) {
+        // Placement attunes every house and crate (STT-6); only the item's own flag makes one NO TRADE here (STT-4).
+        if (noTradeItem(row.item_id)) {
           throw TransferRefusal("the plot holds a NO TRADE house or crate", noTradeContents);
         }
       }
