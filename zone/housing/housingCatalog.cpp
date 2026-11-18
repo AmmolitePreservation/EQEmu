@@ -260,16 +260,21 @@ namespace housing {
     if (!properties.Success()) {
       problems.push_back(fmt::format("the properties could not be read: {}", properties.ErrorMessage()));
     }
+    struct PropertyFacts {
+      uint32 id;
+      uint32 parentId;
+      uint32 definitionId;
+      uint32 upkeepCurrency;
+      bool owned;
+    };
+    std::vector<PropertyFacts> propertyRows;
     std::set<uint32> propertyIds;
     for (auto row : properties) {
-      propertyIds.insert(Strings::ToUnsignedInt(row[0]));
+      propertyRows.push_back(PropertyFacts{Strings::ToUnsignedInt(row[0]), Strings::ToUnsignedInt(row[1]), Strings::ToUnsignedInt(row[2]),
+        Strings::ToUnsignedInt(row[3]), Strings::ToUnsignedInt(row[4]) || Strings::ToUnsignedInt(row[5])});
+      propertyIds.insert(propertyRows.back().id);
     }
-    for (auto row : properties) {
-      const uint32 propertyId = Strings::ToUnsignedInt(row[0]);
-      const uint32 parentId = Strings::ToUnsignedInt(row[1]);
-      const uint32 definitionId = Strings::ToUnsignedInt(row[2]);
-      const uint32 upkeepCurrency = Strings::ToUnsignedInt(row[3]);
-      const bool owned = Strings::ToUnsignedInt(row[4]) || Strings::ToUnsignedInt(row[5]);
+    for (const auto &[propertyId, parentId, definitionId, upkeepCurrency, owned] : propertyRows) {
       if (parentId && !propertyIds.count(parentId)) {
         problems.push_back(fmt::format("property [{}] names parent [{}], which does not exist", propertyId, parentId));
       }
