@@ -602,7 +602,7 @@ Live runs no polls, so Peridot runs none by default. **The client asks for the p
 
 **Content:** zone rows for the interiors and guild halls, with their safe points; the interior exit doors; the trophy benefits (`tributes`, `tribute_levels`).
 
-**To verify in game:** that each interior zone's files exist and zoning in works with no housing messages first (Q11, `robustness.md`); each interior's safe point and front door.
+**Verified in game:** each interior zone's files exist, and zoning in works with no housing messages and with all of them (Q11, `robustness.md`, ZIN-7). The safe points of the interiors Live never sold wait for INT-5 and INT-18.
 
 ## Chunk 8: validation
 
@@ -656,7 +656,7 @@ The server is peridothousing, a clone of Peridot (`peridothousing.md`), and the 
 | 3. Purchase, escrow, upkeep (S7, S8) | buy a cheap plot; list A; deposit and withdraw; with `Housing:UpkeepIntervalSeconds` lowered, prorated charges, one taking what's left, then the stamp on the next (`0x18`) | `records` (owner, balances, `upkeep_expired_time`), `character` lists | `purchaseAndEscrow` |
 | 4. Placement (S5) | place from inventory (the preview's green / red), commit, edit, store, pick up; an NPC item; a forge (open, combine); menus | `placement`, `containers`, `worldObjects` (model, transform, **a body**), `spawns` (bindings) | `placement` |
 | 5. Access (S9) | a second character's permissions (enter, add, remove, interact, withdraw) | `accessLists` | manual, two clients |
-| 6. Houses and interiors (S10) | **first zone into an interior with no housing messages** (Q11); then place a house, enter, the front door and `/leaverealestate` to the plot's exit point, move a house, swap, crate pack / unpack, a layout saved and loaded on another plot; **a yard holding two houses** (`Housing:MaxHousesAdditive` 1): both place, a third is refused (`0x0f`), and a swap acts on the placed house the client names, the other untouched; **a picked-up house names its property** in its item display (string 5289: neighborhood, address, house) | `records` (the house, its parent), `manager` (current property inside) | `houses` |
+| 6. Houses and interiors (S10) | zone into an interior with no housing messages, then with all of them (Q11, ZIN-7); then place a house, enter, the front door and `/leaverealestate` to the plot's exit point, move a house, swap, crate pack / unpack, a layout saved and loaded on another plot; **a yard holding two houses** (`Housing:MaxHousesAdditive` 1): both place, a third is refused (`0x0f`), and a swap acts on the placed house the client names, the other untouched; **a picked-up house names its property** in its item display (string 5289: neighborhood, address, house) | `records` (the house, its parent), `manager` (current property inside) | `houses` |
 | 7. Search, transfer, sell (S6, S7) | the search windows; a transfer to a character beside the owner, accepted and left to expire; a sale into a crate item (list B) | `records`, `character` lists | `searchTransferSell` |
 | 8. Polls and trophies (S11, S12; trophies once built, the last step) | a GM poll: vote, results, prompt; a trophy placed: available, activated, **its bonus in the character's stats**; the guild set and lock | `polls`, `tribute`, `guild` | `pollsAndTrophies` |
 | 9. Cross-zone and concurrency (D2) | two characters in different zones: an access change while one is inside the house; the upkeep clock on properties in other zones; two edits of one property at once | `records` revisions via updates | manual, two clients |

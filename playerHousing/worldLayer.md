@@ -171,7 +171,7 @@ The camera (`[0xde0d7c]`, distance at `+0x34`) allows **a maximum distance of 21
 - **Outside:** a house is a placed item (house category) whose body is built from its model like any world object (`0x1045`).
 - **Entering:** a **server action**: the menu's Enter (type 1, `b` -1, eqstr 723, on `0x218c`) or a left click on the house's door (a left click on the rest of the house does nothing; how RoF2 reports the door click is INT-19) moves the player into the interior's running copy (a plain instance of the template zone the house's `dz_id` names, shared by everyone inside), or a new one, at the template's zone-in point. It needs Enter permission (1) and current upkeep on the house and its plot; a crate never offers Enter. The client has entry messages the server can use: `0x1920` "You cannot enter %1 because the upkeep on it has expired."; guild halls: `0x17e1` "Your Guild Hall is loading, please try again in 10-15 seconds.", `0x17e2` "You are unable to enter the Guild Hall at this time."
 - **Inside:** an ordinary zone for the client, so **the real-estate data must be sent there too**: the current property (`0x6fd0`, the house, which gives "You have entered %1."), the regions (`0x49df`), the definitions and records, and the item lists. Houses also hold **teleport anchors** (strings `0x14e1`–`0x14e7`, `0x154a`/`0x154c`: an anchor's house must be placed in a yard; teleports only from zones connected to its neighborhood).
-- **The interior zone-in crash from the prior research can't be resolved statically**: there's no interior-specific client path, so the likely cause is data the client expects but didn't get (or inconsistent data) in the interior zone. The zone level is proven on Peridot (`phinterior3a3` loads with no housing messages); ZIN-7 adds the housing messages one at a time and **takes the crash address** to map it to the code documented here.
+- **The interior zone-in crash from the prior research can't be resolved statically**: there's no interior-specific client path, so the likely cause is data the client expects but didn't get (or inconsistent data) in the interior zone. The zone level is proven on Peridot (`phinterior3a3` loads with no housing messages), and on peridothousing interiors load with every housing message (ZIN-7), so the crash was never met.
 
 **Guild halls:** zones 737 / 738 / 751. `/outputfile realestate` writes the real-estate export (`0x5b37d0`, "%s-RealEstate.txt"); `/outputfile guildhall` requires being in a guild (character `+0x204c` ≠ -1) (`0x4febd0`). Dumping the real-estate guild hall has client messages `0x153e`–`0x1540` (in a guild, on the guild plot or in the hall, modify item access).
 
@@ -204,9 +204,6 @@ The camera (`[0xde0d7c]`, distance at `+0x34`) allows **a maximum distance of 21
 - **bit 2 (`0x4`) = ignored by movement collision**: the collision candidate filter `0x475ac0` (vtable `0x9cf81c`, built in the per-frame spawn movement update `0x508070`, reached from `0x509050` <- `0x4877e0` / `0x49ca10`) skips such actors; otherwise it applies type rules (spawns: spawn checks; doors: collide).
 
 **So a placed NPC item's spawn (flags `|= 5`) neither blocks movement nor acts as a surface; ordinary placed items get neither bit, so they collide and can be stood on.** (Bit 1, cleared by doors, and bit 3 aren't used for placed items and stay unnamed.)
-
-**Open items:**
-- **The house-interior crash** needs a crash address from testing (ZIN-7).
 
 ## All world-entity paths (for comparison)
 
