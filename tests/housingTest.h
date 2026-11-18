@@ -68,6 +68,7 @@ public:
     TEST_ADD(HousingTest::raceStepsFromEruditeToWoodElfAndWraps);
     TEST_ADD(HousingTest::featureCountsMatchLivesRuns);
     TEST_ADD(HousingTest::eruditeHairAndElfBeardRideTheFace);
+    TEST_ADD(HousingTest::beardsShowAsLiveShowsThem);
     TEST_ADD(HousingTest::armorColorsAndMaterialsCycleAsOnLive);
     TEST_ADD(HousingTest::modeWithoutOptionChangesNothing);
     TEST_ADD(HousingTest::raceChangeKeepsFeaturesTheNewBodyHas);
@@ -673,11 +674,28 @@ private:
     }
     TEST_ASSERT(faces == std::vector<uint8>({31, 41, 51, 1, 11, 21}));
     const housing::AssistantSpawnLook highElfWoman = housing::spawnLook(housing::AssistantLook{5, 1, 3, 0, 2, 4, 0, 0});
-    TEST_ASSERT(highElfWoman.face == 23 && highElfWoman.beard == 255 && highElfWoman.hairColor == 255);
-    const housing::AssistantSpawnLook darkElfMan = housing::spawnLook(housing::AssistantLook{6, 0, 6, 1, 1, 9, 0, 0});
+    TEST_ASSERT(highElfWoman.face == 13 && highElfWoman.beard == 255 && highElfWoman.hairColor == 255);
+    const housing::AssistantSpawnLook darkElfMan = housing::spawnLook(housing::AssistantLook{6, 0, 6, 1, 2, 9, 0, 0});
     TEST_ASSERT(darkElfMan.face == 16 && darkElfMan.beard == 1 && darkElfMan.beardColor == 9 && darkElfMan.hairColor == 9);
     const housing::AssistantSpawnLook bald = housing::spawnLook(housing::AssistantLook{4, 0, 0, 255, 255, 17, 0, 0});
     TEST_ASSERT(bald.hairStyle == 255 && bald.hairColor == 255);
+  }
+
+  void beardsShowAsLiveShowsThem() {
+    housing::AssistantLook highElfWoman{5, 1, 3, 0, 0, 4, 0, 0};
+    std::vector<uint8> faces;
+    for (int index = 0; index < 5; index++) {
+      housing::stepLook(highElfWoman, housing::AugmentaterMode::beard);
+      faces.push_back(housing::spawnLook(highElfWoman).face);
+    }
+    TEST_ASSERT(faces == std::vector<uint8>({3, 13, 23, 33, 3}));
+    housing::AssistantLook dwarfMan{8, 0, 0, 0, 0, 4, 0, 0};
+    std::vector<uint8> beards;
+    for (int index = 0; index < 6; index++) {
+      housing::stepLook(dwarfMan, housing::AugmentaterMode::beard);
+      beards.push_back(housing::spawnLook(dwarfMan).beard);
+    }
+    TEST_ASSERT(beards == std::vector<uint8>({1, 2, 3, 4, 4, 0}));
   }
 
   void armorColorsAndMaterialsCycleAsOnLive() {

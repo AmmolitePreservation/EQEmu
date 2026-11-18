@@ -164,6 +164,19 @@ namespace housing {
     return true;
   }
 
+  // What a beard option shows: Live's clients show an elf's five as 0, 0, 1, 2 and 3, and the sixth of the six-option races as
+  // the fifth (augmentRuns.tsv, NPC-27).
+  inline uint8 shownBeard(uint16 race, uint8 gender, uint8 option) {
+    const uint8 options = beardOptionCount(race, gender);
+    if (!options) {
+      return noFeature;
+    }
+    if (faceCarriesBeard(race)) {
+      return option ? static_cast<uint8>(option - 1) : 0;
+    }
+    return std::min<uint8>(option, static_cast<uint8>(options - 2));
+  }
+
   // An elf woman's "beard" is a facial detail in the face's tens digit; her spawn carries no beard field.
   inline bool spawnCarriesBeard(uint16 race, uint8 gender) {
     return beardOptionCount(race, gender) > 0 && !(faceCarriesBeard(race) && gender);
@@ -284,12 +297,12 @@ namespace housing {
       spawn.hairStyle = noFeature;
     }
     else if (faceCarriesBeard(look.race)) {
-      spawn.face = static_cast<uint8>(look.face + 10 * look.beard);
+      spawn.face = static_cast<uint8>(look.face + 10 * shownBeard(look.race, look.gender, look.beard));
     }
     const bool hairShown = hasHairColor(look.race, look.gender) && spawn.hairStyle != noFeature;
     spawn.hairColor = hairShown ? look.hairColor : noFeature;
     const bool beardShown = spawnCarriesBeard(look.race, look.gender);
-    spawn.beard = beardShown ? look.beard : noFeature;
+    spawn.beard = beardShown ? shownBeard(look.race, look.gender, look.beard) : noFeature;
     spawn.beardColor = beardShown ? look.hairColor : noFeature;
     spawn.texture = look.bodyMaterial;
     spawn.bodyTint = look.bodyTint;
