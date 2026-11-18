@@ -19,6 +19,8 @@
 #include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingLedger.h"
+#include "../../common/repositories/real_estate_items_repository.h"
 #include "../../common/rulesys.h"
 #include "../../common/strings.h"
 #include "../../common/zone_store.h"
@@ -184,6 +186,17 @@ namespace housing {
         if (property.parent_id) {
           children[property.parent_id].push_back(id);
         }
+      }
+      // The client takes a plot's house and crate as the first of each in its child list (0x5b0000), so a placed one goes
+      // ahead of the stored ones (PLC-34).
+      std::set<uint32> placedCarriers;
+      if (!ids.empty()) {
+        for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("placed = 1 AND carried_property_id IN ({})", idList(ids)))) {
+          placedCarriers.insert(row.carried_property_id);
+        }
+      }
+      for (auto &[parentId, childIds] : children) {
+        std::stable_partition(childIds.begin(), childIds.end(), [&placedCarriers](uint32 id) { return placedCarriers.count(id) != 0; });
       }
       const auto identities = characterIdentities(owners);
       auto money = balances(ids);
