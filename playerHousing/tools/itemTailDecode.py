@@ -1,12 +1,12 @@
 """Decodes the housing tail captured in the items table (UNK223-UNK241 and placeable) and validates it.
 
 Input: a tab-separated export of `SELECT id, Name, UNK223 ... UNK234, placeable, UNK236 ... UNK241 FROM items WHERE UNK224<>0`
-(the second result set of itemTailFull.sql; the first lists the column types, all int(11)). Every row is decoded twice,
+(content/placeableItemsCapture.tsv, the second result set of exportPlaceableItems.sql). Every row is decoded twice,
 as captured aligned and as captured shifted by one byte (the capture missed bInteractiveObject, which follows the
 housepet string on the wire); exactly one decoding
 must be plausible. serverPlan.md, D1, records the results; the migration does the same byte math in SQL.
 
-Usage: python3 itemTailDecode.py itemTailFull.txt
+Usage: python itemTailDecode.py ../content/placeableItemsCapture.tsv
 """
 import collections, struct, sys
 
