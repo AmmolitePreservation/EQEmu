@@ -15,6 +15,7 @@ namespace housing {
   struct CharacterIdentity {
     std::string name;
     uint32 accountId;
+    uint32 guildId;
   };
 
   struct Balance {

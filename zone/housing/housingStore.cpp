@@ -50,9 +50,12 @@ namespace housing {
     if (wanted.empty()) {
       return result;
     }
-    auto rows = database.QueryDatabase(fmt::format("SELECT id, name, account_id FROM character_data WHERE id IN ({})", idList(wanted)));
+    auto rows = database.QueryDatabase(fmt::format(
+      "SELECT c.id, c.name, c.account_id, COALESCE(g.guild_id, 0) FROM character_data c LEFT JOIN guild_members g ON g.char_id = c.id WHERE c.id IN ({})",
+      idList(wanted)
+    ));
     for (auto row : rows) {
-      result[Strings::ToUnsignedInt(row[0])] = CharacterIdentity{row[1], Strings::ToUnsignedInt(row[2])};
+      result[Strings::ToUnsignedInt(row[0])] = CharacterIdentity{row[1], Strings::ToUnsignedInt(row[2]), Strings::ToUnsignedInt(row[3])};
     }
     return result;
   }

@@ -27,6 +27,7 @@
 #include "../../common/zone_store.h"
 #include "../client.h"
 #include "../entity.h"
+#include "../guild_mgr.h"
 #include "../zone.h"
 #include "../zonedb.h"
 
@@ -212,9 +213,12 @@ namespace housing {
           }
           owner = found->second;
         }
+        // A player plot names its owner's guild as it stands when the record goes out (REC-9); -1 with none.
+        const bool playerPlot = typeOf(property) == DefinitionType::plot;
+        const uint32 ownerGuild = owner && guild_mgr.GuildExists(owner->guildId) ? owner->guildId : 0;
         fields[id] = RecordFields{
-          typeOf(property) == DefinitionType::plot && !property.owner_character_id,
-          activeGuildId(property),
+          playerPlot && !property.owner_character_id,
+          playerPlot ? ownerGuild : activeGuildId(property),
           owner,
           composedName(property, properties, problems),
           children[id],
