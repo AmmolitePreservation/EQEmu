@@ -194,8 +194,4 @@ namespace housing {
   void broadcastWorldObjectRemove(const PlacedItem &row) {
     sendToZone(OP_RealEstateWorldObjectRemove, itemReference(ItemGUIDText(row.guid), WireItemLocation{}, row.property_id, row.id));
   }
-
-  void sendPlacedItemMoved(Client *client, const PlacedItem &row, const WireItemLocation &location) {
-    sendMessage(client, OP_RealEstateWorldObjectMoved, itemReference(ItemGUIDText(row.guid), location, row.property_id, row.id));
-  }
 }
