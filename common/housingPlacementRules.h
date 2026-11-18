@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <fmt/format.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -112,8 +113,10 @@ namespace housing {
     return kind == CarriedKind::crate ? ItemResult::noAddCrate : ItemResult::noAddItem;
   }
 
+  // The client tests the house and crate limits only when placing (0x5b48b0 under 0x5b69b0's and 0x5b6eb0's placing branch), so a
+  // yard at its limit still stores a house, as a swap needs.
   inline ItemResult houseLimitResult(const PlacementFacts &facts) {
-    if (isHouseKind(facts.carried) && !facts.destinationIsCrate && facts.destinationHouses >= facts.maxHouses) {
+    if (isHouseKind(facts.carried) && !facts.intoStorage && !facts.destinationIsCrate && facts.destinationHouses >= facts.maxHouses) {
       return facts.carried == CarriedKind::guildHall ? ItemResult::hallLimit : ItemResult::houseLimit;
     }
     if (facts.carried == CarriedKind::crate && !facts.intoStorage && facts.destinationHasPlacedCrate) {
@@ -161,6 +164,10 @@ namespace housing {
     return facts.placeable || !facts.intoStorage;
   }
 
+  inline bool atItemLimit(const PlacementFacts &facts) {
+    return facts.maxPerRealEstate >= 0 && facts.sameItemCount >= static_cast<uint32>(facts.maxPerRealEstate);
+  }
+
   inline ItemResult inventoryPlacementResult(const PlacementFacts &facts) {
     if (!facts.houseOfThule) {
       return ItemResult::needsHouseOfThule;
@@ -171,11 +178,15 @@ namespace housing {
     if (facts.plotUpkeepExpired) {
       return ItemResult::plotUpkeepExpired;
     }
-    if (placesItem(facts) && !facts.placeable) {
-      return ItemResult::notPlaceable;
+    // 0x5ab270, which a crate destination skips.
+    if (!facts.destinationIsCrate && atItemLimit(facts)) {
+      return ItemResult::itemLimit;
     }
     if (facts.intoOwnProperty) {
       return ItemResult::intoOwnProperty;
+    }
+    if (placesItem(facts) && !facts.placeable) {
+      return ItemResult::notPlaceable;
     }
     if (placesItem(facts) && !facts.allowedHere) {
       return ItemResult::notAllowedHere;
@@ -263,24 +274,22 @@ namespace housing {
     return ItemResult::success;
   }
 
-  // The client's rule set for the source, then the per-item limit, which only the server checks (0x1f).
+  // The client's rule set for the source; the inventory set holds the per-item limit (0x1f) itself, and the other two are followed by
+  // it until their own place in them is traced (worklist.md PLC-19).
   inline ItemResult placementResult(const PlacementFacts &facts) {
-    ItemResult result = ItemResult::success;
     switch (facts.source) {
       case PlacementSource::inventory:
-        result = inventoryPlacementResult(facts);
-        break;
-      case PlacementSource::sameProperty:
-        result = samePropertyPlacementResult(facts);
-        break;
-      case PlacementSource::otherProperty:
-        result = otherPropertyPlacementResult(facts);
-        break;
+        return inventoryPlacementResult(facts);
+      case PlacementSource::sameProperty: {
+        const ItemResult result = samePropertyPlacementResult(facts);
+        return result == ItemResult::success && atItemLimit(facts) ? ItemResult::itemLimit : result;
+      }
+      case PlacementSource::otherProperty: {
+        const ItemResult result = otherPropertyPlacementResult(facts);
+        return result == ItemResult::success && atItemLimit(facts) ? ItemResult::itemLimit : result;
+      }
     }
-    if (result == ItemResult::success && facts.maxPerRealEstate >= 0 && facts.sameItemCount >= static_cast<uint32>(facts.maxPerRealEstate)) {
-      return ItemResult::itemLimit;
-    }
-    return result;
+    throw std::invalid_argument(fmt::format("placement source [{}]", static_cast<uint32>(facts.source)));
   }
 
   struct PickUpFacts {

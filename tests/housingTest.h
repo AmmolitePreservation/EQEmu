@@ -57,6 +57,7 @@ public:
     TEST_ADD(HousingTest::crateRulesKeepFullHousesAndCratesApart);
     TEST_ADD(HousingTest::capacityCodesAndTheStackMergeWaiver);
     TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
+    TEST_ADD(HousingTest::aCrateTakesItemsPastTheirPerPropertyLimit);
     TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
     TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
     TEST_ADD(HousingTest::mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate);
@@ -406,12 +407,16 @@ private:
     facts.veilOfAlaris = true;
     TEST_ASSERT_EQUALS(code(facts), 24u);
     facts.plotUpkeepExpired = false;
-    TEST_ASSERT_EQUALS(code(facts), 36u);
-    facts.placeable = true;
+    facts.maxPerRealEstate = 1;
+    facts.sameItemCount = 1;
     facts.intoOwnProperty = true;
-    facts.allowedHere = false;
+    TEST_ASSERT_EQUALS(code(facts), 31u);
+    facts.maxPerRealEstate = -1;
     TEST_ASSERT_EQUALS(code(facts), 30u);
     facts.intoOwnProperty = false;
+    TEST_ASSERT_EQUALS(code(facts), 36u);
+    facts.placeable = true;
+    facts.allowedHere = false;
     TEST_ASSERT_EQUALS(code(facts), 17u);
   }
 
@@ -424,6 +429,9 @@ private:
     auto hall = house;
     hall.carried = housing::CarriedKind::guildHall;
     TEST_ASSERT_EQUALS(code(hall), 68u);
+    house.intoStorage = true;
+    TEST_ASSERT_EQUALS(code(house), 75u);
+    house.intoStorage = false;
     house.destinationHouses = 0;
     TEST_ASSERT_EQUALS(code(house), 75u);
     auto crate = yardPlacement();
@@ -489,11 +497,21 @@ private:
     facts.containerHoldsItems = false;
     TEST_ASSERT_EQUALS(code(facts), 25u);
     facts.itemUpkeepExpired = false;
-    facts.maxPerRealEstate = 1;
-    facts.sameItemCount = 1;
+    facts.maxPerRealEstate = 0;
     TEST_ASSERT_EQUALS(code(facts), 31u);
     facts.maxPerRealEstate = -1;
     TEST_ASSERT_EQUALS(code(facts), 0u);
+  }
+
+  void aCrateTakesItemsPastTheirPerPropertyLimit() {
+    auto facts = yardPlacement();
+    facts.intoStorage = true;
+    facts.destinationIsCrate = true;
+    facts.maxPerRealEstate = 1;
+    facts.sameItemCount = 3;
+    TEST_ASSERT_EQUALS(code(facts), 0u);
+    facts.destinationIsCrate = false;
+    TEST_ASSERT_EQUALS(code(facts), 31u);
   }
 
   void storedAndMovedItemsNeedMoveItem() {
