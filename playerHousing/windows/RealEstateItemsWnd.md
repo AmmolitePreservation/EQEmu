@@ -110,7 +110,7 @@ Columns: **Enabled when** / **Shown when** (the conditions feeding `0x866610` an
 | 4 | **plot upkeep current** (`0x5b4780`) | `0x18` | "You cannot do this because the upkeep on this plot has expired." |
 | 5 | `0x57bfb0` | `4` | (no specific text) |
 | 6 | item placeable | `0x24` | "You can only do this with placeable items…" |
-| 7 | **destination inside the current property context** (`0x4b3090`, an ancestry check) | `0x1e` | (no specific text) |
+| 7 | **a cycle check:** an item that carries a property may not go into that property or any of its descendants (item `+0x7c` against the destination and its parents, `0x4b3090`) | `0x1e` | (no specific text) |
 | 8 | `0x5b5580` | `0x11` | "You can't put that item in this real estate." |
 | 9 | house / guild-hall count per yard: the yard's children that aren't crates against its definition's `+0x30` (`0x5b48b0`, `0x7f5100`) | `0x0f` / `0x44` | "You cannot add another house / guild hall to this yard." |
 | 10 | moving-crate rules | `0x27` / `0x51` / `0x20` | one non-empty house per crate; a house containing a placed crate can't go in a crate; non-empty houses and crates only in yards and houses |
@@ -126,7 +126,7 @@ Placeable (`0x24`); allowed in this real estate (`0x11`, `0x5b4d10`/`0x7b0af0`);
 
 ### Rules for moving between properties (`0x5b5ff0`, via manager vtable `+0x1c`)
 
-Ownership comparisons (`0x4d6b10`, owner names); **House of Thule `0x2f`, Veil of Alaris `0x52`, membership `0x53`** (as for inventory); `0x57bfb0` → 3; **destination inside the current property context** (`0x4b3090`) → `0x1e`; **capacity: `0x0a` real estate full, `0x0c` vault full, `0x26` pet limit** (as for inventory); the stack rule `0x2e`; the no-conflict check (`0x5b54b0`); a final code 1.
+Ownership comparisons (`0x4d6b10`, owner names); **House of Thule `0x2f`, Veil of Alaris `0x52`, membership `0x53`** (as for inventory); `0x57bfb0` → 3; **the cycle check**, an item that carries a property going into that property or a descendant (`0x4b3090`) → `0x1e`; **capacity: `0x0a` real estate full, `0x0c` vault full, `0x26` pet limit** (as for inventory); the stack rule `0x2e`; the no-conflict check (`0x5b54b0`); a final code 1.
 
 ### Move buttons and Locate
 
