@@ -47,6 +47,7 @@ namespace housing {
     };
 
     std::map<uint32, PollState> lastStates;
+    bool statesRecorded = false;
 
     std::vector<Poll> publishedPolls() {
       std::vector<Poll> polls;
@@ -416,7 +417,9 @@ namespace housing {
       for (const auto &poll : polls) {
         const PollState current = stateOf(poll, now);
         auto last = lastStates.find(poll.id);
-        if (last != lastStates.end() && last->second != current) {
+        // The boot's first pass records the polls in silence; one first seen later was published since and changes as any does (POL-7).
+        const bool published = last == lastStates.end() && statesRecorded;
+        if (published || (last != lastStates.end() && last->second != current)) {
           changed.push_back(poll);
           if (current == PollState::open && poll.prompt) {
             opened.push_back(poll);
@@ -424,6 +427,7 @@ namespace housing {
         }
         lastStates[poll.id] = current;
       }
+      statesRecorded = true;
       if (changed.empty()) {
         return;
       }
@@ -452,5 +456,6 @@ namespace housing {
 
   void resetPolls() {
     lastStates.clear();
+    statesRecorded = false;
   }
 }
