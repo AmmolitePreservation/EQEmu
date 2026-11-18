@@ -226,7 +226,7 @@ Three extensions the owner wants, all in scope: **private zones as house and gui
 2. write the 18 tail fields in wire order from the item's housing tail (the housepet name as a C string, at most 31 characters), then the `+0x609` byte (0);
 3. write the struct's **last 14 bytes unchanged** (from `unknown37`'s second byte to the end: `+0x110`-`+0x118` for this reader, then 5 bytes the caller reads), so everything after the tail stays byte-identical.
 
-**`ItemPacketInvalid` keeps today's bytes** (it sets `unknown29` to `0xff`, which changes how the client reads the name); nothing housing sends uses it.
+**`ItemPacketInvalid` keeps today's bytes** (it sets `unknown29` to `0xff`, which changes how the client reads the name); nothing housing sends uses it. The Object Preview's answer (`OP_ItemPreviewRequest`) does, and a house previews from its IDFile without the tail (ITM-8).
 
 **The housing tail's values** come from a provider the serializer calls with the item id: a function the zone's housing module registers at boot in every zone, housing on or off (the only item-side hook; a failed load stops the zone's boot), returning the renamed `items` columns for items with a non-zero `placeable`, and for every other item the values the client reads today apart from the name: all zero but max per real estate and the trophy id, both -1, and an empty name. `common/` holds only the provider's plumbing (a struct of the 18 fields, the provider pointer with its setter and getter, and the defaults), so world, which never registers one, keeps sending defaults.
 
