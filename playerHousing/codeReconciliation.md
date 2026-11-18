@@ -147,7 +147,7 @@ The plan text needs these corrections; the code follows the right-hand side.
 | Question | Decides | How |
 |---|---|---|
 | Whether Live's copy counter starts over at a restart (Peridot: copies count up, restarted at world boot) | world/housingInstances.cpp | INT-16 (2026-10-21) |
-| Placement rules after 0x0f, begin-reply fields, pick-up limit | housingPlacement | PLC-6, PLC-7, PLC-8 |
+| Placement rules after 0x0f, begin-reply fields | housingPlacement | PLC-7, PLC-8 |
 | A plot's guild in the record | housingMessages | REC-10 |
 | Others, all clientAnalysis or peridotTest | see the worklist | UPK-3, UPK-11, STT-5, STT-6, STT-9, ACC-8, NBH-6, NPC-6, NPC-16, MNU-5, TRO-3, TRO-5, TRO-6, OPC-3, OPC-4, OPC-6, OPC-8, CAT-4, CAT-7, REC-13, ZIN-5, ZIN-6, ZIN-11, ITM-2, ITM-8, DOR-6..8, DOR-11, EXT-3..7, EXT-18..20, EXT-25, EXT-30, EXT-32, PAT-7, PRC-1, PRC-3 |
 

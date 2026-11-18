@@ -29,7 +29,7 @@ String texts come from the owner's `eqstr_us.txt`. The client looks them up thro
 | 29 | `0x1499` | You cannot place this item here because the surface is not flat enough. |
 | 31 | `0x1924` | You cannot place this here because you've reached the limit for that item. |
 | 32 | `0x1925` | Non-empty houses and crates can only be placed in yards and houses.  They may not be put in the shed or the closet.  While non-empty houses are allowed in moving crates, non-empty crates are not allowed inside crates. |
-| 33 | `0x1926` | You cannot pick this up because you may only have one non-empty house and crate in your inventory at a time. |
+| 33 | `0x1926` | You cannot pick this up because you may only have one non-empty house and crate in your inventory at a time. (One of each kind; a property of the kind stored inside a carried one counts: worklist.md PLC-6.) |
 | 35 | `0x1482` | You cannot place that item in this zone. |
 | 36 | `0x146e` | You can only do this with placeable items.  See the item's description. |
 | 38 | `0x1928` | You cannot place this here because you have reached the pet limit for this yard. |
