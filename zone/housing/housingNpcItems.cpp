@@ -107,7 +107,7 @@ namespace housing {
     }
 
     uint32 respawnSeconds(uint32 itemId) {
-      const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
+      const EQ::ItemHousingTail *tail = EQ::placeableTail(itemId);
       if (!tail) {
         throw std::runtime_error(fmt::format("NPC item [{}] has no housing tail", itemId));
       }
@@ -219,7 +219,7 @@ namespace housing {
   }
 
   bool isNpcItemId(uint32 itemId) {
-    const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
+    const EQ::ItemHousingTail *tail = EQ::placeableTail(itemId);
     return tail && isNpcItem(tail->housepetFileName, tail->interactiveObject != 0);
   }
 

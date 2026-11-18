@@ -3,6 +3,7 @@
 #include "../common/eqemu_logsys.h"
 #include "../common/http/httplib.h"
 #include "../common/http/uri.h"
+#include "../common/itemHousingTail.h"
 #include "../common/net/console_server.h"
 #include "../common/net/servertalk_server.h"
 #include "../common/repositories/character_expedition_lockouts_repository.h"
@@ -304,6 +305,11 @@ bool WorldBoot::DatabaseLoadRoutines(int argc, char **argv)
 
 	if (!content_db.LoadItems(hotfix_name)) {
 		LogError("Error: Could not load item data. But ignoring");
+	}
+
+	if (!EQ::loadItemHousingTails(content_db)) {
+		LogError("The items' housing tails did not load; world stops");
+		return false;
 	}
 
 	guild_mgr.LoadGuilds();

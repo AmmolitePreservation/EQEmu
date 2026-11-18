@@ -144,7 +144,7 @@ namespace housing {
     }
 
     void describeCarrier(Candidate &candidate) {
-      candidate.tail = itemHousingTail(candidate.item->ID);
+      candidate.tail = EQ::placeableTail(candidate.item->ID);
       const uint32 carriedId = candidate.instance->GetRealEstateID();
       if (carriedId) {
         auto carried = propertiesById({carriedId});
@@ -304,7 +304,7 @@ namespace housing {
         if (candidate.row && row.id == candidate.row->id) {
           continue;
         }
-        const EQ::ItemHousingTail *tail = itemHousingTail(row.item_id);
+        const EQ::ItemHousingTail *tail = EQ::placeableTail(row.item_id);
         if (tail && tail->placeable) {
           facts.realEstateCount++;
         }
@@ -1329,13 +1329,13 @@ namespace housing {
       SwapCapacity space;
       std::vector<std::pair<uint32, uint32>> moving;
       for (const auto &row : view.rowsOf(outgoingHouseId)) {
-        const EQ::ItemHousingTail *tail = itemHousingTail(row.item_id);
+        const EQ::ItemHousingTail *tail = EQ::placeableTail(row.item_id);
         (tail && tail->placeable ? space.realEstateMoving : space.vaultMoving)++;
         space.npcMoving += isNpcItemId(row.item_id);
       }
       if (candidate.carried) {
         for (const auto &row : view.rowsOf(candidate.carried->id)) {
-          const EQ::ItemHousingTail *tail = itemHousingTail(row.item_id);
+          const EQ::ItemHousingTail *tail = EQ::placeableTail(row.item_id);
           (tail && tail->placeable ? space.realEstateHeld : space.vaultHeld)++;
           space.npcHeld += isNpcItemId(row.item_id);
         }

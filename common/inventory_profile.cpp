@@ -19,6 +19,7 @@
 #include "inventory_profile.h"
 #include "textures.h"
 #include "eqemu_logsys.h"
+#include "itemHousingTail.h"
 //#include "classes.h"
 //#include "global_define.h"
 //#include "item_instance.h"
@@ -845,7 +846,7 @@ int16 EQ::InventoryProfile::FindFreeSlot(bool for_bag, bool try_cursor, uint8 mi
 			}
 
 			const EQ::ItemInstance* inst = GetItem(i);
-			if (inst && inst->IsClassBag() && inst->GetItem()->BagSize >= min_size) {
+			if (inst && inst->IsClassBag() && inst->GetItem()->BagSize >= min_size && ContainerTakesItems(inst->GetItem())) {
 				if (inst->GetItem()->BagType == item::BagTypeQuiver &&
 					inst->GetItem()->ItemType != item::ItemTypeArrow) {
 					continue;
@@ -1048,7 +1049,8 @@ int16 EQ::InventoryProfile::FindFreeSlotForTradeItem(const ItemInstance* inst, i
 			if (
 				main_inst->GetItem()->BagSize < inst->GetItem()->Size ||
 				main_inst->GetItem()->BagType == item::BagTypeBandolier ||
-				main_inst->GetItem()->BagType == item::BagTypeQuiver
+				main_inst->GetItem()->BagType == item::BagTypeQuiver ||
+				!ContainerTakesItems(main_inst->GetItem())
 			) {
 				continue;
 			}
@@ -1242,9 +1244,19 @@ uint8 EQ::InventoryProfile::CalcMaterialFromSlot(int16 equipslot)
 	}
 }
 
+// RoF2 refuses to move any item into a carried placeable container (0x7b39e0, eqstr 5246): it is usable only placed (PLC-29).
+bool EQ::InventoryProfile::ContainerTakesItems(const ItemData *container)
+{
+	return EQ::placeableTail(container->ID) == nullptr;
+}
+
 bool EQ::InventoryProfile::CanItemFitInContainer(const ItemData *ItemToTry, const ItemData *Container) {
 
 	if (!ItemToTry || !Container) {
+		return false;
+	}
+
+	if (!ContainerTakesItems(Container)) {
 		return false;
 	}
 

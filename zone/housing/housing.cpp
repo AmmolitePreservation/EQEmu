@@ -449,7 +449,7 @@ namespace housing {
   }
 
   bool onZoneBoot() {
-    if (!loadItemHousingTails()) {
+    if (!EQ::loadItemHousingTails(content_db)) {
       return false;
     }
     catalogReady = catalog().load();

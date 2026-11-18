@@ -3,6 +3,10 @@
 
 #include "types.h"
 
+#include <unordered_map>
+
+class Database;
+
 namespace EQ {
   struct ItemHousingTail {
     uint32 placeable = 0;
@@ -25,10 +29,13 @@ namespace EQ {
     float placeableDefaultRoll = 0.0f;
   };
 
-  using ItemHousingTailProvider = const ItemHousingTail *(*)(uint32 itemId);
-
-  void setItemHousingTailProvider(ItemHousingTailProvider provider);
+  // The items table's housing columns for every placeable item; false, with the reason logged, when they cannot be read or a
+  // scale range runs backwards. Every process that serializes items or finds slots for them loads them at boot.
+  bool loadItemHousingTails(Database &content);
+  const ItemHousingTail *placeableTail(uint32 itemId);
+  // What RoF2 reads after Heirloom for any item: a placeable item's own tail, otherwise the values of an item that is not one.
   const ItemHousingTail &itemHousingTail(uint32 itemId);
+  const std::unordered_map<uint32, ItemHousingTail> &placeableTails();
 }
 
 #endif

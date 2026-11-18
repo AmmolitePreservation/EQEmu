@@ -20,7 +20,7 @@ namespace housing {
     constexpr size_t referenceGuidLength = 0x14;
 
     const EQ::ItemHousingTail &tailOf(uint32 itemId) {
-      const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
+      const EQ::ItemHousingTail *tail = EQ::placeableTail(itemId);
       if (!tail) {
         throw std::runtime_error(fmt::format("item [{}] is not placeable", itemId));
       }

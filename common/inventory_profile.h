@@ -197,6 +197,7 @@ namespace EQ
 		static uint8 CalcMaterialFromSlot(int16 equipslot);
 
 		static bool CanItemFitInContainer(const ItemData *ItemToTry, const ItemData *Container);
+		static bool ContainerTakesItems(const ItemData *container);
 
 		//  Test for valid inventory casting slot
 		bool SupportsClickCasting(int16 slot_id);

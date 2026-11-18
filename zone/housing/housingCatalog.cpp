@@ -296,7 +296,7 @@ namespace housing {
     for (auto row : auras) {
       const uint32 itemId = Strings::ToUnsignedInt(row[0]);
       const uint32 auraType = Strings::ToUnsignedInt(row[1]);
-      const EQ::ItemHousingTail *tail = itemHousingTail(itemId);
+      const EQ::ItemHousingTail *tail = EQ::placeableTail(itemId);
       if (!tail || !tail->placeable || npcItemIdSet.count(itemId)) {
         itemProblems.push_back(fmt::format("aura item [{}] is not a placeable item outside the NPC items; its aura is left out", itemId));
         continue;
