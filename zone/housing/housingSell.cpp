@@ -263,7 +263,8 @@ namespace housing {
         if (!crateData) {
           throw std::runtime_error(fmt::format("the crate is item [{}], which does not exist", crateRow->item_id));
         }
-        if (!crateData->NoDrop && crateRow->owner_character_id != client->CharacterID()) {
+        // The client's gate (0x5b7fa0) tests the crate as it holds it, where placement's attune makes it No Trade (STT-6's stand-in).
+        if ((!crateData->NoDrop || crateRow->attuned) && crateRow->owner_character_id != client->CharacterID()) {
           throw SellRefusal("the crate is No Trade and the seller did not place it", crateNoTrade);
         }
         if (crateData->LoreFlag && client->CheckLoreConflict(crateData)) {
