@@ -317,6 +317,12 @@ namespace housing {
       }
       releasePlot(database, plotId);
       leaving = rows;
+      if (payout.copper) {
+        client->AddMoneyToPP(payout.copper, true);
+      }
+      for (const auto &[currency, units] : payout.alternate) {
+        client->AddAlternateCurrencyValue(currency, static_cast<int>(units));
+      }
       if (crateItem && crateSlot != INVALID_INDEX) {
         giveAndCommit(client, transaction, crateSlot, *crateItem);
       }
@@ -344,11 +350,9 @@ namespace housing {
       }
     }
     if (payout.copper) {
-      client->AddMoneyToPP(payout.copper, true);
       client->MessageString(Chat::White, withdrewCoin, std::to_string(payout.copper).c_str());
     }
     for (const auto &[currency, units] : payout.alternate) {
-      client->AddAlternateCurrencyValue(currency, static_cast<int>(units));
       client->MessageString(Chat::White, withdrewAlternateCurrency, std::to_string(units).c_str(), std::to_string(currency).c_str());
     }
     sendResult(client, sold);

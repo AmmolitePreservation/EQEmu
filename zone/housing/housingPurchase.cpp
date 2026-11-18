@@ -167,6 +167,14 @@ namespace housing {
         guildPlot ? 0 : client->CharacterID(), guildPlot ? guild : 0, upkeepCurrency, now, nextCharge, propertyId
       ));
       writeDefaultAccessList(database, propertyId, guildPlot);
+      if (price.currency == 0) {
+        if (!client->TakeMoneyFromPP(price.amount, true)) {
+          throw std::logic_error(fmt::format("[{}] could pay [{}] copper a moment ago and cannot now", client->GetCleanName(), price.amount));
+        }
+      }
+      else {
+        client->AddAlternateCurrencyValue(price.currency, -static_cast<int>(price.amount));
+      }
       transaction.commit();
       if (guildPlot) {
         bought.guild_id = guild;
@@ -189,13 +197,9 @@ namespace housing {
       return;
     }
     if (price.currency == 0) {
-      if (!client->TakeMoneyFromPP(price.amount, true)) {
-        throw std::logic_error(fmt::format("[{}] could pay [{}] copper a moment ago and cannot now", client->GetCleanName(), price.amount));
-      }
       client->MessageString(Chat::White, spentCoin, std::to_string(price.amount).c_str());
     }
     else {
-      client->AddAlternateCurrencyValue(price.currency, -static_cast<int>(price.amount));
       client->MessageString(Chat::White, spentAlternateCurrency, std::to_string(price.amount).c_str(), std::to_string(price.currency).c_str());
     }
     client->MessageString(Chat::White, purchased);

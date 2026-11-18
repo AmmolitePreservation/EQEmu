@@ -228,9 +228,9 @@ namespace housing {
             }
             credit.amounts[0] = static_cast<double>(amount * copperPerDenomination[subKey]);
             depositInto(plot, credit);
-            transaction.commit();
             *coin -= static_cast<int32>(amount);
             client->SaveCurrency();
+            transaction.commit();
           }
           else {
             const EQ::ItemInstance *cursor = client->GetInv().GetItem(EQ::invslot::slotCursor);
@@ -240,8 +240,8 @@ namespace housing {
             }
             credit.amounts[currency] = static_cast<double>(amount);
             depositInto(plot, credit);
-            transaction.commit();
             client->DeleteItemInInventory(EQ::invslot::slotCursor, static_cast<int16>(amount), true, ItemRetirement::Consumed);
+            transaction.commit();
           }
           tellDeposit(client, currency, credit.amounts.begin()->second);
           break;
@@ -280,7 +280,7 @@ namespace housing {
           }
           writeBalances(database, plot.id, balances);
           bumpRevision(database, plot.id);
-          transaction.commit();
+          std::vector<uint32> cursorDenominations;
           for (const auto &[currency, count] : units) {
             if (currency != 0) {
               client->AddAlternateCurrencyValue(currency, static_cast<int>(count));
@@ -293,12 +293,17 @@ namespace housing {
                 if (!coins) {
                   continue;
                 }
-                int32 *coin = cursorCoin(client, static_cast<uint32>(denomination));
-                *coin += static_cast<int32>(coins);
-                sendMessage(client, OP_RealEstateAccount, accountMessage(withdrawAmount, plot.id, 0, 1, {{0, {static_cast<uint32>(denomination), static_cast<uint64>(*coin)}}}));
+                *cursorCoin(client, static_cast<uint32>(denomination)) += static_cast<int32>(coins);
+                cursorDenominations.push_back(static_cast<uint32>(denomination));
               }
               client->SaveCurrency();
             }
+          }
+          transaction.commit();
+          for (uint32 denomination : cursorDenominations) {
+            sendMessage(client, OP_RealEstateAccount, accountMessage(withdrawAmount, plot.id, 0, 1, {{0, {denomination, static_cast<uint64>(*cursorCoin(client, denomination))}}}));
+          }
+          for (const auto &[currency, count] : units) {
             tellWithdrawal(client, currency, count);
           }
           break;
@@ -344,7 +349,6 @@ namespace housing {
             }
           }
           depositInto(plot, credit);
-          transaction.commit();
           for (const auto &[currency, amount] : credit.amounts) {
             if (currency == 0) {
               if (!client->TakeMoneyFromPP(static_cast<uint64>(amount), true)) {
@@ -354,6 +358,9 @@ namespace housing {
             else {
               client->AddAlternateCurrencyValue(currency, -static_cast<int>(amount));
             }
+          }
+          transaction.commit();
+          for (const auto &[currency, amount] : credit.amounts) {
             tellDeposit(client, currency, amount);
           }
           break;
