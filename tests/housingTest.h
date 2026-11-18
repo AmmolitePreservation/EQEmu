@@ -59,6 +59,8 @@ public:
     TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
     TEST_ADD(HousingTest::aCrateTakesItemsPastTheirPerPropertyLimit);
     TEST_ADD(HousingTest::aStoredHouseCountsOnlyTheYardsPlacedHouses);
+    TEST_ADD(HousingTest::aHouseMoveAsksOnlyTheHouseRightItChanges);
+    TEST_ADD(HousingTest::storingSkipsThePlacingRules);
     TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
     TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
     TEST_ADD(HousingTest::mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate);
@@ -538,12 +540,11 @@ private:
     stored.houseOfThule = false;
     stored.mayAdd = false;
     stored.mayMove = false;
+    TEST_ASSERT_EQUALS(code(stored), 47u);
+    stored.houseOfThule = true;
     TEST_ASSERT_EQUALS(code(stored), 73u);
     stored.mayMove = true;
     TEST_ASSERT_EQUALS(code(stored), 0u);
-    stored.carried = housing::CarriedKind::house;
-    stored.mayRemoveHouse = false;
-    TEST_ASSERT_EQUALS(code(stored), 76u);
     auto moved = yardPlacement();
     moved.source = housing::PlacementSource::otherProperty;
     moved.houseOfThule = false;
@@ -551,6 +552,33 @@ private:
     moved.houseOfThule = true;
     moved.mayAdd = false;
     TEST_ASSERT_EQUALS(code(moved), 71u);
+  }
+
+  void aHouseMoveAsksOnlyTheHouseRightItChanges() {
+    auto house = yardPlacement();
+    house.source = housing::PlacementSource::sameProperty;
+    house.carried = housing::CarriedKind::house;
+    house.carriedIsChild = true;
+    house.mayAdd = false;
+    house.mayRemoveHouse = false;
+    house.fromPlaced = true;
+    TEST_ASSERT_EQUALS(code(house), 0u);
+    house.intoStorage = true;
+    TEST_ASSERT_EQUALS(code(house), 76u);
+    house.fromPlaced = false;
+    house.intoStorage = false;
+    TEST_ASSERT_EQUALS(code(house), 75u);
+    house.mayAdd = true;
+    TEST_ASSERT_EQUALS(code(house), 0u);
+  }
+
+  void storingSkipsThePlacingRules() {
+    auto stored = yardPlacement();
+    stored.intoStorage = true;
+    stored.allowedHere = false;
+    TEST_ASSERT_EQUALS(code(stored), 0u);
+    stored.intoStorage = false;
+    TEST_ASSERT_EQUALS(code(stored), 17u);
   }
 
   void pickUpRulesFollowTheClientsTexts() {

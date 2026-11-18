@@ -287,6 +287,7 @@ namespace housing {
       facts.carriedHoldsItems = carriedId && view.holdsContents(carriedId);
       facts.carriedHouseHoldsPlacedCrate = carriedId && isHouseKind(candidate.kind) && placedCrateIn(view, carriedId, 0);
       facts.intoStorage = intoStorage;
+      facts.fromPlaced = candidate.row && candidate.row->placed;
       facts.destinationIsCrate = destinationType == DefinitionType::movingCrate;
       for (const Property *child : view.childrenOf(destination.id)) {
         const DefinitionType childType = typeOf(*child);

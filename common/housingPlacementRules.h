@@ -80,6 +80,7 @@ namespace housing {
     bool carriedHoldsItems = false;
     bool carriedHouseHoldsPlacedCrate = false;
     bool intoStorage = false;
+    bool fromPlaced = false;
     bool destinationIsCrate = false;
     uint32 destinationHouses = 0;
     uint32 destinationPlacedHouses = 0;
@@ -163,9 +164,9 @@ namespace housing {
     return ItemResult::success;
   }
 
-  // A non-placeable item may only be stored (the vault), so the placing rules apply to what is placeable or placed.
+  // The client tests placeable and allowed-here only on its placing branch (0x5b69b0, 0x5b6eb0); storing asks neither.
   inline bool placesItem(const PlacementFacts &facts) {
-    return facts.placeable || !facts.intoStorage;
+    return !facts.intoStorage;
   }
 
   inline bool atItemLimit(const PlacementFacts &facts) {
@@ -212,7 +213,17 @@ namespace housing {
     return ItemResult::success;
   }
 
+  // 0x5b6eb0, after its shared check 0x5b71a0 (the expansions and Move Item).
   inline ItemResult samePropertyPlacementResult(const PlacementFacts &facts) {
+    if (!facts.houseOfThule) {
+      return ItemResult::needsHouseOfThule;
+    }
+    if (facts.underGuildPlot && !facts.veilOfAlaris) {
+      return ItemResult::needsVeilOfAlaris;
+    }
+    if (!facts.mayMove) {
+      return ItemResult::noMoveItem;
+    }
     if (placesItem(facts) && !facts.placeable) {
       return ItemResult::notPlaceable;
     }
@@ -224,20 +235,19 @@ namespace housing {
         return result;
       }
     }
-    if (!facts.mayMove) {
-      return ItemResult::noMoveItem;
-    }
     if (facts.plotUpkeepExpired) {
       return ItemResult::plotUpkeepExpired;
     }
     if (facts.itemUpkeepExpired) {
       return ItemResult::itemUpkeepExpired;
     }
-    if (isHouseKind(facts.carried) && !facts.mayRemoveHouse) {
-      return ItemResult::noRemoveHouse;
-    }
-    if (isHouseKind(facts.carried) && !facts.mayAdd) {
+    // Only the house right the move changes: Add House to place a stored house, Remove House to store a placed one, none to move
+    // a placed house within the yard.
+    if (isHouseKind(facts.carried) && !facts.fromPlaced && !facts.intoStorage && !facts.mayAdd) {
       return ItemResult::noAddHouse;
+    }
+    if (isHouseKind(facts.carried) && facts.fromPlaced && facts.intoStorage && !facts.mayRemoveHouse) {
+      return ItemResult::noRemoveHouse;
     }
     return ItemResult::success;
   }
