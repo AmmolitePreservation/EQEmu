@@ -19,6 +19,7 @@
 #include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingCopies.h"
 #include "../../common/housingLedger.h"
 #include "../../common/repositories/real_estate_items_repository.h"
 #include "../../common/rulesys.h"
@@ -318,6 +319,13 @@ namespace housing {
       }
     }
 
+    // The Manage and Purchase windows work out daily cost and time left from the catalog's upkeep costs, so a zone sends them at the
+    // percent world charges the plots it hosts (EXT-37); a zone hosting none has no host zone and sends them as defined.
+    int catalogUpkeepPercent() {
+      const auto hosted = hostedRoot();
+      return hosted ? upkeepPercent(database, content_db, hostZoneOf(database, content_db, *hosted)) : 100;
+    }
+
     void sendZoneContents(Client *client) {
       sessions.erase(client);
       if (!housingActive()) {
@@ -329,12 +337,21 @@ namespace housing {
       catch (const std::exception &error) {
         LogError("Housing: pending crates for [{}] could not be delivered: {}", client->GetCleanName(), error.what());
       }
+      int upkeepPercentHere = 0;
+      try {
+        upkeepPercentHere = catalogUpkeepPercent();
+      }
+      catch (const std::exception &error) {
+        LogError("Housing: [{}]: {}", client->GetCleanName(), error.what());
+        LogError("Housing: no housing data is sent to [{}] in this zone", client->GetCleanName());
+        return;
+      }
       Session state;
       std::map<uint32, RecordFields> fields;
       if (!buildSession(client, state, fields, {})) {
         return;
       }
-      sendMessage(client, OP_RealEstateDefinitions, catalog().message());
+      sendMessage(client, OP_RealEstateDefinitions, catalog().message(upkeepPercentHere));
       for (const Property *property : parentsFirst(state)) {
         sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
       }

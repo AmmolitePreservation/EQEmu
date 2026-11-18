@@ -27,6 +27,16 @@ namespace housing {
     return ids;
   }
 
+  std::set<uint32> itemUpkeepCostIds() {
+    std::set<uint32> ids;
+    for (const auto &[id, tail] : tails) {
+      if (tail.realEstateUpkeepId > 0) {
+        ids.insert(static_cast<uint32>(tail.realEstateUpkeepId));
+      }
+    }
+    return ids;
+  }
+
   bool loadItemHousingTails() {
     tails.clear();
     auto results = content_db.QueryDatabase(

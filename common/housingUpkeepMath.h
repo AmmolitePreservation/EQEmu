@@ -38,6 +38,13 @@ namespace housing {
     return static_cast<double>(dailyAmount) * percent / 100.0 * static_cast<double>(elapsedSeconds) / static_cast<double>(secondsPerDay);
   }
 
+  inline int64 upkeepAmountAtPercent(int64 amount, int percent) {
+    if (percent < 0) {
+      throw std::invalid_argument(fmt::format("upkeep amount [{}] at [{}] percent", amount, percent));
+    }
+    return amount * percent / 100;
+  }
+
   // A charge takes what is left when the escrow is short; only a charge that finds a currency it needs already empty expires the plot.
   inline UpkeepCharge applyCharge(const std::map<uint32, double> &balances, const std::map<uint32, int64> &dailyCost, int percent, int64 elapsedSeconds) {
     UpkeepCharge result;

@@ -83,12 +83,13 @@ namespace housing {
     std::set<uint32> auraItemIds() const;
     const std::map<uint32, Definition> &allDefinitions() const { return definitions; }
     const std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> &allRegions() const { return regions; }
-    WireWriter message() const;
+    WireWriter message(int upkeepPercent) const;
     const std::vector<std::string> &problems() const { return lastProblems; }
 
   private:
     std::map<uint32, Definition> definitions;
     std::map<uint32, Cost> costs;
+    std::set<uint32> upkeepCostIds;
     std::map<uint32, RealEstateRegionsRepository::RealEstateRegions> regions;
     std::map<uint32, ZoneTemplate> templates;
     std::map<uint32, NpcItem> npcItems;

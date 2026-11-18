@@ -5,6 +5,7 @@
 
 #include "../../common/eqemu_logsys.h"
 #include "../../common/housingPlacementRules.h"
+#include "../../common/housingUpkeepMath.h"
 #include "../../common/rulesys.h"
 #include "../../common/spdat.h"
 #include "../../common/strings.h"
@@ -41,6 +42,7 @@ namespace housing {
   bool Catalog::load() {
     definitions.clear();
     costs.clear();
+    upkeepCostIds.clear();
     regions.clear();
     templates.clear();
     loaded = false;
@@ -206,6 +208,22 @@ namespace housing {
         else if (cost->second.options.empty()) {
           problems.push_back(fmt::format("definition [{}] {} cost [{}] has no option this server's expansion enables", id, use, costId));
         }
+      }
+    }
+
+    upkeepCostIds = itemUpkeepCostIds();
+    std::set<uint32> priceCostIds;
+    for (const auto &[id, entry] : definitions) {
+      if (entry.row.upkeep_definition_id) {
+        upkeepCostIds.insert(entry.row.upkeep_definition_id);
+      }
+      if (entry.row.cost_definition_id) {
+        priceCostIds.insert(entry.row.cost_definition_id);
+      }
+    }
+    for (uint32 costId : priceCostIds) {
+      if (upkeepCostIds.count(costId)) {
+        problems.push_back(fmt::format("cost [{}] is both a purchase price and an upkeep; a host zone's Housing:UpkeepPercent scales upkeep alone", costId));
       }
     }
 
@@ -413,7 +431,7 @@ namespace housing {
   }
 
 
-  WireWriter Catalog::message() const {
+  WireWriter Catalog::message(int upkeepPercent) const {
     WireWriter message;
     message.u32(static_cast<uint32>(definitions.size()));
     for (const auto &[id, entry] : definitions) {
@@ -447,7 +465,7 @@ namespace housing {
       for (const auto &option : cost.options) {
         message.u32(option.key).u32(static_cast<uint32>(option.items.size()));
         for (const auto &item : option.items) {
-          message.u32(item.currency).u32(item.sub_key).i64(item.amount);
+          message.u32(item.currency).u32(item.sub_key).i64(upkeepCostIds.count(id) ? upkeepAmountAtPercent(item.amount, upkeepPercent) : item.amount);
         }
       }
     }

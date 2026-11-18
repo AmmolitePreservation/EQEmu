@@ -28,6 +28,7 @@ public:
     TEST_ADD(HousingTest::chargeFindingEscrowEmptyExpires);
     TEST_ADD(HousingTest::chargeWithNothingDueNeverExpires);
     TEST_ADD(HousingTest::upkeepPercentScalesTheCharge);
+    TEST_ADD(HousingTest::upkeepAmountsShownAtTheHostZonePercent);
     TEST_ADD(HousingTest::reductionsClampEachCurrencyAtZero);
     TEST_ADD(HousingTest::nextChargeDelayIsIntervalPlusJitterDraw);
     TEST_ADD(HousingTest::upkeepClockRejectsOutOfRangeRules);
@@ -128,6 +129,23 @@ private:
     auto none = housing::applyCharge({{0, 5000.0}}, {{0, 2100}}, 0, 86400);
     TEST_ASSERT(near(none.balances.at(0), 5000.0));
     TEST_ASSERT(!none.escrowFoundEmpty);
+  }
+
+  void upkeepAmountsShownAtTheHostZonePercent() {
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(17500, 50), static_cast<int64>(8750));
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(17500, 100), static_cast<int64>(17500));
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(-42000, 50), static_cast<int64>(-21000));
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(12345, 50), static_cast<int64>(6172));
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(2100, 0), static_cast<int64>(0));
+    TEST_ASSERT_EQUALS(housing::upkeepAmountAtPercent(2100, 150), static_cast<int64>(3150));
+    bool refused = false;
+    try {
+      housing::upkeepAmountAtPercent(2100, -1);
+    }
+    catch (const std::invalid_argument &) {
+      refused = true;
+    }
+    TEST_ASSERT(refused);
   }
 
   void reductionsClampEachCurrencyAtZero() {
