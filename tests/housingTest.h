@@ -58,6 +58,7 @@ public:
     TEST_ADD(HousingTest::capacityCodesAndTheStackMergeWaiver);
     TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
     TEST_ADD(HousingTest::aCrateTakesItemsPastTheirPerPropertyLimit);
+    TEST_ADD(HousingTest::aStoredHouseCountsOnlyTheYardsPlacedHouses);
     TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
     TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
     TEST_ADD(HousingTest::mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate);
@@ -501,6 +502,23 @@ private:
     TEST_ASSERT_EQUALS(code(facts), 31u);
     facts.maxPerRealEstate = -1;
     TEST_ASSERT_EQUALS(code(facts), 0u);
+  }
+
+  void aStoredHouseCountsOnlyTheYardsPlacedHouses() {
+    auto stored = yardPlacement();
+    stored.source = housing::PlacementSource::sameProperty;
+    stored.carried = housing::CarriedKind::house;
+    stored.carriedIsChild = true;
+    stored.destinationHouses = 2;
+    stored.destinationPlacedHouses = 0;
+    TEST_ASSERT_EQUALS(code(stored), 0u);
+    stored.destinationPlacedHouses = 1;
+    TEST_ASSERT_EQUALS(code(stored), 15u);
+    auto incoming = yardPlacement();
+    incoming.carried = housing::CarriedKind::house;
+    incoming.destinationHouses = 1;
+    incoming.destinationPlacedHouses = 0;
+    TEST_ASSERT_EQUALS(code(incoming), 15u);
   }
 
   void aCrateTakesItemsPastTheirPerPropertyLimit() {

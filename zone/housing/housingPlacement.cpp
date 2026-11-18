@@ -294,10 +294,16 @@ namespace housing {
           continue;
         }
         facts.destinationHouses++;
+        for (const auto &row : view.rowsOf(destination.id)) {
+          if (row.placed && row.carried_property_id == child->id) {
+            facts.destinationPlacedHouses++;
+          }
+        }
         if (view.holdsContents(child->id)) {
           facts.crateHoldsNonEmptyHouse = facts.destinationIsCrate;
         }
       }
+      facts.carriedIsChild = carriedId && candidate.carried->parent_id == destination.id;
       facts.maxHouses = definition->maxChildren;
       facts.destinationHasPlacedCrate = placedCrateIn(view, destination.id, carriedId) != nullptr;
       for (const auto &row : view.rowsOf(destination.id)) {
@@ -1343,6 +1349,9 @@ namespace housing {
       PlacementFacts facts = factsFor(client, view, candidate, yard, false, 1);
       if (facts.destinationHouses) {
         facts.destinationHouses--;
+      }
+      if (facts.destinationPlacedHouses) {
+        facts.destinationPlacedHouses--;
       }
       const ItemResult rules = placementResult(facts);
       if (rules != ItemResult::success) {
