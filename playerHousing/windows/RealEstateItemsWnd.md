@@ -108,16 +108,17 @@ Columns: **Enabled when** / **Shown when** (the conditions feeding `0x866610` an
 | 2 | under a Guild Plot: **Veil of Alaris `0x20000`** | `0x52` | "…until you own the Veil of Alaris expansion." |
 | 3 | membership feature (`0x7dbc50` → `0x7db9c0`) | `0x53` | (no `0x1228` text; the membership message) |
 | 4 | **plot upkeep current** (`0x5b4780`) | `0x18` | "You cannot do this because the upkeep on this plot has expired." |
-| 5 | `0x57bfb0` | `4` | (no specific text) |
-| 6 | item placeable | `0x24` | "You can only do this with placeable items…" |
+| 5 | the client holds the destination's item list (`0x57bfb0`) | `4` | (no specific text) |
+| 6 | when counting and the destination is no crate: the **per-item limit** (`0x5ab270`: a limit of 0, or the destination's count of the item at the limit) | `0x1f` | "You cannot place this here because you've reached the limit for that item." |
 | 7 | **a cycle check:** an item that carries a property may not go into that property or any of its descendants (item `+0x7c` against the destination and its parents, `0x4b3090`) | `0x1e` | (no specific text) |
-| 8 | `0x5b5580` | `0x11` | "You can't put that item in this real estate." |
-| 9 | house / guild-hall count per yard: the yard's children that aren't crates against its definition's `+0x30` (`0x5b48b0`, `0x7f5100`) | `0x0f` / `0x44` | "You cannot add another house / guild hall to this yard." |
-| 10 | moving-crate rules | `0x27` / `0x51` / `0x20` | one non-empty house per crate; a house containing a placed crate can't go in a crate; non-empty houses and crates only in yards and houses |
+| 8 | when placing and the item isn't allowed here (`0x5b5580`): `0x24` for an item that isn't placeable, else `0x11` | `0x24` / `0x11` | "You can only do this with placeable items…" / "You can't put that item in this real estate." |
+| 9 | when placing an item that carries real estate: the house / guild-hall count per yard, the yard's children that aren't crates against its definition's `+0x30`, and one crate per plot (`0x5b48b0`, `0x7f5100`); storing tests no limit | `0x0f` / `0x44` / `0x10` | "You cannot add another house / guild hall to this yard." / "You cannot place another moving crate on this property." |
+| 10 | when storing an item whose real estate holds items: the moving-crate rules | `0x20` / `0x27` / `0x51` | non-empty houses and crates only in yards and houses; one non-empty house per crate; a house containing a placed crate can't go in a crate |
 | 10a | **capacity** (stored in a local and returned at the end): real-estate count at its cap (`0x5abba0`); a non-placeable item and the **vault** count at its cap (`0x5abc00`); a **pet** item and the pet count at its cap (`0x5abc60`) | **`0x0a`** / **`0x0c`** / **`0x26`** | "…the real estate is full." / "…The vault is full." / "…you have reached the pet limit for this yard." |
 | 10b | **stack merge waives the capacity codes:** `0x5b54b0(item, CRC32(owner name) via 0x808d60, owner name)` is true when some destination entry has the **same owner** (entry `+0x2c` CRC, then entry `+0x24` text), the **same item** (`0x7fcb10`) and **room in its stack** (item max stack, definition **`+0x580`** via `0x7b0020`, > the entry item's count `+0x98`). If true the item merges into that stack (no new entry) and the capacity result from 10a is ignored; if false the capacity code is returned | (`0x0a`/`0x0c`/`0x26` from 10a) | — |
 | 11 | containers must be empty | `0x13` | "You can only do this with empty containers." |
-| 12 | item/house upkeep current (`+0x40`) | `0x19` | "…the upkeep on the item or house has expired." |
+| 11a | No Storage: the definition's `+0x584`, or an augment's (`0x7ba990`) | `0x2b` / `0x2c` | "You cannot add this item because it is No Storage." / "…it contains an augment that is No Storage." |
+| 12 | the destination's upkeep current (its record's `+0x40`) | `0x19` | "…the upkeep on the item or house has expired." |
 | 13 | **permissions** (`0x4ff6c0`): add house / add crate / add item | `0x4b` / `0x4d` / `0x47` | "…you do not have add house / crate / item access." |
 
 ### Rules for placing a stored item (`0x5b6eb0`, via manager vtable `+0x10`)
