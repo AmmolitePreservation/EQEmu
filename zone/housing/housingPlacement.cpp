@@ -644,6 +644,10 @@ namespace housing {
       if (!candidate.row) {
         takeFromInventory(client, candidate.inventorySlot, wholeSource, quantity);
       }
+      // A placed item moved to another property leaves its old place, which another zone may show (AUD-14).
+      if (candidate.row && candidate.row->placed && candidate.row->property_id != destinationId) {
+        applied.withdrawn.push_back(*candidate.row);
+      }
       applied.shown.push_back(placed);
       applied.count++;
       return placed;
