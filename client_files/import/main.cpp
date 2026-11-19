@@ -97,11 +97,29 @@ int main(int argc, char **argv) {
 		->LoadLogDatabaseSettings()
 		->StartFileLogs();
 
-	ImportSpells(&content_db);
-	ImportSkillCaps(&content_db);
-	ImportBaseData(&content_db);
-	ImportDBStrings(&database);
-	ImportEqStrings(&database);
+	// Each import empties its table before it reads the file, so a type names the one table to replace, as export_client_files takes it.
+	const std::string import_type = argc > 1 ? argv[1] : "";
+	if (import_type.empty()) {
+		ImportSpells(&content_db);
+		ImportSkillCaps(&content_db);
+		ImportBaseData(&content_db);
+		ImportDBStrings(&database);
+		ImportEqStrings(&database);
+	} else if (Strings::EqualFold(import_type, "spells")) {
+		ImportSpells(&content_db);
+	} else if (Strings::EqualFold(import_type, "skills")) {
+		ImportSkillCaps(&content_db);
+	} else if (Strings::EqualFold(import_type, "basedata") || Strings::EqualFold(import_type, "base_data")) {
+		ImportBaseData(&content_db);
+	} else if (Strings::EqualFold(import_type, "dbstr") || Strings::EqualFold(import_type, "dbstring")) {
+		ImportDBStrings(&database);
+	} else if (Strings::EqualFold(import_type, "eqstr") || Strings::EqualFold(import_type, "eqstring")) {
+		ImportEqStrings(&database);
+	} else {
+		LogError("Unknown import type [{}]; it is spells, skills, basedata, dbstr or eqstr, or none for all of them", import_type);
+		EQEmuLogSys::Instance()->CloseFileLogs();
+		return 1;
+	}
 
 	EQEmuLogSys::Instance()->CloseFileLogs();
 
