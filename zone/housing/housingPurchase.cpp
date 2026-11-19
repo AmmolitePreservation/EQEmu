@@ -106,6 +106,12 @@ namespace housing {
       if (guildPlot ? activeGuildId(bought) != 0 : bought.owner_character_id != 0) {
         throw Refusal("the plot is owned", say(alreadyOwned));
       }
+      // A guild plot whose guild no longer exists reads as vacant with its escrow, hall and items still in it (AUD-10).
+      const PlotLeftovers left = plotLeftovers(database, propertyId);
+      if (left.balances || left.items || left.carriedChildren) {
+        throw std::runtime_error(fmt::format("vacant plot [{}] still holds [{}] balances, [{}] items and [{}] carried properties", propertyId,
+          left.balances, left.items, left.carriedChildren));
+      }
       const uint32 guild = client->GuildID() == GUILD_NONE ? 0 : client->GuildID();
       if (!client->GetGM()) {
         if (guildPlot && !(client->GetPP().expansions & veilOfAlaris)) {

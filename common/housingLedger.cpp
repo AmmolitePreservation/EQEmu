@@ -100,6 +100,19 @@ namespace housing {
     return Strings::ToUnsignedInt(rows.begin()[0]) > 0;
   }
 
+  PlotLeftovers plotLeftovers(Database &database, uint32 plotId) {
+    auto rows = query(database, fmt::format(
+      "SELECT (SELECT COUNT(*) FROM real_estate_property_balances WHERE property_id = {0}), "
+      "(SELECT COUNT(*) FROM real_estate_items r "
+      "JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third "
+      "WHERE i.holder_type = 'real_estate' AND i.holder_id = {0} AND i.retirement_state IS NULL), "
+      "(SELECT COUNT(*) FROM real_estate_properties WHERE parent_id = {0} AND container_guid_first IS NOT NULL)",
+      plotId
+    ));
+    auto row = rows.begin();
+    return PlotLeftovers{Strings::ToUnsignedInt(row[0]), Strings::ToUnsignedInt(row[1]), Strings::ToUnsignedInt(row[2])};
+  }
+
   void bumpRevision(Database &database, uint32 propertyId) {
     query(database, fmt::format("UPDATE real_estate_properties SET revision = revision + 1 WHERE id = {}", propertyId));
   }

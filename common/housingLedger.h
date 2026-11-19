@@ -51,6 +51,14 @@ namespace housing {
   // Whether items are stored or placed in the property or properties stand under it. A crate waiting for room in its
   // owner's inventory holds its own item with no real_estate_items row, and that item is not contents.
   bool holdsContents(Database &database, uint32 propertyId);
+
+  // What a vacant plot still holds: escrow, item rows, and properties an item carries (a definition's fixed house carries none).
+  struct PlotLeftovers {
+    uint32 balances = 0;
+    uint32 items = 0;
+    uint32 carriedChildren = 0;
+  };
+  PlotLeftovers plotLeftovers(Database &database, uint32 plotId);
   void bumpRevision(Database &database, uint32 propertyId);
   std::map<uint32, uint8> definitionTypes(Database &content, const std::set<uint32> &definitionIds);
   std::map<uint32, double> readBalances(Database &database, uint32 propertyId);
