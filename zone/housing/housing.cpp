@@ -240,7 +240,8 @@ namespace housing {
       return holders;
     }
 
-    // The current property's line goes out as records alone: a visitor in a stranger's house gets no lists of that plot (ZIN-1).
+    // The current property's line goes out as records alone. A client inside a house gets that house's plot whole, records and lists,
+    // as Live sends a stranger inside a house the plot, its houses and its crate (AUD-8); what a stranger in a yard gets waits on Live.
     void setClientView(Client *client, Session &state) {
       const PropertyLookup lookup = state.lookup();
       const AccessListLookup listOf = state.accessLookup();
@@ -253,6 +254,12 @@ namespace housing {
         const uint32 guild = activeGuildId(property);
         if ((guild && guild == client->GuildID()) || (holdsAccessList(type) && accessGroup(client, property, lookup, listOf))) {
           seeds.insert(id);
+        }
+      }
+      if (hostsInterior()) {
+        const uint32 plotTypes = typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot);
+        if (const Property *visitedPlot = ancestorOfType(state.properties.at(hostedRoot()->id), plotTypes, true, lookup)) {
+          seeds.insert(visitedPlot->id);
         }
       }
       state.relatedIds = relatedProperties(links, seeds, maximumDepth);

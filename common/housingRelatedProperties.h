@@ -32,8 +32,8 @@ namespace housing {
   }
 
   // Live gives a client the records and lists of its related properties only (ZIN-1): every seed (own, carried, guild,
-  // access-granted) with its line and, below anything but a zone-level root, its descendants. A guild village's root is a guild
-  // seed, and its plots stay out.
+  // access-granted, and the plot of a house it is inside) with its line and, below anything but a zone-level root, its
+  // descendants. A guild village's root is a guild seed, and its plots stay out.
   inline std::set<uint32> relatedProperties(const std::map<uint32, PropertyLink> &links, const std::set<uint32> &seeds, int maximumDepth) {
     std::set<uint32> related;
     for (uint32 id : seeds) {
