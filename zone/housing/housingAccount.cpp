@@ -320,6 +320,7 @@ namespace housing {
           if (!permitted(client, Permission::manage, plot, lookup, listOf)) {
             throw Refusal("the player has no Manage permission", nullptr);
           }
+          requireClientCatalog(*state);
           const uint32 costId = catalog().definition(plot.definition_id)->row.upkeep_definition_id;
           const Cost *cost = catalog().cost(costId);
           if (!cost || request.argument >= cost->options.size()) {
@@ -381,6 +382,9 @@ namespace housing {
     }
     catch (const Refusal &refusal) {
       LogHousing("Refused [{}]'s account request [{}] on property [{}]: {}", client->GetCleanName(), request.type, request.propertyId, refusal.what());
+      if (refusal.tell) {
+        refusal.tell(client);
+      }
       returnCursorCoin(client, request);
       return;
     }

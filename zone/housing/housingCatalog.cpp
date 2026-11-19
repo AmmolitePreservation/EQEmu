@@ -40,6 +40,7 @@ namespace housing {
   }
 
   bool Catalog::load() {
+    generation++;
     definitions.clear();
     costs.clear();
     upkeepCostIds.clear();

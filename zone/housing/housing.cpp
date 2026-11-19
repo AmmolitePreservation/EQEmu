@@ -390,6 +390,7 @@ namespace housing {
       if (!buildSession(client, state, fields, {}, 0)) {
         return;
       }
+      state.catalogGeneration = catalog().loadGeneration();
       sendMessage(client, OP_RealEstateDefinitions, catalog().message(upkeepPercentHere));
       for (const Property *property : parentsFirst(state)) {
         if (state.knownIds.count(property->id)) {
@@ -580,6 +581,7 @@ namespace housing {
       }
       fresh.placement = old->placement;
       fresh.augmentaterMode = old->augmentaterMode;
+      fresh.catalogGeneration = old->catalogGeneration;
       for (uint32 id : old->knownIds) {
         if (fresh.properties.count(id)) {
           fresh.knownIds.insert(id);

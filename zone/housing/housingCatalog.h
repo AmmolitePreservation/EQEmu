@@ -69,6 +69,8 @@ namespace housing {
   public:
     bool load();
     bool valid() const { return loaded; }
+    // Counts the loads, so a session can tell whether its client holds this catalog.
+    uint32 loadGeneration() const { return generation; }
     const Definition *definition(uint32 id) const;
     const Cost *cost(uint32 id) const;
     const CostOption *option(uint32 costId, uint32 currency) const;
@@ -97,6 +99,7 @@ namespace housing {
     std::map<uint32, AuraItem> auraItems;
     std::vector<std::string> lastProblems;
     bool loaded = false;
+    uint32 generation = 0;
   };
 
   Catalog &catalog();

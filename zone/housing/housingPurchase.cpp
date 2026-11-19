@@ -72,6 +72,15 @@ namespace housing {
     };
   }
 
+  void requireClientCatalog(const Session &state) {
+    if (state.catalogGeneration != catalog().loadGeneration()) {
+      throw Refusal(fmt::format("the client holds catalog load [{}], and the zone has load [{}]", state.catalogGeneration, catalog().loadGeneration()),
+        [](Client *client) {
+          client->Message(Chat::Red, "The real estate catalog has changed. Zone to receive it, then try again.");
+        });
+    }
+  }
+
   void handlePurchase(Client *client, WireReader &reader) {
     PlotRequest request;
     if (!readPlotRequest(reader, request)) {
@@ -88,6 +97,7 @@ namespace housing {
       if (!state || !state->properties.count(propertyId)) {
         throw Refusal("the property is not one this zone sent", nullptr);
       }
+      requireClientCatalog(*state);
       Transaction transaction(database);
       bought = lockedProperty(database, propertyId);
       std::map<uint32, Property> fresh(state->properties);

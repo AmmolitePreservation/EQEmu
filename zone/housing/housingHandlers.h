@@ -42,6 +42,11 @@ namespace housing {
 
   std::function<void(Client *)> say(uint32 stringId, std::vector<std::string> arguments = {});
 
+  struct Session;
+  // A purchase or an upkeep choice names its option by position in the catalog the client received at zone-in; after a
+  // reload a position may name another option, so a client holding an older catalog zones first (AUD-28).
+  void requireClientCatalog(const Session &state);
+
   inline bool readPlotRequest(WireReader &reader, PlotRequest &request) {
     if (reader.remaining() != PlotRequest::size) {
       return false;
