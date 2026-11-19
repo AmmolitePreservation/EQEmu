@@ -996,6 +996,11 @@ bool Lua_Client::EnterRealEstate(uint32 property_id) {
 	return housing::questEnter(self, property_id);
 }
 
+uint32 Lua_Client::GetGuildHallPropertyID() {
+	Lua_Safe_Call_Int();
+	return housing::questGuildHallProperty(self);
+}
+
 void Lua_Client::LeaveRealEstate() {
 	Lua_Safe_Call_Void();
 	housing::questLeave(self);
@@ -3743,6 +3748,7 @@ luabind::scope lua_register_client() {
 	.def("EndSharedTask", (void(Lua_Client::*)(void))&Lua_Client::EndSharedTask)
 	.def("EndSharedTask", (void(Lua_Client::*)(bool))&Lua_Client::EndSharedTask)
 	.def("EnterRealEstate", (bool(Lua_Client::*)(uint32))&Lua_Client::EnterRealEstate)
+	.def("GetGuildHallPropertyID", (uint32(Lua_Client::*)(void))&Lua_Client::GetGuildHallPropertyID)
 	.def("Escape", (void(Lua_Client::*)(void))&Lua_Client::Escape)
 	.def("FailTask", (void(Lua_Client::*)(int))&Lua_Client::FailTask)
 	.def("FilteredMessage", &Lua_Client::FilteredMessage)

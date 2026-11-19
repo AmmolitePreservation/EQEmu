@@ -262,6 +262,7 @@ public:
 	void BreakInvis();
 	void LeaveGroup();
 	bool EnterRealEstate(uint32 property_id);
+	uint32 GetGuildHallPropertyID();
 	void LeaveRealEstate();
 	bool OpenRealEstatePurchase(uint32 property_id);
 	bool UseNeighborhoodWrit(uint32 definition_id);

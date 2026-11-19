@@ -880,6 +880,11 @@ bool Perl_Client_EnterRealEstate(Client* self, uint32 property_id) // @categorie
 	return housing::questEnter(self, property_id);
 }
 
+uint32 Perl_Client_GetGuildHallPropertyID(Client* self) // @categories Account and Character, Guild
+{
+	return housing::questGuildHallProperty(self);
+}
+
 void Perl_Client_LeaveRealEstate(Client* self) // @categories Account and Character, Zones
 {
 	housing::questLeave(self);
@@ -3480,6 +3485,7 @@ void perl_register_client()
 	package.add("EndSharedTask", (void(*)(Client*))&Perl_Client_EndSharedTask);
 	package.add("EndSharedTask", (void(*)(Client*, bool))&Perl_Client_EndSharedTask);
 	package.add("EnterRealEstate", &Perl_Client_EnterRealEstate);
+	package.add("GetGuildHallPropertyID", &Perl_Client_GetGuildHallPropertyID);
 	package.add("Escape", &Perl_Client_Escape);
 	package.add("ExpeditionMessage", &Perl_Client_ExpeditionMessage);
 	package.add("FailTask", &Perl_Client_FailTask);

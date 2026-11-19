@@ -5,17 +5,19 @@
 #include "housingEvents.h"
 #include "housingHandlers.h"
 #include "housingInteriors.h"
+#include "housingItems.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
 #include "../client.h"
+#include "../zonedb.h"
 
 #include <cstring>
 #include <stdexcept>
 
 // Quests reach housing only through its own rules (EXT-28): the Purchase window after the property's record, entry with Enter,
-// the upkeep lockout and the shared copies, the way out /leaverealestate takes, a writ's neighborhood for the user's guild, and
-// whether a client holds a permission on a property.
+// the upkeep lockout and the shared copies, the way out /leaverealestate takes, the hall placed on the client's guild's plot, a
+// writ's neighborhood for the user's guild, and whether a client holds a permission on a property.
 namespace housing {
   bool questOpenPurchase(Client *client, uint32 propertyId) {
     if (!session(client)) {
@@ -69,6 +71,41 @@ namespace housing {
     catch (const std::exception &error) {
       LogError("Housing: a quest's entry of [{}] into property [{}] failed: {}", client->GetCleanName(), propertyId, error.what());
       return false;
+    }
+  }
+
+  // The Guild Lobby's left-hand door takes a member into the guild's own hall (DOR-16); 0 when the guild has none placed.
+  uint32 questGuildHallProperty(Client *client) {
+    if (!housingActive() || !client->IsInAGuild()) {
+      return 0;
+    }
+    try {
+      std::set<uint32> plotIds;
+      for (const auto &property : RealEstatePropertiesRepository::GetWhere(database, fmt::format("guild_id = {}", client->GuildID()))) {
+        if (typeOf(property) == DefinitionType::guildPlot) {
+          plotIds.insert(property.id);
+        }
+      }
+      if (plotIds.empty()) {
+        return 0;
+      }
+      std::set<uint32> placedCarriers;
+      for (const auto &row : itemsOf(plotIds)) {
+        if (row.placed && row.carried_property_id) {
+          placedCarriers.insert(row.carried_property_id);
+        }
+      }
+      uint32 hall = 0;
+      for (const auto &child : propertiesChildOf(plotIds)) {
+        if (typeOf(child) == DefinitionType::guildHall && placedCarriers.count(child.id) && (!hall || child.id < hall)) {
+          hall = child.id;
+        }
+      }
+      return hall;
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: a quest's look-up of [{}]'s guild hall failed: {}", client->GetCleanName(), error.what());
+      return 0;
     }
   }
 

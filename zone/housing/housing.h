@@ -41,6 +41,7 @@ namespace housing {
   bool refuseGuildBank(Client *client);
   bool questOpenPurchase(Client *client, uint32 propertyId);
   bool questEnter(Client *client, uint32 propertyId);
+  uint32 questGuildHallProperty(Client *client);
   void questLeave(Client *client);
   bool questUseNeighborhoodWrit(Client *client, uint32 definitionId);
   bool questHasPermission(Client *client, uint32 propertyId, int permission);
