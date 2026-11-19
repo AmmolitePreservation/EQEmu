@@ -17,6 +17,7 @@
 #include "../entity.h"
 #include "../npc.h"
 #include "../quest_parser_collection.h"
+#include "../zone.h"
 #include "../zonedb.h"
 
 #include <cstring>
@@ -25,6 +26,7 @@
 #include <stdexcept>
 
 extern EntityList entity_list;
+extern Zone *zone;
 
 namespace housing {
   namespace {
@@ -291,6 +293,10 @@ namespace housing {
     const auto root = hostedRoot();
     const auto yard = hostedRootYard();
     return typeOf(*root) == DefinitionType::guildHall && yard && typeOf(*yard) == DefinitionType::guildPlot ? activeGuildId(*yard) : 0;
+  }
+
+  bool guildBankServes(uint32 guildId) {
+    return zone->GetZoneID() == Zones::GUILDHALL || (guildId && guildId == guildHallGuildId());
   }
 
   bool refuseGuildBank(Client *client) {

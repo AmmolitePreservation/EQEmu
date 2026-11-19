@@ -1527,7 +1527,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		if (guild_mgr.GetCharInfo(CharacterID(), cgi)) {
 			m_pp.guildrank = cgi.rank;
 		}
-		if (zone->GetZoneID() == Zones::GUILDHALL) {
+		if (housing::guildBankServes(GuildID())) {
 			GuildBanker = true;
 		}
 	}

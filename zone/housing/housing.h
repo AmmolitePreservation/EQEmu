@@ -37,6 +37,7 @@ namespace housing {
   void handleItemCastFinished(Client *client, uint16 spellId, uint32 inventorySlot);
   uint32 guildHallGuildId();
   bool isGuildHallZone(uint32 zoneId);
+  bool guildBankServes(uint32 guildId);
   bool refuseGuildBank(Client *client);
   bool questOpenPurchase(Client *client, uint32 propertyId);
   bool questEnter(Client *client, uint32 propertyId);

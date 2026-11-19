@@ -251,7 +251,7 @@ void Client::RefreshGuildInfo()
 	guild_id = info.guild_id;
 	GuildBanker = true;
 
-	if(zone->GetZoneID() == Zones::GUILDHALL)
+	if(housing::guildBankServes(guild_id))
 	{
 		if(WasBanker != GuildBanker)
 		{
@@ -701,8 +701,7 @@ void EntityList::SendGuildMemberAdd(
 			c.second->SendGuildRanks();
 			c.second->SendGuildRankNames();
 
-			if ((zone->GetZoneID() == Zones::GUILDHALL || housing::guildHallGuildId()) && GuildBanks &&
-				(!housing::guildHallGuildId() || guild_id == housing::guildHallGuildId())) {
+			if (housing::guildBankServes(guild_id) && GuildBanks) {
 				GuildBanks->SendGuildBank(c.second);
 			}
 
