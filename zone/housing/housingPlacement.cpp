@@ -1579,6 +1579,33 @@ namespace housing {
     const uint32 yardId = reader.u32();
     const uint32 houseId = reader.u32();
     const uint16 count = reader.u16();
+    if (reader.failed()) {
+      LogError("Housing: [{}] sent a layout without its header", client->GetCleanName());
+      return;
+    }
+    {
+      // A layout holds no more than its yard, its house and the plot's crate do; a longer one is refused before it is read (AUD-35).
+      Session *sender = session(client);
+      if (!sender) {
+        return;
+      }
+      std::set<uint32> holders{yardId, houseId};
+      if (const auto crate = firstCrateOf(yardId)) {
+        holders.insert(crate->property.id);
+      }
+      uint64 cap = 0;
+      for (uint32 id : holders) {
+        const auto found = sender->properties.find(id);
+        const Definition *definition = found == sender->properties.end() ? nullptr : catalog().definition(found->second.definition_id);
+        if (definition) {
+          cap += static_cast<uint64>(definition->row.max_items) + definition->row.max_non_real_estate_items;
+        }
+      }
+      if (count > cap) {
+        LogError("Housing: [{}] sent a layout of [{}] records; yard [{}], house [{}] and the plot's crate hold [{}]", client->GetCleanName(), count, yardId, houseId, cap);
+        return;
+      }
+    }
     std::vector<LayoutRecord> records;
     for (uint16 index = 0; index < count && !reader.failed(); index++) {
       LayoutRecord record;
