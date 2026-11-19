@@ -172,6 +172,14 @@ namespace housing {
       if (slot == static_cast<uint32>(EQ::invslot::SLOT_INVALID)) {
         throw ItemRefusal(ItemResult::notFound, fmt::format("location [{}, {}, {}] names no slot", request.location.slot, request.location.subIndex, request.location.augIndex));
       }
+      // The client offers only what the character carries, never what it wears: removing a worn item here would leave its
+      // stats applied (AUD-31).
+      const int16 carriedSlot = static_cast<int16>(slot);
+      const bool carried = (carriedSlot >= EQ::invslot::GENERAL_BEGIN && carriedSlot <= EQ::invslot::GENERAL_END) || carriedSlot == EQ::invslot::slotCursor
+        || (carriedSlot >= EQ::invbag::GENERAL_BAGS_BEGIN && carriedSlot <= EQ::invbag::GENERAL_BAGS_END);
+      if (!carried) {
+        throw ItemRefusal(ItemResult::notFound, fmt::format("slot [{}] is not a general slot, a bag in one or the cursor", slot));
+      }
       const EQ::ItemInstance *held = client->GetInv().GetItem(static_cast<int16>(slot));
       if (!held || !held->HasGUID() || ItemGUIDText(held->GetGUID()) != request.guid) {
         throw ItemRefusal(ItemResult::notFound, fmt::format("slot [{}] does not hold item [{}]", slot, request.guid));
