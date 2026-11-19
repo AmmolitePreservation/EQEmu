@@ -342,7 +342,8 @@ namespace housing {
     const auto owners = characterIdentities({property.owner_character_id});
     auto owner = owners.find(property.owner_character_id);
     const Definition &definition = *catalog().definition(property.definition_id);
-    const uint32 guild = activeGuildId(property);
+    // RoF2 copies the window's guild into the plot's record (0x5b0f80 -> 0x5b5a10), so it sends the record's own.
+    const uint32 guild = recordGuildOf(property, owner == owners.end() ? std::nullopt : std::optional<CharacterIdentity>(owner->second));
     WireWriter message = replyHeader(static_cast<uint8>(type));
     // The four u32s RoF2 skips are Live's Capacity, Vault and Pets, then 0 (OPC-5).
     message.u32(0)

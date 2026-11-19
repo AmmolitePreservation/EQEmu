@@ -8,6 +8,7 @@
 #include "../../common/housingAccessRules.h"
 
 #include <functional>
+#include <optional>
 
 class Client;
 
@@ -34,6 +35,8 @@ namespace housing {
   struct AccessList {
     AccessMasks masks{};
     AccessNames names;
+    // The guild the holder's record names, which a _Guild<rank> key matches (the client compares record +0x24, 0x4ff250).
+    uint32 rankGuildId = 0;
   };
 
   using PropertyLookup = std::function<const Property *(uint32)>;
@@ -42,6 +45,7 @@ namespace housing {
   constexpr uint32 typeBit(DefinitionType type) { return 1u << (static_cast<uint32>(type) - 1); }
   DefinitionType typeOf(const Property &property);
   uint32 activeGuildId(const Property &property);
+  uint32 recordGuildOf(const Property &property, const std::optional<CharacterIdentity> &owner);
   const Property *ancestorOfType(const Property &property, uint32 typeMask, bool startAtParent, const PropertyLookup &lookup);
   const Property *accessSubject(const Property &property, const PropertyLookup &lookup);
   bool holdsAccessList(DefinitionType type);

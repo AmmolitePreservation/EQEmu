@@ -42,9 +42,8 @@ namespace housing {
       return permission == Permission::enter ? 0 : houseOfThule;
     }
 
-    std::string characterRankKey(Client *client, const Property &subject) {
-      const uint32 subjectGuild = activeGuildId(subject);
-      if (subjectGuild && client->GuildID() == subjectGuild) {
+    std::string characterRankKey(Client *client, const AccessList &list) {
+      if (list.rankGuildId && client->GuildID() == list.rankGuildId) {
         return guildRankKey(client->GuildRank());
       }
       return {};
@@ -69,6 +68,14 @@ namespace housing {
 
   uint32 activeGuildId(const Property &property) {
     return property.guild_id && guild_mgr.GuildExists(property.guild_id) ? property.guild_id : 0;
+  }
+
+  // A player plot names its owner's guild as it stands when the record goes out (REC-9); anything else its own active guild.
+  uint32 recordGuildOf(const Property &property, const std::optional<CharacterIdentity> &owner) {
+    if (typeOf(property) != DefinitionType::plot) {
+      return activeGuildId(property);
+    }
+    return owner && guild_mgr.GuildExists(owner->guildId) ? owner->guildId : 0;
   }
 
   DefinitionType typeOf(const Property &property) {
@@ -122,6 +129,22 @@ namespace housing {
       }
       list->second.names.emplace_back(row.name, row.group_number);
     }
+    std::set<uint32> holderIds;
+    for (const auto &[id, list] : lists) {
+      holderIds.insert(id);
+    }
+    const auto holders = propertiesById(holderIds);
+    std::set<uint32> ownerIds;
+    for (const auto &holder : holders) {
+      if (holder.owner_character_id) {
+        ownerIds.insert(holder.owner_character_id);
+      }
+    }
+    const auto owners = characterIdentities(ownerIds);
+    for (const auto &holder : holders) {
+      auto owner = owners.find(holder.owner_character_id);
+      lists.at(holder.id).rankGuildId = recordGuildOf(holder, owner == owners.end() ? std::nullopt : std::optional<CharacterIdentity>(owner->second));
+    }
     return lists;
   }
 
@@ -161,7 +184,7 @@ namespace housing {
       return 0;
     }
     // EQEmu has no fellowships, so the owner's fellowship goes out as 0 and _Fellowship never matches.
-    return matchedGroup(list->names, client->GetName(), characterRankKey(client, *subject));
+    return matchedGroup(list->names, client->GetName(), characterRankKey(client, *list));
   }
 
   bool permitted(Client *client, Permission permission, const Property &property, const PropertyLookup &lookup, const AccessListLookup &listOf) {
