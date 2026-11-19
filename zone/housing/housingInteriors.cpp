@@ -309,15 +309,26 @@ namespace housing {
     moveToExit(client, plot);
   }
 
+  // Occupants leave by the plot the house belongs to, placed or stored in its yard (S10), read afresh since a copy can start after the
+  // house left its yard; a house packed into a crate, or gone, belongs to no plot, and they go to bind (AUD-3).
   void leaveForExitPoint(Client *client) {
     if (!hostsInterior()) {
       throw std::logic_error("only an interior's occupants leave for an exit point");
     }
     try {
-      if (!rootPlot) {
-        throw std::runtime_error(fmt::format("interior [{}] stood in no yard when this copy started", root->id));
+      const Property *plot = nullptr;
+      std::map<uint32, Property> chain;
+      auto rows = propertiesById({root->id});
+      if (rows.size() == 1) {
+        chain = chainOf(rows.front());
+        plot = ancestorOfType(rows.front(), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookupIn(chain));
       }
-      moveToExit(client, *rootPlot);
+      if (!plot) {
+        LogHousing("[{}] leaves property [{}], which belongs to no plot now, for bind", client->GetCleanName(), root->id);
+        client->GoToBind();
+        return;
+      }
+      moveToExit(client, *plot);
     }
     catch (const std::exception &error) {
       LogError("Housing: [{}] could not leave property [{}]: {}", client->GetCleanName(), root->id, error.what());
