@@ -482,6 +482,13 @@ namespace housing {
       closeContainersOf(recordId);
       Transaction transaction(database);
       lockedProperty(database, propertyId);
+      // The record was judged before the lock; another zone may have taken it since (AUD-32).
+      const auto current = placedItem(propertyId, recordId);
+      if (!current || current->guid != mailed.guid) {
+        LogHousing("Record [{}] of property [{}] changed before [{}]'s Mail to Owner locked it", recordId, propertyId, client->GetCleanName());
+        sendItemResult(client, ItemResult::notFound);
+        return;
+      }
       parcelSlot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, mailed.owner_character_id, RuleI(Parcel, ParcelMaxItems));
       if (parcelSlot == INVALID_INDEX) {
         LogHousing("[{}]'s parcels are full; record [{}] stays", ownerName, recordId);
@@ -501,7 +508,7 @@ namespace housing {
       if (!CharacterParcelsRepository::InsertOne(database, parcel).id) {
         throw std::runtime_error(fmt::format("the parcel of record [{}] to [{}] could not be written", recordId, ownerName));
       }
-      query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", recordId));
+      queryOneRow(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", recordId));
       bumpRevision(database, propertyId);
       transaction.commit();
     }

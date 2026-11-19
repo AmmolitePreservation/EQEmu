@@ -39,6 +39,9 @@ namespace housing {
   };
 
   MySQLRequestResult query(Database &database, const std::string &statement);
+  // A write that must touch exactly one row; the connection counts matched rows (CLIENT_FOUND_ROWS), so an unchanged row
+  // counts too. A row another zone moved or removed first fails the act (AUD-32).
+  void queryOneRow(Database &database, const std::string &statement);
   std::string idList(const std::set<uint32> &ids);
   std::string sqlAmount(double amount);
   std::vector<uint32> definitionList(const std::string &text, const char *ruleName);

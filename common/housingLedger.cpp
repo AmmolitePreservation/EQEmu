@@ -28,6 +28,13 @@ namespace housing {
     return result;
   }
 
+  void queryOneRow(Database &database, const std::string &statement) {
+    const auto result = query(database, statement);
+    if (result.RowsAffected() != 1) {
+      throw std::runtime_error(fmt::format("[{}] touched [{}] rows, not one", statement, result.RowsAffected()));
+    }
+  }
+
   std::string idList(const std::set<uint32> &ids) {
     std::vector<std::string> parts;
     for (uint32 id : ids) {

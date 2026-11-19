@@ -218,6 +218,31 @@ namespace housing {
       return request.propertyId == none ? inventoryCandidate(client, request) : rowCandidate(state, request);
     }
 
+    // The properties an act changes, locked in ascending id order so two zones acting on the same pair never wait on each
+    // other (AUD-32); std::set iterates in that order.
+    std::map<uint32, Property> lockProperties(const std::set<uint32> &ids) {
+      std::map<uint32, Property> locked;
+      for (uint32 id : ids) {
+        locked[id] = lockedProperty(database, id);
+      }
+      return locked;
+    }
+
+    // A row candidate read again under its property's lock: another zone may have moved or changed the row since the
+    // request was judged, and a row no longer where it was refuses the act (AUD-32).
+    void rereadRow(const Session &state, Candidate &candidate) {
+      if (!candidate.row) {
+        return;
+      }
+      ItemRequest request;
+      request.guid = candidate.guid;
+      request.location = WireItemLocation{};
+      request.propertyId = candidate.row->property_id;
+      request.recordId = candidate.row->id;
+      request.quantity = 0;
+      candidate = rowCandidate(state, request);
+    }
+
     bool isAncestor(uint32 ancestorId, const Property &property, const PropertyLookup &lookup) {
       const Property *current = property.parent_id ? lookup(property.parent_id) : nullptr;
       for (int depth = 0; current && depth <= 10; depth++) {
@@ -494,7 +519,7 @@ namespace housing {
       if (!ItemLayer::MoveRow(database, row.guid, ItemLocation::InRealEstate(row.property_id))) {
         throw std::runtime_error(fmt::format("record [{}] could not move to property [{}]", row.id, row.property_id));
       }
-      query(database, fmt::format(
+      queryOneRow(database, fmt::format(
         "UPDATE real_estate_items SET placed = {}, heading = {}, pitch = {}, roll = {}, scale = {}, x = {}, y = {}, z = {} WHERE id = {}",
         row.placed, row.heading, row.pitch, row.roll, row.scale, row.x, row.y, row.z, row.id
       ));
@@ -608,7 +633,12 @@ namespace housing {
       PlacedItem placed;
       {
         Transaction transaction(database);
-        const Property destination = lockedProperty(database, destinationId);
+        std::set<uint32> lockIds{destinationId};
+        if (candidate.row) {
+          lockIds.insert(candidate.row->property_id);
+        }
+        const Property destination = lockProperties(lockIds).at(destinationId);
+        rereadRow(state, candidate);
         View view = viewOf(state, focus);
         view.properties[destinationId] = destination;
         const ItemResult result = judge(client, view, candidate, destination, false, quantity);
@@ -667,7 +697,12 @@ namespace housing {
       PlacedItem stored;
       {
         Transaction transaction(database);
-        const Property destination = lockedProperty(database, destinationId);
+        std::set<uint32> lockIds{destinationId};
+        if (candidate.row) {
+          lockIds.insert(candidate.row->property_id);
+        }
+        const Property destination = lockProperties(lockIds).at(destinationId);
+        rereadRow(state, candidate);
         focus.insert(destinationId);
         View fresh = viewOf(state, focus);
         fresh.properties[destination.id] = destination;
@@ -688,7 +723,7 @@ namespace housing {
             throw std::runtime_error(fmt::format("[{}] of item [{}] could not stack onto record [{}]", quantity, candidate.item->ID, stored.id));
           }
           if (candidate.row && wholeSource) {
-            query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", candidate.row->id));
+            queryOneRow(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", candidate.row->id));
           }
         }
         else if (candidate.row && wholeSource) {
@@ -824,8 +859,7 @@ namespace housing {
     Applied moveRows(Client *client, const Session &state, uint32 sourceId, uint32 destinationId, bool placedOnly) {
       Applied result;
       Transaction transaction(database);
-      lockedProperty(database, sourceId);
-      const Property destination = lockedProperty(database, destinationId);
+      const Property destination = lockProperties({sourceId, destinationId}).at(destinationId);
       View view = viewOf(state, {sourceId, destinationId});
       view.properties[destination.id] = destination;
       const std::vector<PlacedItem> rows = view.rowsOf(sourceId);
@@ -850,7 +884,7 @@ namespace housing {
           if (!ItemLayer::SetCharges(database, target.guid, merged) || !ItemLayer::RetireRow(database, row.guid, ItemRetirement::Stacked)) {
             throw std::runtime_error(fmt::format("record [{}] could not stack onto record [{}]", row.id, target.id));
           }
-          query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", row.id));
+          queryOneRow(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", row.id));
           for (auto &entry : view.rows[destinationId]) {
             if (entry.id == target.id) {
               entry.charges = merged;
@@ -1227,7 +1261,7 @@ namespace housing {
       wholeRow = movesWhole(candidate, quantity);
       EQ::ItemInstance &given = *candidate.instance;
       if (wholeRow) {
-        query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", taken.id));
+        queryOneRow(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", taken.id));
       }
       else {
         if (!ItemLayer::SetCharges(database, taken.guid, static_cast<int16>(taken.charges - quantity))) {
@@ -1402,8 +1436,18 @@ namespace housing {
       const uint32 standing = propertyAt(*state, client->GetX(), client->GetY(), client->GetZ());
       const Property *standingPlot = standing ? ancestorOfType(state->properties.at(standing), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, state->lookup()) : nullptr;
       Transaction transaction(database);
-      const Property yard = lockedProperty(database, placedPropertyId);
+      // The house the swap takes off is known only from its row: read it, lock the yard and that house in ascending id
+      // order, then read the rows again under the locks (AUD-32).
+      const auto peeked = placedItem(placedPropertyId, placedRecordId);
+      std::set<uint32> lockIds{placedPropertyId};
+      if (peeked && peeked->carried_property_id) {
+        lockIds.insert(peeked->carried_property_id);
+      }
+      const Property yard = lockProperties(lockIds).at(placedPropertyId);
       auto outgoingRow = placedItem(placedPropertyId, placedRecordId);
+      if (outgoingRow && (!peeked || outgoingRow->carried_property_id != peeked->carried_property_id)) {
+        throw ItemRefusal(ItemResult::notFound, fmt::format("record [{}] of property [{}] changed while the swap locked it", placedRecordId, placedPropertyId));
+      }
       Candidate outgoing = outgoingRow ? bulkCandidate(*outgoingRow) : Candidate{};
       if (!outgoingRow || !outgoingRow->placed || !isHouseKind(outgoing.kind) || !outgoing.carried || !standingPlot || standingPlot->id != placedPropertyId) {
         throw ItemRefusal(ItemResult::swapNoHousePlaced, fmt::format("record [{}] of property [{}] is no house placed on the yard the player stands in", placedRecordId, placedPropertyId));
@@ -1416,7 +1460,6 @@ namespace housing {
         throw ItemRefusal(source, fmt::format("record [{}] of property [{}] is no house stored in yard [{}]", storedRecordId, storedPropertyId, yard.id));
       }
       const uint32 outgoingHouseId = outgoing.carried->id;
-      lockedProperty(database, outgoingHouseId);
       std::set<uint32> focus{yard.id, outgoingHouseId, storedPropertyId};
       if (candidate.carried) {
         focus.insert(candidate.carried->id);

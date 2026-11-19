@@ -367,7 +367,7 @@ namespace housing {
         if (!crateItem) {
           throw std::runtime_error(fmt::format("crate row [{}] holds item [{}], which did not load", crateRow->id, crateRow->item_id));
         }
-        query(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", crateRow->id));
+        queryOneRow(database, fmt::format("DELETE FROM real_estate_items WHERE id = {}", crateRow->id));
         crateSlot = client->GetInv().FindFirstFreeSlotThatFitsItem(crateItem->GetItem());
         if (crateCarriesProperty) {
           crateItem->SetAttuned(true);
