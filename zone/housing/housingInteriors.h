@@ -17,6 +17,7 @@ namespace housing {
   std::optional<Property> hostedRoot();
   std::optional<Property> hostedRootYard();
   bool hostsInterior();
+  std::optional<Property> hostedInteriorPlot();
   std::vector<Property> hostedProperties();
 
   enum class EntryState : uint8 { open, gone, notInYard, noAccess, upkeepExpired };

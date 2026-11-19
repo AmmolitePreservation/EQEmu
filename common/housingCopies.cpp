@@ -6,11 +6,28 @@
 
 #include <ctime>
 #include <stdexcept>
+#include <vector>
 
 namespace housing {
   namespace {
     constexpr int maximumDepth = 10;
     constexpr const char *copyNote = "housing";
+
+    std::vector<PropertyRow> ancestorsOf(Database &database, const PropertyRow &property) {
+      std::vector<PropertyRow> ancestors;
+      for (uint32 id = property.parent_id; id;) {
+        if (ancestors.size() >= static_cast<size_t>(maximumDepth)) {
+          throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", property.id, maximumDepth));
+        }
+        auto parents = RealEstatePropertiesRepository::GetWhere(database, fmt::format("id = {}", id));
+        if (parents.size() != 1) {
+          throw std::runtime_error(fmt::format("property [{}] has ancestor [{}], which does not exist", property.id, id));
+        }
+        ancestors.push_back(parents.front());
+        id = parents.front().parent_id;
+      }
+      return ancestors;
+    }
   }
 
   ZoneTemplatePoint zoneTemplateOf(Database &content, uint32 definitionId) {
@@ -29,18 +46,18 @@ namespace housing {
   }
 
   PropertyRow rootOf(Database &database, const PropertyRow &property) {
-    PropertyRow current = property;
-    for (int depth = 0; current.parent_id; depth++) {
-      if (depth >= maximumDepth) {
-        throw std::runtime_error(fmt::format("property [{}] has an ancestor chain deeper than [{}]", property.id, maximumDepth));
+    const auto ancestors = ancestorsOf(database, property);
+    return ancestors.empty() ? property : ancestors.back();
+  }
+
+  std::optional<PropertyRow> plotOf(Database &database, Database &content, const PropertyRow &property) {
+    for (const auto &ancestor : ancestorsOf(database, property)) {
+      const uint8 type = definitionTypes(content, {ancestor.definition_id}).at(ancestor.definition_id);
+      if (type == plotType || type == guildPlotType) {
+        return ancestor;
       }
-      auto parents = RealEstatePropertiesRepository::GetWhere(database, fmt::format("id = {}", current.parent_id));
-      if (parents.size() != 1) {
-        throw std::runtime_error(fmt::format("property [{}] has ancestor [{}], which does not exist", property.id, current.parent_id));
-      }
-      current = parents.front();
     }
-    return current;
+    return std::nullopt;
   }
 
   uint32 hostZoneOf(Database &database, Database &content, const PropertyRow &property) {

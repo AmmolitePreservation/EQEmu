@@ -370,6 +370,11 @@ namespace housing {
       }
       int upkeepPercentHere = 0;
       try {
+        // A copy of a house packed into a crate has no host zone to price by, and its occupants leave for bind on arrival (AUD-3).
+        if (hostsInterior() && !hostedInteriorPlot()) {
+          LogHousing("[{}] gets no housing data in a copy of property [{}], which belongs to no plot now", client->GetCleanName(), hostedRoot()->id);
+          return;
+        }
         upkeepPercentHere = catalogUpkeepPercent();
       }
       catch (const std::exception &error) {

@@ -309,20 +309,22 @@ namespace housing {
     moveToExit(client, plot);
   }
 
-  // Occupants leave by the plot the house belongs to, placed or stored in its yard (S10), read afresh since a copy can start after the
-  // house left its yard; a house packed into a crate, or gone, belongs to no plot, and they go to bind (AUD-3).
+  // The plot the house belongs to, placed or stored in its yard (S10), read afresh since a copy can start after the house left its
+  // yard; a house packed into a crate, or gone, belongs to no plot (AUD-3).
+  std::optional<Property> hostedInteriorPlot() {
+    if (!hostsInterior()) {
+      throw std::logic_error("only an interior belongs to a plot");
+    }
+    auto rows = propertiesById({root->id});
+    return rows.size() == 1 ? plotOf(database, content_db, rows.front()) : std::nullopt;
+  }
+
   void leaveForExitPoint(Client *client) {
     if (!hostsInterior()) {
       throw std::logic_error("only an interior's occupants leave for an exit point");
     }
     try {
-      const Property *plot = nullptr;
-      std::map<uint32, Property> chain;
-      auto rows = propertiesById({root->id});
-      if (rows.size() == 1) {
-        chain = chainOf(rows.front());
-        plot = ancestorOfType(rows.front(), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), true, lookupIn(chain));
-      }
+      const auto plot = hostedInteriorPlot();
       if (!plot) {
         LogHousing("[{}] leaves property [{}], which belongs to no plot now, for bind", client->GetCleanName(), root->id);
         client->GoToBind();

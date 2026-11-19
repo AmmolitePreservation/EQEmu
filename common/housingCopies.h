@@ -22,6 +22,8 @@ namespace housing {
 
   ZoneTemplatePoint zoneTemplateOf(Database &content, uint32 definitionId);
   PropertyRow rootOf(Database &database, const PropertyRow &property);
+  // The plot or guild plot a property stands under, placed or stored in its yard; none once it is packed into a crate or carried.
+  std::optional<PropertyRow> plotOf(Database &database, Database &content, const PropertyRow &property);
   // A property's zone is its root's template's: a neighborhood's, or a zone root's public zone (consequence 2).
   uint32 hostZoneOf(Database &database, Database &content, const PropertyRow &property);
 

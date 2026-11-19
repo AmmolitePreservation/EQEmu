@@ -153,6 +153,11 @@ namespace housing {
       LogHousing("Character [{}] was in a copy of property [{}], which is gone or picked up; EQEmu's safe return applies", characterId, propertyId);
       return false;
     }
+    // A house packed into a crate belongs to no plot, so a copy of it would only send its occupant on to bind (AUD-3).
+    if (!plotOf(database, content_db, properties.front())) {
+      LogHousing("Character [{}] was in a copy of property [{}], which belongs to no plot now; EQEmu's safe return applies", characterId, propertyId);
+      return false;
+    }
     const ZoneTemplatePoint zoneTemplate = zoneTemplateOf(content_db, properties.front().definition_id);
     if (zoneTemplate.zoneId != zoneId) {
       LogHousing("Character [{}] was in a copy of property [{}], whose template is now another zone; EQEmu's safe return applies", characterId, propertyId);
