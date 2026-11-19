@@ -83,6 +83,9 @@ namespace housing {
     bool fromPlaced = false;
     bool crossPlot = false;
     ItemResult sourceRemoveResult = ItemResult::success;
+    // The source property's own expiry, false for a GM, and whether the source is the plot itself.
+    bool sourceUpkeepExpired = false;
+    bool sourceIsPlot = false;
     bool destinationIsCrate = false;
     uint32 destinationHouses = 0;
     uint32 destinationPlacedHouses = 0;
@@ -319,7 +322,17 @@ namespace housing {
           return facts.sourceRemoveResult != ItemResult::success ? facts.sourceRemoveResult : inventoryPlacementResult(facts);
         }
         const ItemResult result = otherPropertyPlacementResult(facts);
-        return result == ItemResult::success && atItemLimit(facts) ? ItemResult::itemLimit : result;
+        if (result != ItemResult::success) {
+          return result;
+        }
+        if (atItemLimit(facts)) {
+          return ItemResult::itemLimit;
+        }
+        // Its last test is the source's own expiry (0x5b6434-0x5b645e; AUD-34).
+        if (facts.sourceUpkeepExpired) {
+          return facts.sourceIsPlot ? ItemResult::plotUpkeepExpired : ItemResult::itemUpkeepExpired;
+        }
+        return ItemResult::success;
       }
     }
     throw std::invalid_argument(fmt::format("placement source [{}]", static_cast<uint32>(facts.source)));

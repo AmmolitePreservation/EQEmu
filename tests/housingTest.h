@@ -40,6 +40,7 @@ public:
     TEST_ADD(HousingTest::escrowFloorsToWholeUnits);
     TEST_ADD(HousingTest::aWithdrawalIsComparedBeforeItIsCounted);
     TEST_ADD(HousingTest::aGuildHallAndAHouseShareAPickUpCategory);
+    TEST_ADD(HousingTest::aMoveWithinAPlotLastAsksTheSourcesExpiry);
     TEST_ADD(HousingTest::mostPermissiveMatchingGroupWins);
     TEST_ADD(HousingTest::unmatchedCharacterIsEveryone);
     TEST_ADD(HousingTest::editorChangesOnlyLowerGroupsWithHeldBits);
@@ -666,6 +667,18 @@ private:
     moved.houseOfThule = true;
     moved.mayAdd = false;
     TEST_ASSERT_EQUALS(code(moved), 71u);
+  }
+
+  void aMoveWithinAPlotLastAsksTheSourcesExpiry() {
+    auto moved = yardPlacement();
+    moved.source = housing::PlacementSource::otherProperty;
+    TEST_ASSERT_EQUALS(code(moved), 0u);
+    moved.sourceUpkeepExpired = true;
+    TEST_ASSERT_EQUALS(code(moved), 25u);
+    moved.sourceIsPlot = true;
+    TEST_ASSERT_EQUALS(code(moved), 24u);
+    moved.crossPlot = true;
+    TEST_ASSERT_EQUALS(code(moved), 0u);
   }
 
   void aHouseMoveAsksOnlyTheHouseRightItChanges() {

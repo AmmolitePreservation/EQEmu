@@ -428,6 +428,8 @@ namespace housing {
         const Property *sourcePlot = ancestorOfType(holder, plotTypes, false, lookup);
         const Property *destinationPlot = ancestorOfType(destination, plotTypes, false, lookup);
         facts.crossPlot = facts.source == PlacementSource::otherProperty && (!sourcePlot || !destinationPlot || sourcePlot->id != destinationPlot->id);
+        facts.sourceUpkeepExpired = !client->GetGM() && holder.upkeep_expired_time;
+        facts.sourceIsPlot = sourcePlot && sourcePlot->id == holder.id;
         if (facts.crossPlot) {
           const bool carriesItems = candidate.carried && view.holdsContents(candidate.carried->id);
           facts.sourceRemoveResult = pickUpAccessResult(pickUpAccessFacts(client, holder, candidate.carried ? &*candidate.carried : nullptr, carriesItems,
