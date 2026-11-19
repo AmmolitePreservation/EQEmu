@@ -88,7 +88,8 @@ namespace housing {
     uint32 destinationPlacedHouses = 0;
     bool carriedIsChild = false;
     uint32 maxHouses = 0;
-    bool destinationHasPlacedCrate = false;
+    bool plotHoldsOtherCrate = false;
+    bool carriedHouseHoldsCrate = false;
     bool crateHoldsNonEmptyHouse = false;
     uint32 realEstateCount = 0;
     uint32 maxItems = 0;
@@ -121,12 +122,18 @@ namespace housing {
   // The client tests the house and crate limits only when placing (0x5b48b0 under 0x5b69b0's and 0x5b6eb0's placing branch), so a
   // yard at its limit still stores a house, as a swap needs. It counts every house of the yard against a house from elsewhere and
   // none against one stored there; the server holds that one to the yard's other placed houses, so a yard keeps one placed house.
+  // The crate limit is the plot's: no crate goes under a plot whose crate is another, and no house holding a crate comes onto such a
+  // plot from elsewhere.
   inline ItemResult houseLimitResult(const PlacementFacts &facts) {
     const uint32 houses = facts.carriedIsChild ? facts.destinationPlacedHouses : facts.destinationHouses;
     if (isHouseKind(facts.carried) && !facts.intoStorage && !facts.destinationIsCrate && houses >= facts.maxHouses) {
       return facts.carried == CarriedKind::guildHall ? ItemResult::hallLimit : ItemResult::houseLimit;
     }
-    if (facts.carried == CarriedKind::crate && !facts.intoStorage && facts.destinationHasPlacedCrate) {
+    if (facts.carried == CarriedKind::crate && !facts.intoStorage && facts.plotHoldsOtherCrate) {
+      return ItemResult::crateLimit;
+    }
+    if (isHouseKind(facts.carried) && !facts.intoStorage && !facts.destinationIsCrate && !facts.carriedIsChild && facts.carriedHouseHoldsCrate &&
+      facts.plotHoldsOtherCrate) {
       return ItemResult::crateLimit;
     }
     return ItemResult::success;

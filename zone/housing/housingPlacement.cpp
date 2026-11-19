@@ -10,6 +10,7 @@
 #include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingCrateSearch.h"
 #include "../../common/housingLedger.h"
 #include "../../common/item_layer.h"
 #include "../../common/patches/rof2.h"
@@ -220,9 +221,48 @@ namespace housing {
       return false;
     }
 
-    const Property *placedCrateIn(const View &view, uint32 propertyId, uint32 excludedId) {
+    struct FoundCrate {
+      Property property;
+      bool placed = false;
+    };
+
+    std::optional<FoundCrate> firstCrateOf(uint32 rootId) {
+      std::map<uint32, Property> subtree;
+      std::set<uint32> generation{rootId};
+      for (int depth = 0; depth < 10 && !generation.empty(); depth++) {
+        std::set<uint32> next;
+        for (auto &child : propertiesChildOf(generation)) {
+          next.insert(child.id);
+          subtree[child.id] = child;
+        }
+        generation = next;
+      }
+      std::map<uint32, uint32> parentOf;
+      std::set<uint32> crates;
+      std::set<uint32> holders{rootId};
+      for (const auto &[id, property] : subtree) {
+        parentOf[id] = property.parent_id;
+        holders.insert(id);
+        if (typeOf(property) == DefinitionType::movingCrate) {
+          crates.insert(id);
+        }
+      }
+      std::set<uint32> placedCarriers;
+      for (const auto &row : itemsOf(holders)) {
+        if (row.placed && row.carried_property_id) {
+          placedCarriers.insert(row.carried_property_id);
+        }
+      }
+      const uint32 crateId = firstCrateUnder(rootId, parentOf, crates, placedCarriers);
+      if (!crateId) {
+        return std::nullopt;
+      }
+      return FoundCrate{subtree.at(crateId), placedCarriers.count(crateId) != 0};
+    }
+
+    const Property *placedCrateIn(const View &view, uint32 propertyId) {
       for (const Property *child : view.childrenOf(propertyId)) {
-        if (child->id == excludedId || typeOf(*child) != DefinitionType::movingCrate) {
+        if (typeOf(*child) != DefinitionType::movingCrate) {
           continue;
         }
         for (const auto &row : view.rowsOf(propertyId)) {
@@ -291,7 +331,7 @@ namespace housing {
         : destinationType != DefinitionType::regularZone && facts.placeable && (candidate.tail->placeable & typeBit(destinationType));
       facts.carried = candidate.kind;
       facts.carriedHoldsItems = carriedId && view.holdsContents(carriedId);
-      facts.carriedHouseHoldsPlacedCrate = carriedId && isHouseKind(candidate.kind) && placedCrateIn(view, carriedId, 0);
+      facts.carriedHouseHoldsPlacedCrate = carriedId && isHouseKind(candidate.kind) && placedCrateIn(view, carriedId);
       facts.intoStorage = intoStorage;
       facts.fromPlaced = candidate.row && candidate.row->placed;
       facts.destinationIsCrate = destinationType == DefinitionType::movingCrate;
@@ -312,7 +352,12 @@ namespace housing {
       }
       facts.carriedIsChild = carriedId && candidate.carried->parent_id == destination.id;
       facts.maxHouses = definition->maxChildren;
-      facts.destinationHasPlacedCrate = placedCrateIn(view, destination.id, carriedId) != nullptr;
+      // Only placing tests the crate limit (0x5b48b0), so only placing walks the plot and the carried house for crates.
+      if (!intoStorage && plot && (candidate.kind == CarriedKind::crate || isHouseKind(candidate.kind))) {
+        const auto plotCrate = firstCrateOf(plot->id);
+        facts.plotHoldsOtherCrate = plotCrate && plotCrate->property.id != carriedId;
+        facts.carriedHouseHoldsCrate = carriedId && isHouseKind(candidate.kind) && firstCrateOf(carriedId).has_value();
+      }
       for (const auto &row : view.rowsOf(destination.id)) {
         if (candidate.row && row.id == candidate.row->id) {
           continue;
@@ -1277,8 +1322,9 @@ namespace housing {
           break;
         case StorageDestination::crate:
           if (basePlot) {
-            if (const Property *crate = placedCrateIn(view, basePlot->id, 0)) {
-              destinationId = crate->id;
+            const auto crate = firstCrateOf(basePlot->id);
+            if (crate && crate->placed) {
+              destinationId = crate->property.id;
             }
           }
           break;
@@ -1356,7 +1402,7 @@ namespace housing {
       }
       View view = viewOf(*state, focus);
       view.properties[yard.id] = yard;
-      if (placedCrateIn(view, outgoingHouseId, 0)) {
+      if (placedCrateIn(view, outgoingHouseId)) {
         throw ItemRefusal(ItemResult::swapPlacedCrate, fmt::format("house [{}] holds a placed crate", outgoingHouseId));
       }
       if (!permitted(client, Permission::removeHouse, yard, view.lookup(), view.listOf()) || !permitted(client, Permission::moveItem, yard, view.lookup(), view.listOf())) {
@@ -1607,12 +1653,11 @@ namespace housing {
       if (!plot) {
         throw ItemRefusal(ItemResult::crateRequired, fmt::format("property [{}] stands on no plot", location));
       }
-      View view = viewOf(*state, {plot->id});
-      const Property *crate = placedCrateIn(view, plot->id, 0);
-      if (!crate) {
-        throw ItemRefusal(ItemResult::crateRequired, fmt::format("plot [{}] has no placed moving crate", plot->id));
+      const auto crate = firstCrateOf(plot->id);
+      if (!crate || !crate->placed) {
+        throw ItemRefusal(ItemResult::crateRequired, fmt::format("plot [{}]'s moving crate is not placed", plot->id));
       }
-      const uint32 crateId = crate->id;
+      const uint32 crateId = crate->property.id;
       finishBulkMove(client, pack ? moveRows(client, *state, location, crateId, false) : moveRows(client, *state, crateId, location, false), request);
     }
     catch (const ItemRefusal &refusal) {

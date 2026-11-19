@@ -622,6 +622,7 @@ SET(common_headers
     housingAccessRules.h
     housingAugmentaterRules.h
     housingCopies.h
+    housingCrateSearch.h
     housingEventTypes.h
     housingInstanceNumbers.h
     housingLedger.h

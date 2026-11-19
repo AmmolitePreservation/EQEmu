@@ -4,6 +4,7 @@
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
 #include "../common/housingAugmentaterRules.h"
+#include "../common/housingCrateSearch.h"
 #include "../common/housingEventTypes.h"
 #include "../common/housingInstanceNumbers.h"
 #include "../common/housingNames.h"
@@ -54,6 +55,9 @@ public:
     TEST_ADD(HousingTest::beginMapCodesMatchLive);
     TEST_ADD(HousingTest::inventoryRulesRunInTheClientsOrder);
     TEST_ADD(HousingTest::houseAndHallLimitsCountTheYardsHouses);
+    TEST_ADD(HousingTest::aHouseHoldingACrateMeetsThePlotsCrateLimit);
+    TEST_ADD(HousingTest::theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst);
+    TEST_ADD(HousingTest::theCrateWalkSkipsTheRootAndStopsTenLevelsDown);
     TEST_ADD(HousingTest::crateRulesKeepFullHousesAndCratesApart);
     TEST_ADD(HousingTest::capacityCodesAndTheStackMergeWaiver);
     TEST_ADD(HousingTest::lastInventoryRulesAndTheItemLimit);
@@ -440,11 +444,54 @@ private:
     TEST_ASSERT_EQUALS(code(house), 75u);
     auto crate = yardPlacement();
     crate.carried = housing::CarriedKind::crate;
-    crate.destinationHasPlacedCrate = true;
+    crate.plotHoldsOtherCrate = true;
     TEST_ASSERT_EQUALS(code(crate), 16u);
-    crate.destinationHasPlacedCrate = false;
+    crate.plotHoldsOtherCrate = false;
     crate.mayAdd = false;
     TEST_ASSERT_EQUALS(code(crate), 77u);
+  }
+
+  void aHouseHoldingACrateMeetsThePlotsCrateLimit() {
+    auto house = yardPlacement();
+    house.carried = housing::CarriedKind::house;
+    house.carriedHouseHoldsCrate = true;
+    house.plotHoldsOtherCrate = true;
+    TEST_ASSERT_EQUALS(code(house), 16u);
+    auto empty = house;
+    empty.carriedHouseHoldsCrate = false;
+    TEST_ASSERT_EQUALS(code(empty), 0u);
+    auto noCrateOnPlot = house;
+    noCrateOnPlot.plotHoldsOtherCrate = false;
+    TEST_ASSERT_EQUALS(code(noCrateOnPlot), 0u);
+    auto ownYard = house;
+    ownYard.source = housing::PlacementSource::sameProperty;
+    ownYard.carriedIsChild = true;
+    TEST_ASSERT_EQUALS(code(ownYard), 0u);
+    auto stored = house;
+    stored.intoStorage = true;
+    TEST_ASSERT_EQUALS(code(stored), 0u);
+  }
+
+  void theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst() {
+    const std::map<uint32, uint32> parentOf{{10, 1}, {11, 10}, {12, 10}, {20, 1}, {30, 1}};
+    const std::set<uint32> crates{11, 12, 20, 30};
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, parentOf, crates, {10, 11, 30}), 11u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, parentOf, crates, {30}), 30u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, parentOf, crates, {12}), 12u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, parentOf, {20}, {}), 20u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, parentOf, {}, {10, 11, 30}), 0u);
+  }
+
+  void theCrateWalkSkipsTheRootAndStopsTenLevelsDown() {
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(40, {{41, 40}}, {40, 41}, {}), 41u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(40, {}, {40}, {}), 0u);
+    std::map<uint32, uint32> chain;
+    for (uint32 id = 2; id <= 12; id++) {
+      chain[id] = id - 1;
+    }
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, chain, {11}, {}), 11u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, chain, {12}, {}), 0u);
+    TEST_ASSERT_EQUALS(housing::firstCrateUnder(1, chain, {3, 11}, {}), 3u);
   }
 
   void crateRulesKeepFullHousesAndCratesApart() {
