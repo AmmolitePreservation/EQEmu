@@ -4,6 +4,7 @@
 #include "housingCatalog.h"
 #include "housingEvents.h"
 #include "housingGeometry.h"
+#include "housingPurse.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -173,15 +174,17 @@ namespace housing {
         guildPlot ? 0 : client->CharacterID(), guildPlot ? guild : 0, upkeepCurrency, now, nextCharge, propertyId
       ));
       writeDefaultAccessList(database, propertyId, guildPlot);
+      PurseGuard purse(client);
       if (price.currency == 0) {
-        if (!client->TakeMoneyFromPP(price.amount, true)) {
+        if (!client->TakeMoneyFromPP(price.amount, false)) {
           throw std::logic_error(fmt::format("[{}] could pay [{}] copper a moment ago and cannot now", client->GetCleanName(), price.amount));
         }
       }
       else {
-        client->AddAlternateCurrencyValue(price.currency, -static_cast<int>(price.amount));
+        purse.addCurrency(price.currency, -static_cast<int64>(price.amount));
       }
       transaction.commit();
+      purse.committed();
       if (guildPlot) {
         bought.guild_id = guild;
       }

@@ -5,6 +5,7 @@
 #include "housingEvents.h"
 #include "housingItems.h"
 #include "housingPlacement.h"
+#include "housingPurse.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -318,11 +319,12 @@ namespace housing {
       }
       releasePlot(database, plotId);
       leaving = rows;
+      PurseGuard purse(client);
       if (payout.copper) {
-        client->AddMoneyToPP(payout.copper, true);
+        client->AddMoneyToPP(payout.copper, false);
       }
       for (const auto &[currency, units] : payout.alternate) {
-        client->AddAlternateCurrencyValue(currency, static_cast<int>(units));
+        purse.addCurrency(currency, static_cast<int64>(units));
       }
       if (crateItem && crateSlot != INVALID_INDEX) {
         giveAndCommit(client, transaction, crateSlot, *crateItem);
@@ -330,6 +332,7 @@ namespace housing {
       else {
         transaction.commit();
       }
+      purse.committed();
     }
     catch (const SellRefusal &refusal) {
       LogHousing("Refused [{}]'s sale of property [{}]: {}", client->GetCleanName(), plotId, refusal.what());

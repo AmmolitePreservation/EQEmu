@@ -69,6 +69,7 @@ SET(zone_sources
     housing/housingQuestAPI.cpp
     housing/housingSearch.cpp
     housing/housingSell.cpp
+    housing/housingPurse.cpp
     housing/housingStore.cpp
     housing/housingTransfer.cpp
     housing/housingWire.cpp
@@ -207,6 +208,7 @@ SET(zone_headers
     housing/housingPlacement.h
     housing/housingPolls.h
     housing/housingSession.h
+    housing/housingPurse.h
     housing/housingStore.h
     housing/housingWire.h
     housing/housingWorldObjects.h

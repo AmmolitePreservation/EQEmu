@@ -1764,6 +1764,7 @@ public:
 	void SendAlternateCurrencyValues();
 	void SendAlternateCurrencyValue(uint32 currency_id, bool send_if_null = true);
 	uint32 GetAlternateCurrencyValue(uint32 currency_id) const;
+	bool IsAlternateCurrencyLoaded() const { return alternate_currency_loaded; }
 	void ProcessAlternateCurrencyQueue();
 	void OpenLFGuildWindow();
 	void HandleLFGuildResponse(ServerPacket *pack);

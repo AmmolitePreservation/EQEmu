@@ -3,6 +3,7 @@
 #include "housingAccess.h"
 #include "housingCatalog.h"
 #include "housingEvents.h"
+#include "housingPurse.h"
 #include "housingSession.h"
 
 #include "../../common/eqemu_logsys.h"
@@ -231,9 +232,11 @@ namespace housing {
             }
             credit.amounts[0] = static_cast<double>(amount * copperPerDenomination[subKey]);
             depositInto(plot, credit);
+            PurseGuard purse(client);
             *coin -= static_cast<int32>(amount);
             client->SaveCurrency();
             transaction.commit();
+            purse.committed();
           }
           else {
             const EQ::ItemInstance *cursor = client->GetInv().GetItem(EQ::invslot::slotCursor);
@@ -283,10 +286,11 @@ namespace housing {
           }
           writeBalances(database, plot.id, balances);
           bumpRevision(database, plot.id);
+          PurseGuard purse(client);
           std::vector<uint32> cursorDenominations;
           for (const auto &[currency, count] : units) {
             if (currency != 0) {
-              client->AddAlternateCurrencyValue(currency, static_cast<int>(count));
+              purse.addCurrency(currency, static_cast<int64>(count));
             }
             else {
               uint64 left = count;
@@ -303,6 +307,7 @@ namespace housing {
             }
           }
           transaction.commit();
+          purse.committed();
           for (uint32 denomination : cursorDenominations) {
             sendMessage(client, OP_RealEstateAccount, accountMessage(withdrawAmount, plot.id, 0, 1, {{0, {denomination, static_cast<uint64>(*cursorCoin(client, denomination))}}}));
           }
@@ -352,17 +357,19 @@ namespace housing {
             }
           }
           depositInto(plot, credit);
+          PurseGuard purse(client);
           for (const auto &[currency, amount] : credit.amounts) {
             if (currency == 0) {
-              if (!client->TakeMoneyFromPP(static_cast<uint64>(amount), true)) {
+              if (!client->TakeMoneyFromPP(static_cast<uint64>(amount), false)) {
                 throw std::logic_error(fmt::format("[{}] could pay [{}] copper a moment ago and cannot now", client->GetCleanName(), amount));
               }
             }
             else {
-              client->AddAlternateCurrencyValue(currency, -static_cast<int>(amount));
+              purse.addCurrency(currency, -static_cast<int64>(amount));
             }
           }
           transaction.commit();
+          purse.committed();
           for (const auto &[currency, amount] : credit.amounts) {
             tellDeposit(client, currency, amount);
           }
