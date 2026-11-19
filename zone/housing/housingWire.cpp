@@ -65,7 +65,10 @@ namespace housing {
 
   std::string WireReader::lengthString() {
     const int32 size = i32();
-    if (overrun || size <= 0) {
+    if (size < 0) {
+      overrun = true;
+    }
+    if (overrun || size == 0) {
       return {};
     }
     if (remaining() < static_cast<size_t>(size)) {

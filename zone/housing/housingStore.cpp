@@ -29,7 +29,7 @@ namespace housing {
     if (propertyIds.empty()) {
       return result;
     }
-    auto rows = database.QueryDatabase(fmt::format(
+    auto rows = query(database, fmt::format(
       "SELECT property_id, currency, amount FROM real_estate_property_balances WHERE property_id IN ({}) ORDER BY property_id, currency",
       idList(propertyIds)
     ));
@@ -50,7 +50,7 @@ namespace housing {
     if (wanted.empty()) {
       return result;
     }
-    auto rows = database.QueryDatabase(fmt::format(
+    auto rows = query(database, fmt::format(
       "SELECT c.id, c.name, c.account_id, COALESCE(g.guild_id, 0) FROM character_data c LEFT JOIN guild_members g ON g.char_id = c.id WHERE c.id IN ({})",
       idList(wanted)
     ));
