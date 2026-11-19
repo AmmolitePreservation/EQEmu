@@ -81,6 +81,8 @@ namespace housing {
     bool carriedHouseHoldsPlacedCrate = false;
     bool intoStorage = false;
     bool fromPlaced = false;
+    bool crossPlot = false;
+    ItemResult sourceRemoveResult = ItemResult::success;
     bool destinationIsCrate = false;
     uint32 destinationHouses = 0;
     uint32 destinationPlacedHouses = 0;
@@ -299,6 +301,11 @@ namespace housing {
         return result == ItemResult::success && atItemLimit(facts) ? ItemResult::itemLimit : result;
       }
       case PlacementSource::otherProperty: {
+        // 0x5b5ff0 keeps its own set within one plot; between plots, or with no plot on either side, it runs the remove rule on
+        // the source (0x5b72c0) and then the inventory set on the destination (AUD-1).
+        if (facts.crossPlot) {
+          return facts.sourceRemoveResult != ItemResult::success ? facts.sourceRemoveResult : inventoryPlacementResult(facts);
+        }
         const ItemResult result = otherPropertyPlacementResult(facts);
         return result == ItemResult::success && atItemLimit(facts) ? ItemResult::itemLimit : result;
       }

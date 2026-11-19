@@ -61,6 +61,7 @@ public:
     TEST_ADD(HousingTest::aStoredHouseCountsOnlyTheYardsPlacedHouses);
     TEST_ADD(HousingTest::aHouseMoveAsksOnlyTheHouseRightItChanges);
     TEST_ADD(HousingTest::storingSkipsThePlacingRules);
+    TEST_ADD(HousingTest::aMoveBetweenPlotsTakesTheRemoveRuleThenTheInventorySet);
     TEST_ADD(HousingTest::storedAndMovedItemsNeedMoveItem);
     TEST_ADD(HousingTest::pickUpRulesFollowTheClientsTexts);
     TEST_ADD(HousingTest::mailToOwnerNeedsMailItemAnotherPlacerAndNoRealEstate);
@@ -570,6 +571,24 @@ private:
     TEST_ASSERT_EQUALS(code(house), 75u);
     house.mayAdd = true;
     TEST_ASSERT_EQUALS(code(house), 0u);
+  }
+
+  void aMoveBetweenPlotsTakesTheRemoveRuleThenTheInventorySet() {
+    auto moved = yardPlacement();
+    moved.source = housing::PlacementSource::otherProperty;
+    moved.mayMove = false;
+    TEST_ASSERT_EQUALS(code(moved), 73u);
+    moved.crossPlot = true;
+    TEST_ASSERT_EQUALS(code(moved), 0u);
+    moved.sourceRemoveResult = housing::ItemResult::noRemoveItem;
+    TEST_ASSERT_EQUALS(code(moved), 72u);
+    moved.sourceRemoveResult = housing::ItemResult::success;
+    moved.mayAdd = false;
+    TEST_ASSERT_EQUALS(code(moved), 71u);
+    moved.mayAdd = true;
+    moved.maxPerRealEstate = 1;
+    moved.sameItemCount = 1;
+    TEST_ASSERT_EQUALS(code(moved), 31u);
   }
 
   void storingSkipsThePlacingRules() {

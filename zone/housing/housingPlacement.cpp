@@ -234,6 +234,12 @@ namespace housing {
       return nullptr;
     }
 
+    // A stored or placed row merges only into a stack of its own placer, as RoF2's between-properties set keys it (AUD-2); an item
+    // from inventory into the mover's.
+    uint32 mergeOwnerFor(Client *client, const Candidate &candidate) {
+      return candidate.row ? candidate.row->owner_character_id : client->CharacterID();
+    }
+
     const PlacedItem *mergeTarget(const View &view, const Candidate &candidate, uint32 destinationId, uint32 ownerId, uint32 quantity) {
       if (!candidate.instance->IsStackable()) {
         return nullptr;
@@ -329,7 +335,7 @@ namespace housing {
       facts.maxNonRealEstateItems = definition->row.max_non_real_estate_items;
       facts.npcItem = isNpcItemId(candidate.item->ID);
       facts.npcCap = definition->maxNpcItems;
-      facts.mergesIntoStack = intoStorage && mergeTarget(view, candidate, destination.id, client->CharacterID(), quantity);
+      facts.mergesIntoStack = intoStorage && mergeTarget(view, candidate, destination.id, mergeOwnerFor(client, candidate), quantity);
       facts.containerHoldsItems = candidate.containerHoldsItems;
       const bool destinationCarriesUpkeep = destinationType == DefinitionType::playerHouse || destinationType == DefinitionType::guildHall || destinationType == DefinitionType::movingCrate;
       facts.itemUpkeepExpired = (candidate.row && candidate.row->upkeep_expired_at) || (candidate.carried && candidate.carried->upkeep_expired_time) ||
@@ -340,6 +346,15 @@ namespace housing {
         const Property &holder = view.at(candidate.row->property_id);
         facts.mayMove = permitted(client, Permission::moveItem, holder, lookup, listOf);
         facts.mayRemoveHouse = permitted(client, Permission::removeHouse, holder, lookup, listOf);
+        const uint32 plotTypes = typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot);
+        const Property *sourcePlot = ancestorOfType(holder, plotTypes, false, lookup);
+        const Property *destinationPlot = ancestorOfType(destination, plotTypes, false, lookup);
+        facts.crossPlot = facts.source == PlacementSource::otherProperty && (!sourcePlot || !destinationPlot || sourcePlot->id != destinationPlot->id);
+        if (facts.crossPlot) {
+          const bool carriesItems = candidate.carried && view.holdsContents(candidate.carried->id);
+          facts.sourceRemoveResult = pickUpAccessResult(pickUpAccessFacts(client, holder, candidate.carried ? &*candidate.carried : nullptr, carriesItems,
+            *candidate.row, *candidate.item, sourcePlot, lookup, listOf));
+        }
       }
       facts.maxPerRealEstate = candidate.tail ? candidate.tail->maxPerRealEstate : -1;
       return facts;
@@ -604,7 +619,7 @@ namespace housing {
           throw ItemRefusal(result, fmt::format("the item may not be stored in property [{}]", destination.id));
         }
         std::map<uint32, PropertyChangedPayload> changedProperties;
-        const PlacedItem *merge = mergeTarget(fresh, candidate, destination.id, client->CharacterID(), quantity);
+        const PlacedItem *merge = mergeTarget(fresh, candidate, destination.id, mergeOwnerFor(client, candidate), quantity);
         if (merge) {
           stored = *merge;
           stored.charges = static_cast<int16>(stored.charges + quantity);
