@@ -152,7 +152,7 @@ A transfer offer needs no event: the recipient is in the owner's zone, which hol
 
 | Rule | Type | Default | Meaning |
 |---|---|---|---|
-| `Housing:EnableUpkeep` | bool | true | the upkeep clock (D4) |
+| `Housing:EnableUpkeep` | bool | true | the upkeep clock (D4); off pauses it: the time passes free, and no plot is charged, stamped or reclaimed until it is on again (AUD-37) |
 | `Housing:UpkeepIntervalSeconds` | int | 43200 | seconds from one of a property's charges to its next (Live: 10.8 to 13.2 hours apart, mean 12.3) |
 | `Housing:UpkeepJitterSeconds` | int | 4320 | each interval is longer or shorter by up to this, at random (D4); 0 or more and below the interval, or world does not start |
 | `Housing:UpkeepPercent` | int | 100 | percent of every daily upkeep charged, read from the host zone's ruleset (X3) |

@@ -280,7 +280,8 @@ namespace housing {
       }
       const int jitter = RuleI(Housing, UpkeepJitterSeconds);
       const int64 nextCharge = now + nextChargeDelay(RuleI(Housing, UpkeepIntervalSeconds), jitter, random.Int(-jitter, jitter));
-      if (dormant(plot)) {
+      // With Housing:EnableUpkeep off a due plot pauses as a dormant one does: nothing charged, stamped or reclaimed (AUD-37).
+      if (dormant(plot) || !RuleB(Housing, EnableUpkeep)) {
         query(database, fmt::format("UPDATE real_estate_properties SET upkeep_settled_at = FROM_UNIXTIME({}), next_upkeep_at = FROM_UNIXTIME({}) WHERE id = {}", now, nextCharge, plot.id));
         transaction.commit();
         return outcome;
@@ -387,9 +388,6 @@ namespace housing {
   }
 
   void processUpkeep() {
-    if (!RuleB(Housing, EnableUpkeep)) {
-      return;
-    }
     if (!passTimer.Enabled()) {
       passTimer.Start(passMilliseconds);
       chargeDueUpkeep();

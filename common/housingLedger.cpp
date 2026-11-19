@@ -368,6 +368,13 @@ namespace housing {
     if (plot.upkeep_settled_at <= 0) {
       throw std::runtime_error(fmt::format("property [{}] is owned but has no upkeep_settled_at", plot.id));
     }
+    // Housing:EnableUpkeep off pauses upkeep: the time passes free and the clock moves with it (the owner's decision, AUD-37).
+    if (!RuleB(Housing, EnableUpkeep)) {
+      query(database, fmt::format("UPDATE real_estate_properties SET upkeep_settled_at = FROM_UNIXTIME({}) WHERE id = {}", now, plot.id));
+      UpkeepCharge paused;
+      paused.balances = readBalances(database, plot.id);
+      return paused;
+    }
     const int64 elapsed = std::max<int64>(0, now - static_cast<int64>(plot.upkeep_settled_at));
     const PlotContents contents = placedUnder(database, content, plot);
     const auto daily = netDailyCost(upkeepCostItems(database, content, plot, contents));
