@@ -1201,14 +1201,15 @@ namespace housing {
     bool wholeRow = true;
     try {
       Candidate candidate = rowCandidate(*state, request);
-      const int16 slot = client->GetInv().FindFirstFreeSlotThatFitsItem(candidate.item);
-      checkPickUp(client, *state, candidate, slot);
-      // A container gives its contents back to whoever has it open before its item is read for the taker.
+      checkPickUp(client, *state, candidate, client->GetInv().FindFirstFreeSlotThatFitsItem(candidate.item));
+      // A container gives its contents back to whoever has it open before its item is read for the taker, and they can fill the
+      // slot the taker had free, so the slot is chosen after (AUD-13).
       closeContainersOf(candidate.row->id);
       Transaction transaction(database);
       const Property holder = lockedProperty(database, candidate.row->property_id);
       candidate = rowCandidate(*state, request);
       taken = *candidate.row;
+      const int16 slot = client->GetInv().FindFirstFreeSlotThatFitsItem(candidate.item);
       const bool carriesItems = checkPickUp(client, *state, candidate, slot);
       const uint32 quantity = movingQuantity(candidate, request);
       wholeRow = movesWhole(candidate, quantity);
