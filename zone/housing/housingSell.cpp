@@ -12,13 +12,24 @@
 #include "../../common/guilds.h"
 #include "../../common/housingLedger.h"
 #include "../../common/item_layer.h"
+#include "../../common/repositories/character_parcels_repository.h"
 #include "../../common/rulesys.h"
+#include "../../common/servertalk.h"
+#include "../../common/strings.h"
 #include "../client.h"
 #include "../guild_mgr.h"
+#include "../worldserver.h"
+#include "../zone.h"
 #include "../zonedb.h"
 
+#include <algorithm>
+#include <ctime>
+#include <limits>
 #include <memory>
 #include <stdexcept>
+
+extern WorldServer worldserver;
+extern Zone *zone;
 
 namespace housing {
   namespace {
@@ -88,6 +99,70 @@ namespace housing {
       std::map<uint32, uint32> alternate;
     };
 
+    uint32 guildLeaderOf(uint32 guildId) {
+      auto rows = query(database, fmt::format("SELECT leader FROM guilds WHERE id = {}", guildId));
+      if (rows.RowCount() != 1 || !Strings::ToUnsignedInt(rows.begin()[0])) {
+        throw std::runtime_error(fmt::format("guild [{}] has no leader to receive its plot's escrow", guildId));
+      }
+      return Strings::ToUnsignedInt(rows.begin()[0]);
+    }
+
+    // A GM's sale of a plot the GM does not own sends the escrow to the owner (a guild plot's to its guild's leader) as
+    // parcels: coin as money, each alternate currency as its item, which the owner reclaims as currency (the owner's
+    // decision, AUD-27). Written in the sale's transaction; returns the parcel slots used.
+    std::vector<int> sendEscrowParcels(Client *seller, uint32 recipientId, const std::string &note, const Payout &payout) {
+      std::vector<int> slots;
+      auto parcelFor = [&]() {
+        const int slot = CharacterParcelsRepository::GetNextFreeParcelSlot(database, recipientId, RuleI(Parcel, ParcelMaxItems));
+        if (slot == INVALID_INDEX) {
+          throw SellRefusal(fmt::format("character [{}] has no free parcel slot for the escrow", recipientId), failed);
+        }
+        auto parcel = CharacterParcelsRepository::NewEntity();
+        parcel.char_id = recipientId;
+        parcel.slot_id = static_cast<uint32>(slot);
+        parcel.from_name = seller->GetCleanName();
+        parcel.note = note;
+        parcel.sent_date = std::time(nullptr);
+        return parcel;
+      };
+      auto write = [&](const CharacterParcelsRepository::CharacterParcels &parcel) {
+        if (!CharacterParcelsRepository::InsertOne(database, parcel).id) {
+          throw std::runtime_error(fmt::format("a parcel of the escrow to character [{}] could not be written", recipientId));
+        }
+        slots.push_back(static_cast<int>(parcel.slot_id));
+      };
+      for (uint64 left = payout.copper; left > 0;) {
+        const uint64 copper = std::min<uint64>(left, std::numeric_limits<uint32>::max());
+        auto parcel = parcelFor();
+        parcel.money = static_cast<uint32>(copper);
+        write(parcel);
+        left -= copper;
+      }
+      for (const auto &[currency, units] : payout.alternate) {
+        const uint32 itemId = zone->GetCurrencyItemID(currency);
+        const EQ::ItemData *item = itemId ? database.GetItem(itemId) : nullptr;
+        if (!item) {
+          throw std::runtime_error(fmt::format("currency [{}] has no item to send in a parcel", currency));
+        }
+        const uint32 stack = item->Stackable && item->StackSize > 1 ? static_cast<uint32>(item->StackSize) : 1;
+        for (uint32 left = units; left > 0;) {
+          const uint32 count = std::min(left, stack);
+          std::unique_ptr<EQ::ItemInstance> instance(database.CreateItem(itemId, static_cast<int16>(count)));
+          if (!instance) {
+            throw std::runtime_error(fmt::format("item [{}] of currency [{}] could not be made", itemId, currency));
+          }
+          auto parcel = parcelFor();
+          if (!ItemLayer::Save(database, *instance, ItemLocation::InHolder(ItemHolderType::Parcel, recipientId, static_cast<uint16>(parcel.slot_id)), seller->ItemOwner())) {
+            throw std::runtime_error(fmt::format("item [{}] of currency [{}] could not be saved to character [{}]'s parcels", itemId, currency, recipientId));
+          }
+          CharacterParcelsRepository::SetGUID(parcel, instance->GetGUID());
+          write(parcel);
+          left -= count;
+        }
+      }
+      return slots;
+    }
+
     Payout escrowPayout(uint32 plotId) {
       Payout payout;
       for (const auto &[currency, amount] : readBalances(database, plotId)) {
@@ -152,6 +227,8 @@ namespace housing {
     Payout payout;
     std::unique_ptr<EQ::ItemInstance> crateItem;
     int16 crateSlot = INVALID_INDEX;
+    std::string escrowRecipient;
+    std::vector<int> escrowParcels;
     uint32 crateId = 0;
     bool crateCarriesProperty = false;
     std::vector<PlacedItem> leaving;
@@ -320,11 +397,23 @@ namespace housing {
       releasePlot(database, plotId);
       leaving = rows;
       PurseGuard purse(client);
-      if (payout.copper) {
-        client->AddMoneyToPP(payout.copper, false);
+      const bool sellerOwns = guildPlot ? guild == activeGuildId(plot) : plot.owner_character_id == client->CharacterID();
+      if (sellerOwns) {
+        if (payout.copper) {
+          client->AddMoneyToPP(payout.copper, false);
+        }
+        for (const auto &[currency, units] : payout.alternate) {
+          purse.addCurrency(currency, static_cast<int64>(units));
+        }
       }
-      for (const auto &[currency, units] : payout.alternate) {
-        purse.addCurrency(currency, static_cast<int64>(units));
+      else if (payout.copper || !payout.alternate.empty()) {
+        const uint32 recipientId = guildPlot ? guildLeaderOf(activeGuildId(plot)) : plot.owner_character_id;
+        const auto recipients = characterIdentities({recipientId});
+        if (!recipients.count(recipientId)) {
+          throw std::runtime_error(fmt::format("the escrow's recipient [{}] is no character", recipientId));
+        }
+        escrowRecipient = recipients.at(recipientId).name;
+        escrowParcels = sendEscrowParcels(client, recipientId, propertyName(plotId), payout);
       }
       if (crateItem && crateSlot != INVALID_INDEX) {
         giveAndCommit(client, transaction, crateSlot, *crateItem);
@@ -353,11 +442,25 @@ namespace housing {
         LogError("Housing: the empty crate from property [{}] is on [{}]'s cursor, and the cursor did not save again", plotId, client->GetCleanName());
       }
     }
-    if (payout.copper) {
-      client->MessageString(Chat::White, withdrewCoin, std::to_string(payout.copper).c_str());
+    if (!escrowParcels.empty()) {
+      for (int slot : escrowParcels) {
+        auto pack = std::make_unique<ServerPacket>(ServerOP_ParcelDelivery, static_cast<uint32>(sizeof(Parcel_Struct)));
+        auto *delivery = reinterpret_cast<Parcel_Struct *>(pack->pBuffer);
+        delivery->item_slot = static_cast<uint32>(slot);
+        strn0cpy(delivery->send_to, escrowRecipient.c_str(), sizeof(delivery->send_to));
+        worldserver.SendPacket(pack.get());
+      }
+      client->Message(Chat::White, fmt::format("The escrow went to {} in {} parcel(s).", escrowRecipient, escrowParcels.size()).c_str());
+      LogHousing("[{}] sold property [{}], which is not theirs; its escrow went to [{}] in [{}] parcels", client->GetCleanName(), plotId,
+        escrowRecipient, escrowParcels.size());
     }
-    for (const auto &[currency, units] : payout.alternate) {
-      client->MessageString(Chat::White, withdrewAlternateCurrency, std::to_string(units).c_str(), std::to_string(currency).c_str());
+    else {
+      if (payout.copper) {
+        client->MessageString(Chat::White, withdrewCoin, std::to_string(payout.copper).c_str());
+      }
+      for (const auto &[currency, units] : payout.alternate) {
+        client->MessageString(Chat::White, withdrewAlternateCurrency, std::to_string(units).c_str(), std::to_string(currency).c_str());
+      }
     }
     sendResult(client, sold);
     LogHousing("[{}] sold property [{}]", client->GetCleanName(), plotId);
