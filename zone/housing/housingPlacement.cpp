@@ -959,14 +959,15 @@ namespace housing {
       bool takerCarriesSameKind = false;
       if (carriesItems) {
         // RoF2 counts a property of the kind anywhere inside a carried one too, such as a house packed in a crate (0x5b56d0, 0x5b4eb0).
-        std::set<uint32> frontier(state.carriedIds.begin(), state.carriedIds.end());
+        // The carried list comes from the database: the session's catches up only when world's event returns (AUD-33).
+        std::set<uint32> frontier = carriedPropertyIds(database, client->CharacterID());
         frontier.erase(candidate.carried->id);
         for (int depth = 0; !frontier.empty() && !takerCarriesSameKind; depth++) {
           if (depth > carriedDepthLimit) {
             throw std::runtime_error(fmt::format("[{}] carries properties nested deeper than [{}]", client->GetCleanName(), carriedDepthLimit));
           }
           for (const auto &carried : propertiesById(frontier)) {
-            if (kindOf(static_cast<uint8>(typeOf(carried))) == candidate.kind && propertiesChildOf({carried.id}).size() + itemsOf({carried.id}).size() > 0) {
+            if (sameCategory(kindOf(static_cast<uint8>(typeOf(carried))), candidate.kind) && propertiesChildOf({carried.id}).size() + itemsOf({carried.id}).size() > 0) {
               takerCarriesSameKind = true;
             }
           }

@@ -112,6 +112,11 @@ namespace housing {
     return kind == CarriedKind::house || kind == CarriedKind::guildHall;
   }
 
+  // RoF2's pick-up limit compares categories (0x7f5ec0): a guild hall and a house share one, a crate has its own (AUD-33).
+  inline bool sameCategory(CarriedKind left, CarriedKind right) {
+    return isHouseKind(left) ? isHouseKind(right) : left == right;
+  }
+
   inline ItemResult addRefusal(CarriedKind kind) {
     if (isHouseKind(kind)) {
       return ItemResult::noAddHouse;

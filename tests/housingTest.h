@@ -39,6 +39,7 @@ public:
     TEST_ADD(HousingTest::reclaimComesNinetyDaysAfterTheStamp);
     TEST_ADD(HousingTest::escrowFloorsToWholeUnits);
     TEST_ADD(HousingTest::aWithdrawalIsComparedBeforeItIsCounted);
+    TEST_ADD(HousingTest::aGuildHallAndAHouseShareAPickUpCategory);
     TEST_ADD(HousingTest::mostPermissiveMatchingGroupWins);
     TEST_ADD(HousingTest::unmatchedCharacterIsEveryone);
     TEST_ADD(HousingTest::editorChangesOnlyLowerGroupsWithHeldBits);
@@ -233,6 +234,15 @@ private:
       threw = true;
     }
     TEST_ASSERT(threw);
+  }
+
+  void aGuildHallAndAHouseShareAPickUpCategory() {
+    TEST_ASSERT(housing::sameCategory(housing::CarriedKind::house, housing::CarriedKind::guildHall));
+    TEST_ASSERT(housing::sameCategory(housing::CarriedKind::guildHall, housing::CarriedKind::house));
+    TEST_ASSERT(housing::sameCategory(housing::CarriedKind::house, housing::CarriedKind::house));
+    TEST_ASSERT(housing::sameCategory(housing::CarriedKind::crate, housing::CarriedKind::crate));
+    TEST_ASSERT(!housing::sameCategory(housing::CarriedKind::house, housing::CarriedKind::crate));
+    TEST_ASSERT(!housing::sameCategory(housing::CarriedKind::crate, housing::CarriedKind::guildHall));
   }
 
   void mostPermissiveMatchingGroupWins() {
