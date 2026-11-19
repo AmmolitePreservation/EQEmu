@@ -36,6 +36,7 @@ namespace housing {
   void handleAnchorEffect(Mob *caster, Mob *target, uint16 spellEffect, uint16 spellId, int32 anchorItemId);
   void handleItemCastFinished(Client *client, uint16 spellId, uint32 inventorySlot);
   uint32 guildHallGuildId();
+  bool isGuildHallZone(uint32 zoneId);
   bool refuseGuildBank(Client *client);
   bool questOpenPurchase(Client *client, uint32 propertyId);
   bool questEnter(Client *client, uint32 propertyId);

@@ -7731,6 +7731,8 @@ void Client::Handle_OP_GuildBank(const EQApplicationPacket *app)
 		return;
 	}
 
+	GuildBanks->Reload(GuildID());
+
 	// RoF2 opens the guild bank for any guilded player in a hall, since EQEmu's zone id lacks Live's hall bit (ACC-6, ACC-7).
 	if (housing::refuseGuildBank(this)) {
 		if (Action == GuildBankDeposit) {

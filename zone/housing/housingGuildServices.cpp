@@ -278,6 +278,12 @@ namespace housing {
     }
   }
 
+  // RoF2's hall-flag zones (Q5), where every guild hall template stands: the Standard hall at 345 version 2, the others at 737, 738
+  // and 751. Each needs EQEmu's guild bank, which the zone makes before housing knows whose hall it hosts (AUD-4).
+  bool isGuildHallZone(uint32 zoneId) {
+    return zoneId == Zones::GUILDHALL || zoneId == 737 || zoneId == 738 || zoneId == 751;
+  }
+
   uint32 guildHallGuildId() {
     if (!housingActive() || !hostsInterior()) {
       return 0;

@@ -130,6 +130,7 @@ public:
 	//bool AllowedToWithdraw(uint32 GuildID, uint16 Area, uint16 SlotID, const char *Name);
 	void SendGuildBankItemUpdate(uint32 guild_id, int32 slot_id, uint32 area, bool display, Client* c);
 	std::shared_ptr<GuildBank> GetGuildBank(uint32 guild_id);
+	void Reload(uint32 guild_id);
 
 private:
 	bool IsLoaded(uint32 GuildID);

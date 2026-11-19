@@ -1113,7 +1113,7 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	did_adventure_actions = false;
 	database.QGlobalPurge();
 
-	if(zoneid == Zones::GUILDHALL)
+	if(zoneid == Zones::GUILDHALL || housing::isGuildHallZone(zoneid))
 		GuildBanks = new GuildBankManager;
 	else
 		GuildBanks = nullptr;

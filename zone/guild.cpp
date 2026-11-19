@@ -21,6 +21,7 @@
 #include "../common/strings.h"
 
 #include "guild_mgr.h"
+#include "housing/housing.h"
 #include "worldserver.h"
 
 #include <stdexcept>
@@ -700,7 +701,8 @@ void EntityList::SendGuildMemberAdd(
 			c.second->SendGuildRanks();
 			c.second->SendGuildRankNames();
 
-			if (zone->GetZoneID() == Zones::GUILDHALL && GuildBanks) {
+			if ((zone->GetZoneID() == Zones::GUILDHALL || housing::guildHallGuildId()) && GuildBanks &&
+				(!housing::guildHallGuildId() || guild_id == housing::guildHallGuildId())) {
 				GuildBanks->SendGuildBank(c.second);
 			}
 

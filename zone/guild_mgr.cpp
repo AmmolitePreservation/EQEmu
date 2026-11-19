@@ -705,6 +705,14 @@ void GuildBankManager::Load(uint32 guild_id)
 	banks.push_back(bank);
 }
 
+// A guild's bank can be open in more than one zone process at once (its classic Guild Hall and a housing hall, AUD-4), and no
+// process hears of another's changes, so each reads the bank from the database before it shows or changes it.
+void GuildBankManager::Reload(uint32 guild_id)
+{
+	banks.remove_if([guild_id](const std::shared_ptr<GuildBank> &bank) { return bank->guild_id == guild_id; });
+	Load(guild_id);
+}
+
 bool GuildBankManager::IsLoaded(uint32 guild_id)
 {
 	return GetGuildBank(guild_id) ? true : false;
@@ -716,9 +724,7 @@ void GuildBankManager::SendGuildBank(Client *c)
 		return;
 	}
 
-	if (!IsLoaded(c->GuildID())) {
-		Load(c->GuildID());
-	}
+	Reload(c->GuildID());
 
 	auto guild_bank = GetGuildBank(c->GuildID());
 	if (!guild_bank) {
