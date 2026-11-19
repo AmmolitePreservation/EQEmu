@@ -917,8 +917,7 @@ void Client::CompleteConnect()
 	CalcItemScale();
 	DoItemEnterZone();
 
-	if ((zone->GetZoneID() == Zones::GUILDHALL || housing::guildHallGuildId()) && GuildBanks &&
-		(!housing::guildHallGuildId() || GuildID() == housing::guildHallGuildId()))
+	if (housing::guildBankServes(GuildID()) && GuildBanks)
 		GuildBanks->SendGuildBank(this);
 
 	entity_list.SendFindableNPCList(this);
