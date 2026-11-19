@@ -153,8 +153,10 @@ namespace housing {
       LogHousing("Character [{}] was in a copy of property [{}], which is gone or picked up; EQEmu's safe return applies", characterId, propertyId);
       return false;
     }
-    // A house packed into a crate belongs to no plot, so a copy of it would only send its occupant on to bind (AUD-3).
-    if (!plotOf(database, content_db, properties.front())) {
+    // A house packed into a crate belongs to no plot, so a copy of it would only send its occupant on to bind (AUD-3). A
+    // neighborhood's copy stands under no plot by nature.
+    const uint8 type = definitionTypes(content_db, {properties.front().definition_id}).at(properties.front().definition_id);
+    if ((type == playerHouseType || type == guildHallType) && !plotOf(database, content_db, properties.front())) {
       LogHousing("Character [{}] was in a copy of property [{}], which belongs to no plot now; EQEmu's safe return applies", characterId, propertyId);
       return false;
     }
