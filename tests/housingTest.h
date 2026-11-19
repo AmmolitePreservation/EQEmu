@@ -4,7 +4,7 @@
 #include "cppunit/cpptest.h"
 #include "../common/housingAccessRules.h"
 #include "../common/housingAugmentaterRules.h"
-#include "../common/housingCrateSearch.h"
+#include "../common/housingChildOrder.h"
 #include "../common/housingEventTypes.h"
 #include "../common/housingInstanceNumbers.h"
 #include "../common/housingNames.h"
@@ -58,6 +58,7 @@ public:
     TEST_ADD(HousingTest::aRankKeyNeedsTheGuildTheListsRecordNames);
     TEST_ADD(HousingTest::aSwapTakesOnlyAHouseStoredInTheYard);
     TEST_ADD(HousingTest::aHouseHoldingACrateMeetsThePlotsCrateLimit);
+    TEST_ADD(HousingTest::childListsHoldPlacedCarriersFirstThenRisingIds);
     TEST_ADD(HousingTest::theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst);
     TEST_ADD(HousingTest::theCrateWalkSkipsTheRootAndStopsTenLevelsDown);
     TEST_ADD(HousingTest::crateRulesKeepFullHousesAndCratesApart);
@@ -498,6 +499,14 @@ private:
     auto stored = house;
     stored.intoStorage = true;
     TEST_ASSERT_EQUALS(code(stored), 0u);
+  }
+
+  void childListsHoldPlacedCarriersFirstThenRisingIds() {
+    TEST_ASSERT(housing::inClientOrder({30, 10, 20}, {}) == std::vector<uint32>({10, 20, 30}));
+    TEST_ASSERT(housing::inClientOrder({30, 10, 20}, {30}) == std::vector<uint32>({30, 10, 20}));
+    TEST_ASSERT(housing::inClientOrder({30, 10, 20}, {20, 30}) == std::vector<uint32>({20, 30, 10}));
+    TEST_ASSERT(housing::inClientOrder({101080, 101090}, {101080}).front() == 101080u);
+    TEST_ASSERT(housing::inClientOrder({100763, 101080}, {101080}).front() == 101080u);
   }
 
   void theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst() {

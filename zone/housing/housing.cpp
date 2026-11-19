@@ -19,6 +19,7 @@
 #include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
+#include "../../common/housingChildOrder.h"
 #include "../../common/housingCopies.h"
 #include "../../common/housingLedger.h"
 #include "../../common/housingRelatedProperties.h"
@@ -189,8 +190,6 @@ namespace housing {
           children[property.parent_id].push_back(id);
         }
       }
-      // The client takes a plot's house and crate as the first of each in its child list (0x5b0000), so a placed one goes
-      // ahead of the stored ones (PLC-34).
       std::set<uint32> placedCarriers;
       if (!ids.empty()) {
         for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("placed = 1 AND carried_property_id IN ({})", idList(ids)))) {
@@ -198,7 +197,7 @@ namespace housing {
         }
       }
       for (auto &[parentId, childIds] : children) {
-        std::stable_partition(childIds.begin(), childIds.end(), [&placedCarriers](uint32 id) { return placedCarriers.count(id) != 0; });
+        childIds = inClientOrder(childIds, placedCarriers);
       }
       const auto identities = characterIdentities(owners);
       auto money = balances(ids);

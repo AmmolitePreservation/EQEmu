@@ -10,7 +10,7 @@
 #include "housingWorldObjects.h"
 
 #include "../../common/eqemu_logsys.h"
-#include "../../common/housingCrateSearch.h"
+#include "../../common/housingChildOrder.h"
 #include "../../common/housingLedger.h"
 #include "../../common/item_layer.h"
 #include "../../common/patches/rof2.h"
@@ -1307,11 +1307,23 @@ namespace housing {
             destinationId = base;
           }
           else if (basePlot) {
+            std::vector<uint32> houses;
             for (const Property *child : view.childrenOf(basePlot->id)) {
               const DefinitionType childType = typeOf(*child);
               if (childType == DefinitionType::playerHouse || childType == DefinitionType::guildHall) {
-                destinationId = child->id;
+                houses.push_back(child->id);
               }
+            }
+            std::set<uint32> placedCarriers;
+            for (const auto &row : view.rowsOf(basePlot->id)) {
+              if (row.placed && row.carried_property_id) {
+                placedCarriers.insert(row.carried_property_id);
+              }
+            }
+            // The client's closet is the plot's house at +0x9c, the first house in its child list (AUD-12).
+            const auto ordered = inClientOrder(houses, placedCarriers);
+            if (!ordered.empty()) {
+              destinationId = ordered.front();
             }
           }
           break;

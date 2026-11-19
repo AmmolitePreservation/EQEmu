@@ -621,8 +621,8 @@ SET(common_headers
     guilds.h
     housingAccessRules.h
     housingAugmentaterRules.h
+    housingChildOrder.h
     housingCopies.h
-    housingCrateSearch.h
     housingEventTypes.h
     housingInstanceNumbers.h
     housingLedger.h
