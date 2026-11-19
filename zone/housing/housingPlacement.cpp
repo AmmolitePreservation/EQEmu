@@ -1376,25 +1376,21 @@ namespace housing {
       }
       const uint32 standing = propertyAt(*state, client->GetX(), client->GetY(), client->GetZ());
       const Property *standingPlot = standing ? ancestorOfType(state->properties.at(standing), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, state->lookup()) : nullptr;
+      Transaction transaction(database);
+      const Property yard = lockedProperty(database, placedPropertyId);
       auto outgoingRow = placedItem(placedPropertyId, placedRecordId);
       Candidate outgoing = outgoingRow ? bulkCandidate(*outgoingRow) : Candidate{};
       if (!outgoingRow || !outgoingRow->placed || !isHouseKind(outgoing.kind) || !outgoing.carried || !standingPlot || standingPlot->id != placedPropertyId) {
         throw ItemRefusal(ItemResult::swapNoHousePlaced, fmt::format("record [{}] of property [{}] is no house placed on the yard the player stands in", placedRecordId, placedPropertyId));
       }
       auto incomingRow = placedItem(storedPropertyId, storedRecordId);
-      if (!incomingRow) {
-        throw ItemRefusal(ItemResult::notFound, fmt::format("record [{}] of property [{}] does not exist", storedRecordId, storedPropertyId));
-      }
-      if (incomingRow->placed) {
-        throw ItemRefusal(ItemResult::swapAlreadyPlaced, fmt::format("record [{}] is placed", storedRecordId));
-      }
-      Candidate candidate = bulkCandidate(*incomingRow);
-      if (!isHouseKind(candidate.kind)) {
-        throw ItemRefusal(ItemResult::failed, fmt::format("record [{}] holds no house", storedRecordId));
+      Candidate candidate = incomingRow ? bulkCandidate(*incomingRow) : Candidate{};
+      const ItemResult source = swapSourceResult(SwapSource{incomingRow.has_value(), incomingRow && incomingRow->property_id == yard.id,
+        incomingRow && incomingRow->placed, isHouseKind(candidate.kind)});
+      if (source != ItemResult::success) {
+        throw ItemRefusal(source, fmt::format("record [{}] of property [{}] is no house stored in yard [{}]", storedRecordId, storedPropertyId, yard.id));
       }
       const uint32 outgoingHouseId = outgoing.carried->id;
-      Transaction transaction(database);
-      const Property yard = lockedProperty(database, placedPropertyId);
       lockedProperty(database, outgoingHouseId);
       std::set<uint32> focus{yard.id, outgoingHouseId, storedPropertyId};
       if (candidate.carried) {
@@ -1457,7 +1453,7 @@ namespace housing {
       incoming.y = outgoingRow->y;
       incoming.z = outgoingRow->z;
       std::set<uint32> carriedChanged;
-      if (incomingRow->property_id != yard.id || !candidate.carried) {
+      if (!candidate.carried) {
         attachCarried(candidate, incoming, yard, view.lookup(), carriedChanged);
       }
       updateRow(incoming);

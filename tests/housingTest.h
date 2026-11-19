@@ -56,6 +56,7 @@ public:
     TEST_ADD(HousingTest::inventoryRulesRunInTheClientsOrder);
     TEST_ADD(HousingTest::houseAndHallLimitsCountTheYardsHouses);
     TEST_ADD(HousingTest::aRankKeyNeedsTheGuildTheListsRecordNames);
+    TEST_ADD(HousingTest::aSwapTakesOnlyAHouseStoredInTheYard);
     TEST_ADD(HousingTest::aHouseHoldingACrateMeetsThePlotsCrateLimit);
     TEST_ADD(HousingTest::theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst);
     TEST_ADD(HousingTest::theCrateWalkSkipsTheRootAndStopsTenLevelsDown);
@@ -450,6 +451,23 @@ private:
     crate.plotHoldsOtherCrate = false;
     crate.mayAdd = false;
     TEST_ASSERT_EQUALS(code(crate), 77u);
+  }
+
+  void aSwapTakesOnlyAHouseStoredInTheYard() {
+    const housing::SwapSource stored{true, true, false, true};
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::swapSourceResult(stored)), 0u);
+    auto elsewhere = stored;
+    elsewhere.heldByYard = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::swapSourceResult(elsewhere)), 1u);
+    auto missing = stored;
+    missing.exists = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::swapSourceResult(missing)), 9u);
+    auto placed = stored;
+    placed.placed = true;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::swapSourceResult(placed)), 55u);
+    auto notAHouse = stored;
+    notAHouse.carriesHouse = false;
+    TEST_ASSERT_EQUALS(static_cast<uint32>(housing::swapSourceResult(notAHouse)), 1u);
   }
 
   void aRankKeyNeedsTheGuildTheListsRecordNames() {

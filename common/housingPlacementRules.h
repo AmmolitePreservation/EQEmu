@@ -412,6 +412,28 @@ namespace housing {
     int32 npcCap = -1;
   };
 
+  // The stored house a swap names: the menu offers Swap Houses only on a house stored in the yard's own storage (maySwap), so a house
+  // stored anywhere else, in the outgoing house's closet or on another plot, comes only in a forged request.
+  struct SwapSource {
+    bool exists = false;
+    bool heldByYard = false;
+    bool placed = false;
+    bool carriesHouse = false;
+  };
+
+  inline ItemResult swapSourceResult(const SwapSource &source) {
+    if (!source.exists) {
+      return ItemResult::notFound;
+    }
+    if (!source.heldByYard) {
+      return ItemResult::failed;
+    }
+    if (source.placed) {
+      return ItemResult::swapAlreadyPlaced;
+    }
+    return source.carriesHouse ? ItemResult::success : ItemResult::failed;
+  }
+
   inline ItemResult swapCapacityResult(const SwapCapacity &space) {
     if (space.realEstateHeld + space.realEstateMoving > space.maxItems) {
       return ItemResult::swapItemsFull;
