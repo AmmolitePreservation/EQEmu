@@ -394,7 +394,8 @@ namespace housing {
     uint32 countOfType(Database &database, Database &content, const std::string &where, uint8 type) {
       std::set<uint32> definitionIds;
       std::vector<uint32> definitionOfEach;
-      for (auto row : query(database, fmt::format("SELECT definition_id FROM real_estate_properties WHERE {}", where))) {
+      // A locking read sees rows committed since the transaction's snapshot, which a limit check after a lock needs (AUD-26).
+      for (auto row : query(database, fmt::format("SELECT definition_id FROM real_estate_properties WHERE {} LOCK IN SHARE MODE", where))) {
         definitionOfEach.push_back(Strings::ToUnsignedInt(row[0]));
         definitionIds.insert(definitionOfEach.back());
       }

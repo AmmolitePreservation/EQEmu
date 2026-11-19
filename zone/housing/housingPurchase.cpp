@@ -136,6 +136,10 @@ namespace housing {
         if (!guild) {
           throw Refusal("the buyer is in no guild", say(notInGuild));
         }
+        // Two members buying in two zones at once would each count before the other's purchase commits (AUD-26).
+        if (query(database, fmt::format("SELECT id FROM guilds WHERE id = {} FOR UPDATE", guild)).RowCount() != 1) {
+          throw std::runtime_error(fmt::format("guild [{}] has no guilds row", guild));
+        }
         const int limit = RuleI(Housing, MaxGuildPlotsPerGuild);
         if (guildPlotCount(database, content_db, guild) >= static_cast<uint32>(std::max(0, limit))) {
           throw Refusal("the guild holds its limit of guild plots", say(maximumGuildPlots, {std::to_string(limit)}));
