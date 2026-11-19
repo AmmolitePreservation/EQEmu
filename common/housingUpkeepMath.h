@@ -7,6 +7,7 @@
 #include <cmath>
 #include <fmt/format.h>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -90,6 +91,18 @@ namespace housing {
 
   inline int64 flooredUnits(double amount) {
     return amount <= 0.0 ? 0 : static_cast<int64>(std::floor(amount + 1e-9));
+  }
+
+  // The escrow units a withdrawal of amount takes at unitsPerAmount each (1, or a coin's copper) when the held units cover
+  // it. The client's u64 amount is compared before it is multiplied, so no amount wraps into a small one (AUD-20).
+  inline std::optional<uint64> withdrawalUnits(uint64 amount, uint64 unitsPerAmount, int64 held) {
+    if (unitsPerAmount == 0) {
+      throw std::invalid_argument("a withdrawal's units per amount must be positive");
+    }
+    if (amount == 0 || held <= 0 || amount > static_cast<uint64>(held) / unitsPerAmount) {
+      return std::nullopt;
+    }
+    return amount * unitsPerAmount;
   }
 }
 

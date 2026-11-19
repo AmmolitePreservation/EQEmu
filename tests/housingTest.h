@@ -38,6 +38,7 @@ public:
     TEST_ADD(HousingTest::upkeepClockRejectsOutOfRangeRules);
     TEST_ADD(HousingTest::reclaimComesNinetyDaysAfterTheStamp);
     TEST_ADD(HousingTest::escrowFloorsToWholeUnits);
+    TEST_ADD(HousingTest::aWithdrawalIsComparedBeforeItIsCounted);
     TEST_ADD(HousingTest::mostPermissiveMatchingGroupWins);
     TEST_ADD(HousingTest::unmatchedCharacterIsEveryone);
     TEST_ADD(HousingTest::editorChangesOnlyLowerGroupsWithHeldBits);
@@ -214,6 +215,24 @@ private:
     TEST_ASSERT_EQUALS(housing::flooredUnits(14699.708), 14699);
     TEST_ASSERT_EQUALS(housing::flooredUnits(0.999999), 0);
     TEST_ASSERT_EQUALS(housing::flooredUnits(-3.0), 0);
+  }
+
+  void aWithdrawalIsComparedBeforeItIsCounted() {
+    TEST_ASSERT(housing::withdrawalUnits(3, 1000, 3000) == std::optional<uint64>(3000));
+    TEST_ASSERT(housing::withdrawalUnits(59269, 1, 59269) == std::optional<uint64>(59269));
+    TEST_ASSERT(!housing::withdrawalUnits(4, 1000, 3999));
+    TEST_ASSERT(!housing::withdrawalUnits(0, 1, 100));
+    TEST_ASSERT(!housing::withdrawalUnits(1, 1, 0));
+    TEST_ASSERT(!housing::withdrawalUnits(0x8000000000000000ull, 1, 59269));
+    TEST_ASSERT(!housing::withdrawalUnits(18446744073709552ull, 1000, 59269));
+    bool threw = false;
+    try {
+      housing::withdrawalUnits(1, 0, 100);
+    }
+    catch (const std::invalid_argument &) {
+      threw = true;
+    }
+    TEST_ASSERT(threw);
   }
 
   void mostPermissiveMatchingGroupWins() {

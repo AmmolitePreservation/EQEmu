@@ -217,6 +217,9 @@ namespace housing {
           if (!escrowCurrencies().count(currency)) {
             throw Refusal(fmt::format("currency [{}] is not one the cost table uses", currency), nullptr);
           }
+          if (currency == 0 && subKey > 3) {
+            throw Refusal(fmt::format("coin denomination [{}] is not 0 to 3", subKey), nullptr);
+          }
           if (amount == 0 || amount > 0x7FFFFFFF) {
             throw Refusal(fmt::format("deposit amount [{}] is out of range", amount), nullptr);
           }
@@ -262,11 +265,11 @@ namespace housing {
             if (currency == 0 && subKey > 3) {
               throw Refusal(fmt::format("coin denomination [{}] is not 0 to 3", subKey), nullptr);
             }
-            const uint64 wanted = currency == 0 ? amount * copperPerDenomination[subKey] : amount;
-            if (wanted == 0 || static_cast<int64>(wanted) > flooredUnits(balances[currency])) {
-              throw Refusal(fmt::format("the escrow holds less than [{}] of currency [{}]", wanted, currency), nullptr);
+            const auto wanted = withdrawalUnits(amount, currency == 0 ? copperPerDenomination[subKey] : 1, flooredUnits(balances[currency]));
+            if (!wanted) {
+              throw Refusal(fmt::format("the escrow holds less than [{}] of denomination [{}] of currency [{}]", amount, subKey, currency), nullptr);
             }
-            units[currency] = wanted;
+            units[currency] = *wanted;
           }
           else {
             for (const auto &[currency, amount] : balances) {
