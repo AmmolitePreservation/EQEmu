@@ -693,12 +693,20 @@ void GuildBankManager::Load(uint32 guild_id)
 	auto bank      = std::make_shared<GuildBank>();
 	bank->guild_id = guild_id;
 
+	// NextFreeBankSlot finds a free slot by its empty entry, so every slot of both areas gets one.
+	for (int32 slot = 0; slot < EQ::invtype::GUILD_BANK_MAIN_SIZE; slot++) {
+		bank->items.main_area[slot] = GuildBankRepository::GuildBankItem{};
+	}
+	for (int32 slot = 0; slot < EQ::invtype::GUILD_BANK_DEPOSIT_SIZE; slot++) {
+		bank->items.deposit_area[slot] = GuildBankRepository::GuildBankItem{};
+	}
+
 	for (auto &it : GuildBankRepository::GetGuildBankItems(database, guild_id)) {
 		if (it.area == GuildBankMainArea) {
-			bank->items.main_area.emplace(it.slot, it);
+			bank->items.main_area[it.slot] = it;
 		}
 		else {
-			bank->items.deposit_area.emplace(it.slot, it);
+			bank->items.deposit_area[it.slot] = it;
 		}
 	}
 
