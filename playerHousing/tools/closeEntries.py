@@ -23,14 +23,18 @@ for change in changes:
   text = text[:found.start()] + line + text[found.end():]
 
 itemPattern = re.compile(r"^- \*\*[A-Z0-9]+-\d+[a-z]?\*\* `([^`]+)` ", re.M)
-counts = {}
+tags = ("fix", "liveCheck", "clientAnalysis", "peridotTest", "done")
+counts = dict.fromkeys(tags, 0)
 for tag in itemPattern.findall(text):
-  counts[tag] = counts.get(tag, 0) + 1
-found = re.search(r"\*\*Counts\.\*\* fix \d+, liveCheck \d+, peridotTest \d+, question \d+, polish \d+, done \d+; \d+ in all\.", text)
+  if tag not in counts:
+    sys.exit(f"an entry carries the unknown tag {tag}")
+  counts[tag] += 1
+questions = len(re.findall(r"^### Q\d+[a-z]?\. ", text, re.M))
+found = re.search(r"\*\*Counts\.\*\* fix \d+, liveCheck \d+, clientAnalysis \d+, peridotTest \d+, question \d+, done \d+; \d+ in all\.", text)
 if not found:
   sys.exit("Counts line not found")
-text = text[:found.start()] + "**Counts.** fix {}, liveCheck {}, peridotTest {}, question {}, polish {}, done {}; {} in all.".format(
-  counts.get("fix", 0), counts.get("liveCheck", 0), counts.get("peridotTest", 0), counts.get("question", 0),
-  counts.get("polish", 0), counts.get("done", 0), sum(counts.values())) + text[found.end():]
+text = text[:found.start()] + "**Counts.** fix {}, liveCheck {}, clientAnalysis {}, peridotTest {}, question {}, done {}; {} in all.".format(
+  counts["fix"], counts["liveCheck"], counts["clientAnalysis"], counts["peridotTest"], questions, counts["done"],
+  sum(counts.values()) + questions) + text[found.end():]
 save(worklistPath, crlf, text)
 print(counts)

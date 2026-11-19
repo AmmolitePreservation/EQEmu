@@ -110,7 +110,7 @@ No defects found in:
 
 Every upheld or partly upheld item went to worklist.md's audit section (AUD-1 to AUD-59), merged where two agents found the same thing. G7-12 (a forged commit placing a guild trophy without rank permission 29) was overturned: PLC-21 already holds it for the trophy step.
 
-| Entry | Audit items | Severity | Status | Title |
+| Entry | Audit items | Severity | Routed as | Title |
 |---|---|---|---|---|
 | AUD-1 | B-01 | high | fix | Moves between plots skip the client's remove rule |
 | AUD-2 | B-02 | high | fix | Storing another player's stack merges it into the mover's stack |
