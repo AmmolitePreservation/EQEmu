@@ -55,6 +55,7 @@ public:
     TEST_ADD(HousingTest::beginMapCodesMatchLive);
     TEST_ADD(HousingTest::inventoryRulesRunInTheClientsOrder);
     TEST_ADD(HousingTest::houseAndHallLimitsCountTheYardsHouses);
+    TEST_ADD(HousingTest::aRankKeyNeedsTheGuildTheListsRecordNames);
     TEST_ADD(HousingTest::aHouseHoldingACrateMeetsThePlotsCrateLimit);
     TEST_ADD(HousingTest::theFirstCrateIsADepthFirstWalkWithPlacedCarriersFirst);
     TEST_ADD(HousingTest::theCrateWalkSkipsTheRootAndStopsTenLevelsDown);
@@ -449,6 +450,15 @@ private:
     crate.plotHoldsOtherCrate = false;
     crate.mayAdd = false;
     TEST_ASSERT_EQUALS(code(crate), 77u);
+  }
+
+  void aRankKeyNeedsTheGuildTheListsRecordNames() {
+    TEST_ASSERT(housing::rankKeyFor(2, 2, 5) == "_Guild5");
+    TEST_ASSERT(housing::rankKeyFor(2, 1, 5).empty());
+    TEST_ASSERT(housing::rankKeyFor(0, 0, 5).empty());
+    const housing::AccessNames names{{"_Guild5", 1}};
+    TEST_ASSERT_EQUALS(housing::matchedGroup(names, "Visitor", housing::rankKeyFor(2, 2, 5)), 1);
+    TEST_ASSERT_EQUALS(housing::matchedGroup(names, "Visitor", housing::rankKeyFor(0, 2, 5)), 0);
   }
 
   void aHouseHoldingACrateMeetsThePlotsCrateLimit() {

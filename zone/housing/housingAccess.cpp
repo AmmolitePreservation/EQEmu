@@ -43,10 +43,7 @@ namespace housing {
     }
 
     std::string characterRankKey(Client *client, const AccessList &list) {
-      if (list.rankGuildId && client->GuildID() == list.rankGuildId) {
-        return guildRankKey(client->GuildRank());
-      }
-      return {};
+      return rankKeyFor(list.rankGuildId, client->GuildID(), client->GuildRank());
     }
 
     std::set<std::string> existingCharacterNames(const std::set<std::string> &names) {

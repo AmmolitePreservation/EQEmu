@@ -27,6 +27,11 @@ namespace housing {
     return fmt::format("_Guild{}", rank);
   }
 
+  // A _Guild<rank> entry names ranks of the guild the list holder's record carries (0x4ff250), and a list naming none has no ranks.
+  inline std::string rankKeyFor(uint32 listGuildId, uint32 characterGuildId, uint8 rank) {
+    return listGuildId && characterGuildId == listGuildId ? guildRankKey(rank) : std::string{};
+  }
+
   inline bool isClubKey(const std::string &name) {
     if (name == fellowshipKey) {
       return true;
