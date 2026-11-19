@@ -60,7 +60,7 @@ New code in **`zone/housing/`**, one file per concern: the manager (per-zone sta
 | T22 | `common/spdat.h`, `zone/spell_effects.cpp` | spell effects 437 and 438 handed to the housing module with the spell and the effect's base value, the anchor item | anchor teleports to placed anchor items |
 | T23 | `zone/zone.cpp` (`Zone::Init`, `Zone::Process`) | the module's boot after the guild cache loads, and one call per `Process` that keeps its own timer (`zone.h` untouched) | periodic zone-side housing work |
 | T24 | `zone/bonuses.cpp` | the items of the client's active trophy benefits (`housing::trophyBenefitItems`) added to the bonus calculation exactly like tribute's; added with the trophies, the build's last step | trophy tribute (EQEmu has no trophy slots) |
-| T25 | `common/eqemu_logsys.h`, `common/eqemu_logsys_log_aliases.h` | a `Housing` log category and its aliases | triage |
+| T25 | `common/eqemu_logsys.h`, `common/eqemu_logsys_log_aliases.h`, `common/eqemu_logsys.cpp` | a `Housing` log category, its aliases and its defaults | triage |
 | T26 | `common/database_schema.h` | the housing tables in EQEmu's content and player lists, and the per-character ones in its character map | EQEmu's dumps, character deletion and copy include them |
 | T27 | `zone/zone.cpp` (`Zone::Shutdown`) | a housing copy's shutdown deletes its instance, its `instance_list` and `real_estate_instances` rows, and records who was saved inside; the delay counts from the last occupant's leaving, a camp included (the housing module restarts the shutdown timer as each leaves) | interiors and neighborhoods are discarded once empty (D3) |
 | T28 | `zone/npc.h`, `zone/npc.cpp`, `common/eq_packet_structs.h` | the housing binding (property, record, GUID) on the NPC and in `Spawn_Struct`, which T6 sends | an NPC item's spawn names its entry |
@@ -674,4 +674,4 @@ From chunks 3-7: placed objects render outside the housing zones; the server's p
 ### Triage
 
 - **A failed Lua case** carries the failing values, a dump taken at that moment, and the likely causes among the probe's findings; a structural finding means the probe saw corrupt client state, not a server bug.
-- **The server side logs to a `Housing` log category** (T25: `common/eqemu_logsys.h` and its name list, `common/eqemu_logsys_log_aliases.h`), informational by default and raised while testing; every refusal is logged with its result code and the rule that failed.
+- **The server side logs to a `Housing` log category** (T25: `common/eqemu_logsys.h` and its name list, `common/eqemu_logsys_log_aliases.h`), informational by default (console and file at General, set in `LoadLogSettingsDefaults`, so the category's row arrives on in a new database) and raised to Detail (`LogHousingDetail`) while testing; every refusal is logged with its result code and the rule that failed.
