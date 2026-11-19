@@ -210,7 +210,7 @@ namespace housing {
       for (const auto &row : contents.placedItems) {
         itemIds.insert(row.item_id);
       }
-      const auto upkeepIds = itemUpkeepIds(content_db, itemIds);
+      const auto upkeepIds = chargedUpkeepIds(content_db, itemIds);
       const auto definitionIds = itemDefinitionIds(content_db, itemIds);
       std::set<uint32> deedDefinitions;
       for (const auto &[itemId, definitionId] : definitionIds) {

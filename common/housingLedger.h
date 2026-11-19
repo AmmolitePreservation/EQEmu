@@ -69,6 +69,7 @@ namespace housing {
   };
   std::map<uint32, std::vector<UpkeepCost>> enabledCostOptions(Database &content);
   std::map<uint32, int32> itemUpkeepIds(Database &content, const std::set<uint32> &itemIds);
+  std::map<uint32, int32> chargedUpkeepIds(Database &content, const std::set<uint32> &itemIds);
   std::map<uint32, uint32> itemDefinitionIds(Database &content, const std::set<uint32> &itemIds);
   std::vector<std::pair<uint32, int64>> upkeepCostItems(Database &database, Database &content, const PropertyRow &plot, const PlotContents &contents);
   int upkeepPercent(Database &database, Database &content, uint32 hostZoneId);

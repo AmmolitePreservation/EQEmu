@@ -175,6 +175,30 @@ namespace housing {
     return ids;
   }
 
+  // An item upkeep id that names no cost is no upkeep: Live gives the carved tables (2) and the trophies (4) no cost element and
+  // never charges or stamps them (AUD-5). A cost that exists keeps its own rules.
+  std::map<uint32, int32> chargedUpkeepIds(Database &content, const std::set<uint32> &itemIds) {
+    auto ids = itemUpkeepIds(content, itemIds);
+    std::set<uint32> named;
+    for (const auto &[itemId, upkeepId] : ids) {
+      if (upkeepId > 0) {
+        named.insert(static_cast<uint32>(upkeepId));
+      }
+    }
+    std::set<uint32> existing;
+    if (!named.empty()) {
+      for (auto row : query(content, fmt::format("SELECT id FROM real_estate_costs WHERE id IN ({})", idList(named)))) {
+        existing.insert(Strings::ToUnsignedInt(row[0]));
+      }
+    }
+    for (auto &[itemId, upkeepId] : ids) {
+      if (upkeepId > 0 && !existing.count(static_cast<uint32>(upkeepId))) {
+        upkeepId = 0;
+      }
+    }
+    return ids;
+  }
+
   std::map<uint32, uint32> itemDefinitionIds(Database &content, const std::set<uint32> &itemIds) {
     std::map<uint32, uint32> ids;
     if (itemIds.empty()) {
@@ -259,7 +283,7 @@ namespace housing {
     for (const auto &row : contents.placedItems) {
       itemIds.insert(row.item_id);
     }
-    const auto upkeepIds = itemUpkeepIds(content, itemIds);
+    const auto upkeepIds = chargedUpkeepIds(content, itemIds);
     for (const auto &row : contents.placedItems) {
       const int32 upkeepId = upkeepIds.at(row.item_id);
       if (upkeepId <= 0) {
@@ -382,7 +406,42 @@ namespace housing {
   }
 
   // Everything on the plot goes into the crate: its items stored there, its houses and other crates under it with their contents.
+  namespace {
+    constexpr int packDepthLimit = 10;
+  }
+
+  // The released plot's expiry stamped its houses and the items under it; packed for their owner, they leave that expiry behind, or
+  // a delivered house could never be placed again (AUD-6).
+  static void clearStampsUnder(Database &database, uint32 plotId) {
+    std::set<uint32> subtree{plotId};
+    std::set<uint32> frontier{plotId};
+    for (int depth = 0; !frontier.empty(); depth++) {
+      if (depth > packDepthLimit) {
+        throw std::runtime_error(fmt::format("plot [{}] holds properties nested deeper than [{}]", plotId, packDepthLimit));
+      }
+      std::set<uint32> next;
+      for (auto row : query(database, fmt::format("SELECT id FROM real_estate_properties WHERE parent_id IN ({})", idList(frontier)))) {
+        const uint32 id = Strings::ToUnsignedInt(row[0]);
+        if (subtree.insert(id).second) {
+          next.insert(id);
+        }
+      }
+      frontier = next;
+    }
+    std::set<uint32> descendants(subtree);
+    descendants.erase(plotId);
+    if (!descendants.empty()) {
+      query(database, fmt::format("UPDATE real_estate_properties SET upkeep_expired_time = 0 WHERE id IN ({})", idList(descendants)));
+    }
+    query(database, fmt::format(
+      "UPDATE real_estate_items r JOIN item_instances i ON i.guid_first = r.guid_first AND i.guid_second = r.guid_second AND i.guid_third = r.guid_third "
+      "SET r.upkeep_expired_at = 0 WHERE i.holder_type = 'real_estate' AND i.retirement_state IS NULL AND i.holder_id IN ({})",
+      idList(subtree)
+    ));
+  }
+
   std::vector<ItemRow> packPlotInto(Database &database, uint32 plotId, uint32 crateId) {
+    clearStampsUnder(database, plotId);
     std::set<uint32> moved;
     std::vector<ItemRow> placed;
     for (const auto &row : RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {}", plotId))) {

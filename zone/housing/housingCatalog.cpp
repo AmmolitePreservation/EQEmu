@@ -212,6 +212,12 @@ namespace housing {
     }
 
     upkeepCostIds = itemUpkeepCostIds();
+    for (uint32 costId : upkeepCostIds) {
+      auto cost = costs.find(costId);
+      if (cost != costs.end() && cost->second.options.empty()) {
+        problems.push_back(fmt::format("items pay upkeep [{}], which has no option this server's expansion enables", costId));
+      }
+    }
     std::set<uint32> priceCostIds;
     for (const auto &[id, entry] : definitions) {
       if (entry.row.upkeep_definition_id) {

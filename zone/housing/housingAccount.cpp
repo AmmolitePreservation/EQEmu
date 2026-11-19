@@ -120,7 +120,7 @@ namespace housing {
         return netDailyCost(upkeepCostItems(database, content_db, plot, contents));
       }
       const auto contents = placedUnder(database, content_db, plot);
-      const auto upkeepIds = itemUpkeepIds(content_db, [&]() {
+      const auto upkeepIds = chargedUpkeepIds(content_db, [&]() {
         std::set<uint32> ids;
         for (const auto &row : contents.placedItems) {
           ids.insert(row.item_id);
