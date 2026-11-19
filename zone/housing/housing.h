@@ -3,6 +3,7 @@
 
 #include "../../common/types.h"
 
+#include <string>
 #include <vector>
 
 class Client;
@@ -46,6 +47,8 @@ namespace housing {
   bool questUseNeighborhoodWrit(Client *client, uint32 definitionId);
   bool questHasPermission(Client *client, uint32 propertyId, int permission);
   void handleCommand(Client *client, const Seperator *sep);
+  // After a rename renamed the character's access entries, every zone shows those lists again.
+  void onCharacterRenamed(const std::string &newName);
 }
 
 #endif

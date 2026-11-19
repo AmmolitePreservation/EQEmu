@@ -2648,6 +2648,7 @@ bool Client::ChangeFirstName(const std::string in_firstname)
 	// update character_
 	if(!database.UpdateNameByID(CharacterID(), in_firstname))
 		return false;
+	housing::onCharacterRenamed(in_firstname);
 
 	// Send Name Update to Clients
 	SendRename(this, GetName(), in_firstname.c_str());

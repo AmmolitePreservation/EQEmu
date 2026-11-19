@@ -22,6 +22,7 @@
 #include "../common/item_instance.h"
 #include "../common/shareddb.h"
 #include "../common/repositories/character_corpses_repository.h"
+#include "../common/housingLedger.h"
 #include <ctype.h>
 #include <iomanip>
 #include <iostream>
@@ -369,58 +370,72 @@ bool Database::DeleteCharacter(const std::string& name)
 		return false;
 	}
 
-	std::string delete_type = "hard-deleted";
-	if (RuleB(Character, SoftDeletes)) {
-		delete_type = "soft-deleted";
+	try {
+		housing::Transaction transaction(*this);
+		housing::removeAccessNames(*this, e.name);
 
-		std::string query = fmt::format(
-			SQL(
-				UPDATE character_data SET name = SUBSTRING(CONCAT(name, '-deleted-', UNIX_TIMESTAMP()), 1, 64), deleted_at = NOW()
-				WHERE id = {}
-			),
-			e.id
-		);
+		std::string delete_type = "hard-deleted";
+		if (RuleB(Character, SoftDeletes)) {
+			delete_type = "soft-deleted";
 
-		QueryDatabase(query);
-
-		if (RuleB(Bots, Enabled)) {
-			query = fmt::format(
-				SQL(
-					UPDATE bot_data SET name = SUBSTRING(CONCAT(name, '-deleted-', UNIX_TIMESTAMP()), 1, 64) WHERE owner_id = {}
-				),
-				e.id
+			housing::query(
+				*this,
+				fmt::format(
+					SQL(
+						UPDATE character_data SET name = SUBSTRING(CONCAT(name, '-deleted-', UNIX_TIMESTAMP()), 1, 64), deleted_at = NOW()
+						WHERE id = {}
+					),
+					e.id
+				)
 			);
 
-			QueryDatabase(query);
+			if (RuleB(Bots, Enabled)) {
+				housing::query(
+					*this,
+					fmt::format(
+						SQL(
+							UPDATE bot_data SET name = SUBSTRING(CONCAT(name, '-deleted-', UNIX_TIMESTAMP()), 1, 64) WHERE owner_id = {}
+						),
+						e.id
+					)
+				);
 
-			LogInfo(
-				"[DeleteCharacter] character_name [{}] ({}) bots are being [{}]",
-				e.name,
-				e.id,
-				delete_type
+				LogInfo(
+					"[DeleteCharacter] character_name [{}] ({}) bots are being [{}]",
+					e.name,
+					e.id,
+					delete_type
+				);
+			}
+
+			transaction.commit();
+			return true;
+		}
+
+		RetireCharacterItems(e.id);
+
+		for (const auto &t : DatabaseSchema::GetCharacterTables()) {
+			const std::string& table_name               = t.first;
+			const std::string& character_id_column_name = t.second;
+			housing::query(
+				*this,
+				fmt::format(
+					"DELETE FROM {} WHERE {} = {}",
+					table_name,
+					character_id_column_name,
+					e.id
+				)
 			);
 		}
+		transaction.commit();
+		LogInfo("character_name [{}] ({}) is being [{}]", e.name, e.id, delete_type);
 
 		return true;
 	}
-
-	RetireCharacterItems(e.id);
-
-	for (const auto &t : DatabaseSchema::GetCharacterTables()) {
-		const std::string& table_name               = t.first;
-		const std::string& character_id_column_name = t.second;
-		QueryDatabase(
-			fmt::format(
-				"DELETE FROM {} WHERE {} = {}",
-				table_name,
-				character_id_column_name,
-				e.id
-			)
-		);
+	catch (const std::exception& error) {
+		LogError("Deleting character [{}] ({}) failed: {}", e.name, e.id, error.what());
+		return false;
 	}
-	LogInfo("character_name [{}] ({}) is being [{}]", e.name, e.id, delete_type);
-
-	return true;
 }
 
 // Everything a hard-deleted character held: its possessions and parcels, its pets' items, its corpses' items and its
@@ -968,6 +983,26 @@ void Database::ClearMerchantTemp()
 	MerchantlistTempRepository::ClearTemporaryMerchantLists(*this);
 }
 
+namespace {
+	// A rename carries the character's access list entries with it (AUD-24).
+	bool saveRenamedCharacter(Database& db, const CharacterDataRepository::CharacterData& e, const std::string& old_name)
+	{
+		try {
+			housing::Transaction transaction(db);
+			if (!CharacterDataRepository::UpdateOne(db, e)) {
+				throw std::runtime_error("its character_data row was not updated");
+			}
+			housing::renameAccessNames(db, old_name, e.name);
+			transaction.commit();
+			return true;
+		}
+		catch (const std::exception& error) {
+			LogError("Renaming character [{}] to [{}] failed: {}", old_name, e.name, error.what());
+			return false;
+		}
+	}
+}
+
 bool Database::UpdateName(const std::string& old_name, const std::string& new_name)
 {
 	LogInfo("Renaming [{}] to [{}]", old_name, new_name);
@@ -988,7 +1023,7 @@ bool Database::UpdateName(const std::string& old_name, const std::string& new_na
 
 	e.name = new_name;
 
-	return CharacterDataRepository::UpdateOne(*this, e);
+	return saveRenamedCharacter(*this, e, old_name);
 }
 
 bool Database::UpdateNameByID(const int character_id, const std::string& new_name)
@@ -1009,9 +1044,10 @@ bool Database::UpdateNameByID(const int character_id, const std::string& new_nam
 
 	auto& e = l.front();
 
+	const std::string old_name = e.name;
 	e.name = new_name;
 
-	return CharacterDataRepository::UpdateOne(*this, e);
+	return saveRenamedCharacter(*this, e, old_name);
 }
 
 bool Database::IsNameUsed(const std::string& name)

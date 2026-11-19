@@ -6913,7 +6913,11 @@ void Client::Handle_OP_GMNameChange(const EQApplicationPacket *app)
 		return;
 	}
 
-	database.UpdateName(gmn->oldname, gmn->newname);
+	if (!database.UpdateName(gmn->oldname, gmn->newname)) {
+		Message(Chat::Red, fmt::format("Renaming {} failed.", gmn->oldname).c_str());
+		return;
+	}
+	housing::onCharacterRenamed(gmn->newname);
 	strcpy(c->name, gmn->newname);
 	c->Save();
 

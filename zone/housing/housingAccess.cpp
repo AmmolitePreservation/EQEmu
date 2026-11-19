@@ -14,6 +14,7 @@
 #include "../guild_mgr.h"
 #include "../zonedb.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace housing {
@@ -284,6 +285,7 @@ namespace housing {
       if (!refusal.empty()) {
         throw std::runtime_error(refusal);
       }
+      // Only a name added or moved must be a character now: a stored entry is checked when it went in (AUD-24).
       std::set<std::string> characterNames;
       for (const auto &[name, entryGroup] : requested.names) {
         if (name[0] == '_') {
@@ -292,7 +294,10 @@ namespace housing {
           }
           continue;
         }
-        characterNames.insert(name);
+        const auto kept = std::find(stored.names.begin(), stored.names.end(), std::make_pair(name, entryGroup));
+        if (kept == stored.names.end()) {
+          characterNames.insert(name);
+        }
       }
       const auto existing = existingCharacterNames(characterNames);
       for (const auto &name : characterNames) {
@@ -311,6 +316,12 @@ namespace housing {
     }
     LogHousing("[{}] set the access list of property [{}]", client->GetCleanName(), propertyId);
     sendEvent(EventType::accessChanged, EventTarget::property, propertyId, propertyId, {});
+  }
+
+  void onCharacterRenamed(const std::string &newName) {
+    for (uint32 propertyId : propertiesNaming(database, newName)) {
+      sendEvent(EventType::accessChanged, EventTarget::property, propertyId, propertyId, {});
+    }
   }
 
   void applyAccessChange(uint32 propertyId) {

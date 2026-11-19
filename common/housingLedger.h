@@ -60,6 +60,13 @@ namespace housing {
   };
   PlotLeftovers plotLeftovers(Database &database, uint32 plotId);
   void bumpRevision(Database &database, uint32 propertyId);
+
+  // The properties whose access lists name the character.
+  std::set<uint32> propertiesNaming(Database &database, const std::string &name);
+  // A character's name entries follow it: a rename renames them and a deletion removes them, in the caller's transaction,
+  // so a later character of the same name inherits no group (AUD-24).
+  void renameAccessNames(Database &database, const std::string &oldName, const std::string &newName);
+  void removeAccessNames(Database &database, const std::string &name);
   std::map<uint32, uint8> definitionTypes(Database &content, const std::set<uint32> &definitionIds);
   std::map<uint32, double> readBalances(Database &database, uint32 propertyId);
   void writeBalances(Database &database, uint32 propertyId, const std::map<uint32, double> &balances);

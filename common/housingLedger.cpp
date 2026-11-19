@@ -117,6 +117,36 @@ namespace housing {
     query(database, fmt::format("UPDATE real_estate_properties SET revision = revision + 1 WHERE id = {}", propertyId));
   }
 
+  std::set<uint32> propertiesNaming(Database &database, const std::string &name) {
+    std::set<uint32> ids;
+    for (auto row : query(database, fmt::format("SELECT property_id FROM real_estate_access_names WHERE name = '{}'", Strings::Escape(name)))) {
+      ids.insert(Strings::ToUnsignedInt(row[0]));
+    }
+    return ids;
+  }
+
+  void renameAccessNames(Database &database, const std::string &oldName, const std::string &newName) {
+    const auto ids = propertiesNaming(database, oldName);
+    if (ids.empty()) {
+      return;
+    }
+    query(database, fmt::format("UPDATE real_estate_access_names SET name = '{}' WHERE name = '{}'", Strings::Escape(newName), Strings::Escape(oldName)));
+    for (uint32 id : ids) {
+      bumpRevision(database, id);
+    }
+  }
+
+  void removeAccessNames(Database &database, const std::string &name) {
+    const auto ids = propertiesNaming(database, name);
+    if (ids.empty()) {
+      return;
+    }
+    query(database, fmt::format("DELETE FROM real_estate_access_names WHERE name = '{}'", Strings::Escape(name)));
+    for (uint32 id : ids) {
+      bumpRevision(database, id);
+    }
+  }
+
   std::map<uint32, uint8> definitionTypes(Database &content, const std::set<uint32> &definitionIds) {
     std::map<uint32, uint8> types;
     if (definitionIds.empty()) {
