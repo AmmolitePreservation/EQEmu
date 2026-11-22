@@ -201,8 +201,9 @@ namespace housing {
 
     // The charge that finds the escrow empty stamps the plot, its placed houses and every placed item with an upkeep id with its own
     // second, and stores those items but houses (UPK-2). Returns the item lists that changed, with the records stored.
-    ListChanges stamp(const PropertyRow &plot, int64 now) {
+    ListChanges stamp(const PropertyRow &plot, int64 now, std::set<uint32> &stampedHouses) {
       const PlotContents contents = placedUnder(database, content_db, plot);
+      stampedHouses = contents.placedHouseIds;
       std::set<uint32> properties{plot.id};
       properties.insert(contents.placedHouseIds.begin(), contents.placedHouseIds.end());
       query(database, fmt::format("UPDATE real_estate_properties SET upkeep_expired_time = {} WHERE id IN ({})", now, idList(properties)));
@@ -264,6 +265,8 @@ namespace housing {
       ListChanges itemListsChanged;
       // The houses and crates that stood under a reclaimed plot: their interiors learn they are no longer in a yard (INT-38).
       std::set<uint32> propertiesUnder;
+      // The placed houses stamped with their plot, whose records go out again with it (AUD-38).
+      std::set<uint32> stampedHouses;
     };
 
     ChargeOutcome chargeProperty(uint32 propertyId, int64 now) {
@@ -306,7 +309,7 @@ namespace housing {
       }
       const UpkeepCharge charge = settleUpkeep(database, content_db, plot, now);
       if (charge.escrowFoundEmpty && !plot.upkeep_expired_time) {
-        outcome.itemListsChanged = stamp(plot, now);
+        outcome.itemListsChanged = stamp(plot, now, outcome.stampedHouses);
         if (!guildPlot) {
           auto owner = query(database, fmt::format("SELECT name FROM character_data WHERE id = {} AND deleted_at IS NULL", plot.owner_character_id));
           if (owner.RowCount() == 1) {
@@ -362,6 +365,9 @@ namespace housing {
         }
         else {
           sendPropertyChanged(id, PropertyChangedPayload{before.owner_character_id, before.owner_character_id, before.guild_id, before.guild_id});
+          for (uint32 house : outcome.stampedHouses) {
+            sendPropertyChanged(house, PropertyChangedPayload{before.owner_character_id, before.owner_character_id, before.guild_id, before.guild_id});
+          }
         }
         for (const auto &[holder, records] : outcome.itemListsChanged) {
           sendEvent(EventType::itemListChanged, holder, itemListChangedPayload(records));

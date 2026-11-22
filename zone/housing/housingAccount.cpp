@@ -104,15 +104,16 @@ namespace housing {
 
     // Live credits a deposit and then charges the time since the last charge or deposit at the current daily total, so the time is
     // paid from the deposit even on an empty escrow (UPK-8); the placed stamps clear and the next charge stays where it was.
-    void depositInto(const Property &plot, const Credit &credit) {
+    std::set<uint32> depositInto(const Property &plot, const Credit &credit) {
       auto balances = readBalances(database, plot.id);
       for (const auto &[currency, amount] : credit.amounts) {
         balances[currency] += amount;
       }
       writeBalances(database, plot.id, balances);
       settleUpkeep(database, content_db, plot, currentTime());
-      clearPlacedUpkeepStamps(database, plot, placedUnder(database, content_db, plot));
+      const std::set<uint32> clearedHouses = clearPlacedUpkeepStamps(database, plot, placedUnder(database, content_db, plot));
       bumpRevision(database, plot.id);
+      return clearedHouses;
     }
 
     std::map<uint32, int64> dailyTotal(const Property &plot, int32 upkeepCostId) {
@@ -184,6 +185,7 @@ namespace housing {
     Session *state = session(client);
     Property plot;
     std::function<void()> afterCommit;
+    std::set<uint32> clearedHouses;
     try {
       if (!state || !state->properties.count(request.propertyId)) {
         throw Refusal("the property is not one this zone sent", nullptr);
@@ -231,7 +233,7 @@ namespace housing {
               throw Refusal(fmt::format("the cursor holds [{}] of denomination [{}], not [{}]", *coin, subKey, amount), nullptr);
             }
             credit.amounts[0] = static_cast<double>(amount * copperPerDenomination[subKey]);
-            depositInto(plot, credit);
+            clearedHouses = depositInto(plot, credit);
             PurseGuard purse(client);
             *coin -= static_cast<int32>(amount);
             client->SaveCurrency();
@@ -245,7 +247,7 @@ namespace housing {
               throw Refusal(fmt::format("the cursor does not hold [{}] of currency [{}]", amount, currency), nullptr);
             }
             credit.amounts[currency] = static_cast<double>(amount);
-            depositInto(plot, credit);
+            clearedHouses = depositInto(plot, credit);
             client->DeleteItemInInventory(EQ::invslot::slotCursor, static_cast<int16>(amount), true, ItemRetirement::Consumed);
             transaction.commit();
           }
@@ -357,7 +359,7 @@ namespace housing {
               throw Refusal(fmt::format("the player cannot pay [{}] of currency [{}]", amount, currency), nullptr);
             }
           }
-          depositInto(plot, credit);
+          clearedHouses = depositInto(plot, credit);
           PurseGuard purse(client);
           for (const auto &[currency, amount] : credit.amounts) {
             if (currency == 0) {
@@ -395,5 +397,8 @@ namespace housing {
     }
     LogHousing("[{}] made account request [{}] on property [{}]", client->GetCleanName(), request.type, request.propertyId);
     sendPropertyChanged(plot.id, PropertyChangedPayload{plot.owner_character_id, plot.owner_character_id, plot.guild_id, plot.guild_id});
+    for (uint32 house : clearedHouses) {
+      sendPropertyChanged(house, PropertyChangedPayload{plot.owner_character_id, plot.owner_character_id, plot.guild_id, plot.guild_id});
+    }
   }
 }

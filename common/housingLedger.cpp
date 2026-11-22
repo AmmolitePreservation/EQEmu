@@ -391,7 +391,13 @@ namespace housing {
     return charge;
   }
 
-  void clearPlacedUpkeepStamps(Database &database, const PropertyRow &plot, const PlotContents &contents) {
+  std::set<uint32> clearPlacedUpkeepStamps(Database &database, const PropertyRow &plot, const PlotContents &contents) {
+    std::set<uint32> clearedHouses;
+    if (!contents.placedHouseIds.empty()) {
+      for (auto row : query(database, fmt::format("SELECT id FROM real_estate_properties WHERE id IN ({}) AND upkeep_expired_time <> 0", idList(contents.placedHouseIds)))) {
+        clearedHouses.insert(Strings::ToUnsignedInt(row[0]));
+      }
+    }
     std::set<uint32> stamped{plot.id};
     stamped.insert(contents.placedHouseIds.begin(), contents.placedHouseIds.end());
     query(database, fmt::format("UPDATE real_estate_properties SET upkeep_expired_time = 0 WHERE id IN ({})", idList(stamped)));
@@ -402,6 +408,7 @@ namespace housing {
     if (!itemRows.empty()) {
       query(database, fmt::format("UPDATE real_estate_items SET upkeep_expired_at = 0 WHERE id IN ({})", idList(itemRows)));
     }
+    return clearedHouses;
   }
 
   namespace {

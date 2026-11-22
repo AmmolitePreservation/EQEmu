@@ -103,7 +103,8 @@ namespace housing {
   void writeDefaultAccessList(Database &database, uint32 propertyId, bool guildPlot);
 
   UpkeepCharge settleUpkeep(Database &database, Database &content, const PropertyRow &plot, int64 now);
-  void clearPlacedUpkeepStamps(Database &database, const PropertyRow &plot, const PlotContents &contents);
+  // Returns the placed houses whose stamp it cleared, whose records clients hold stamped (AUD-38).
+  std::set<uint32> clearPlacedUpkeepStamps(Database &database, const PropertyRow &plot, const PlotContents &contents);
 }
 
 #endif
