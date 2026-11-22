@@ -667,7 +667,10 @@ namespace housing {
             const uint32 previousOwner = candidate.carried ? candidate.carried->owner_character_id : 0;
             applied.changedProperties[id] = PropertyChangedPayload{previousOwner, ownerFor(destination, view.lookup()), 0, 0};
           }
-          applied.changedProperties[destinationId] = PropertyChangedPayload{destination.owner_character_id, destination.owner_character_id, destination.guild_id, destination.guild_id};
+          // An ordinary item changes the destination's item list only; its record goes out again when a property came with it (AUD-36).
+          if (!carriedChanged.empty()) {
+            applied.changedProperties[destinationId] = PropertyChangedPayload{destination.owner_character_id, destination.owner_character_id, destination.guild_id, destination.guild_id};
+          }
         }
         if (candidate.row) {
           updateRow(placed);
@@ -1649,13 +1652,54 @@ namespace housing {
     if (!state) {
       return;
     }
+    // RoF2 sends the yard the player stands in and that yard's house (window +0x26c, +0x270) and plans only from them and the
+    // plot's crate, so a load reaches nothing else (AUD-43).
+    std::set<uint32> scope;
+    try {
+      const uint32 location = locationOf(client, *state);
+      const Property *standingPlot = location ? ancestorOfType(state->properties.at(location), typeBit(DefinitionType::plot) | typeBit(DefinitionType::guildPlot), false, state->lookup()) : nullptr;
+      if (!standingPlot) {
+        throw ItemRefusal(ItemResult::notPlaceableZone, "the player stands in no yard or house");
+      }
+      const bool yardGiven = yardId && yardId != none;
+      const bool houseGiven = houseId && houseId != none;
+      if (!yardGiven && !houseGiven) {
+        throw ItemRefusal(ItemResult::notFound, "the layout names neither a yard nor a house");
+      }
+      if (yardGiven && yardId != standingPlot->id) {
+        throw ItemRefusal(ItemResult::notFound, fmt::format("yard [{}] is not plot [{}], where the player stands", yardId, standingPlot->id));
+      }
+      if (houseGiven && RealEstateItemsRepository::GetWhere(database, fmt::format("property_id = {} AND carried_property_id = {} AND placed = 1", standingPlot->id, houseId)).empty()) {
+        throw ItemRefusal(ItemResult::notFound, fmt::format("house [{}] is not placed on plot [{}], where the player stands", houseId, standingPlot->id));
+      }
+      if (yardGiven) {
+        scope.insert(yardId);
+      }
+      if (houseGiven) {
+        scope.insert(houseId);
+      }
+      if (const auto crate = firstCrateOf(standingPlot->id)) {
+        scope.insert(crate->property.id);
+      }
+    }
+    catch (const ItemRefusal &refusal) {
+      refuse(client, refusal, "layout load");
+      return;
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: [{}]'s layout load onto yard [{}] and house [{}] failed: {}", client->GetCleanName(), yardId, houseId, error.what());
+      sendItemResult(client, ItemResult::failed);
+      return;
+    }
     Applied applied;
     std::optional<ItemResult> firstRefusal;
     for (auto &record : records) {
       try {
-        if (!state->properties.count(record.destinationId) || (record.destinationId != yardId && record.destinationId != houseId &&
-            !(state->properties.at(record.destinationId).parent_id == yardId || state->properties.at(record.destinationId).parent_id == houseId))) {
-          throw ItemRefusal(ItemResult::notFound, fmt::format("destination [{}] is not the layout's yard [{}], house [{}] or their storage", record.destinationId, yardId, houseId));
+        if (!scope.count(record.destinationId) || !state->properties.count(record.destinationId)) {
+          throw ItemRefusal(ItemResult::notFound, fmt::format("destination [{}] is not the layout's yard [{}], house [{}] or the plot's crate", record.destinationId, yardId, houseId));
+        }
+        if (record.request.propertyId != none && !scope.count(record.request.propertyId)) {
+          throw ItemRefusal(ItemResult::notFound, fmt::format("source [{}] is not the layout's yard [{}], house [{}] or the plot's crate", record.request.propertyId, yardId, houseId));
         }
         if (record.place) {
           Candidate candidate = candidateFor(client, *state, record.request);
