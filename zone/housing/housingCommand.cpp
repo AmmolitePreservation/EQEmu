@@ -411,11 +411,32 @@ namespace housing {
           refuse(client, usage);
           return;
         }
+        // A key's label is one row for every poll, as RoF2's 0x6860 table is (AUD-40).
+        const std::string label = sep->argplus[6];
+        auto labelled = database.QueryDatabase(fmt::format("SELECT text FROM real_estate_poll_labels WHERE id = {}", value));
+        if (labelled.Success() && labelled.RowCount() == 1 && label != labelled.begin()[0]) {
+          std::vector<std::string> users;
+          for (auto row : database.QueryDatabase(fmt::format("SELECT poll_id FROM real_estate_poll_options WHERE option_key = {} AND poll_id <> {} ORDER BY poll_id", value, id))) {
+            users.push_back(row[0]);
+          }
+          if (!users.empty()) {
+            refuse(client, fmt::format("Refused: option key {} is labelled '{}' and poll {} offers it; use another key or the same label.", value, labelled.begin()[0],
+              Strings::Join(users, ", ")));
+            return;
+          }
+        }
         pollEdit(client, fmt::format("Poll {} offers option {}", id, value), {
           fmt::format("REPLACE INTO real_estate_poll_options (poll_id, option_key, position) SELECT id, {}, {} FROM real_estate_polls WHERE id = {} AND kind = 2", value, position, id),
           fmt::format("REPLACE INTO real_estate_poll_labels (id, text) VALUES ({}, '{}')", value, Strings::Escape(sep->argplus[6]))});
       }
       else if (action == "unoption" && parseInteger(sep->arg[4], value)) {
+        // The results name every ballot's option, so an option with ballots stays (AUD-40).
+        auto ballots = database.QueryDatabase(fmt::format("SELECT COUNT(*) FROM real_estate_poll_votes WHERE poll_id = {} AND option_key = {}", id, value));
+        if (!ballots.Success() || Strings::ToUnsignedInt(ballots.begin()[0]) > 0) {
+          refuse(client, ballots.Success() ? fmt::format("Refused: {} ballot(s) in poll {} chose option {}; it stays.", ballots.begin()[0], id, value)
+            : fmt::format("Refused: {}", ballots.ErrorMessage()));
+          return;
+        }
         pollEdit(client, fmt::format("Poll {} no longer offers option {}", id, value), {fmt::format(
           "DELETE FROM real_estate_poll_options WHERE poll_id = {} AND option_key = {}", id, value)});
       }

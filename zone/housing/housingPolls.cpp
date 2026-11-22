@@ -214,6 +214,51 @@ namespace housing {
     }
   }
 
+  namespace {
+    // What every client's poll lists share; a vote refreshes every session, so it is built once for them all (AUD-40).
+    struct SharedPollLists {
+      int64 now;
+      std::vector<Poll> polls;
+      std::map<uint32, std::string> texts;
+      WireWriter labels;
+      WireWriter list;
+      WireWriter results;
+    };
+
+    SharedPollLists sharedPollLists() {
+      SharedPollLists shared;
+      shared.now = currentTime();
+      shared.polls = publishedPolls();
+      shared.texts = labels(shared.polls);
+      shared.labels.u16(static_cast<uint16>(shared.texts.size()));
+      for (const auto &[key, text] : shared.texts) {
+        shared.labels.u32(key).lengthString(text);
+      }
+      shared.list.u16(static_cast<uint16>(shared.polls.size()));
+      for (const auto &poll : shared.polls) {
+        writePoll(shared.list, poll, shared.now);
+      }
+      shared.results = resultsMessage(shared.polls, shared.texts);
+      return shared;
+    }
+
+    void sendPollLists(Client *client, const SharedPollLists &shared) {
+      WireWriter access;
+      access.u32(static_cast<uint32>(shared.polls.size()));
+      for (const auto &poll : shared.polls) {
+        access.u32(poll.id).u8(mayVote(client, poll, shared.now) ? 1 : 0);
+      }
+      sendMessage(client, OP_PollLabels, shared.labels);
+      sendMessage(client, OP_PollList, shared.list);
+      sendMessage(client, OP_PollAccess, access);
+      sendMessage(client, OP_PollVotes, votesMessage(shared.polls, client->AccountID(), shared.texts));
+      sendMessage(client, OP_PollResults, shared.results);
+      WireWriter available;
+      available.u8(1);
+      sendMessage(client, OP_PollAvailable, available);
+    }
+  }
+
   // The four lists the client must hold before its vote window may open (0x5a6830), then whether polling is available.
   void sendPolls(Client *client) {
     if (!RuleB(Housing, EnablePolls)) {
@@ -232,30 +277,7 @@ namespace housing {
       return;
     }
     try {
-      const int64 now = currentTime();
-      const auto polls = publishedPolls();
-      const auto texts = labels(polls);
-      WireWriter labelMessage;
-      labelMessage.u16(static_cast<uint16>(texts.size()));
-      for (const auto &[key, text] : texts) {
-        labelMessage.u32(key).lengthString(text);
-      }
-      WireWriter list;
-      list.u16(static_cast<uint16>(polls.size()));
-      WireWriter access;
-      access.u32(static_cast<uint32>(polls.size()));
-      for (const auto &poll : polls) {
-        writePoll(list, poll, now);
-        access.u32(poll.id).u8(mayVote(client, poll, now) ? 1 : 0);
-      }
-      sendMessage(client, OP_PollLabels, labelMessage);
-      sendMessage(client, OP_PollList, list);
-      sendMessage(client, OP_PollAccess, access);
-      sendMessage(client, OP_PollVotes, votesMessage(polls, client->AccountID(), texts));
-      sendMessage(client, OP_PollResults, resultsMessage(polls, texts));
-      WireWriter available;
-      available.u8(1);
-      sendMessage(client, OP_PollAvailable, available);
+      sendPollLists(client, sharedPollLists());
     }
     catch (const std::exception &error) {
       LogError("Housing: the polls could not be sent to [{}]: {}", client->GetCleanName(), error.what());
@@ -398,9 +420,26 @@ namespace housing {
   }
 
   void refreshPolls() {
-    forEachSession([](Client *client, Session &) {
-      sendPolls(client);
-    });
+    if (!RuleB(Housing, EnablePolls)) {
+      forEachSession([](Client *client, Session &) {
+        sendPolls(client);
+      });
+      return;
+    }
+    try {
+      const SharedPollLists shared = sharedPollLists();
+      forEachSession([&](Client *client, Session &) {
+        try {
+          sendPollLists(client, shared);
+        }
+        catch (const std::exception &error) {
+          LogError("Housing: the polls could not be sent to [{}]: {}", client->GetCleanName(), error.what());
+        }
+      });
+    }
+    catch (const std::exception &error) {
+      LogError("Housing: the polls could not be built for a refresh: {}", error.what());
+    }
   }
 
   // A poll opening or closing updates the list (0x39bb); one that opens with its prompt flag opens the vote window (0x7a4d) for
