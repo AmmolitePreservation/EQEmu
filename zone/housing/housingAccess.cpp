@@ -2,6 +2,7 @@
 
 #include "housingEvents.h"
 #include "housingGuildServices.h"
+#include "housingHandlers.h"
 #include "housingInteriors.h"
 #include "housingSession.h"
 
@@ -279,18 +280,18 @@ namespace housing {
       const uint8 group = accessGroup(client, current, lookup, listOf);
       const bool privileged = client->GetGM() || group == ownerGroup;
       if (!privileged && !permitted(client, Permission::manage, current, lookup, listOf)) {
-        throw std::runtime_error("the editor has no Manage permission");
+        throw Refusal("the editor has no Manage permission", nullptr);
       }
       const std::string refusal = accessEditRefusal(stored.masks, stored.names, requested.masks, requested.names, group, privileged);
       if (!refusal.empty()) {
-        throw std::runtime_error(refusal);
+        throw Refusal(refusal, nullptr);
       }
       // Only a name added or moved must be a character now: a stored entry is checked when it went in (AUD-24).
       std::set<std::string> characterNames;
       for (const auto &[name, entryGroup] : requested.names) {
         if (name[0] == '_') {
           if (!isClubKey(name)) {
-            throw std::runtime_error(fmt::format("[{}] is not a club key", name));
+            throw Refusal(fmt::format("[{}] is not a club key", name), nullptr);
           }
           continue;
         }
@@ -302,15 +303,20 @@ namespace housing {
       const auto existing = existingCharacterNames(characterNames);
       for (const auto &name : characterNames) {
         if (!existing.count(name)) {
-          throw std::runtime_error(fmt::format("[{}] is not a character", name));
+          throw Refusal(fmt::format("[{}] is not a character", name), nullptr);
         }
       }
       writeAccessList(database, propertyId, requested.masks, requested.names);
       bumpRevision(database, propertyId);
       transaction.commit();
     }
+    catch (const Refusal &refusal) {
+      LogHousing("Refused [{}]'s access list for property [{}]: {}", client->GetCleanName(), propertyId, refusal.what());
+      sendCurrent();
+      return;
+    }
     catch (const std::exception &error) {
-      LogHousing("Refused [{}]'s access list for property [{}]: {}", client->GetCleanName(), propertyId, error.what());
+      LogError("Housing: [{}]'s access list for property [{}] failed: {}", client->GetCleanName(), propertyId, error.what());
       sendCurrent();
       return;
     }
