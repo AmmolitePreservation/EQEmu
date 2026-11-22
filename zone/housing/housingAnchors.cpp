@@ -36,6 +36,7 @@ namespace housing {
     constexpr uint32 offerNotInYard = 5347;
     constexpr uint32 offerUpkeepExpired = 5348;
     constexpr uint32 noAnchor = 5453;
+    constexpr uint32 selfNoAnchor = 5448;
 
     struct Offer {
       uint32 propertyId;
@@ -122,12 +123,17 @@ namespace housing {
         LogHousing("Anchor spell [{}] cast by a non-player on [{}]; nothing happens", spellId, client->GetCleanName());
         return;
       }
+      const bool selfGate = caster == target && spells[spellId].target_type == ST_Self;
       const auto anchor = anchorFor(owner, static_cast<uint32>(anchorItemId));
       if (!anchor) {
-        client->MessageString(Chat::Red, noAnchor, caster->GetCleanName());
+        if (selfGate) {
+          client->MessageString(Chat::Red, selfNoAnchor);
+        }
+        else {
+          client->MessageString(Chat::Red, noAnchor, caster->GetCleanName());
+        }
         return;
       }
-      const bool selfGate = caster == target && spells[spellId].target_type == ST_Self;
       const EntryCheck check = checkEntry(client, anchor->property_id);
       if (refuseOn(client, check.state, anchor->property_id, selfGate, caster)) {
         return;
