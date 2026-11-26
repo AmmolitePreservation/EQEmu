@@ -213,9 +213,7 @@ namespace housing {
           }
           owner = found->second;
         }
-        const bool playerPlot = typeOf(property) == DefinitionType::plot;
         fields[id] = RecordFields{
-          playerPlot && !property.owner_character_id,
           recordGuildOf(property, owner),
           owner,
           composedName(property, properties, problems),
@@ -440,7 +438,7 @@ namespace housing {
         if (state.accessLists.count(id)) {
           sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
         }
-        sendMessage(client, OP_RealEstateProperty, propertyRecord(**property, RecordFields{false, 0, std::nullopt, {}, {}, {}, 0}));
+        sendMessage(client, OP_RealEstateProperty, propertyRecord(**property, RecordFields{0, std::nullopt, {}, {}, {}, 0}));
       }
       if (!arrived.empty() || !left.empty()) {
         LogHousing("[{}] stands in yard [{}] (was [{}]): sent properties [{}], took back [{}]", client->GetCleanName(), yardId, previousYardId,
@@ -724,7 +722,7 @@ namespace housing {
       }
       for (uint32 id : propertyIds) {
         if (!existing.count(id) && old->knownIds.count(id)) {
-          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{false, 0, std::nullopt, {}, {}, {}, 0}));
+          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{0, std::nullopt, {}, {}, {}, 0}));
         }
       }
       sendPropertyLists(client, fresh);

@@ -10,7 +10,6 @@
 
 namespace housing {
   struct RecordFields {
-    bool vacantPlayerPlot;
     uint32 guildId;
     std::optional<CharacterIdentity> owner;
     std::string name;

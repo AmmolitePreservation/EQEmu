@@ -83,7 +83,7 @@ All three deserialize the same class (vtable `0xa1052c`, reader `0x7fdf00`).
 
 ```
 u32 id                 client +0x14
-u32                    +0x18  (Live: staticId, -1; 0 on a vacant player plot)
+u32                    +0x18  (Live: staticId, -1 on every property since October 2026: REC-24)
 u32 parentID           +0x1c  (parent property id; walked by 0x4d6790)
 u32 definitionID       +0x20  (0x6fd0 looks up its type)
 u32 guildID            +0x24  (owning guild, -1 = none; see the Purchase window checks)

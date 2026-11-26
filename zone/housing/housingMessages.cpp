@@ -6,7 +6,7 @@ namespace housing {
   WireWriter propertyRecord(const Property &property, const RecordFields &fields) {
     WireWriter message;
     message.u32(property.id)
-      .i32(fields.vacantPlayerPlot ? 0 : -1)
+      .i32(-1)
       .u32(property.parent_id)
       .u32(property.definition_id)
       .u32(fields.guildId ? fields.guildId : 0xFFFFFFFF)
