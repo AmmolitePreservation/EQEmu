@@ -29,6 +29,8 @@ namespace housing {
     constexpr uint32 crateOfEvictionDefinition = 31;
     constexpr const char *expiryNoticeSubject = "Escrow expired on personal plot - First Notice";
     constexpr const char *reclaimNotice = "Plots will pack up all items, send them to the owner, and become available for purchase again if its escrow has been expired for 90 days.";
+    constexpr const char *guildExpiryNoticeSubject = "Escrow expired on guild plot - First Notice";
+    constexpr const char *guildReclaimNotice = "Guild plots will pack up all items, send them to the owner, and become available for purchase again if you have less than 10 guild members or 90 days after escrow expires.";
 
     Timer passTimer;
     EQ::Random random;
@@ -246,12 +248,11 @@ namespace housing {
     }
 
     // Live mails the owner at the expiring second, the body the two chat lines (UPK-5, UPK-6); the sender is the server's own name.
-    void mailExpiryNotice(const PropertyRow &plot, const std::string &firstLine, int64 now) {
+    void mailExpiryNotice(uint32 characterId, const char *subject, const std::string &firstLine, const char *secondLine, int64 now) {
       const std::string sender = fmt::format("@{}@", Strings::ToLower(WorldConfig::get()->ShortName));
       query(database, fmt::format(
         "INSERT INTO mail (charid, timestamp, `from`, subject, body, `to`, status) VALUES ({}, {}, '{}', '{}', '{}', '', 1)",
-        plot.owner_character_id, now, Strings::Escape(sender), Strings::Escape(expiryNoticeSubject),
-        Strings::Escape(fmt::format("{}\n\n{}", firstLine, reclaimNotice))
+        characterId, now, Strings::Escape(sender), Strings::Escape(subject), Strings::Escape(fmt::format("{}\n\n{}", firstLine, secondLine))
       ));
     }
 
@@ -315,11 +316,20 @@ namespace housing {
           if (owner.RowCount() == 1) {
             outcome.ownerName = owner.begin()[0];
             outcome.noticeLine = fmt::format("Your player plot at {}'s escrow has expired!", plotName(plot));
-            mailExpiryNotice(plot, outcome.noticeLine, now);
+            mailExpiryNotice(plot.owner_character_id, expiryNoticeSubject, outcome.noticeLine, reclaimNotice, now);
           }
         }
         else {
-          LogHousing("Guild plot [{}] expired; Live's guild plot notice and its recipient are unverified, so none is sent", plot.id);
+          // Live mails the guild's leader (UPK-23); what an online leader sees in chat at that second is unread, so nothing is said there.
+          auto leader = query(database, fmt::format(
+            "SELECT c.id FROM guilds g JOIN character_data c ON c.id = g.leader AND c.deleted_at IS NULL WHERE g.id = {}", plot.guild_id));
+          if (leader.RowCount() == 1) {
+            mailExpiryNotice(Strings::ToUnsignedInt(leader.begin()[0]), guildExpiryNoticeSubject,
+              fmt::format("Your guild plot at {}'s escrow has expired!", plotName(plot)), guildReclaimNotice, now);
+          }
+          else {
+            LogHousing("Guild plot [{}] expired and guild [{}] has no leader to mail", plot.id, plot.guild_id);
+          }
         }
         LogHousing("Plot [{}] found its escrow empty and is expired at [{}]", plot.id, now);
       }
