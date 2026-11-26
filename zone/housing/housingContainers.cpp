@@ -67,7 +67,8 @@ namespace housing {
 
   bool isTradeskillContainer(uint32 itemId) {
     const EQ::ItemData *item = database.GetItem(itemId);
-    return item && item->IsClassBag() && !isStorageBag(item->BagType);
+    // Live offers no Use on a placed augmentation sealer (MNU-18).
+    return item && item->IsClassBag() && !isStorageBag(item->BagType) && item->BagType != EQ::item::BagTypeAugmentationSealer;
   }
 
   void queueOpen(Client *client, const PlacedItem &row, const EQ::ItemData *item) {
