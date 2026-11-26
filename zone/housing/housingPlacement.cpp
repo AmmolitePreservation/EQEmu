@@ -660,7 +660,9 @@ namespace housing {
         placed.x = transform.x;
         placed.y = transform.y;
         placed.z = transform.z;
-        if (!candidate.row || candidate.row->property_id != destinationId) {
+        // A stored crate holds no real estate, so placing it makes one, as placing one from inventory does (PLC-35).
+        const bool makesProperty = candidate.kind != CarriedKind::none && !candidate.carried;
+        if (!candidate.row || candidate.row->property_id != destinationId || makesProperty) {
           std::set<uint32> carriedChanged;
           attachCarried(candidate, placed, destination, view.lookup(), carriedChanged);
           for (uint32 id : carriedChanged) {
