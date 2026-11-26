@@ -697,6 +697,14 @@ namespace housing {
     }
 
     // A move into a property's storage, its rules and changes; the destination is the resolved closet, shed or crate.
+    // An empty house or crate that is picked up, and an empty crate that is stored, loses its real estate (STT-4, PLC-35).
+    void dropEmptyProperty(uint32 propertyId) {
+      for (const char *table : {"real_estate_access_groups", "real_estate_access_names", "real_estate_property_balances"}) {
+        query(database, fmt::format("DELETE FROM {} WHERE property_id = {}", table, propertyId));
+      }
+      query(database, fmt::format("DELETE FROM real_estate_properties WHERE id = {}", propertyId));
+    }
+
     PlacedItem storeInto(Client *client, const Session &state, Candidate &candidate, std::set<uint32> focus, uint32 destinationId, uint32 quantity, Applied &applied) {
       const bool wholeSource = movesWhole(candidate, quantity);
       PlacedItem stored;
@@ -742,12 +750,25 @@ namespace housing {
               changedProperties[id] = PropertyChangedPayload{candidate.carried ? candidate.carried->owner_character_id : 0, ownerFor(destination, fresh.lookup()), 0, 0};
             }
           }
+          // Live's empty crate keeps no real estate in storage, and makes a new one when it is placed again (PLC-35).
+          if (candidate.kind == CarriedKind::crate && candidate.carried && !holdsContents(database, candidate.carried->id)) {
+            dropEmptyProperty(candidate.carried->id);
+            candidate.instance->SetRealEstateID(0);
+            candidate.instance->SetAttuned(false);
+            if (!ItemLayer::Update(database, *candidate.instance, ItemLocation::InRealEstate(destination.id))) {
+              throw std::runtime_error(fmt::format("record [{}] could not give up its property [{}]", stored.id, candidate.carried->id));
+            }
+            stored.attuned = 0;
+            stored.carried_property_id = 0;
+            changedProperties[candidate.carried->id] = PropertyChangedPayload{candidate.carried->owner_character_id, 0, 0, 0};
+          }
           updateRow(stored);
         }
         else {
           holdIn(client, candidate, destination.id, wholeSource, quantity);
           stored = rowFor(*candidate.instance, destination.id, candidate.row ? candidate.row->owner_character_id : client->CharacterID());
-          if (!candidate.row) {
+          // An empty crate makes no real estate in storage (PLC-35).
+          if (!candidate.row && !(candidate.kind == CarriedKind::crate && !candidate.carried)) {
             std::set<uint32> carriedChanged;
             attachCarried(candidate, stored, destination, fresh.lookup(), carriedChanged);
             for (uint32 id : carriedChanged) {
@@ -1286,10 +1307,7 @@ namespace housing {
         }
         else {
           // An empty house or crate picked up loses its real estate (STT-4) and with it the No Trade it carried.
-          for (const char *table : {"real_estate_access_groups", "real_estate_access_names", "real_estate_property_balances"}) {
-            query(database, fmt::format("DELETE FROM {} WHERE property_id = {}", table, candidate.carried->id));
-          }
-          query(database, fmt::format("DELETE FROM real_estate_properties WHERE id = {}", candidate.carried->id));
+          dropEmptyProperty(candidate.carried->id);
           given.SetRealEstateID(0);
           given.SetAttuned(false);
           changedProperties[candidate.carried->id] = PropertyChangedPayload{candidate.carried->owner_character_id, 0, 0, 0};
