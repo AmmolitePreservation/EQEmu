@@ -29,6 +29,7 @@ public:
     TEST_ADD(HousingTest::proratedChargeMatchesLiveCharges);
     TEST_ADD(HousingTest::depositOnExpiredPlotPaysElapsedTimeFromDeposit);
     TEST_ADD(HousingTest::shortChargeTakesWhatIsLeftWithoutExpiring);
+    TEST_ADD(HousingTest::aDepositTheOwedTimeSwallowsLeavesTheEscrowEmpty);
     TEST_ADD(HousingTest::chargeFindingEscrowEmptyExpires);
     TEST_ADD(HousingTest::chargeWithNothingDueNeverExpires);
     TEST_ADD(HousingTest::upkeepPercentScalesTheCharge);
@@ -122,6 +123,23 @@ private:
     TEST_ASSERT(!first.escrowFoundEmpty);
     auto second = housing::applyCharge({{0, first.balances.at(0) + 1000.0}}, daily, 100, 296);
     TEST_ASSERT(near(second.balances.at(0), 1949.4930555555557));
+  }
+
+  // Live, 2026-11-26, a guild plot at 2 platinum 1 gold a day, expired 2,061,089 seconds: 1 copper deposited left nothing, and 55
+  // platinum deposited 100 seconds later left 54997.569444444445 (AUD-15).
+  void aDepositTheOwedTimeSwallowsLeavesTheEscrowEmpty() {
+    const std::map<uint32, int64> daily{{0, 2100}};
+    auto swallowed = housing::applyCharge({{0, 1.0}}, daily, 100, 2061089);
+    TEST_ASSERT(near(swallowed.balances.at(0), 0.0));
+    TEST_ASSERT(near(swallowed.taken.at(0), 1.0));
+    TEST_ASSERT(!swallowed.escrowFoundEmpty);
+    TEST_ASSERT(swallowed.escrowLeftEmpty);
+    auto covered = housing::applyCharge({{0, 55000.0}}, daily, 100, 100);
+    TEST_ASSERT(near(covered.balances.at(0), 54997.569444444445));
+    TEST_ASSERT(!covered.escrowLeftEmpty);
+    auto found = housing::applyCharge({{0, 0.0}}, daily, 100, 100);
+    TEST_ASSERT(found.escrowFoundEmpty);
+    TEST_ASSERT(found.escrowLeftEmpty);
   }
 
   void shortChargeTakesWhatIsLeftWithoutExpiring() {

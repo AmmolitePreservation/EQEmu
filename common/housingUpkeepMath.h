@@ -19,6 +19,8 @@ namespace housing {
     std::map<uint32, double> balances;
     std::map<uint32, double> taken;
     bool escrowFoundEmpty = false;
+    // A charged currency holds nothing after the charge, whether it was found empty or the charge took the last of it.
+    bool escrowLeftEmpty = false;
   };
 
   inline std::map<uint32, int64> netDailyCost(const std::vector<std::pair<uint32, int64>> &costItems) {
@@ -58,12 +60,16 @@ namespace housing {
       double &balance = result.balances[currency];
       if (balance <= 0.0) {
         result.escrowFoundEmpty = true;
+        result.escrowLeftEmpty = true;
         balance = 0.0;
         continue;
       }
       const double taken = std::min(balance, due);
       balance -= taken;
       result.taken[currency] = taken;
+      if (balance <= 0.0) {
+        result.escrowLeftEmpty = true;
+      }
     }
     return result;
   }
