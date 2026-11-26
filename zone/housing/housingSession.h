@@ -54,6 +54,8 @@ namespace housing {
     // and those revealed on demand.
     std::set<uint32> relatedIds;
     std::set<uint32> knownIds;
+    // The plot whose yard the player stands in, in a zone that hosts no interior: related while they stand there (AUD-61).
+    uint32 visitedYardId = 0;
     // The catalog load the client received at zone-in; its option keys are positions in that catalog (AUD-28).
     uint32 catalogGeneration = 0;
     PropertyLookup lookup() const;

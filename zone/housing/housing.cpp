@@ -46,6 +46,7 @@ namespace housing {
 
     std::unordered_map<Client *, Session> sessions;
     bool catalogReady = false;
+    Timer yardTimer(1000);
 
     bool isAnyType(DefinitionType type, std::initializer_list<DefinitionType> types) {
       return std::find(types.begin(), types.end(), type) != types.end();
@@ -236,8 +237,8 @@ namespace housing {
       return holders;
     }
 
-    // The current property's line goes out as records alone. A client inside a house gets that house's plot whole, records and lists,
-    // as Live sends a stranger inside a house the plot, its houses and its crate (AUD-8); what a stranger in a yard gets waits on Live.
+    // The current property's line goes out as records alone. A client inside a house, or standing in a yard, gets that plot whole,
+    // records and lists, as Live sends a stranger there the plot, its houses and its crate (AUD-8, AUD-61).
     void setClientView(Client *client, Session &state) {
       const PropertyLookup lookup = state.lookup();
       const AccessListLookup listOf = state.accessLookup();
@@ -257,6 +258,9 @@ namespace housing {
         if (const Property *visitedPlot = ancestorOfType(state.properties.at(hostedRoot()->id), plotTypes, true, lookup)) {
           seeds.insert(visitedPlot->id);
         }
+      }
+      if (state.visitedYardId && state.properties.count(state.visitedYardId)) {
+        seeds.insert(state.visitedYardId);
       }
       state.relatedIds = relatedProperties(links, seeds, maximumDepth);
       state.knownIds = state.relatedIds;
@@ -350,6 +354,119 @@ namespace housing {
       const auto itemOwnerIdentities = characterIdentities(itemOwners);
       for (uint32 id : holders) {
         sendMessage(client, OP_RealEstateItemList, itemList(id, items, instances, itemOwnerIdentities));
+      }
+    }
+
+    uint32 yardUnder(Client *client, const Session &state) {
+      if (hostsInterior()) {
+        return 0;
+      }
+      const uint32 standing = standingProperty(client, state);
+      auto found = state.properties.find(standing);
+      if (found == state.properties.end()) {
+        return 0;
+      }
+      const DefinitionType type = typeOf(found->second);
+      return type == DefinitionType::plot || type == DefinitionType::guildPlot ? standing : 0;
+    }
+
+    bool isUnder(const Session &state, uint32 id, uint32 ancestorId) {
+      for (int depth = 0; id && depth <= maximumDepth; depth++) {
+        if (id == ancestorId) {
+          return true;
+        }
+        auto found = state.properties.find(id);
+        if (found == state.properties.end()) {
+          return false;
+        }
+        id = found->second.parent_id;
+      }
+      return false;
+    }
+
+    // Live sends whoever walks into a yard the plot, its houses and its crate with their access lists and item lists, and the
+    // client holds none of them once the player has walked out, unless something else relates the player to them (AUD-61).
+    void changeVisitedYard(Client *client, Session &state, uint32 yardId) {
+      const uint32 previousYardId = state.visitedYardId;
+      const std::set<uint32> relatedBefore = state.relatedIds;
+      const std::set<uint32> knownBefore = state.knownIds;
+      state.visitedYardId = yardId;
+      setClientView(client, state);
+      std::set<uint32> arrived;
+      for (uint32 id : state.relatedIds) {
+        if (!relatedBefore.count(id)) {
+          arrived.insert(id);
+        }
+      }
+      std::set<uint32> left;
+      for (uint32 id : relatedBefore) {
+        if (!state.relatedIds.count(id) && previousYardId && isUnder(state, id, previousYardId)) {
+          left.insert(id);
+        }
+      }
+      for (uint32 id : knownBefore) {
+        if (!left.count(id)) {
+          state.knownIds.insert(id);
+        }
+      }
+      const auto ordered = parentsFirst(state);
+      if (!arrived.empty()) {
+        std::vector<std::string> problems;
+        const auto fields = recordFieldsFor(state.properties, problems);
+        if (!problems.empty()) {
+          throw std::runtime_error(Strings::Join(problems, "; "));
+        }
+        for (const Property *property : ordered) {
+          if (arrived.count(property->id)) {
+            sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
+          }
+        }
+        for (uint32 id : arrived) {
+          auto list = state.accessLists.find(id);
+          if (list != state.accessLists.end()) {
+            sendMessage(client, OP_RealEstateAccessList, accessListMessage(id, list->second));
+          }
+        }
+        sendItemLists(client, arrived);
+      }
+      for (auto property = ordered.rbegin(); property != ordered.rend(); ++property) {
+        const uint32 id = (*property)->id;
+        if (!left.count(id)) {
+          continue;
+        }
+        WireWriter drop;
+        drop.u32(id);
+        sendMessage(client, OP_RealEstateItemListDrop, drop);
+        if (state.accessLists.count(id)) {
+          sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
+        }
+        sendMessage(client, OP_RealEstateProperty, propertyRecord(**property, RecordFields{false, 0, std::nullopt, {}, {}, {}, 0}));
+      }
+      if (!arrived.empty() || !left.empty()) {
+        LogHousing("[{}] stands in yard [{}] (was [{}]): sent properties [{}], took back [{}]", client->GetCleanName(), yardId, previousYardId,
+          idList(arrived), idList(left));
+      }
+    }
+
+    void processYards() {
+      if (!yardTimer.Check()) {
+        return;
+      }
+      for (const auto &[entityId, client] : entity_list.GetClientList()) {
+        Session *state = session(client);
+        if (!state) {
+          continue;
+        }
+        const uint32 yardId = yardUnder(client, *state);
+        if (yardId == state->visitedYardId) {
+          continue;
+        }
+        try {
+          changeVisitedYard(client, *state, yardId);
+        }
+        catch (const std::exception &error) {
+          LogError("Housing: [{}]'s move to yard [{}] failed: {}", client->GetCleanName(), yardId, error.what());
+        }
       }
     }
 
@@ -572,6 +689,7 @@ namespace housing {
         continue;
       }
       Session fresh;
+      fresh.visitedYardId = old->visitedYardId;
       std::map<uint32, RecordFields> fields;
       std::set<uint32> alsoKnown(existing);
       alsoKnown.insert(old->knownIds.begin(), old->knownIds.end());
@@ -807,6 +925,7 @@ namespace housing {
       processContainers();
       processGuildServices();
       processPolls();
+      processYards();
     }
   }
 }
