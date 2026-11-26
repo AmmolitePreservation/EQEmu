@@ -720,10 +720,21 @@ namespace housing {
           sendMessage(client, OP_RealEstatePropertyUpdate, propertyRecord(*property, fields.at(property->id)));
         }
       }
-      for (uint32 id : propertyIds) {
-        if (!existing.count(id) && old->knownIds.count(id)) {
-          sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{0, std::nullopt, {}, {}, {}, 0}));
+      // A property that is gone leaves the client at the first refresh that finds it gone, whichever property that refresh is for:
+      // a later event about the gone property itself meets a session that no longer knows it (PLC-35).
+      for (uint32 id : old->knownIds) {
+        if (fresh.properties.count(id)) {
+          continue;
         }
+        if (old->relatedIds.count(id)) {
+          WireWriter drop;
+          drop.u32(id);
+          sendMessage(client, OP_RealEstateItemListDrop, drop);
+          if (old->accessLists.count(id)) {
+            sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
+          }
+        }
+        sendMessage(client, OP_RealEstateProperty, propertyRecord(old->properties.at(id), RecordFields{0, std::nullopt, {}, {}, {}, 0}));
       }
       sendPropertyLists(client, fresh);
       for (const auto &[id, list] : fresh.accessLists) {
@@ -733,7 +744,7 @@ namespace housing {
         }
       }
       for (uint32 id : propertyIds) {
-        if (old->relatedIds.count(id) && old->accessLists.count(id) && !fresh.accessLists.count(id)) {
+        if (fresh.properties.count(id) && old->relatedIds.count(id) && old->accessLists.count(id) && !fresh.accessLists.count(id)) {
           sendMessage(client, OP_RealEstateAccessListRemove, accessListRemoveMessage(id));
         }
       }
