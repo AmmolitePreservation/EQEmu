@@ -13,6 +13,9 @@
 #include "../zone.h"
 #include "../zonedb.h"
 
+#include <algorithm>
+#include <limits>
+#include <optional>
 #include <stdexcept>
 
 extern Zone *zone;
@@ -289,29 +292,33 @@ namespace housing {
           writeBalances(database, plot.id, balances);
           bumpRevision(database, plot.id);
           PurseGuard purse(client);
-          std::vector<uint32> cursorDenominations;
+          std::optional<uint32> cursorDenomination;
           for (const auto &[currency, count] : units) {
             if (currency != 0) {
               purse.addCurrency(currency, static_cast<int64>(count));
             }
-            else {
-              uint64 left = count;
-              for (int denomination = 3; denomination >= 0; denomination--) {
-                const uint64 coins = left / copperPerDenomination[denomination];
-                left %= copperPerDenomination[denomination];
-                if (!coins) {
-                  continue;
-                }
-                *cursorCoin(client, static_cast<uint32>(denomination)) += static_cast<int32>(coins);
-                cursorDenominations.push_back(static_cast<uint32>(denomination));
+            else if (request.type == withdrawAmount) {
+              // Live pays a row's withdrawal in the row's own coin on the cursor, the one coin RoF2's reply holds (UPK-26).
+              const uint32 denomination = request.costItems.front().second.first;
+              const uint64 coins = count / copperPerDenomination[denomination];
+              int32 *held = cursorCoin(client, denomination);
+              if (coins > static_cast<uint64>(std::numeric_limits<int32>::max() - std::max(0, *held))) {
+                throw Refusal(fmt::format("the cursor cannot hold [{}] more of denomination [{}]", coins, denomination), nullptr);
               }
+              *held += static_cast<int32>(coins);
+              cursorDenomination = denomination;
               client->SaveCurrency();
+            }
+            else {
+              // Live's Withdraw All goes into the purse; RoF2 reads no reply of type 7 (UPK-26).
+              client->AddMoneyToPP(count, false);
             }
           }
           transaction.commit();
           purse.committed();
-          for (uint32 denomination : cursorDenominations) {
-            sendMessage(client, OP_RealEstateAccount, accountMessage(withdrawAmount, plot.id, 0, 1, {{0, {denomination, static_cast<uint64>(*cursorCoin(client, denomination))}}}));
+          if (cursorDenomination) {
+            sendMessage(client, OP_RealEstateAccount, accountMessage(withdrawAmount, plot.id, 0, 1,
+              {{0, {*cursorDenomination, static_cast<uint64>(*cursorCoin(client, *cursorDenomination))}}}));
           }
           for (const auto &[currency, count] : units) {
             tellWithdrawal(client, currency, count);
