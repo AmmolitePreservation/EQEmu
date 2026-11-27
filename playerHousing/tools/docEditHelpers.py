@@ -36,12 +36,8 @@ def insertAfterEntry(text, key, addition):
   if re.search(rf"^- \*\*{newKey.group(1)}\*\* ", text, re.M):
     sys.exit(f"{newKey.group(1)} already exists")
   rest = text[found.end():]
-  spaced = rest.startswith("
-") or not rest
-  return text[:found.end()] + ("
-" if spaced else "") + addition.rstrip("
-") + "
-" + rest
+  spaced = rest.startswith("\n") or not rest
+  return text[:found.end()] + ("\n" if spaced else "") + addition.rstrip("\n") + "\n" + rest
 
 
 def replaceSpan(text, startMarker, endMarker, new, label):
