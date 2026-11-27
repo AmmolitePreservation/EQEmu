@@ -1007,6 +1007,10 @@ namespace housing {
         }
       }
       PickUpFacts facts = pickUpAccessFacts(client, holder, candidate.carried ? &*candidate.carried : nullptr, carriesItems, taken, *candidate.item, plot, lookup, listOf);
+      // Live lets an item out of a crate on an expired plot, the one move it allows there (UPK-30).
+      if (typeOf(holder) == DefinitionType::movingCrate) {
+        facts.plotUpkeepExpired = false;
+      }
       facts.loreHeld = candidate.item->LoreFlag && client->CheckLoreConflict(candidate.item);
       facts.takerCarriesSameKindWithItems = takerCarriesSameKind;
       facts.inventoryRoom = slot != INVALID_INDEX;
