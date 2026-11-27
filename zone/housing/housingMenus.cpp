@@ -42,6 +42,9 @@ namespace housing {
     constexpr size_t entryCount = 40;
     constexpr size_t npcSpawnOffset = 0x2fc;
     constexpr uint32 none = 0xFFFFFFFF;
+    constexpr uint32 tooFarFromItem = 5231;
+    // The client closes a container window it stands farther from (MNU-16).
+    constexpr float containerReach = 20.0f;
 
     constexpr MenuEntry enterEntry{1, none, 723, none};
     constexpr MenuEntry adjustPlacementEntry{2, 0, 5244, none};
@@ -410,6 +413,11 @@ namespace housing {
       }
       if (!mayTransact(client, *located->holder, state->lookup(), state->accessLookup())) {
         sendItemResult(client, ItemResult::noInteractItem);
+        return;
+      }
+      // Live answers a Use from beyond reach with this line and opens nothing (MNU-16).
+      if (Distance(glm::vec3(client->GetX(), client->GetY(), client->GetZ()), glm::vec3(located->item.x, located->item.y, located->item.z)) > containerReach) {
+        client->MessageString(Chat::Red, tooFarFromItem);
         return;
       }
       openContainer(client, located->item);

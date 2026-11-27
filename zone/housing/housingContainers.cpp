@@ -100,11 +100,9 @@ namespace housing {
     if (found != open.end() && client->GetTradeskillObject() != found->second.object.get()) {
       forget(found);
     }
-    // The client refuses a second world container itself (0x4c19a0, eqstr 1443) and no server message closes the open
-    // one, so the open goes out for the client to answer and nothing here changes.
+    // Live drops a second open without a line while the character holds a container open (MNU-16).
     if (client->GetTradeskillObject()) {
       LogHousing("[{}] already has a world container open; record [{}] stays closed", client->GetCleanName(), row.id);
-      queueOpen(client, row, item);
       return;
     }
 
