@@ -428,7 +428,7 @@ Its status level is an account status like EQEmu's other content commands.
 
 | Permission | Enforced at |
 |---|---|
-| 1 Enter | entering a house or hall interior (menu type 1); while the house's or its plot's upkeep is expired, entering refuses (`0x1920`); losing Enter inside moves the player to the plot's exit point (S9) |
+| 1 Enter | entering a house or hall interior (menu type 1); while the house's or its plot's upkeep is expired, entering refuses (`0x1920`), and the expiry itself moves whoever is inside to the plot's exit point, as on Live (INT-43); losing Enter inside does the same (S9) |
 | 2 Withdraw Upkeep | `0x2aa6` types 1 and 7 (the client checks nothing) |
 | 3-6, 8-11 remove / add crate and house, remove, add, move, interact with items | chunk 5's handlers, with the client's codes; in the interaction menu, 3 Remove Crate gives a crate's Move to Inventory, 10 Move Item gives Adjust Placement, Place and Move to Storage, and 11 Interact Item gives a non-member a guild service's Transact, which a member of the owning guild always has (ACC-3) |
 | 12 Manage | `0x3146` and the Manage window's actions |
