@@ -30,7 +30,18 @@ def insertAfterEntry(text, key, addition):
   found = re.search(rf"^- \*\*{key}\*\* `\w+` .*\n(?:  <sub>.*</sub>\n)?", text, re.M)
   if not found:
     sys.exit(f"{key} entry not found")
-  return text[:found.end()] + addition + text[found.end():]
+  newKey = re.match(r"- \*\*([A-Z0-9]+-\d+[a-z]?)\*\* ", addition)
+  if not newKey:
+    sys.exit(f"the entry to insert after {key} does not start with its key")
+  if re.search(rf"^- \*\*{newKey.group(1)}\*\* ", text, re.M):
+    sys.exit(f"{newKey.group(1)} already exists")
+  rest = text[found.end():]
+  spaced = rest.startswith("
+") or not rest
+  return text[:found.end()] + ("
+" if spaced else "") + addition.rstrip("
+") + "
+" + rest
 
 
 def replaceSpan(text, startMarker, endMarker, new, label):
