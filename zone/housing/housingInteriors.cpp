@@ -367,7 +367,8 @@ namespace housing {
     leaveForExitPoint(client);
   }
 
-  // A house picked up, stored or swapped out takes its occupants out first (D3: a removed instance player row moves nobody).
+  // A house picked up, stored or swapped out takes its occupants out first (D3: a removed instance player row moves nobody), and
+  // so does one an expiry has stamped (Live, INT-43).
   void checkHostedRoot(uint32 propertyId) {
     if (!hostsInterior() || propertyId != root->id) {
       return;
@@ -385,9 +386,14 @@ namespace housing {
     }
     if (yard) {
       rootPlot = yard;
-      return;
+      if (!root->upkeep_expired_time) {
+        return;
+      }
+      LogHousing("Property [{}]'s upkeep has expired; its occupants leave", root->id);
     }
-    LogHousing("Property [{}] is no longer in a yard; its occupants leave", root->id);
+    else {
+      LogHousing("Property [{}] is no longer in a yard; its occupants leave", root->id);
+    }
     std::vector<Client *> occupants;
     for (const auto &[id, client] : entity_list.GetClientList()) {
       occupants.push_back(client);
