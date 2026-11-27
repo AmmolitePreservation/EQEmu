@@ -416,8 +416,8 @@ namespace housing {
       facts.mergesIntoStack = intoStorage && mergeTarget(view, candidate, destination.id, mergeOwnerFor(client, candidate), quantity);
       facts.containerHoldsItems = candidate.containerHoldsItems;
       const bool destinationCarriesUpkeep = destinationType == DefinitionType::playerHouse || destinationType == DefinitionType::guildHall || destinationType == DefinitionType::movingCrate;
-      facts.itemUpkeepExpired = (candidate.row && candidate.row->upkeep_expired_at) || (candidate.carried && candidate.carried->upkeep_expired_time) ||
-        (destinationCarriesUpkeep && destination.upkeep_expired_time);
+      // A record's own stamp refuses nothing: Live places an item its expiry stored once the plot is paid (UPK-24).
+      facts.itemUpkeepExpired = (candidate.carried && candidate.carried->upkeep_expired_time) || (destinationCarriesUpkeep && destination.upkeep_expired_time);
       const Permission add = isHouseKind(candidate.kind) ? Permission::addHouse : candidate.kind == CarriedKind::crate ? Permission::addCrate : Permission::addItem;
       facts.mayAdd = permitted(client, add, destination, lookup, listOf);
       if (candidate.row) {
@@ -1022,7 +1022,7 @@ namespace housing {
     const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf) {
     PickUpFacts facts;
     facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
-    facts.itemUpkeepExpired = record.upkeep_expired_at || (carried && carried->upkeep_expired_time);
+    facts.itemUpkeepExpired = carried && carried->upkeep_expired_time;
     facts.kind = carried ? kindOf(static_cast<uint8>(typeOf(*carried))) : CarriedKind::none;
     const Permission removal = facts.kind == CarriedKind::none ? Permission::removeItem
       : facts.kind == CarriedKind::crate ? Permission::removeCrate : Permission::removeHouse;

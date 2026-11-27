@@ -105,6 +105,7 @@ namespace housing {
   UpkeepCharge settleUpkeep(Database &database, Database &content, const PropertyRow &plot, int64 now);
   // Returns the placed houses whose stamp it cleared, whose records clients hold stamped (AUD-38).
   std::set<uint32> clearPlacedUpkeepStamps(Database &database, const PropertyRow &plot, const PlotContents &contents);
+  void clearPlotUpkeepStamp(Database &database, const PropertyRow &plot);
 }
 
 #endif

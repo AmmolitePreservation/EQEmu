@@ -411,6 +411,10 @@ namespace housing {
     return clearedHouses;
   }
 
+  void clearPlotUpkeepStamp(Database &database, const PropertyRow &plot) {
+    query(database, fmt::format("UPDATE real_estate_properties SET upkeep_expired_time = 0 WHERE id = {}", plot.id));
+  }
+
   namespace {
     uint32 countOfType(Database &database, Database &content, const std::string &where, uint8 type) {
       std::set<uint32> definitionIds;

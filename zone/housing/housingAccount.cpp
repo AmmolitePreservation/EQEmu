@@ -107,7 +107,7 @@ namespace housing {
 
     // Live credits a deposit and then charges the time since the last charge or deposit at the current daily total, so the time is
     // paid from the deposit even on an empty escrow (UPK-8); the placed stamps clear, unless that time swallowed the deposit whole
-    // (AUD-15), and the next charge stays where it was.
+    // (AUD-15), when only a player plot's own stamp clears (UPK-29); the next charge stays where it was.
     std::set<uint32> depositInto(const Property &plot, const Credit &credit) {
       auto balances = readBalances(database, plot.id);
       for (const auto &[currency, amount] : credit.amounts) {
@@ -118,6 +118,8 @@ namespace housing {
       std::set<uint32> clearedHouses;
       if (!charge.escrowLeftEmpty) {
         clearedHouses = clearPlacedUpkeepStamps(database, plot, placedUnder(database, content_db, plot));
+      } else if (typeOf(plot) == DefinitionType::plot) {
+        clearPlotUpkeepStamp(database, plot);
       }
       bumpRevision(database, plot.id);
       return clearedHouses;
