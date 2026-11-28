@@ -262,6 +262,7 @@ namespace housing {
       bool itemsLost = false;
       uint32 crateId = 0;
       std::string noticeLine;
+      const char *reclaimLine = reclaimNotice;
       std::string ownerName;
       ListChanges itemListsChanged;
       // The houses and crates that stood under a reclaimed plot: their interiors learn they are no longer in a yard (INT-38).
@@ -320,12 +321,15 @@ namespace housing {
           }
         }
         else {
-          // Live mails the guild's leader (UPK-23); what an online leader sees in chat at that second is unread, so nothing is said there.
+          // Live mails the guild's leader and prints the same two lines to them alone; no other member hears of it (UPK-23, UPK-28).
           auto leader = query(database, fmt::format(
-            "SELECT c.id FROM guilds g JOIN character_data c ON c.id = g.leader AND c.deleted_at IS NULL WHERE g.id = {}", plot.guild_id));
+            "SELECT c.id, c.name FROM guilds g JOIN character_data c ON c.id = g.leader AND c.deleted_at IS NULL WHERE g.id = {}", plot.guild_id));
           if (leader.RowCount() == 1) {
-            mailExpiryNotice(Strings::ToUnsignedInt(leader.begin()[0]), guildExpiryNoticeSubject,
-              fmt::format("Your guild plot at {}'s escrow has expired!", plotName(plot)), guildReclaimNotice, now);
+            auto row = leader.begin();
+            outcome.ownerName = row[1];
+            outcome.noticeLine = fmt::format("Your guild plot at {}'s escrow has expired!", plotName(plot));
+            outcome.reclaimLine = guildReclaimNotice;
+            mailExpiryNotice(Strings::ToUnsignedInt(row[0]), guildExpiryNoticeSubject, outcome.noticeLine, guildReclaimNotice, now);
           }
           else {
             LogHousing("Guild plot [{}] expired and guild [{}] has no leader to mail", plot.id, plot.guild_id);
@@ -360,7 +364,7 @@ namespace housing {
         }
         if (!outcome.ownerName.empty()) {
           ZSList::Instance()->SendEmoteMessageRaw(outcome.ownerName.c_str(), 0, AccountStatus::Player, Chat::White, outcome.noticeLine.c_str());
-          ZSList::Instance()->SendEmoteMessageRaw(outcome.ownerName.c_str(), 0, AccountStatus::Player, Chat::White, reclaimNotice);
+          ZSList::Instance()->SendEmoteMessageRaw(outcome.ownerName.c_str(), 0, AccountStatus::Player, Chat::White, outcome.reclaimLine);
         }
         if (outcome.reclaimed) {
           ownershipChanged = true;

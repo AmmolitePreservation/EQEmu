@@ -10,6 +10,7 @@
 #include "../../common/housingCopies.h"
 #include "../../common/housingLedger.h"
 #include "../client.h"
+#include "../guild_mgr.h"
 #include "../zone.h"
 #include "../zonedb.h"
 
@@ -107,7 +108,8 @@ namespace housing {
 
     // Live credits a deposit and then charges the time since the last charge or deposit at the current daily total, so the time is
     // paid from the deposit even on an empty escrow (UPK-8); the placed stamps clear, unless that time swallowed the deposit whole
-    // (AUD-15), when only a player plot's own stamp clears (UPK-29); the next charge stays where it was.
+    // (AUD-15), when only the plot's own stamp clears (UPK-29); the next charge stays where it was. A guild under the member
+    // minimum clears nothing by paying (Live, AUD-15: Quiet Hearth's plot kept its stamp through every deposit).
     std::set<uint32> depositInto(const Property &plot, const Credit &credit) {
       auto balances = readBalances(database, plot.id);
       for (const auto &[currency, amount] : credit.amounts) {
@@ -116,9 +118,16 @@ namespace housing {
       writeBalances(database, plot.id, balances);
       const UpkeepCharge charge = settleUpkeep(database, content_db, plot, currentTime());
       std::set<uint32> clearedHouses;
-      if (!charge.escrowLeftEmpty) {
+      const int minimum = RuleI(Housing, GuildPlotMinimumMembers);
+      const bool guildTooSmall = typeOf(plot) == DefinitionType::guildPlot && minimum > 0 &&
+        guild_mgr.GetGuildMembers(plot.guild_id).size() < static_cast<size_t>(minimum);
+      if (guildTooSmall) {
+        LogHousing("Guild plot [{}]'s guild [{}] is under [{}] members; the deposit clears no stamp", plot.id, plot.guild_id, minimum);
+      }
+      else if (!charge.escrowLeftEmpty) {
         clearedHouses = clearPlacedUpkeepStamps(database, plot, placedUnder(database, content_db, plot));
-      } else if (typeOf(plot) == DefinitionType::plot) {
+      }
+      else {
         clearPlotUpkeepStamp(database, plot);
       }
       bumpRevision(database, plot.id);

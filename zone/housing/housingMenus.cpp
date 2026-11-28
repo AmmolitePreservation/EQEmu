@@ -43,8 +43,9 @@ namespace housing {
     constexpr size_t npcSpawnOffset = 0x2fc;
     constexpr uint32 none = 0xFFFFFFFF;
     constexpr uint32 tooFarFromItem = 5231;
-    // The client closes a container window it stands farther from (MNU-16).
-    constexpr float containerReach = 20.0f;
+    // Live prints the line from 30 units; between the 20 at which the client closes a container window and that, the open
+    // goes out and the client closes it (MNU-21).
+    constexpr float containerReach = 30.0f;
 
     constexpr MenuEntry enterEntry{1, none, 723, none};
     constexpr MenuEntry adjustPlacementEntry{2, 0, 5244, none};
