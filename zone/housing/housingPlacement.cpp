@@ -1026,7 +1026,9 @@ namespace housing {
     const EQ::ItemData &item, const Property *plot, const PropertyLookup &lookup, const AccessListLookup &listOf) {
     PickUpFacts facts;
     facts.plotUpkeepExpired = plot && plot->upkeep_expired_time;
-    facts.itemUpkeepExpired = carried && carried->upkeep_expired_time;
+    // Live locks what stands in a stamped house with the item-or-house line, on a plot that is not stamped too (UPK-25).
+    const bool holderIsPlot = plot && plot->id == holder.id;
+    facts.itemUpkeepExpired = (carried && carried->upkeep_expired_time) || (!holderIsPlot && holder.upkeep_expired_time);
     facts.kind = carried ? kindOf(static_cast<uint8>(typeOf(*carried))) : CarriedKind::none;
     const Permission removal = facts.kind == CarriedKind::none ? Permission::removeItem
       : facts.kind == CarriedKind::crate ? Permission::removeCrate : Permission::removeHouse;
